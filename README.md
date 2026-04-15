@@ -1,6 +1,25 @@
-# Archy GUI — Flow Manager
+# Archy GUI — Flow Manager · v1.3.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
+
+---
+
+## Changelog
+
+### v1.3.0
+- **Flow Builder: JSON tabel-checkbox** — Hvert datatabel-kort har nu en eksplicit "JSON tabel"-afkrydsning (standard: markeret). Brugeren kan altid overstyre automatisk-detection uanset hvad serveren returnerer.
+- **Datatabel-søgning fikset** — Hvert tabelkort har nu sit eget unikke datalist-id (`wiz-dt-datalist-${i}`); søgning filtreres client-side ligesom data actions.
+- **Data Action schema fikset** — Skift fra de ikke-fungerende `/schemas/input|output` endpoints til `GET /integrations/actions/{id}?expand=contract`, som altid returnerer input/output-skema.
+- **`isJsonTable`-detection forbedret** — Serveren detekterer nu JSON-tabeller via `Value`-kolonne (ikke kun kolonne-antal), og returnerer `columns: []` for JSON-tabeller for at undgå fejlagtig auto-udfyldning.
+- **Import: "already exists"-fejl** — Archy exit 108 detekteres og viser en knap: "🔄 Skift til Update og prøv igen".
+- **Flow Builder: badges og hints** — Tabelkort viser "JSON tabel" / "Multi-kolonne" badge i headeren og en vejledende hjælpetekst i feltsektionen.
+
+### v1.2.0
+- Data Actions wizard-sektion (input/output schema, auto-variabelnavne)
+- Data Table søgning og nøgle-kolonne hint
+- Transfer til Flow med type-filter
+- Farvel-TTS valgfri checkbox
+- `startUpTaskVariables:` support for inqueueCall
 
 ---
 
@@ -164,6 +183,8 @@ Archy-gui/
 ## 🇬🇧 English
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, and OAuth PKCE login.
+
+> Current version: **v1.3.0** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
