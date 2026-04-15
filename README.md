@@ -6,6 +6,9 @@
 
 ## Changelog
 
+### v1.3.1
+- **Forbindelsestest fikset for Client Credentials** — brugte `/users/me` (kræver bruger-token), skiftet til `/organizations/me` som virker med alle token-typer. PKCE bruger stadig `/users/me`.
+
 ### v1.3.0
 - **Flow Builder: JSON tabel-checkbox** — Hvert datatabel-kort har nu en eksplicit "JSON tabel"-afkrydsning (standard: markeret). Brugeren kan altid overstyre automatisk-detection uanset hvad serveren returnerer.
 - **Datatabel-søgning fikset** — Hvert tabelkort har nu sit eget unikke datalist-id (`wiz-dt-datalist-${i}`); søgning filtreres client-side ligesom data actions.

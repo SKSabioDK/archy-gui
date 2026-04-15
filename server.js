@@ -246,11 +246,21 @@ app.post('/api/customers/:id/test', async (req, res) => {
   addLog('INFO', `Tester forbindelse til ${customer.name} (${customer.region})`, customer.name, 'TEST');
   try {
     const { token, apiBase } = await getToken(customer);
-    const me = await axios.get(`${apiBase}/api/v2/users/me`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    addLog('SUCCESS', `Forbundet til ${customer.name} — bruger: ${me.data.name}, org: ${me.data.organization?.name || '?'}`, customer.name, 'TEST');
-    res.json({ ok: true, name: me.data.name, org: me.data.organization?.name });
+    // /users/me requires a user-context token (PKCE). For Client Credentials we
+    // use /organizations/me instead, which works with any token type.
+    if (customer.authType === 'oauth') {
+      const me = await axios.get(`${apiBase}/api/v2/users/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      addLog('SUCCESS', `Forbundet til ${customer.name} — bruger: ${me.data.name}, org: ${me.data.organization?.name || '?'}`, customer.name, 'TEST');
+      res.json({ ok: true, name: me.data.name, org: me.data.organization?.name });
+    } else {
+      const org = await axios.get(`${apiBase}/api/v2/organizations/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      addLog('SUCCESS', `Forbundet til ${customer.name} — org: ${org.data.name || '?'} (Client Credentials)`, customer.name, 'TEST');
+      res.json({ ok: true, name: `(Client Credentials)`, org: org.data.name });
+    }
   } catch (e) {
     const errMsg = e.response?.data?.message || e.message;
     addLog('ERROR', `Forbindelsesfejl for ${customer.name}: ${errMsg}`, customer.name, 'TEST');
