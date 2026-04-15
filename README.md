@@ -6,6 +6,9 @@
 
 ## Changelog
 
+### v1.3.2
+- **Stop-knap til Export Alle Flows** — ny ⏹ Stop-knap stopper eksporten efter det igangværende flow. Allerede eksporterede filer bevares. Server sætter `job.cancelled = true`; loop checker flaget før hvert flow.
+
 ### v1.3.1
 - **Forbindelsestest fikset for Client Credentials** — brugte `/users/me` (kræver bruger-token), skiftet til `/organizations/me` som virker med alle token-typer. PKCE bruger stadig `/users/me`.
 

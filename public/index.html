@@ -331,7 +331,7 @@
     <div id="sidebarCustomers"></div>
 
     <div class="spacer"></div>
-    <div class="version">v1.3.1 · Archy GUI</div>
+    <div class="version">v1.3.2 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -504,7 +504,11 @@
       <div id="ex-all-progress" style="display:none" class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <div class="card-title" style="margin:0" data-i18n="card_export_all_progress">EXPORT ALLE — FREMGANG</div>
-          <div id="ex-all-counter" style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)"></div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div id="ex-all-counter" style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)"></div>
+            <button id="ex-all-stop-btn" class="btn btn-danger btn-sm" style="display:none"
+              onclick="cancelExportAll()">⏹ Stop</button>
+          </div>
         </div>
         <div style="background:var(--border);border-radius:4px;height:6px;margin-bottom:14px;overflow:hidden">
           <div id="ex-all-bar" style="height:100%;width:0%;background:var(--accent);transition:width .3s;border-radius:4px"></div>
@@ -1446,6 +1450,18 @@ function downloadYaml() {
   a.click();
 }
 
+let _exportAllJobId = null;
+
+async function cancelExportAll() {
+  if (!_exportAllJobId) return;
+  const btn = document.getElementById('ex-all-stop-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Stopper…';
+  try {
+    await fetch(`/api/export-all/cancel/${_exportAllJobId}`, { method: 'POST' });
+  } catch (_) {}
+}
+
 async function doExportAll() {
   const customerId = document.getElementById('ex-customer').value;
   if (!customerId) return showAlert('ex-alert', 'Vælg en kunde først', 'err');
@@ -1454,13 +1470,18 @@ async function doExportAll() {
   const logBox      = document.getElementById('ex-all-log');
   const counter     = document.getElementById('ex-all-counter');
   const bar         = document.getElementById('ex-all-bar');
+  const stopBtn     = document.getElementById('ex-all-stop-btn');
 
   progressBox.style.display = 'block';
   logBox.innerHTML = '<span style="color:var(--muted)"><span class="spin"></span> Henter flowliste…</span>';
   counter.textContent = '';
   bar.style.width = '0%';
+  stopBtn.style.display = 'none';
+  stopBtn.disabled = false;
+  stopBtn.textContent = '⏹ Stop';
   showAlert('ex-alert', '');
   document.getElementById('ex-all-btn').disabled = true;
+  _exportAllJobId = null;
 
   let jobId;
   try {
@@ -1476,6 +1497,8 @@ async function doExportAll() {
       return;
     }
     jobId = data.jobId;
+    _exportAllJobId = jobId;
+    stopBtn.style.display = 'inline-flex';
   } catch (e) {
     logBox.innerHTML = `<span style="color:var(--red)">✗ ${e.message}</span>`;
     document.getElementById('ex-all-btn').disabled = false;
@@ -1518,13 +1541,21 @@ async function doExportAll() {
 
       if (job.done) {
         clearInterval(poll);
+        stopBtn.style.display = 'none';
+        _exportAllJobId = null;
         const folderName = job.savedTo.split(/[\\/]/).pop();
         logBox.innerHTML += `<br><strong>Gemt i: <span style="color:var(--accent)">${job.savedTo}</span></strong>`;
-        showAlert('ex-alert',
-          job.failed === 0
-            ? `✓ Alle ${job.succeeded} flows eksporteret til "${folderName}"`
-            : `⚠ ${job.succeeded} ok / ${job.failed} fejl — gemt i "${folderName}"`,
-          job.failed === 0 ? 'ok' : 'info');
+        if (job.status === 'cancelled') {
+          showAlert('ex-alert',
+            `⏹ Stoppet — ${job.succeeded} flows gemt i "${folderName}"`,
+            'info');
+        } else {
+          showAlert('ex-alert',
+            job.failed === 0
+              ? `✓ Alle ${job.succeeded} flows eksporteret til "${folderName}"`
+              : `⚠ ${job.succeeded} ok / ${job.failed} fejl — gemt i "${folderName}"`,
+            job.failed === 0 ? 'ok' : 'info');
+        }
         document.getElementById('ex-all-btn').disabled = false;
       }
     } catch (e) { /* network hiccup, keep polling */ }

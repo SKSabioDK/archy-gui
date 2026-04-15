@@ -575,7 +575,7 @@ app.post('/api/export-all', async (req, res) => {
   if (!customer) return res.status(404).json({ error: 'Customer not found' });
 
   const jobId = Date.now().toString();
-  exportJobs[jobId] = { status: 'starting', current: 0, total: 0, succeeded: 0, failed: 0, results: [], savedTo: '', done: false };
+  exportJobs[jobId] = { status: 'starting', current: 0, total: 0, succeeded: 0, failed: 0, results: [], savedTo: '', done: false, cancelled: false };
 
   // Return jobId immediately so client can start polling
   res.json({ ok: true, jobId });
@@ -613,8 +613,12 @@ app.post('/api/export-all', async (req, res) => {
   job.status = 'running';
   addLog('INFO', `Fandt ${allFlows.length} flows — starter eksport til ${exportDir}`, customer.name, 'EXPORT');
 
-  // Export each flow sequentially
+  // Export each flow sequentially — check cancelled flag before each flow
   for (const flow of allFlows) {
+    if (job.cancelled) {
+      addLog('WARN', `Eksport annulleret af bruger efter ${job.current}/${job.total} flows`, customer.name, 'EXPORT');
+      break;
+    }
     try {
       await runArchy(
         `export --flowName "${flow.name}" --flowType ${flow.type.toLowerCase()} --exportType yaml --force --outputDir "${exportDir}"`,
@@ -632,9 +636,12 @@ app.post('/api/export-all', async (req, res) => {
   }
 
   job.done = true;
-  job.status = 'done';
-  addLog(job.failed === 0 ? 'SUCCESS' : 'WARN',
-    `Eksport alle afsluttet for ${customer.name}: ${job.succeeded}/${job.total} flows ok`, customer.name, 'EXPORT');
+  job.status = job.cancelled ? 'cancelled' : 'done';
+  addLog(job.cancelled ? 'WARN' : job.failed === 0 ? 'SUCCESS' : 'WARN',
+    job.cancelled
+      ? `Eksport stoppet: ${job.succeeded} flows gemt i "${exportDir}"`
+      : `Eksport alle afsluttet for ${customer.name}: ${job.succeeded}/${job.total} flows ok`,
+    customer.name, 'EXPORT');
 
   // Clean up job after 5 minutes
   setTimeout(() => { delete exportJobs[jobId]; }, 5 * 60 * 1000);
@@ -644,6 +651,14 @@ app.get('/api/export-all/progress/:jobId', (req, res) => {
   const job = exportJobs[req.params.jobId];
   if (!job) return res.status(404).json({ error: 'Job ikke fundet' });
   res.json(job);
+});
+
+app.post('/api/export-all/cancel/:jobId', (req, res) => {
+  const job = exportJobs[req.params.jobId];
+  if (!job) return res.status(404).json({ error: 'Job ikke fundet' });
+  if (job.done) return res.json({ ok: true, alreadyDone: true });
+  job.cancelled = true;
+  res.json({ ok: true });
 });
 
 // ── Import Flow ──────────────────────────────────────────────────────────────
