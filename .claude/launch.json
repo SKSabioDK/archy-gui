@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "archy-gui",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server.js"],
+      "port": 3738,
+      "env": { "PORT": "3738" }
+    }
+  ]
+}

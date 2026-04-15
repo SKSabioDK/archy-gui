@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "▶ Start Archy GUI Server",
+      "program": "${workspaceFolder}/server.js",
+      "console": "integratedTerminal",
+      "restart": true,
+      "runtimeExecutable": "node",
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    }
+  ]
+}

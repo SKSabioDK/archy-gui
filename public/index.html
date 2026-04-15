@@ -1,0 +1,3026 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Archy GUI — Flow Migration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0d0f14;
+    --panel:     #131620;
+    --border:    #1f2433;
+    --border2:   #2a3049;
+    --accent:    #ff6b35;
+    --accent2:   #ff9f1c;
+    --blue:      #4b8ef1;
+    --green:     #2ecc71;
+    --red:       #e74c3c;
+    --yellow:    #f1c40f;
+    --text:      #e8eaf0;
+    --muted:     #6b7394;
+    --card:      #161922;
+    --hover:     #1c2132;
+    --mono:      'JetBrains Mono', monospace;
+    --sans:      'Syne', sans-serif;
+  }
+
+  /* ── Light mode ── */
+  body.light {
+    --bg:        #f4f5f7;
+    --panel:     #ffffff;
+    --border:    #dde1ea;
+    --border2:   #c8cdd9;
+    --accent:    #e8521a;
+    --accent2:   #d4860a;
+    --blue:      #2f6fd4;
+    --green:     #1e9e57;
+    --red:       #c0392b;
+    --yellow:    #c49b00;
+    --text:      #1a1d27;
+    --muted:     #7a82a0;
+    --card:      #ffffff;
+    --hover:     #eef0f5;
+  }
+
+  /* Language selector */
+  .lang-select {
+    background: transparent;
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 4px 10px;
+    font-family: var(--sans);
+    transition: all .15s;
+    outline: none;
+  }
+  .lang-select:hover { border-color: var(--accent); color: var(--accent); }
+  .lang-select option { background: var(--panel); color: var(--text); }
+
+  /* Theme toggle button */
+  .theme-btn {
+    background: transparent;
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all .15s;
+    font-family: var(--sans);
+  }
+  .theme-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); overflow: hidden; }
+
+  /* Layout */
+  .layout { display: grid; grid-template-columns: 260px 1fr; grid-template-rows: 56px 1fr; height: 100vh; }
+  .topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; padding: 0 24px; background: var(--panel); border-bottom: 1px solid var(--border); }
+  .sidebar { background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .main { overflow-y: auto; }
+
+  /* Topbar */
+  .logo { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+  .logo span { color: var(--accent); }
+  .logo sub { font-size: 10px; color: var(--muted); font-weight: 400; letter-spacing: 1px; vertical-align: baseline; margin-left: 4px; }
+  .status-bar { margin-left: auto; display: flex; align-items: center; gap: 12px; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  .dot.ok { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+  /* Sidebar nav */
+  .nav { display: flex; flex-direction: column; padding: 12px 0; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; cursor: pointer; font-size: 13px; color: var(--muted); transition: all .15s; border-left: 2px solid transparent; }
+  .nav-item:hover { color: var(--text); background: var(--hover); }
+  .nav-item.active { color: var(--accent); background: rgba(255,107,53,.07); border-left-color: var(--accent); }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+  .nav-divider { height: 1px; background: var(--border); margin: 8px 16px; }
+
+  /* Customer list in sidebar */
+  .sidebar-section { padding: 12px 16px 4px; font-size: 10px; letter-spacing: 1.5px; color: var(--muted); font-weight: 600; }
+  .customer-chip { display: flex; align-items: center; gap: 8px; padding: 8px 16px; cursor: pointer; font-size: 12px; font-family: var(--mono); color: var(--muted); transition: all .15s; }
+  .customer-chip:hover { color: var(--text); background: var(--hover); }
+  .customer-chip.active { color: var(--blue); }
+  .chip-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border2); flex-shrink: 0; }
+  .chip-dot.online { background: var(--green); }
+
+  /* Main area */
+  .page { display: none; padding: 28px 32px; }
+  .page.active { display: block; }
+  .page-title { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+  .page-sub { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+
+  /* Cards */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+  .card-title { font-size: 12px; font-weight: 600; letter-spacing: 1px; color: var(--muted); margin-bottom: 16px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* Forms */
+  label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 6px; letter-spacing: .5px; }
+  input, select, textarea {
+    width: 100%; background: var(--bg); border: 1px solid var(--border2); border-radius: 5px;
+    color: var(--text); font-family: var(--mono); font-size: 12px; padding: 9px 12px;
+    outline: none; transition: border .15s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  select option { background: var(--bg); }
+  textarea { resize: vertical; min-height: 80px; }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; border-radius: 5px; font-family: var(--sans); font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all .15s; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #ff8150; }
+  .btn-secondary { background: transparent; border: 1px solid var(--border2); color: var(--text); }
+  .btn-secondary:hover { border-color: var(--muted); background: var(--hover); }
+  .btn-blue { background: var(--blue); color: #fff; }
+  .btn-blue:hover { background: #6aa3f5; }
+  .btn-danger { background: transparent; border: 1px solid var(--red); color: var(--red); }
+  .btn-danger:hover { background: rgba(231,76,60,.1); }
+  .btn-green { background: var(--green); color: #111; }
+  .btn-green:hover { background: #58d68d; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+  /* Flow table */
+  .flow-table { width: 100%; border-collapse: collapse; font-size: 12px; font-family: var(--mono); }
+  .flow-table th { text-align: left; padding: 10px 12px; font-size: 10px; letter-spacing: 1px; color: var(--muted); border-bottom: 1px solid var(--border); font-weight: 600; }
+  .flow-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .flow-table tr:hover td { background: var(--hover); }
+  .flow-table tr.selected td { background: rgba(75,142,241,.07); }
+  .flow-table input[type=checkbox] { width: auto; accent-color: var(--accent); }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 600; letter-spacing: .5px; }
+  .badge-green { background: rgba(46,204,113,.15); color: var(--green); }
+  .badge-gray  { background: rgba(107,115,148,.15); color: var(--muted); }
+  .badge-blue  { background: rgba(75,142,241,.15); color: var(--blue); }
+  .badge-orange{ background: rgba(255,107,53,.15); color: var(--accent); }
+  .badge-red   { background: rgba(231,76,60,.15);  color: var(--red); }
+  .badge-yellow{ background: rgba(241,196,15,.15); color: var(--yellow); }
+
+  /* Systemlog */
+  .log-toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; margin-bottom:16px; }
+  .log-toolbar > * { flex-shrink:0; }
+  .log-toolbar label { display:block; font-size:10px; color:var(--muted); margin-bottom:4px; letter-spacing:.5px; }
+  .log-toolbar input, .log-toolbar select { width:auto; min-width:120px; }
+  .log-table { width:100%; border-collapse:collapse; font-family:var(--mono); font-size:12px; }
+  .log-table th { text-align:left; padding:8px 12px; font-size:10px; letter-spacing:1px; color:var(--muted); border-bottom:1px solid var(--border); }
+  .log-table td { padding:7px 12px; border-bottom:1px solid rgba(31,36,51,.6); vertical-align:top; }
+  .log-table tr:hover td { background:var(--hover); }
+  .log-ts { color:var(--muted); white-space:nowrap; }
+  .log-customer { color:var(--blue); min-width:100px; }
+  .log-msg { color:var(--text); word-break:break-word; }
+  .log-stats { display:flex; gap:20px; padding:12px 20px; background:var(--card); border:1px solid var(--border); border-radius:8px; margin-bottom:16px; font-family:var(--mono); font-size:12px; }
+  .log-stats-item { display:flex; flex-direction:column; align-items:center; gap:2px; }
+  .log-stats-num { font-size:20px; font-weight:700; }
+  .log-stats-lbl { font-size:10px; color:var(--muted); letter-spacing:.5px; }
+
+  /* Log / output */
+  .log-box { background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 14px 16px; font-family: var(--mono); font-size: 11px; color: var(--muted); max-height: 200px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+  .log-box .log-ok   { color: var(--green); }
+  .log-box .log-err  { color: var(--red); }
+  .log-box .log-info { color: var(--blue); }
+
+  /* Progress steps */
+  .steps { display: flex; gap: 0; margin-bottom: 24px; }
+  .step { flex: 1; padding: 12px 16px; font-size: 12px; font-weight: 600; text-align: center; border-bottom: 2px solid var(--border); color: var(--muted); cursor: pointer; transition: all .15s; }
+  .step.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .step.done { color: var(--green); border-bottom-color: var(--green); }
+
+  /* Migrate flow selector */
+  .migrate-flow-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border: 1px solid var(--border); border-radius: 5px; margin-bottom: 6px; cursor: pointer; transition: all .15s; }
+  .migrate-flow-item:hover { border-color: var(--border2); background: var(--hover); }
+  .migrate-flow-item.selected { border-color: var(--accent); background: rgba(255,107,53,.05); }
+
+  /* Alert */
+  .alert { padding: 12px 16px; border-radius: 5px; font-size: 12px; margin-bottom: 16px; }
+  .alert-ok  { background: rgba(46,204,113,.1); border: 1px solid rgba(46,204,113,.3); color: var(--green); }
+  .alert-err { background: rgba(231,76,60,.1); border: 1px solid rgba(231,76,60,.3); color: var(--red); }
+  .alert-info{ background: rgba(75,142,241,.1); border: 1px solid rgba(75,142,241,.3); color: var(--blue); }
+
+  /* YAML viewer */
+  .yaml-viewer { background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 14px 16px; font-family: var(--mono); font-size: 11px; max-height: 340px; overflow-y: auto; white-space: pre; }
+  .yaml-key    { color: #4b8ef1; }
+  .yaml-value  { color: #ff9f1c; }
+  .yaml-string { color: #2ecc71; }
+
+  /* Spinner */
+  .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid transparent; border-top-color: currentColor; border-radius: 50%; animation: spin .6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Customer cards grid */
+  .customer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+  .customer-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; position: relative; transition: border .15s; }
+  .customer-card:hover { border-color: var(--border2); }
+  .customer-card .cc-name { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+  .customer-card .cc-region { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-bottom: 14px; }
+  .customer-card .cc-actions { display: flex; gap: 8px; }
+  .cc-status { position: absolute; top: 20px; right: 20px; font-size: 10px; font-family: var(--mono); color: var(--muted); display: flex; align-items: center; gap: 5px; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  .spacer { flex: 1; }
+  .version { padding: 12px 20px; font-size: 10px; color: var(--muted); font-family: var(--mono); }
+
+  .search-bar { padding: 8px 16px; }
+  .search-bar input { font-size: 11px; padding: 7px 10px; }
+
+  /* ── YAML Wizard ── */
+  .wiz-overlay { position:fixed; inset:0; background:rgba(0,0,0,.78); z-index:2000; display:none; align-items:center; justify-content:center; }
+  .wiz-modal { background:var(--panel); border:1px solid var(--border2); border-radius:10px; width:740px; max-width:96vw; max-height:92vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,.5); }
+  .wiz-header { display:flex; align-items:center; justify-content:space-between; padding:18px 24px; border-bottom:1px solid var(--border); flex-shrink:0; }
+  .wiz-steps  { display:flex; background:var(--bg); border-bottom:1px solid var(--border); flex-shrink:0; }
+  .wiz-si     { flex:1; padding:10px 0; font-size:11px; font-weight:600; text-align:center; color:var(--muted); border-bottom:2px solid transparent; transition:all .15s; }
+  .wiz-si.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .wiz-si.done   { color:var(--green);  border-bottom-color:var(--green); }
+  .wiz-body   { flex:1; overflow-y:auto; padding:22px 24px; }
+  .wiz-footer { display:flex; justify-content:space-between; align-items:center; padding:14px 24px; border-top:1px solid var(--border); flex-shrink:0; }
+  .wiz-err    { display:none; color:var(--red); font-size:12px; margin-bottom:12px; padding:8px 12px; background:rgba(231,76,60,.1); border-radius:5px; border:1px solid rgba(231,76,60,.3); }
+  .wiz-field-grid { display:grid; grid-template-columns:1fr 1fr 160px 34px; gap:8px; align-items:flex-end; margin-bottom:8px; }
+
+  /* ── Markdown / README viewer ── */
+  .md-body { max-width: 820px; line-height: 1.75; font-family: var(--sans); font-size: 14px; }
+  .md-body h1 { font-size: 26px; font-weight: 800; margin: 0 0 6px; }
+  .md-body h2 { font-size: 19px; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); color: var(--accent); }
+  .md-body h3 { font-size: 14px; font-weight: 700; margin: 22px 0 8px; color: var(--text); }
+  .md-body h4 { font-size: 13px; font-weight: 600; margin: 16px 0 6px; color: var(--muted); letter-spacing: .4px; }
+  .md-body p  { margin: 0 0 12px; color: var(--text); }
+  .md-body ul, .md-body ol { margin: 0 0 12px 20px; color: var(--text); }
+  .md-body li { margin-bottom: 4px; }
+  .md-body a  { color: var(--blue); text-decoration: none; }
+  .md-body a:hover { text-decoration: underline; }
+  .md-body code { font-family: var(--mono); font-size: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px; color: var(--accent2); }
+  .md-body pre  { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; overflow-x: auto; margin: 0 0 16px; }
+  .md-body pre code { background: none; border: none; padding: 0; color: var(--text); font-size: 12px; }
+  .md-body blockquote { border-left: 3px solid var(--accent); margin: 0 0 12px; padding: 8px 16px; background: rgba(255,107,53,.06); border-radius: 0 5px 5px 0; color: var(--muted); }
+  .md-body blockquote p { margin: 0; color: var(--muted); }
+  .md-body table { border-collapse: collapse; width: 100%; margin: 0 0 16px; font-family: var(--mono); font-size: 12px; }
+  .md-body th { text-align: left; padding: 8px 12px; background: var(--hover); border: 1px solid var(--border); color: var(--muted); font-size: 10px; letter-spacing: 1px; }
+  .md-body td { padding: 8px 12px; border: 1px solid var(--border); }
+  .md-body tr:hover td { background: var(--hover); }
+  .md-body hr { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+  /* Language anchor badges */
+  .md-lang-tabs { display: flex; gap: 10px; margin-bottom: 24px; }
+  .md-lang-tab  { padding: 6px 18px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid var(--border2); color: var(--muted); background: transparent; font-family: var(--sans); transition: all .15s; }
+  .md-lang-tab:hover, .md-lang-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="logo">Archy<span>GUI</span><sub>flow manager</sub></div>
+    <div class="status-bar">
+      <span id="archyStatus" class="dot"></span>
+      <span id="archyStatusTxt">checking archy…</span>
+      <select id="langSelect" class="lang-select" onchange="setLang(this.value)" title="Language / Sprog / Langue / Taal">
+        <option value="da">🇩🇰 Dansk</option>
+        <option value="en">🇬🇧 English</option>
+        <option value="fr">🇫🇷 Français</option>
+        <option value="nl">🇳🇱 Nederlands</option>
+      </select>
+      <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Skift tema">
+        <span id="themeIcon">☀️</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="nav">
+      <div class="nav-item active" data-page="customers" onclick="nav(this)">
+        <span class="nav-icon">🏢</span> <span data-i18n="nav_customers">Kunder</span>
+      </div>
+      <div class="nav-item" data-page="flows" onclick="nav(this)">
+        <span class="nav-icon">📋</span> <span data-i18n="nav_flows">Flow Browser</span>
+      </div>
+      <div class="nav-item" data-page="migrate" onclick="nav(this)">
+        <span class="nav-icon">🔄</span> <span data-i18n="nav_migrate">Migrer Flow</span>
+      </div>
+      <div class="nav-item" data-page="export" onclick="nav(this)">
+        <span class="nav-icon">📤</span> <span data-i18n="nav_export">Export YAML</span>
+      </div>
+      <div class="nav-item" data-page="import" onclick="nav(this)">
+        <span class="nav-icon">📥</span> <span data-i18n="nav_import">Import YAML</span>
+      </div>
+      <div class="nav-divider"></div>
+      <div class="nav-item" data-page="files" onclick="nav(this)">
+        <span class="nav-icon">🗂</span> <span data-i18n="nav_files">YAML Filer</span>
+      </div>
+      <div class="nav-item" data-page="syslog" onclick="nav(this)">
+        <span class="nav-icon">📋</span> <span data-i18n="nav_syslog">Systemlog</span>
+      </div>
+      <div class="nav-item" data-page="readme" onclick="nav(this)">
+        <span class="nav-icon">📖</span> <span data-i18n="nav_readme">README</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section" data-i18n="nav_section_customers">KUNDER</div>
+    <div id="sidebarCustomers"></div>
+
+    <div class="spacer"></div>
+    <div class="version">v1.2.0 · Archy GUI</div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- CUSTOMERS PAGE -->
+    <div class="page active" id="page-customers">
+      <div class="page-title" data-i18n="page_customers_title">Kundeprofiler</div>
+      <div class="page-sub" data-i18n="page_customers_sub">Administrer Genesys Cloud org-forbindelser</div>
+
+      <div class="card">
+        <div class="card-title" data-i18n="add_customer_card">TILFØJ KUNDE</div>
+        <!-- Auth type toggle -->
+        <div style="margin-bottom:14px">
+          <label data-i18n="label_auth_type">Auth type</label>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button class="btn btn-primary btn-sm" id="auth-btn-cred" onclick="setFormAuthType('credentials')" data-i18n="btn_auth_credentials">🔑 Client Credentials</button>
+            <button class="btn btn-secondary btn-sm" id="auth-btn-oauth" onclick="setFormAuthType('oauth')" data-i18n="btn_auth_oauth">🌐 OAuth (PKCE)</button>
+          </div>
+          <div id="auth-type-hint" style="margin-top:6px;font-size:11px;color:var(--muted)" data-i18n="hint_auth_credentials">Client ID + Secret gemt lokalt. Bruges til script/automation.</div>
+        </div>
+        <input type="hidden" id="c-authType" value="credentials"/>
+        <div class="grid-2" style="margin-bottom:12px">
+          <div>
+            <label data-i18n="label_customername">Kundenavn *</label>
+            <input id="c-name" placeholder="PensionDanmark" />
+          </div>
+          <div>
+            <label data-i18n="label_region">Region *</label>
+            <select id="c-region">
+              <option value="mypurecloud.de">EU Frankfurt (mypurecloud.de)</option>
+              <option value="mypurecloud.com">US East (mypurecloud.com)</option>
+              <option value="mypurecloud.ie">EU Ireland (mypurecloud.ie)</option>
+              <option value="mypurecloud.com.au">AP Sydney (mypurecloud.com.au)</option>
+              <option value="mypurecloud.jp">AP Tokyo (mypurecloud.jp)</option>
+              <option value="usw2.pure.cloud">US West (usw2.pure.cloud)</option>
+              <option value="euw2.pure.cloud">EU London (euw2.pure.cloud)</option>
+              <option value="cac1.pure.cloud">CA (cac1.pure.cloud)</option>
+            </select>
+          </div>
+          <div>
+            <label data-i18n="label_clientid">Client ID *</label>
+            <input id="c-clientId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+          </div>
+          <div id="c-secret-wrap">
+            <label data-i18n="label_clientsecret">Client Secret *</label>
+            <input id="c-clientSecret" type="password" placeholder="••••••••••••" />
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="addCustomer()" data-i18n="btn_add_customer">+ Tilføj Kunde</button>
+      </div>
+
+      <div id="customerAlert"></div>
+      <div class="customer-grid" id="customerGrid"></div>
+    </div>
+
+    <!-- FLOWS PAGE -->
+    <div class="page" id="page-flows">
+      <div class="page-title" data-i18n="nav_flows">Flow Browser</div>
+      <div class="page-sub" data-i18n="page_flows_sub">Vis alle flows i en organisation</div>
+      <div class="card">
+        <div style="display:flex;gap:12px;align-items:flex-end">
+          <div style="flex:1">
+            <label data-i18n="label_select_customer">Vælg kunde</label>
+            <select id="fb-customer" onchange="loadFlows()"></select>
+          </div>
+          <button class="btn btn-secondary" onclick="loadFlows()" data-i18n="btn_reload">🔄 Genindlæs</button>
+        </div>
+      </div>
+      <div id="flowAlert"></div>
+      <div class="card" id="flowTableCard" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="card-title" style="margin:0">FLOWS (<span id="flowCount">0</span>)</div>
+          <input style="width:220px" placeholder="🔍  Søg flow…" oninput="filterFlows(this.value)" />
+        </div>
+        <table class="flow-table">
+          <thead><tr>
+            <th data-i18n="col_name">Navn</th><th data-i18n="col_type">Type</th><th data-i18n="col_status">Status</th><th data-i18n="col_version">Version</th><th data-i18n="col_action">Handling</th>
+          </tr></thead>
+          <tbody id="flowTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- MIGRATE PAGE -->
+    <div class="page" id="page-migrate">
+      <div class="page-title" data-i18n="nav_migrate">Migrer Flow</div>
+      <div class="page-sub" data-i18n="page_migrate_sub">Export fra én org og importer direkte til en anden</div>
+
+      <div class="steps">
+        <div class="step active" id="mstep-1" data-i18n="step1">1 · Vælg kunder</div>
+        <div class="step" id="mstep-2" data-i18n="step2">2 · Vælg flow</div>
+        <div class="step" id="mstep-3" data-i18n="step3">3 · Kør migration</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" data-i18n="card_source_target">KILDE → MÅL</div>
+        <div class="grid-2">
+          <div>
+            <label data-i18n="label_source">Kilde (export fra)</label>
+            <select id="m-source" onchange="onMigrateSourceChange()"></select>
+          </div>
+          <div>
+            <label data-i18n="label_target">Mål (importer til)</label>
+            <select id="m-target"></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="m-flowCard" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="card-title" style="margin:0" data-i18n="card_select_flows">VÆLG FLOWS TIL MIGRATION</div>
+          <input style="width:200px" placeholder="🔍  Søg…" oninput="filterMigrateFlows(this.value)"/>
+        </div>
+        <div id="m-flowList"></div>
+        <div style="margin-top:12px;display:flex;align-items:center;gap:12px">
+          <label style="margin:0" data-i18n="label_import_action">Import handling:</label>
+          <select id="m-action" style="width:160px">
+            <option value="create" data-i18n="migrate_action_create">create (ny)</option>
+            <option value="update" data-i18n="migrate_action_update">update (opdater)</option>
+            <option value="publish" data-i18n="migrate_action_publish">publish (opret+publish)</option>
+          </select>
+          <button class="btn btn-primary" id="m-runBtn" onclick="runMigration()" disabled data-i18n="btn_run_migration">🚀 Kør Migration</button>
+        </div>
+      </div>
+
+      <div id="m-log" style="display:none" class="card">
+        <div class="card-title" data-i18n="card_log">LOG</div>
+        <div class="log-box" id="m-logBox"></div>
+      </div>
+    </div>
+
+    <!-- EXPORT PAGE -->
+    <div class="page" id="page-export">
+      <div class="page-title" data-i18n="nav_export">Export YAML</div>
+      <div class="page-sub" data-i18n="page_export_sub">Vælg kunde → vælg flow — type sættes automatisk</div>
+      <div class="card">
+        <div style="margin-bottom:14px">
+          <label data-i18n="label_customer">Kunde</label>
+          <select id="ex-customer" onchange="loadExportFlows()"></select>
+        </div>
+        <div id="ex-flowpicker" style="display:none">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <div style="flex:1">
+              <label data-i18n="label_search_flow">Søg og vælg flow</label>
+              <input id="ex-search" data-i18n-placeholder="placeholder_filter" placeholder="🔍  Skriv for at filtrere…" oninput="filterExportFlows(this.value)" autocomplete="off"/>
+            </div>
+            <div style="min-width:160px">
+              <label data-i18n="label_flow_type">Flow Type <span style="color:var(--green);font-size:10px">(auto)</span></label>
+              <input id="ex-type-display" readonly style="color:var(--muted);cursor:default" placeholder="— vælg flow —"/>
+              <input type="hidden" id="ex-type"/>
+              <input type="hidden" id="ex-name"/>
+            </div>
+          </div>
+          <div id="ex-flowdropdown" style="display:none;background:var(--bg);border:1px solid var(--border2);border-radius:5px;max-height:240px;overflow-y:auto;margin-bottom:12px"></div>
+          <div id="ex-selected-flow" style="display:none;padding:10px 14px;background:rgba(255,107,53,.07);border:1px solid rgba(255,107,53,.3);border-radius:5px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:13px;font-weight:700" id="ex-sel-name">—</div>
+              <div style="font-size:11px;color:var(--muted);font-family:var(--mono)" id="ex-sel-meta">—</div>
+            </div>
+            <span style="color:var(--accent);font-size:18px">✓</span>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-primary" id="ex-btn" onclick="doExport()" disabled data-i18n="btn_export">📤 Export</button>
+            <button class="btn btn-secondary" id="ex-all-btn" onclick="doExportAll()" data-i18n="btn_export_all">📦 Export Alle Flows</button>
+          </div>
+        </div>
+        <div id="ex-loadingFlows" style="display:none;color:var(--muted);font-size:12px"><span class="spin"></span> <span data-i18n="loading_flows">Henter flows…</span></div>
+      </div>
+      <div id="ex-all-progress" style="display:none" class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="card-title" style="margin:0" data-i18n="card_export_all_progress">EXPORT ALLE — FREMGANG</div>
+          <div id="ex-all-counter" style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)"></div>
+        </div>
+        <div style="background:var(--border);border-radius:4px;height:6px;margin-bottom:14px;overflow:hidden">
+          <div id="ex-all-bar" style="height:100%;width:0%;background:var(--accent);transition:width .3s;border-radius:4px"></div>
+        </div>
+        <div id="ex-all-log" style="font-family:var(--mono);font-size:12px;line-height:1.8;max-height:300px;overflow-y:auto"></div>
+      </div>
+      <div id="ex-alert"></div>
+      <div class="card" id="ex-result" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div class="card-title" style="margin:0">YAML OUTPUT — <span id="ex-filename"></span></div>
+          <button class="btn btn-secondary btn-sm" onclick="downloadYaml()" data-i18n="btn_download">⬇ Download</button>
+        </div>
+        <div class="yaml-viewer" id="ex-yaml"></div>
+      </div>
+    </div>
+
+    <!-- IMPORT PAGE -->
+    <div class="page" id="page-import">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px">
+        <div>
+          <div class="page-title" data-i18n="nav_import">Import YAML</div>
+          <div class="page-sub" style="margin-bottom:0" data-i18n="page_import_sub">Opret eller opdater et flow via YAML-fil</div>
+        </div>
+        <button class="btn btn-secondary" onclick="openYamlWizard()" style="margin-top:4px;flex-shrink:0" data-i18n="btn_yaml_builder">
+          📝 Flow Builder
+        </button>
+      </div>
+      <div class="card">
+        <div class="grid-2" style="margin-bottom:12px">
+          <div>
+            <label data-i18n="label_target_customer">Mål-kunde</label>
+            <select id="im-customer"></select>
+          </div>
+          <div>
+            <label data-i18n="label_import_action">Import handling</label>
+            <select id="im-action">
+              <option value="create" data-i18n="import_action_create">create (opret ny)</option>
+              <option value="update" data-i18n="import_action_update">update (opdater eksisterende)</option>
+              <option value="publish" data-i18n="import_action_publish">publish (opret + publish)</option>
+            </select>
+          </div>
+          <div>
+            <label data-i18n="label_filename">Filnavn</label>
+            <input id="im-filename" placeholder="MitFlow_v1-0.yaml" />
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:8px">
+            <label style="margin:0" data-i18n="label_upload">Upload YAML fil:</label>
+            <input type="file" id="im-file" accept=".yaml,.yml" style="width:auto;border:none;padding:0;background:transparent;color:var(--muted)" onchange="onFileUpload(this)" />
+          </div>
+        </div>
+        <div style="margin-bottom:12px">
+          <label data-i18n="label_yaml_content">YAML Indhold</label>
+          <textarea id="im-yaml" style="height:220px;font-size:11px" data-i18n-placeholder="placeholder_yaml" placeholder="Indsæt YAML her eller upload fil…"></textarea>
+        </div>
+        <button class="btn btn-green" onclick="doImport()" data-i18n="btn_import">📥 Import / Opret Flow</button>
+      </div>
+      <div id="im-alert"></div>
+      <div class="log-box" id="im-log" style="display:none;margin-top:16px"></div>
+    </div>
+
+    <!-- FILES PAGE -->
+    <div class="page" id="page-files">
+      <div class="page-title" data-i18n="page_files_title">Lokale YAML Filer</div>
+      <div class="page-sub" data-i18n="page_files_sub">Filer gemt lokalt under import/export</div>
+      <div style="margin-bottom:12px"><button class="btn btn-secondary" onclick="loadFiles()" data-i18n="btn_reload">🔄 Genindlæs</button></div>
+      <div id="files-list"></div>
+    </div>
+
+    <!-- SYSTEMLOG PAGE -->
+    <div class="page" id="page-syslog">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div>
+          <div class="page-title" data-i18n="page_syslog_title">Systemlog</div>
+          <div class="page-sub" data-i18n="page_syslog_sub">Handlinger, forbindelser og fejl</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary btn-sm" onclick="toggleAutoRefresh()" id="syslog-auto-btn" data-i18n="btn_auto_refresh_off">⏱ Auto-opdater: Fra</button>
+          <button class="btn btn-secondary btn-sm" onclick="clearLog()" data-i18n="btn_clear_log">🗑 Ryd log</button>
+          <button class="btn btn-primary btn-sm" onclick="loadLog()" data-i18n="btn_update">↺ Opdater</button>
+        </div>
+      </div>
+
+      <div id="syslog-stats" class="log-stats" style="display:none"></div>
+
+      <div class="card" style="padding:16px 20px">
+        <div class="log-toolbar">
+          <div>
+            <label data-i18n="label_from">Fra tidspunkt</label>
+            <input type="datetime-local" id="sl-from" style="min-width:180px"/>
+          </div>
+          <div>
+            <label data-i18n="label_to">Til tidspunkt</label>
+            <input type="datetime-local" id="sl-to" style="min-width:180px"/>
+          </div>
+          <div>
+            <label data-i18n="label_quick">Hurtig-valg</label>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-secondary btn-sm" onclick="slQuick(15)">15 min</button>
+              <button class="btn btn-secondary btn-sm" onclick="slQuick(60)">1 <span data-i18n="lbl_hour">time</span></button>
+              <button class="btn btn-secondary btn-sm" onclick="slQuick(1440)" data-i18n="btn_today">I dag</button>
+              <button class="btn btn-secondary btn-sm" onclick="slClear()" data-i18n="btn_clear">Ryd</button>
+            </div>
+          </div>
+          <div>
+            <label data-i18n="label_level">Niveau</label>
+            <select id="sl-level" style="min-width:130px">
+              <option value="ALL" data-i18n="opt_all_levels">Alle niveauer</option>
+              <option value="INFO">INFO</option>
+              <option value="SUCCESS">SUCCESS</option>
+              <option value="WARN">WARN</option>
+              <option value="ERROR">ERROR</option>
+            </select>
+          </div>
+          <div>
+            <label data-i18n="label_action">Handling</label>
+            <select id="sl-action" style="min-width:130px">
+              <option value="ALL" data-i18n="opt_all_actions">Alle handlinger</option>
+              <option value="SYSTEM">SYSTEM</option>
+              <option value="CUSTOMER">CUSTOMER</option>
+              <option value="TEST">TEST</option>
+              <option value="FLOWS">FLOWS</option>
+              <option value="EXPORT">EXPORT</option>
+              <option value="IMPORT">IMPORT</option>
+              <option value="MIGRATE">MIGRATE</option>
+            </select>
+          </div>
+          <div>
+            <label data-i18n="label_customer_filter">Kunde</label>
+            <select id="sl-customer" style="min-width:140px">
+              <option value="" data-i18n="opt_all_customers">Alle kunder</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:180px">
+            <label data-i18n="label_search_msg">Søg i besked</label>
+            <input id="sl-search" data-i18n-placeholder="placeholder_search" placeholder="🔍 Fritekst-søgning…" oninput="loadLog()"/>
+          </div>
+          <div>
+            <label data-i18n="label_max">Maks poster</label>
+            <select id="sl-limit" style="min-width:90px">
+              <option value="100">100</option>
+              <option value="250">250</option>
+              <option value="500" selected>500</option>
+              <option value="2000">2000</option>
+            </select>
+          </div>
+          <div style="align-self:flex-end">
+            <button class="btn btn-primary" onclick="loadLog()" data-i18n="btn_search">Søg</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="syslog-count" style="font-size:12px;color:var(--muted);margin:10px 0 8px;font-family:var(--mono)"></div>
+      <div id="syslog-table-wrap" style="overflow-x:auto">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th data-i18n="th_timestamp">TIDSSTEMPEL</th>
+              <th data-i18n="th_level">NIVEAU</th>
+              <th data-i18n="th_action">HANDLING</th>
+              <th data-i18n="th_customer">KUNDE</th>
+              <th data-i18n="th_message">BESKED</th>
+            </tr>
+          </thead>
+          <tbody id="syslog-body"></tbody>
+        </table>
+      </div>
+      <div id="syslog-empty" style="display:none;text-align:center;padding:40px;color:var(--muted);font-family:var(--mono)" data-i18n="no_log_entries">Ingen logposter fundet</div>
+    </div>
+
+    <!-- README PAGE -->
+    <div class="page" id="page-readme">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div>
+          <div class="page-title" data-i18n="nav_readme">README</div>
+          <div class="page-sub" data-i18n="page_readme_sub">Dokumentation & hjælp</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="loadReadme()" data-i18n="btn_reload">🔄 Genindlæs</button>
+      </div>
+      <div class="md-lang-tabs">
+        <button class="md-lang-tab active" id="readme-tab-da" onclick="switchReadmeLang('da')">🇩🇰 Dansk</button>
+        <button class="md-lang-tab" id="readme-tab-en" onclick="switchReadmeLang('en')">🇬🇧 English</button>
+      </div>
+      <div class="card" id="readme-content" style="padding:28px 32px">
+        <div style="color:var(--muted);font-size:13px"><span class="spin"></span> <span data-i18n="loading_readme">Henter README…</span></div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<!-- ── YAML Wizard Modal ─────────────────────────────────────────────────────── -->
+<div class="wiz-overlay" id="yaml-wiz-overlay">
+  <div class="wiz-modal">
+    <div class="wiz-header">
+      <div>
+        <div style="font-size:16px;font-weight:800">📝 Flow YAML Builder</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px" id="wiz-hdr-sub"></div>
+      </div>
+      <button onclick="closeYamlWizard()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;line-height:1;padding:2px 6px">✕</button>
+    </div>
+    <div class="wiz-steps">
+      <div class="wiz-si active" id="wiz-si-1">1 · Flow info</div>
+      <div class="wiz-si" id="wiz-si-2">2 · Datatabeller</div>
+      <div class="wiz-si" id="wiz-si-3">3 · Ekstra</div>
+      <div class="wiz-si" id="wiz-si-4">4 · Preview</div>
+    </div>
+    <div class="wiz-body" id="wiz-body"></div>
+    <div class="wiz-footer">
+      <button class="btn btn-secondary" id="wiz-back" onclick="wizBack()">← Tilbage</button>
+      <button class="btn btn-primary"   id="wiz-next" onclick="wizNext()">Næste →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ───────────────────────────────────────────────────────────────────
+let customers = [];
+let allFlows = [];
+let selectedMigrateFlows = new Set();
+
+// ── Translations ──────────────────────────────────────────────────────────────
+const LANGS = {
+  da: {
+    nav_customers:'Kunder', nav_flows:'Flow Browser', nav_migrate:'Migrer Flow',
+    nav_export:'Export YAML', nav_import:'Import YAML', nav_files:'YAML Filer',
+    nav_syslog:'Systemlog', nav_section_customers:'KUNDER',
+    page_customers_title:'Kundeprofiler', page_customers_sub:'Administrer Genesys Cloud org-forbindelser',
+    add_customer_card:'TILFØJ KUNDE', label_customername:'Kundenavn *', label_region:'Region *',
+    label_clientid:'Client ID *', label_clientsecret:'Client Secret *', btn_add_customer:'+ Tilføj Kunde',
+    page_flows_sub:'Vis alle flows i en organisation', label_select_customer:'Vælg kunde',
+    btn_reload:'🔄 Genindlæs', col_name:'Navn', col_type:'Type', col_status:'Status',
+    col_version:'Version', col_action:'Handling', badge_published:'Publiceret', badge_draft:'Draft',
+    btn_export_flow:'📤 Export',
+    page_migrate_sub:'Export fra én org og importer direkte til en anden',
+    step1:'1 · Vælg kunder', step2:'2 · Vælg flow', step3:'3 · Kør migration',
+    card_source_target:'KILDE → MÅL', label_source:'Kilde (export fra)', label_target:'Mål (importer til)',
+    card_select_flows:'VÆLG FLOWS TIL MIGRATION', label_import_action:'Import handling:',
+    btn_run_migration:'🚀 Kør Migration', card_log:'LOG',
+    page_export_sub:'Vælg kunde → vælg flow — type sættes automatisk',
+    label_customer:'Kunde', label_search_flow:'Søg og vælg flow',
+    placeholder_filter:'🔍  Skriv for at filtrere…', label_flow_type:'Flow Type',
+    btn_export:'📤 Export', btn_export_all:'📦 Export Alle Flows',
+    card_export_all_progress:'EXPORT ALLE — FREMGANG', loading_flows:'Henter flows…',
+    btn_download:'⬇ Download', page_import_sub:'Opret eller opdater et flow via YAML-fil',
+    label_target_customer:'Mål-kunde', label_filename:'Filnavn', label_upload:'Upload YAML fil:',
+    label_yaml_content:'YAML Indhold', placeholder_yaml:'Indsæt YAML her eller upload fil…',
+    btn_import:'📥 Import / Opret Flow', page_files_title:'Lokale YAML Filer',
+    page_files_sub:'Filer gemt lokalt under import/export',
+    page_syslog_title:'Systemlog', page_syslog_sub:'Handlinger, forbindelser og fejl',
+    btn_auto_refresh_off:'⏱ Auto-opdater: Fra', btn_auto_refresh_on:'⏱ Auto-opdater: Til (5s)',
+    btn_clear_log:'🗑 Ryd log', btn_update:'↺ Opdater',
+    label_from:'Fra tidspunkt', label_to:'Til tidspunkt', label_quick:'Hurtig-valg',
+    lbl_hour:'time', btn_today:'I dag', btn_clear:'Ryd',
+    label_level:'Niveau', opt_all_levels:'Alle niveauer',
+    label_action:'Handling', opt_all_actions:'Alle handlinger',
+    label_customer_filter:'Kunde', opt_all_customers:'Alle kunder',
+    label_search_msg:'Søg i besked', placeholder_search:'🔍 Fritekst-søgning…',
+    label_max:'Maks poster', btn_search:'Søg',
+    th_timestamp:'TIDSSTEMPEL', th_level:'NIVEAU', th_action:'HANDLING',
+    th_customer:'KUNDE', th_message:'BESKED', no_log_entries:'Ingen logposter fundet',
+    archy_ready:'Klar', btn_test:'🔌 Test', btn_flows_card:'📋 Flows',
+    import_action_create:'create (opret ny)', import_action_update:'update (opdater eksisterende)',
+    import_action_publish:'publish (opret + publish)',
+    migrate_action_create:'create (ny)', migrate_action_update:'update (opdater)',
+    migrate_action_publish:'publish (opret+publish)',
+    view_file:'👁 Vis', copy_to_import:'→ Import',
+    export_file:'📤 Export', syslog_showing:'Viser {n} poster (nyeste øverst)',
+    syslog_auto_on:'⏱ Auto-opdater: Til (5s)',
+    label_auth_type:'Auth type', btn_auth_credentials:'🔑 Client Credentials', btn_auth_oauth:'🌐 OAuth (PKCE)',
+    hint_auth_credentials:'Client ID + Secret gemt lokalt. Bruges til script/automation.',
+    hint_auth_oauth:'Ingen secret gemt — du logger ind via Genesys Cloud browser-login (PKCE).',
+    btn_login:'🔑 Login', auth_status_connected:'Forbundet',
+    err_fields_required:'Alle felter er påkrævet', msg_customer_added:'Kunde tilføjet:',
+    nav_readme:'README', page_readme_sub:'Dokumentation & hjælp', loading_readme:'Henter README…',
+    btn_yaml_builder:'📝 Flow Builder',
+  },
+  en: {
+    nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
+    nav_export:'Export YAML', nav_import:'Import YAML', nav_files:'YAML Files',
+    nav_syslog:'System Log', nav_section_customers:'CUSTOMERS',
+    page_customers_title:'Customer Profiles', page_customers_sub:'Manage Genesys Cloud org connections',
+    add_customer_card:'ADD CUSTOMER', label_customername:'Customer name *', label_region:'Region *',
+    label_clientid:'Client ID *', label_clientsecret:'Client Secret *', btn_add_customer:'+ Add Customer',
+    page_flows_sub:'View all flows in an organisation', label_select_customer:'Select customer',
+    btn_reload:'🔄 Reload', col_name:'Name', col_type:'Type', col_status:'Status',
+    col_version:'Version', col_action:'Action', badge_published:'Published', badge_draft:'Draft',
+    btn_export_flow:'📤 Export',
+    page_migrate_sub:'Export from one org and import directly to another',
+    step1:'1 · Select customers', step2:'2 · Select flow', step3:'3 · Run migration',
+    card_source_target:'SOURCE → TARGET', label_source:'Source (export from)', label_target:'Target (import to)',
+    card_select_flows:'SELECT FLOWS FOR MIGRATION', label_import_action:'Import action:',
+    btn_run_migration:'🚀 Run Migration', card_log:'LOG',
+    page_export_sub:'Select customer → select flow — type set automatically',
+    label_customer:'Customer', label_search_flow:'Search and select flow',
+    placeholder_filter:'🔍  Type to filter…', label_flow_type:'Flow Type',
+    btn_export:'📤 Export', btn_export_all:'📦 Export All Flows',
+    card_export_all_progress:'EXPORT ALL — PROGRESS', loading_flows:'Loading flows…',
+    btn_download:'⬇ Download', page_import_sub:'Create or update a flow via YAML file',
+    label_target_customer:'Target customer', label_filename:'File name', label_upload:'Upload YAML file:',
+    label_yaml_content:'YAML Content', placeholder_yaml:'Paste YAML here or upload file…',
+    btn_import:'📥 Import / Create Flow', page_files_title:'Local YAML Files',
+    page_files_sub:'Files saved locally during import/export',
+    page_syslog_title:'System Log', page_syslog_sub:'Actions, connections and errors',
+    btn_auto_refresh_off:'⏱ Auto-refresh: Off', btn_auto_refresh_on:'⏱ Auto-refresh: On (5s)',
+    btn_clear_log:'🗑 Clear log', btn_update:'↺ Refresh',
+    label_from:'From', label_to:'To', label_quick:'Quick select',
+    lbl_hour:'hour', btn_today:'Today', btn_clear:'Clear',
+    label_level:'Level', opt_all_levels:'All levels',
+    label_action:'Action', opt_all_actions:'All actions',
+    label_customer_filter:'Customer', opt_all_customers:'All customers',
+    label_search_msg:'Search in message', placeholder_search:'🔍 Free-text search…',
+    label_max:'Max entries', btn_search:'Search',
+    th_timestamp:'TIMESTAMP', th_level:'LEVEL', th_action:'ACTION',
+    th_customer:'CUSTOMER', th_message:'MESSAGE', no_log_entries:'No log entries found',
+    archy_ready:'Ready', btn_test:'🔌 Test', btn_flows_card:'📋 Flows',
+    import_action_create:'create (new)', import_action_update:'update (existing)',
+    import_action_publish:'publish (create + publish)',
+    migrate_action_create:'create (new)', migrate_action_update:'update (update)',
+    migrate_action_publish:'publish (create + publish)',
+    view_file:'👁 View', copy_to_import:'→ Import',
+    export_file:'📤 Export', syslog_showing:'Showing {n} entries (newest first)',
+    syslog_auto_on:'⏱ Auto-refresh: On (5s)',
+    label_auth_type:'Auth type', btn_auth_credentials:'🔑 Client Credentials', btn_auth_oauth:'🌐 OAuth (PKCE)',
+    hint_auth_credentials:'Client ID + Secret stored locally. Used for scripts/automation.',
+    hint_auth_oauth:'No secret stored — you log in via the Genesys Cloud browser login (PKCE).',
+    btn_login:'🔑 Login', auth_status_connected:'Connected',
+    err_fields_required:'All fields are required', msg_customer_added:'Customer added:',
+    nav_readme:'README', page_readme_sub:'Documentation & help', loading_readme:'Loading README…',
+    btn_yaml_builder:'📝 Flow Builder',
+  },
+  fr: {
+    nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
+    nav_export:'Exporter YAML', nav_import:'Importer YAML', nav_files:'Fichiers YAML',
+    nav_syslog:'Journal système', nav_section_customers:'CLIENTS',
+    page_customers_title:'Profils clients', page_customers_sub:'Gérer les connexions Genesys Cloud',
+    add_customer_card:'AJOUTER UN CLIENT', label_customername:'Nom du client *', label_region:'Région *',
+    label_clientid:'Client ID *', label_clientsecret:'Client Secret *', btn_add_customer:'+ Ajouter un client',
+    page_flows_sub:'Afficher tous les flows dans une organisation', label_select_customer:'Sélectionner un client',
+    btn_reload:'🔄 Actualiser', col_name:'Nom', col_type:'Type', col_status:'Statut',
+    col_version:'Version', col_action:'Action', badge_published:'Publié', badge_draft:'Brouillon',
+    btn_export_flow:'📤 Exporter',
+    page_migrate_sub:"Exporter depuis une org et importer directement dans une autre",
+    step1:'1 · Sélectionner les clients', step2:'2 · Sélectionner le flow', step3:'3 · Lancer la migration',
+    card_source_target:'SOURCE → CIBLE', label_source:'Source (exporter de)', label_target:'Cible (importer vers)',
+    card_select_flows:'SÉLECTIONNER LES FLOWS', label_import_action:"Action d'import :",
+    btn_run_migration:'🚀 Lancer la migration', card_log:'JOURNAL',
+    page_export_sub:'Sélectionner client → flow — type défini automatiquement',
+    label_customer:'Client', label_search_flow:'Rechercher et sélectionner un flow',
+    placeholder_filter:'🔍  Tapez pour filtrer…', label_flow_type:'Type de flow',
+    btn_export:'📤 Exporter', btn_export_all:'📦 Exporter tous les flows',
+    card_export_all_progress:'TOUT EXPORTER — PROGRESSION', loading_flows:'Chargement des flows…',
+    btn_download:'⬇ Télécharger', page_import_sub:'Créer ou mettre à jour un flow via fichier YAML',
+    label_target_customer:'Client cible', label_filename:'Nom de fichier', label_upload:'Téléverser un fichier YAML :',
+    label_yaml_content:'Contenu YAML', placeholder_yaml:'Collez le YAML ici ou téléversez un fichier…',
+    btn_import:'📥 Importer / Créer le flow', page_files_title:'Fichiers YAML locaux',
+    page_files_sub:"Fichiers enregistrés localement lors de l'import/export",
+    page_syslog_title:'Journal système', page_syslog_sub:'Actions, connexions et erreurs',
+    btn_auto_refresh_off:'⏱ Actualisation auto : Non', btn_auto_refresh_on:'⏱ Actualisation auto : Oui (5s)',
+    btn_clear_log:'🗑 Effacer le journal', btn_update:'↺ Actualiser',
+    label_from:'Depuis', label_to:"Jusqu'à", label_quick:'Sélection rapide',
+    lbl_hour:'heure', btn_today:"Aujourd'hui", btn_clear:'Effacer',
+    label_level:'Niveau', opt_all_levels:'Tous les niveaux',
+    label_action:'Action', opt_all_actions:'Toutes les actions',
+    label_customer_filter:'Client', opt_all_customers:'Tous les clients',
+    label_search_msg:'Rechercher dans le message', placeholder_search:'🔍 Recherche libre…',
+    label_max:'Max entrées', btn_search:'Rechercher',
+    th_timestamp:'HORODATAGE', th_level:'NIVEAU', th_action:'ACTION',
+    th_customer:'CLIENT', th_message:'MESSAGE', no_log_entries:'Aucune entrée trouvée',
+    archy_ready:'Prêt', btn_test:'🔌 Tester', btn_flows_card:'📋 Flows',
+    import_action_create:'create (nouveau)', import_action_update:'update (mettre à jour)',
+    import_action_publish:'publish (créer + publier)',
+    migrate_action_create:'create (nouveau)', migrate_action_update:'update (mettre à jour)',
+    migrate_action_publish:'publish (créer + publier)',
+    view_file:'👁 Voir', copy_to_import:'→ Importer',
+    export_file:'📤 Exporter', syslog_showing:'{n} entrées (plus récentes en premier)',
+    syslog_auto_on:'⏱ Actualisation auto : Oui (5s)',
+    label_auth_type:'Type d\'auth', btn_auth_credentials:'🔑 Client Credentials', btn_auth_oauth:'🌐 OAuth (PKCE)',
+    hint_auth_credentials:'Client ID + Secret stockés localement. Pour les scripts/automatisations.',
+    hint_auth_oauth:'Aucun secret stocké — connexion via le navigateur Genesys Cloud (PKCE).',
+    btn_login:'🔑 Connexion', auth_status_connected:'Connecté',
+    err_fields_required:'Tous les champs sont requis', msg_customer_added:'Client ajouté :',
+    nav_readme:'README', page_readme_sub:'Documentation & aide', loading_readme:'Chargement du README…',
+    btn_yaml_builder:'📝 Flow Builder',
+  },
+  nl: {
+    nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
+    nav_export:'YAML exporteren', nav_import:'YAML importeren', nav_files:'YAML-bestanden',
+    nav_syslog:'Systeemlog', nav_section_customers:'KLANTEN',
+    page_customers_title:'Klantprofielen', page_customers_sub:'Genesys Cloud org-verbindingen beheren',
+    add_customer_card:'KLANT TOEVOEGEN', label_customername:'Klantnaam *', label_region:'Regio *',
+    label_clientid:'Client ID *', label_clientsecret:'Client Secret *', btn_add_customer:'+ Klant toevoegen',
+    page_flows_sub:'Alle flows in een organisatie bekijken', label_select_customer:'Klant selecteren',
+    btn_reload:'🔄 Herladen', col_name:'Naam', col_type:'Type', col_status:'Status',
+    col_version:'Versie', col_action:'Actie', badge_published:'Gepubliceerd', badge_draft:'Concept',
+    btn_export_flow:'📤 Exporteren',
+    page_migrate_sub:'Exporteer van één org en importeer direct naar een andere',
+    step1:'1 · Klanten selecteren', step2:'2 · Flow selecteren', step3:'3 · Migratie uitvoeren',
+    card_source_target:'BRON → DOEL', label_source:'Bron (exporteren van)', label_target:'Doel (importeren naar)',
+    card_select_flows:'FLOWS SELECTEREN VOOR MIGRATIE', label_import_action:'Import actie:',
+    btn_run_migration:'🚀 Migratie uitvoeren', card_log:'LOG',
+    page_export_sub:'Klant selecteren → flow selecteren — type automatisch ingesteld',
+    label_customer:'Klant', label_search_flow:'Flow zoeken en selecteren',
+    placeholder_filter:'🔍  Typ om te filteren…', label_flow_type:'Flow type',
+    btn_export:'📤 Exporteren', btn_export_all:'📦 Alle flows exporteren',
+    card_export_all_progress:'ALLES EXPORTEREN — VOORTGANG', loading_flows:'Flows laden…',
+    btn_download:'⬇ Downloaden', page_import_sub:'Een flow aanmaken of bijwerken via YAML-bestand',
+    label_target_customer:'Doelklant', label_filename:'Bestandsnaam', label_upload:'YAML-bestand uploaden:',
+    label_yaml_content:'YAML-inhoud', placeholder_yaml:'Plak YAML hier of upload een bestand…',
+    btn_import:'📥 Importeren / Flow aanmaken', page_files_title:'Lokale YAML-bestanden',
+    page_files_sub:'Lokaal opgeslagen bestanden tijdens import/export',
+    page_syslog_title:'Systeemlog', page_syslog_sub:'Acties, verbindingen en fouten',
+    btn_auto_refresh_off:'⏱ Auto-vernieuwen: Uit', btn_auto_refresh_on:'⏱ Auto-vernieuwen: Aan (5s)',
+    btn_clear_log:'🗑 Log wissen', btn_update:'↺ Vernieuwen',
+    label_from:'Van', label_to:'Tot', label_quick:'Snelle selectie',
+    lbl_hour:'uur', btn_today:'Vandaag', btn_clear:'Wissen',
+    label_level:'Niveau', opt_all_levels:'Alle niveaus',
+    label_action:'Actie', opt_all_actions:'Alle acties',
+    label_customer_filter:'Klant', opt_all_customers:'Alle klanten',
+    label_search_msg:'Zoeken in bericht', placeholder_search:'🔍 Vrij zoeken…',
+    label_max:'Max vermeldingen', btn_search:'Zoeken',
+    th_timestamp:'TIJDSTEMPEL', th_level:'NIVEAU', th_action:'ACTIE',
+    th_customer:'KLANT', th_message:'BERICHT', no_log_entries:'Geen logvermeldingen gevonden',
+    archy_ready:'Klaar', btn_test:'🔌 Testen', btn_flows_card:'📋 Flows',
+    import_action_create:'create (nieuw)', import_action_update:'update (bijwerken)',
+    import_action_publish:'publish (aanmaken + publiceren)',
+    migrate_action_create:'create (nieuw)', migrate_action_update:'update (bijwerken)',
+    migrate_action_publish:'publish (aanmaken + publiceren)',
+    view_file:'👁 Bekijken', copy_to_import:'→ Importeren',
+    export_file:'📤 Exporteren', syslog_showing:'{n} vermeldingen (nieuwste eerst)',
+    syslog_auto_on:'⏱ Auto-vernieuwen: Aan (5s)',
+    label_auth_type:'Auth type', btn_auth_credentials:'🔑 Client Credentials', btn_auth_oauth:'🌐 OAuth (PKCE)',
+    hint_auth_credentials:'Client ID + Secret lokaal opgeslagen. Voor scripts/automatisering.',
+    hint_auth_oauth:'Geen secret opgeslagen — inloggen via Genesys Cloud browser-login (PKCE).',
+    btn_login:'🔑 Inloggen', auth_status_connected:'Verbonden',
+    err_fields_required:'Alle velden zijn verplicht', msg_customer_added:'Klant toegevoegd:',
+    nav_readme:'README', page_readme_sub:'Documentatie & hulp', loading_readme:'README laden…',
+    btn_yaml_builder:'📝 Flow Builder',
+  }
+};
+
+let currentLang = 'da';
+function t(key) { return (LANGS[currentLang] || LANGS.da)[key] || LANGS.da[key] || key; }
+
+function applyLang() {
+  // Update all data-i18n text elements
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  // Update placeholders
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = t(el.dataset.i18nPlaceholder);
+  });
+}
+
+function setLang(lang) {
+  currentLang = lang;
+  localStorage.setItem('lang', lang);
+  applyLang();
+  // Re-render dynamic content that uses t()
+  renderCustomers();
+  if (document.getElementById('page-flows').classList.contains('active')) {
+    const tbody = document.getElementById('flowTableBody');
+    if (tbody && allFlows.length) renderFlowTable(allFlows);
+  }
+  document.getElementById('archyStatusTxt').textContent = t('archy_ready');
+  // Refresh syslog count if visible
+  const cnt = document.getElementById('syslog-count');
+  if (cnt && cnt.textContent) loadLog();
+}
+
+function applyStoredLang() {
+  const saved = localStorage.getItem('lang') || 'da';
+  currentLang = saved;
+  document.getElementById('langSelect').value = saved;
+  applyLang();
+}
+
+// ── Theme ─────────────────────────────────────────────────────────────────────
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light');
+  document.getElementById('themeIcon').textContent = isLight ? '🌙' : '☀️';
+  localStorage.setItem('theme', isLight ? 'light' : 'dark');
+}
+
+function applyStoredTheme() {
+  if (localStorage.getItem('theme') === 'light') {
+    document.body.classList.add('light');
+    document.getElementById('themeIcon').textContent = '🌙';
+  }
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+window.onload = async () => {
+  applyStoredTheme();
+  applyStoredLang();
+  await refreshCustomers();
+  checkArchy();
+};
+
+async function checkArchy() {
+  // We can only infer archy availability server-side; just show ready
+  document.getElementById('archyStatusTxt').textContent = t('archy_ready');
+  document.getElementById('archyStatus').classList.add('ok');
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function nav(el) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  const page = el.dataset.page;
+  document.getElementById('page-' + page).classList.add('active');
+  if (page === 'flows') populateCustomerSelects();
+  if (page === 'migrate') populateMigrateSelects();
+  if (page === 'export') populateCustomerSelects(['ex-customer']);
+  if (page === 'import') populateCustomerSelects(['im-customer']);
+  if (page === 'files') loadFiles();
+  if (page === 'syslog') { populateSyslogCustomers(); loadLog(); loadLogStats(); }
+  if (page === 'readme') loadReadme();
+}
+
+// ── Customers ─────────────────────────────────────────────────────────────────
+async function refreshCustomers() {
+  const res = await fetch('/api/customers');
+  customers = await res.json();
+  renderCustomerGrid();
+  renderSidebarCustomers();
+  populateCustomerSelects();
+  populateMigrateSelects();
+  updateOAuthStatuses();
+}
+
+async function updateOAuthStatuses() {
+  for (const c of customers) {
+    if (c.authType !== 'oauth') continue;
+    try {
+      const r = await fetch('/api/auth/status/' + c.id);
+      const s = await r.json();
+      const btn   = document.getElementById('oauth-btn-' + c.id);
+      const badge = document.getElementById('oauth-badge-' + c.id);
+      if (s.authenticated) {
+        if (btn)   { btn.textContent = '✓ ' + t('auth_status_connected'); btn.className = 'btn btn-green btn-sm'; }
+        if (badge) { badge.textContent = '🟢 ' + t('auth_status_connected'); badge.style.color = 'var(--green)'; }
+      } else {
+        if (btn)   { btn.textContent = t('btn_login'); btn.className = 'btn btn-secondary btn-sm'; }
+        if (badge) { badge.textContent = '🔴 OAuth'; badge.style.color = 'var(--red)'; }
+      }
+    } catch (_) {}
+  }
+}
+
+function renderSidebarCustomers() {
+  const el = document.getElementById('sidebarCustomers');
+  el.innerHTML = customers.map(c => `
+    <div class="customer-chip" onclick="quickViewFlows('${c.id}')">
+      <div class="chip-dot" id="chip-${c.id}"></div>
+      <span>${c.name}</span>
+    </div>`).join('');
+}
+
+function renderCustomerGrid() {
+  const grid = document.getElementById('customerGrid');
+  if (!customers.length) {
+    grid.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px">Ingen kunder endnu. Tilføj din første kunde ovenfor.</div>';
+    return;
+  }
+  grid.innerHTML = customers.map(c => {
+    const isOAuth = c.authType === 'oauth';
+    const loginBtn = isOAuth
+      ? `<button class="btn btn-secondary btn-sm" id="oauth-btn-${c.id}" onclick="oauthLogin('${c.id}')">${t('btn_login')}</button>`
+      : '';
+    const authBadge = isOAuth
+      ? `<span id="oauth-badge-${c.id}" style="font-size:10px;font-family:var(--mono);color:var(--muted)" title="OAuth PKCE">🌐 OAuth</span>`
+      : `<span style="font-size:10px;font-family:var(--mono);color:var(--muted)">🔑 Creds</span>`;
+    return `
+    <div class="customer-card">
+      <div class="cc-status"><div class="dot" id="card-dot-${c.id}"></div><span id="card-status-${c.id}">–</span></div>
+      <div class="cc-name">${c.name}</div>
+      <div class="cc-region" style="display:flex;align-items:center;gap:8px">${c.region} ${authBadge}</div>
+      <div class="cc-actions" style="margin-top:14px">
+        ${loginBtn}
+        <button class="btn btn-secondary btn-sm" onclick="testCustomer('${c.id}')">${t('btn_test')}</button>
+        <button class="btn btn-blue btn-sm" onclick="quickViewFlows('${c.id}')">${t('btn_flows_card')}</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCustomer('${c.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setFormAuthType(type) {
+  document.getElementById('c-authType').value = type;
+  const isOAuth = type === 'oauth';
+  document.getElementById('c-secret-wrap').style.display = isOAuth ? 'none' : '';
+  document.getElementById('auth-btn-cred').className  = 'btn btn-sm ' + (isOAuth ? 'btn-secondary' : 'btn-primary');
+  document.getElementById('auth-btn-oauth').className = 'btn btn-sm ' + (isOAuth ? 'btn-primary' : 'btn-secondary');
+  document.getElementById('auth-type-hint').dataset.i18n = isOAuth ? 'hint_auth_oauth' : 'hint_auth_credentials';
+  document.getElementById('auth-type-hint').textContent  = t(isOAuth ? 'hint_auth_oauth' : 'hint_auth_credentials');
+}
+
+async function addCustomer() {
+  const name         = document.getElementById('c-name').value.trim();
+  const region       = document.getElementById('c-region').value;
+  const clientId     = document.getElementById('c-clientId').value.trim();
+  const clientSecret = document.getElementById('c-clientSecret').value.trim();
+  const authType     = document.getElementById('c-authType').value;
+  const isOAuth      = authType === 'oauth';
+  showAlert('customerAlert', '');
+  if (!name || !clientId || (!isOAuth && !clientSecret))
+    return showAlert('customerAlert', t('err_fields_required'), 'err');
+  const res = await fetch('/api/customers', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({name, region, clientId, clientSecret, authType})
+  });
+  const data = await res.json();
+  if (data.error) return showAlert('customerAlert', data.error, 'err');
+  showAlert('customerAlert', `${t('msg_customer_added')} "${name}"`, 'ok');
+  ['c-name','c-clientId','c-clientSecret'].forEach(id => document.getElementById(id).value = '');
+  await refreshCustomers();
+}
+
+async function oauthLogin(id) {
+  const btn = document.getElementById('oauth-btn-' + id);
+  const badge = document.getElementById('oauth-badge-' + id);
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+
+  // Get the PKCE login URL from the backend
+  const res = await fetch('/api/auth/login/' + id);
+  const data = await res.json();
+  if (data.error) {
+    if (btn) { btn.disabled = false; btn.textContent = t('btn_login'); }
+    return alert(data.error);
+  }
+
+  // Open login popup
+  const popup = window.open(data.url, 'archy-oauth', 'width=520,height=680,left=200,top=100');
+
+  // Poll for token status while popup is open
+  const poll = setInterval(async () => {
+    try {
+      const r = await fetch('/api/auth/status/' + id);
+      const s = await r.json();
+      if (s.authenticated) {
+        clearInterval(poll);
+        if (btn) { btn.disabled = false; btn.textContent = '✓ ' + t('auth_status_connected'); btn.className = 'btn btn-green btn-sm'; }
+        if (badge) { badge.textContent = '🟢 ' + t('auth_status_connected'); badge.style.color = 'var(--green)'; }
+        // Update test dot green
+        const dot = document.getElementById('card-dot-' + id);
+        if (dot) dot.classList.add('ok');
+      }
+    } catch (_) {}
+    // Stop polling if popup closed without success
+    if (popup && popup.closed) {
+      clearInterval(poll);
+      // Check one last time
+      const r2 = await fetch('/api/auth/status/' + id);
+      const s2 = await r2.json();
+      if (!s2.authenticated) {
+        if (btn) { btn.disabled = false; btn.textContent = t('btn_login'); }
+      }
+    }
+  }, 1500);
+}
+
+async function deleteCustomer(id) {
+  if (!confirm('Slet denne kunde?')) return;
+  await fetch('/api/customers/' + id, {method:'DELETE'});
+  await refreshCustomers();
+}
+
+async function testCustomer(id) {
+  const dot = document.getElementById('card-dot-' + id);
+  const txt = document.getElementById('card-status-' + id);
+  dot.className = 'dot';
+  txt.textContent = '…';
+  const res = await fetch('/api/customers/' + id + '/test', {method:'POST'});
+  const data = await res.json();
+  if (data.ok) {
+    dot.classList.add('ok');
+    txt.textContent = data.name;
+    document.getElementById('chip-' + id)?.classList.add('online');
+  } else {
+    dot.style.background = 'var(--red)';
+    txt.textContent = 'Fejl';
+  }
+}
+
+// ── Flow Browser ──────────────────────────────────────────────────────────────
+function populateCustomerSelects(ids) {
+  const selects = ids || ['fb-customer', 'ex-customer', 'im-customer'];
+  selects.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const cur = el.value;
+    el.innerHTML = '<option value="">— Vælg kunde —</option>' +
+      customers.map(c => `<option value="${c.id}">${c.name} (${c.region})</option>`).join('');
+    if (cur) el.value = cur;
+  });
+}
+
+async function loadFlows() {
+  const id = document.getElementById('fb-customer').value;
+  if (!id) return;
+  showAlert('flowAlert', '<span class="spin"></span> Henter flows…', 'info');
+  document.getElementById('flowTableCard').style.display = 'none';
+  const res = await fetch('/api/customers/' + id + '/flows');
+  const data = await res.json();
+  if (data.error) return showAlert('flowAlert', data.error, 'err');
+  allFlows = data;
+  showAlert('flowAlert', '');
+  renderFlowTable(allFlows);
+}
+
+function renderFlowTable(flows) {
+  document.getElementById('flowCount').textContent = flows.length;
+  document.getElementById('flowTableCard').style.display = 'block';
+  const tbody = document.getElementById('flowTableBody');
+  tbody.innerHTML = flows.map(f => `
+    <tr>
+      <td>${f.name}</td>
+      <td><span class="badge badge-blue">${f.type}</span></td>
+      <td>${f.active ? `<span class="badge badge-green">${t('badge_published')}</span>` : `<span class="badge badge-gray">${t('badge_draft')}</span>`}</td>
+      <td style="color:var(--muted)">v${f.publishedVersion || f.savedVersion || '?'}</td>
+      <td>
+        <button class="btn btn-secondary btn-sm" onclick="prefillExport('${f.name}','${f.type}')">${t('btn_export_flow')}</button>
+      </td>
+    </tr>`).join('');
+}
+
+function filterFlows(q) {
+  const filtered = allFlows.filter(f => f.name.toLowerCase().includes(q.toLowerCase()) || f.type.includes(q.toLowerCase()));
+  renderFlowTable(filtered);
+}
+
+async function prefillExport(name, type) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelector('[data-page=export]').classList.add('active');
+  document.getElementById('page-export').classList.add('active');
+  populateCustomerSelects(['ex-customer']);
+  const src = document.getElementById('fb-customer').value;
+  if (src) {
+    document.getElementById('ex-customer').value = src;
+    await loadExportFlows();
+  }
+  selectExportFlow(name, type);
+}
+
+async function quickViewFlows(customerId) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelector('[data-page=flows]').classList.add('active');
+  document.getElementById('page-flows').classList.add('active');
+  populateCustomerSelects(['fb-customer']);
+  document.getElementById('fb-customer').value = customerId;
+  await loadFlows();
+}
+
+// ── Migrate ───────────────────────────────────────────────────────────────────
+let migrateFlows = [];
+
+function populateMigrateSelects() {
+  ['m-source','m-target'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const cur = el.value;
+    el.innerHTML = '<option value="">— Vælg org —</option>' +
+      customers.map(c => `<option value="${c.id}">${c.name} (${c.region})</option>`).join('');
+    if (cur) el.value = cur;
+  });
+}
+
+async function onMigrateSourceChange() {
+  const id = document.getElementById('m-source').value;
+  document.getElementById('m-flowCard').style.display = 'none';
+  selectedMigrateFlows.clear();
+  updateMigrateBtn();
+  if (!id) return;
+  document.getElementById('m-flowCard').style.display = 'block';
+  document.getElementById('m-flowList').innerHTML = '<div style="color:var(--muted);font-size:12px"><span class="spin"></span> Henter flows…</div>';
+  const res = await fetch('/api/customers/' + id + '/flows');
+  const data = await res.json();
+  if (data.error) {
+    document.getElementById('m-flowList').innerHTML = `<div style="color:var(--red);font-size:12px">${data.error}</div>`;
+    return;
+  }
+  migrateFlows = data;
+  renderMigrateFlows(migrateFlows);
+  document.querySelector('#mstep-2').classList.add('active');
+}
+
+function renderMigrateFlows(flows) {
+  const el = document.getElementById('m-flowList');
+  el.innerHTML = flows.map(f => `
+    <div class="migrate-flow-item ${selectedMigrateFlows.has(f.id) ? 'selected':''}" onclick="toggleMigrateFlow('${f.id}','${f.name}','${f.type}')">
+      <div>
+        <div style="font-size:13px;font-weight:600">${f.name}</div>
+        <div style="font-size:11px;color:var(--muted);font-family:var(--mono)">${f.type} · v${f.publishedVersion || f.savedVersion || '?'}</div>
+      </div>
+      <div>
+        ${f.active ? '<span class="badge badge-green">Pub</span>' : '<span class="badge badge-gray">Draft</span>'}
+        ${selectedMigrateFlows.has(f.id) ? '<span style="color:var(--accent);margin-left:8px">✓</span>' : ''}
+      </div>
+    </div>`).join('');
+}
+
+function toggleMigrateFlow(id, name, type) {
+  const key = id + '|' + name + '|' + type;
+  if (selectedMigrateFlows.has(key)) selectedMigrateFlows.delete(key);
+  else selectedMigrateFlows.add(key);
+  renderMigrateFlows(migrateFlows);
+  updateMigrateBtn();
+}
+
+function filterMigrateFlows(q) {
+  const filtered = migrateFlows.filter(f => f.name.toLowerCase().includes(q.toLowerCase()));
+  renderMigrateFlows(filtered);
+}
+
+function updateMigrateBtn() {
+  document.getElementById('m-runBtn').disabled = selectedMigrateFlows.size === 0;
+}
+
+async function runMigration() {
+  const sourceId = document.getElementById('m-source').value;
+  const targetId = document.getElementById('m-target').value;
+  const action = document.getElementById('m-action').value;
+  if (!sourceId || !targetId) return alert('Vælg både kilde og mål');
+  if (sourceId === targetId) return alert('Kilde og mål må ikke være den samme org');
+
+  document.getElementById('m-log').style.display = 'block';
+  const logBox = document.getElementById('m-logBox');
+  logBox.innerHTML = '';
+  document.querySelector('#mstep-3').classList.add('active');
+
+  for (const key of selectedMigrateFlows) {
+    const [id, name, type] = key.split('|');
+    log(logBox, `\n⟶ Migrerer: ${name} (${type})`, 'info');
+    try {
+      const res = await fetch('/api/migrate', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ sourceId, targetId, flowName: name, flowType: type, action })
+      });
+      const data = await res.json();
+      if (data.error) { log(logBox, `  ✗ ${data.error}`, 'err'); }
+      else { log(logBox, `  ✓ ${data.fileName} → ${action} OK`, 'ok'); }
+    } catch(e) {
+      log(logBox, `  ✗ ${e.message}`, 'err');
+    }
+  }
+  log(logBox, '\n── Migration afsluttet ──', 'info');
+}
+
+// ── Export ────────────────────────────────────────────────────────────────────
+let exportedYaml = '', exportedFileName = '';
+let exportFlows = [];
+
+async function loadExportFlows() {
+  const id = document.getElementById('ex-customer').value;
+  document.getElementById('ex-flowpicker').style.display = 'none';
+  document.getElementById('ex-loadingFlows').style.display = 'none';
+  document.getElementById('ex-result').style.display = 'none';
+  document.getElementById('ex-btn').disabled = true;
+  document.getElementById('ex-name').value = '';
+  document.getElementById('ex-type').value = '';
+  document.getElementById('ex-search').value = '';
+  document.getElementById('ex-flowdropdown').style.display = 'none';
+  document.getElementById('ex-selected-flow').style.display = 'none';
+  if (!id) return;
+  document.getElementById('ex-loadingFlows').style.display = 'block';
+  const res = await fetch('/api/customers/' + id + '/flows');
+  const data = await res.json();
+  document.getElementById('ex-loadingFlows').style.display = 'none';
+  if (data.error) return showAlert('ex-alert', data.error, 'err');
+  exportFlows = data;
+  document.getElementById('ex-flowpicker').style.display = 'block';
+}
+
+function filterExportFlows(q) {
+  const dd = document.getElementById('ex-flowdropdown');
+  if (!q) { dd.style.display = 'none'; return; }
+  const matches = exportFlows.filter(f => f.name.toLowerCase().includes(q.toLowerCase())).slice(0, 20);
+  if (!matches.length) { dd.style.display = 'none'; return; }
+  dd.style.display = 'block';
+  dd.innerHTML = matches.map(f => `
+    <div data-fname="${f.name.replace(/"/g,'&quot;')}" data-ftype="${f.type}"
+         style="padding:9px 14px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center"
+         onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background=''">
+      <span style="font-family:var(--mono)">${f.name}</span>
+      <span class="badge badge-blue">${f.type}</span>
+    </div>`).join('');
+  dd.querySelectorAll('[data-fname]').forEach(el => {
+    el.addEventListener('click', () => selectExportFlow(el.dataset.fname, el.dataset.ftype));
+  });
+}
+
+function selectExportFlow(name, type) {
+  document.getElementById('ex-name').value = name;
+  document.getElementById('ex-type').value = type;
+  document.getElementById('ex-type-display').value = type;
+  document.getElementById('ex-search').value = name;
+  document.getElementById('ex-flowdropdown').style.display = 'none';
+  document.getElementById('ex-sel-name').textContent = name;
+  document.getElementById('ex-sel-meta').textContent = type;
+  const sf = document.getElementById('ex-selected-flow');
+  sf.style.display = 'flex';
+  document.getElementById('ex-btn').disabled = false;
+  showAlert('ex-alert', '');
+}
+
+async function doExport() {
+  const customerId = document.getElementById('ex-customer').value;
+  const flowName = document.getElementById('ex-name').value.trim();
+  const flowType = document.getElementById('ex-type').value;
+  showAlert('ex-alert', '');
+  if (!customerId || !flowName) return showAlert('ex-alert', 'Vælg kunde og flow', 'err');
+  showAlert('ex-alert', '<span class="spin"></span> Eksporterer via Archy…', 'info');
+  document.getElementById('ex-result').style.display = 'none';
+
+  const res = await fetch('/api/export', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({customerId, flowName, flowType})
+  });
+  const data = await res.json();
+  if (data.error) return showAlert('ex-alert', '✗ ' + data.error, 'err');
+
+  exportedYaml = data.content;
+  exportedFileName = data.fileName;
+  showAlert('ex-alert', `✓ Eksporteret: ${data.fileName}`, 'ok');
+  document.getElementById('ex-filename').textContent = data.fileName;
+  document.getElementById('ex-yaml').textContent = data.content;
+  document.getElementById('ex-result').style.display = 'block';
+}
+
+function downloadYaml() {
+  const blob = new Blob([exportedYaml], {type: 'text/yaml'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = exportedFileName;
+  a.click();
+}
+
+async function doExportAll() {
+  const customerId = document.getElementById('ex-customer').value;
+  if (!customerId) return showAlert('ex-alert', 'Vælg en kunde først', 'err');
+
+  const progressBox = document.getElementById('ex-all-progress');
+  const logBox      = document.getElementById('ex-all-log');
+  const counter     = document.getElementById('ex-all-counter');
+  const bar         = document.getElementById('ex-all-bar');
+
+  progressBox.style.display = 'block';
+  logBox.innerHTML = '<span style="color:var(--muted)"><span class="spin"></span> Henter flowliste…</span>';
+  counter.textContent = '';
+  bar.style.width = '0%';
+  showAlert('ex-alert', '');
+  document.getElementById('ex-all-btn').disabled = true;
+
+  let jobId;
+  try {
+    const res = await fetch('/api/export-all', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({customerId})
+    });
+    const data = await res.json();
+    if (data.error) {
+      logBox.innerHTML = `<span style="color:var(--red)">✗ ${data.error}</span>`;
+      showAlert('ex-alert', '✗ ' + data.error, 'err');
+      document.getElementById('ex-all-btn').disabled = false;
+      return;
+    }
+    jobId = data.jobId;
+  } catch (e) {
+    logBox.innerHTML = `<span style="color:var(--red)">✗ ${e.message}</span>`;
+    document.getElementById('ex-all-btn').disabled = false;
+    return;
+  }
+
+  // Poll for progress every 800ms
+  let lastCount = 0;
+  const poll = setInterval(async () => {
+    try {
+      const r = await fetch(`/api/export-all/progress/${jobId}`);
+      const job = await r.json();
+
+      if (job.error) { counter.textContent = ''; return; }
+
+      const pct = job.total > 0 ? Math.round((job.current / job.total) * 100) : 0;
+      bar.style.width = pct + '%';
+      bar.style.background = job.done && job.failed > 0 ? 'var(--yellow)' : job.done ? 'var(--green)' : 'var(--accent)';
+
+      if (job.total > 0) {
+        counter.innerHTML =
+          `<span style="color:var(--accent)">${job.current}</span>` +
+          `<span style="color:var(--muted)"> / ${job.total}</span>` +
+          (job.succeeded > 0 ? ` &nbsp;<span style="color:var(--green)">✓${job.succeeded}</span>` : '') +
+          (job.failed   > 0 ? ` <span style="color:var(--red)">✗${job.failed}</span>` : '');
+      }
+
+      // Append new result lines since last poll
+      if (job.results.length > lastCount) {
+        const newLines = job.results.slice(lastCount).map(r =>
+          r.ok
+            ? `<span style="color:var(--green)">✓ ${r.name.replace(/</g,'&lt;')} <span style="color:var(--muted)">(${r.type})</span></span>`
+            : `<span style="color:var(--red)">✗ ${r.name.replace(/</g,'&lt;')} — ${(r.error||'').replace(/</g,'&lt;')}</span>`
+        ).join('<br>');
+        if (lastCount === 0) logBox.innerHTML = '';
+        logBox.innerHTML += newLines + '<br>';
+        logBox.scrollTop = logBox.scrollHeight;
+        lastCount = job.results.length;
+      }
+
+      if (job.done) {
+        clearInterval(poll);
+        const folderName = job.savedTo.split(/[\\/]/).pop();
+        logBox.innerHTML += `<br><strong>Gemt i: <span style="color:var(--accent)">${job.savedTo}</span></strong>`;
+        showAlert('ex-alert',
+          job.failed === 0
+            ? `✓ Alle ${job.succeeded} flows eksporteret til "${folderName}"`
+            : `⚠ ${job.succeeded} ok / ${job.failed} fejl — gemt i "${folderName}"`,
+          job.failed === 0 ? 'ok' : 'info');
+        document.getElementById('ex-all-btn').disabled = false;
+      }
+    } catch (e) { /* network hiccup, keep polling */ }
+  }, 800);
+}
+
+// ── Import ────────────────────────────────────────────────────────────────────
+function onFileUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('im-filename').value = file.name;
+  const reader = new FileReader();
+  reader.onload = e => document.getElementById('im-yaml').value = e.target.result;
+  reader.readAsText(file);
+}
+
+async function doImport() {
+  const customerId = document.getElementById('im-customer').value;
+  const yamlContent = document.getElementById('im-yaml').value.trim();
+  const fileName = document.getElementById('im-filename').value.trim() || 'flow.yaml';
+  const action = document.getElementById('im-action').value;
+  showAlert('im-alert', '');
+  if (!customerId || !yamlContent) return showAlert('im-alert', 'Vælg kunde og indsæt YAML', 'err');
+  showAlert('im-alert', '<span class="spin"></span> Importerer…', 'info');
+
+  const res = await fetch('/api/import', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({customerId, yamlContent, fileName, action})
+  });
+  const data = await res.json();
+  const logEl = document.getElementById('im-log');
+  logEl.style.display = 'block';
+  if (data.error === 'already_exists') {
+    showAlert('im-alert',
+      '✗ Flowet eksisterer allerede (create fejlede). ' +
+      '<button class="btn btn-primary btn-sm" style="margin-left:8px" ' +
+      'onclick="document.getElementById(\'im-action\').value=\'update\';doImport()">🔄 Skift til Update og prøv igen</button>',
+      'err');
+    logEl.innerHTML = `<span class="log-warn">${data.message || 'Flow already exists'}</span>`;
+  } else if (data.error) {
+    showAlert('im-alert', '✗ ' + data.error, 'err');
+    logEl.innerHTML = `<span class="log-err">${data.error}</span>`;
+  } else {
+    showAlert('im-alert', '✓ Flow importeret!', 'ok');
+    logEl.innerHTML = `<span class="log-ok">${data.output || 'OK'}</span>`;
+  }
+}
+
+// ── Files ─────────────────────────────────────────────────────────────────────
+async function loadFiles() {
+  const res = await fetch('/api/files');
+  const files = await res.json();
+  const el = document.getElementById('files-list');
+  if (!files.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px">Ingen lokale YAML-filer endnu.</div>';
+    return;
+  }
+  el.innerHTML = files.map(f => `
+    <div class="card" style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;margin-bottom:8px">
+      <div>
+        <div style="font-size:13px;font-weight:600;font-family:var(--mono)">${f.fileName}</div>
+        <div style="font-size:11px;color:var(--muted)">${f.customerName} · ${f.isImport ? 'import' : 'export'}</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary btn-sm" onclick="previewFile('${encodeURIComponent(f.path)}','${f.fileName}')">${t('view_file')}</button>
+        <button class="btn btn-blue btn-sm" onclick="copyFileToImport('${encodeURIComponent(f.path)}','${f.fileName}')">${t('copy_to_import')}</button>
+      </div>
+    </div>`).join('');
+}
+
+async function previewFile(encodedPath, fileName) {
+  const res = await fetch('/api/files/content?filePath=' + encodedPath);
+  const data = await res.json();
+  const w = window.open('', '_blank');
+  w.document.write(`<pre style="font-family:monospace;background:#0d0f14;color:#e8eaf0;padding:20px;font-size:12px">${data.content.replace(/</g,'&lt;')}</pre>`);
+}
+
+async function copyFileToImport(encodedPath, fileName) {
+  const res = await fetch('/api/files/content?filePath=' + encodedPath);
+  const data = await res.json();
+  document.getElementById('im-yaml').value = data.content;
+  document.getElementById('im-filename').value = fileName;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelector('[data-page=import]').classList.add('active');
+  document.getElementById('page-import').classList.add('active');
+  populateCustomerSelects(['im-customer']);
+}
+
+// ── Systemlog ─────────────────────────────────────────────────────────────────
+let syslogAutoTimer = null;
+
+const LEVEL_BADGE = {
+  INFO:    '<span class="badge badge-blue">INFO</span>',
+  SUCCESS: '<span class="badge badge-green">SUCCESS</span>',
+  WARN:    '<span class="badge badge-yellow">WARN</span>',
+  ERROR:   '<span class="badge badge-red">ERROR</span>',
+};
+const ACTION_BADGE = {
+  SYSTEM:   '<span class="badge badge-gray">SYSTEM</span>',
+  CUSTOMER: '<span class="badge badge-orange">CUSTOMER</span>',
+  TEST:     '<span class="badge badge-blue">TEST</span>',
+  FLOWS:    '<span class="badge badge-blue">FLOWS</span>',
+  EXPORT:   '<span class="badge badge-green">EXPORT</span>',
+  IMPORT:   '<span class="badge badge-orange">IMPORT</span>',
+  MIGRATE:  '<span class="badge badge-orange">MIGRATE</span>',
+};
+
+function populateSyslogCustomers() {
+  const sel = document.getElementById('sl-customer');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Alle kunder</option>';
+  customers.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c.name; o.textContent = c.name;
+    sel.appendChild(o);
+  });
+  sel.value = cur;
+}
+
+async function loadLog() {
+  const params = new URLSearchParams();
+  const from = document.getElementById('sl-from').value;
+  const to   = document.getElementById('sl-to').value;
+  const level    = document.getElementById('sl-level').value;
+  const action   = document.getElementById('sl-action').value;
+  const customer = document.getElementById('sl-customer').value;
+  const search   = document.getElementById('sl-search').value.trim();
+  const limit    = document.getElementById('sl-limit').value;
+
+  if (from)   params.set('from', new Date(from).toISOString());
+  if (to)     params.set('to',   new Date(to).toISOString());
+  if (level !== 'ALL')  params.set('level', level);
+  if (action !== 'ALL') params.set('action', action);
+  if (customer) params.set('customer', customer);
+  if (search)   params.set('search', search);
+  params.set('limit', limit);
+
+  const res = await fetch('/api/logs?' + params.toString());
+  const entries = await res.json();
+
+  const tbody = document.getElementById('syslog-body');
+  const empty = document.getElementById('syslog-empty');
+  const count = document.getElementById('syslog-count');
+
+  count.textContent = t('syslog_showing').replace('{n}', entries.length);
+
+  if (!entries.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = entries.map(e => {
+    const ts = e.ts.replace('T', ' ').replace(/\.\d+Z$/, '');
+    return `<tr>
+      <td class="log-ts">${ts}</td>
+      <td>${LEVEL_BADGE[e.level] || e.level}</td>
+      <td>${ACTION_BADGE[e.action] || e.action}</td>
+      <td class="log-customer">${e.customer || '<span style="color:var(--muted)">—</span>'}</td>
+      <td class="log-msg">${e.message.replace(/</g,'&lt;')}</td>
+    </tr>`;
+  }).join('');
+
+  loadLogStats();
+}
+
+async function loadLogStats() {
+  const res = await fetch('/api/logs/stats');
+  const s = await res.json();
+  const el = document.getElementById('syslog-stats');
+  el.style.display = 'flex';
+  el.innerHTML = [
+    { lbl: 'TOTAL', num: s.total, color: 'var(--text)' },
+    { lbl: 'INFO',    num: s.INFO,    color: 'var(--blue)' },
+    { lbl: 'SUCCESS', num: s.SUCCESS, color: 'var(--green)' },
+    { lbl: 'WARN',    num: s.WARN,    color: 'var(--yellow)' },
+    { lbl: 'ERROR',   num: s.ERROR,   color: 'var(--red)' },
+  ].map(x => `<div class="log-stats-item">
+    <span class="log-stats-num" style="color:${x.color}">${x.num}</span>
+    <span class="log-stats-lbl">${x.lbl}</span>
+  </div>`).join('');
+}
+
+function slQuick(minutes) {
+  const now = new Date();
+  const from = new Date(now - minutes * 60000);
+  document.getElementById('sl-from').value = toLocalDatetimeInput(from);
+  document.getElementById('sl-to').value   = toLocalDatetimeInput(now);
+  loadLog();
+}
+
+function slClear() {
+  document.getElementById('sl-from').value = '';
+  document.getElementById('sl-to').value   = '';
+  loadLog();
+}
+
+function toLocalDatetimeInput(d) {
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function toggleAutoRefresh() {
+  const btn = document.getElementById('syslog-auto-btn');
+  if (syslogAutoTimer) {
+    clearInterval(syslogAutoTimer);
+    syslogAutoTimer = null;
+    btn.textContent = t('btn_auto_refresh_off');
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-secondary');
+  } else {
+    syslogAutoTimer = setInterval(loadLog, 5000);
+    btn.textContent = t('btn_auto_refresh_on');
+    btn.classList.remove('btn-secondary');
+    btn.classList.add('btn-primary');
+    loadLog();
+  }
+}
+
+async function clearLog() {
+  if (!confirm('Ryd hele loggen i hukommelsen?')) return;
+  await fetch('/api/logs/clear', { method: 'POST' });
+  loadLog();
+  loadLogStats();
+}
+
+// ── README viewer ────────────────────────────────────────────────────────────
+let readmeRaw = '';
+let readmeLang = 'da';
+
+async function loadReadme() {
+  const el = document.getElementById('readme-content');
+  el.innerHTML = `<div style="color:var(--muted);font-size:13px"><span class="spin"></span> ${t('loading_readme')}</div>`;
+  try {
+    const res = await fetch('/api/readme');
+    const data = await res.json();
+    readmeRaw = data.content;
+    renderReadme();
+  } catch (e) {
+    el.innerHTML = `<div style="color:var(--red)">${e.message}</div>`;
+  }
+}
+
+function switchReadmeLang(lang) {
+  readmeLang = lang;
+  document.getElementById('readme-tab-da').classList.toggle('active', lang === 'da');
+  document.getElementById('readme-tab-en').classList.toggle('active', lang === 'en');
+  renderReadme();
+}
+
+function renderReadme() {
+  if (!readmeRaw) return;
+  const el = document.getElementById('readme-content');
+
+  // Split on the HR separator between the two language sections (--- on its own line)
+  // The file has: DA section ... ---\n---\n EN section
+  const parts = readmeRaw.split(/\n---\n---\n/);
+  let section = parts.length >= 2
+    ? (readmeLang === 'da' ? parts[0] : parts[1])
+    : readmeRaw;
+
+  // Strip the top anchor/badge line ("> 🇩🇰 [Dansk]...")
+  section = section.replace(/^>\s*🇩🇰.*\n/m, '').replace(/^>\s*🇬🇧.*\n/m, '');
+
+  el.innerHTML = `<div class="md-body">${marked.parse(section)}</div>`;
+
+  // Open external links in new tab
+  el.querySelectorAll('a[href^="http"]').forEach(a => {
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+  });
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function showAlert(id, msg, type='info') {
+  const el = document.getElementById(id);
+  if (!msg) { el.innerHTML = ''; return; }
+  const cls = type === 'ok' ? 'alert-ok' : type === 'err' ? 'alert-err' : 'alert-info';
+  el.innerHTML = `<div class="alert ${cls}">${msg}</div>`;
+}
+
+function log(el, msg, type) {
+  const span = document.createElement('span');
+  span.className = type ? 'log-' + type : '';
+  span.textContent = msg + '\n';
+  el.appendChild(span);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── YAML Wizard ────────────────────────────────────────────────────────────────
+const WIZ_FLOW_TYPES = [
+  // Initial Flows
+  { v:'inboundCall',         l:'📞 Inbound Call' },
+  { v:'inboundShortMessage', l:'💬 Inbound Message' },
+  { v:'inboundEmail',        l:'📧 Inbound Email' },
+  { v:'inboundChat',         l:'💬 Inbound Chat' },
+  { v:'outboundCall',        l:'📤 Outbound Call' },
+  // Supporting Flows
+  { v:'botFlow',             l:'🤖 Bot Flow' },
+  { v:'digitalBot',          l:'🌐 Digital Bot Flow' },
+  { v:'commonModule',        l:'🔧 Common Module' },
+  { v:'inqueueCall',         l:'📋 In-Queue Call' },
+  { v:'inqueueEmail',        l:'📋 In-Queue Email' },
+  { v:'inqueueShortMessage', l:'📋 In-Queue Message' },
+  { v:'secureCall',          l:'🔒 Secure Call' },
+  { v:'voicemail',           l:'📨 Voicemail' },
+  { v:'workflow',            l:'⚙️ Workflow' },
+  // Post Interaction
+  { v:'voiceSurvey',         l:'🎤 Voice Survey' },
+  { v:'surveyInvite',        l:'📝 Web Survey Invite' },
+];
+
+const WIZ_GENESYS_LANGS = [
+  { v:'en-us', l:'🇺🇸 English (US)' }, { v:'da-dk', l:'🇩🇰 Dansk (DK)' },
+  { v:'nl-nl', l:'🇳🇱 Nederlands' },   { v:'fr-fr', l:'🇫🇷 Français' },
+  { v:'de-de', l:'🇩🇪 Deutsch' },       { v:'nb-no', l:'🇳🇴 Norsk' },
+  { v:'sv-se', l:'🇸🇪 Svenska' },       { v:'fi-fi', l:'🇫🇮 Suomi' },
+  { v:'es-es', l:'🇪🇸 Español' },       { v:'pt-pt', l:'🇵🇹 Português' },
+  { v:'it-it', l:'🇮🇹 Italiano' },      { v:'pl-pl', l:'🇵🇱 Polski' },
+];
+
+const WIZ_VAR_TYPES = [
+  { v:'string',   l:'String (tekst)' },
+  { v:'splitstr', l:'String[] (komma-split)' },
+  { v:'integer',  l:'Integer (heltal)' },
+  { v:'decimal',  l:'Decimal (komma-tal)' },
+  { v:'boolean',  l:'Boolean (sand/falsk)' },
+  { v:'json',     l:'JSON (objekt)' },
+  { v:'dateTime', l:'DateTime (dato/tid)' },
+];
+
+let wiz = {};
+let _wizDtOptions    = [];  // [{name}]
+let _wizQueueOptions = [];  // [{id,name}]
+let _wizUserOptions  = [];  // [{id,name}]
+let _wizGroupOptions = [];  // [{id,name}]
+let _wizFlowOptions  = [];  // [{id,name}]
+let _wizDaOptions  = [];  // [{id,name,category,integrationName}]
+
+function openYamlWizard() {
+  const langMap = { da:'da-dk', en:'en-us', fr:'fr-fr', nl:'nl-nl' };
+  // Pre-select customer from import page if set
+  const preselect = document.getElementById('im-customer')?.value || '';
+  wiz = {
+    step: 1,
+    customerId: preselect,
+    flowType: 'inboundCall',
+    flowName: '',
+    genesysLang: langMap[currentLang] || 'en-us',
+    dataTables: [],
+    hasInitialAudio: false,
+    initialAudioTts: '',
+    hasDisconnect: false,
+    disconnectTts: '',
+    transferType:  'disconnect',
+    transferQueue: '',
+    transferValue: '',
+    dataActions: [],
+  };
+  document.getElementById('yaml-wiz-overlay').style.display = 'flex';
+  _wizRender();
+  if (preselect) _wizFetchOrgResources();
+}
+
+async function _wizFetchOrgResources() {
+  const id = wiz.customerId;
+  if (!id) return;
+  try {
+    const [dtRes, qRes, uRes, gRes, daRes] = await Promise.all([
+      fetch(`/api/customers/${id}/datatables`).then(r => r.json()),
+      fetch(`/api/customers/${id}/queues`).then(r => r.json()),
+      fetch(`/api/customers/${id}/users`).then(r => r.json()),
+      fetch(`/api/customers/${id}/groups`).then(r => r.json()),
+      fetch(`/api/customers/${id}/actions`).then(r => r.json()),
+    ]);
+    _wizDtOptions    = Array.isArray(dtRes) ? dtRes : [];
+    _wizQueueOptions = Array.isArray(qRes)  ? qRes  : [];
+    _wizUserOptions  = Array.isArray(uRes)  ? uRes  : [];
+    _wizGroupOptions = Array.isArray(gRes)  ? gRes  : [];
+    _wizDaOptions    = Array.isArray(daRes) ? daRes : [];
+    _wizUpdateDatalists();
+  } catch (_) {}
+}
+
+function _wizUpdateDatalists() {
+  // Populate table datalists for all active data table cards
+  (wiz.dataTables || []).forEach((_, i) => {
+    const dl = document.getElementById(`wiz-dt-datalist-${i}`);
+    if (dl) dl.innerHTML = _wizDtOptions.map(t => `<option value="${t.name}">`).join('');
+  });
+  const qdl = document.getElementById('wiz-q-datalist');
+  if (qdl) qdl.innerHTML = _wizQueueOptions.map(q => `<option value="${q.name}">`).join('');
+  const udl = document.getElementById('wiz-u-datalist');
+  if (udl) udl.innerHTML = _wizUserOptions.map(u => `<option value="${u.name}">`).join('');
+  const gdl = document.getElementById('wiz-g-datalist');
+  if (gdl) gdl.innerHTML = _wizGroupOptions.map(g => `<option value="${g.name}">`).join('');
+  const fdl = document.getElementById('wiz-f-datalist');
+  if (fdl) fdl.innerHTML = _wizFlowOptions.map(f => `<option value="${f.name}">`).join('');
+  // Populate action datalists for all active data action cards
+  (wiz.dataActions || []).forEach((_, i) => {
+    const adl = document.getElementById(`wiz-da-datalist-${i}`);
+    if (adl) adl.innerHTML = _wizDaOptions.map(a => `<option value="${a.name}">`).join('');
+  });
+}
+
+// Auto-generate variable name from JSON key + type + scope
+const WIZ_VAR_PREFIX = { string:'s_', splitstr:'sc_', integer:'i_', decimal:'d_',
+                          boolean:'b_', json:'j_', dateTime:'dt_' };
+function wizAutoVarName(i, j) {
+  const key = document.getElementById(`wdt-fk-${i}-${j}`)?.value.trim() || '';
+  const type = document.getElementById(`wdt-ft-${i}-${j}`)?.value || 'string';
+  const scope = document.getElementById(`wdt-fscope-${i}-${j}`)?.dataset?.scope || 'State';
+  if (!key) return;
+  const prefix = WIZ_VAR_PREFIX[type] || 's_';
+  const nameEl = document.getElementById(`wdt-fv-${i}-${j}`);
+  if (nameEl && !nameEl.dataset.manual) {
+    nameEl.value = `${scope}.${prefix}${key}`;
+  }
+}
+function wizToggleScope(i, j) {
+  const btn = document.getElementById(`wdt-fscope-${i}-${j}`);
+  const cur = btn.dataset.scope;
+  const next = cur === 'State' ? 'Flow' : 'State';
+  btn.dataset.scope = next;
+  btn.textContent = next + '.';
+  btn.style.background = next === 'Flow' ? 'var(--accent)' : 'var(--bg2)';
+  btn.style.color = next === 'Flow' ? '#fff' : 'var(--text)';
+  // Regenerate name with new scope
+  const nameEl = document.getElementById(`wdt-fv-${i}-${j}`);
+  if (nameEl) nameEl.dataset.manual = '';
+  wizAutoVarName(i, j);
+}
+async function wizSearchQueues(val) {
+  const id = wiz.customerId;
+  if (!id || val.length < 2) return;
+  try {
+    const data = await fetch(`/api/customers/${id}/queues?name=${encodeURIComponent(val)}`).then(r => r.json());
+    _wizQueueOptions = Array.isArray(data) ? data : [];
+    _wizUpdateDatalists();
+  } catch (_) {}
+}
+async function wizSearchUsers(val) {
+  const id = wiz.customerId;
+  if (!id || val.length < 2) return;
+  try {
+    const data = await fetch(`/api/customers/${id}/users?name=${encodeURIComponent(val)}`).then(r => r.json());
+    _wizUserOptions = Array.isArray(data) ? data : [];
+    _wizUpdateDatalists();
+  } catch (_) {}
+}
+async function wizSearchGroups(val) {
+  const id = wiz.customerId;
+  if (!id || val.length < 2) return;
+  try {
+    const data = await fetch(`/api/customers/${id}/groups?name=${encodeURIComponent(val)}`).then(r => r.json());
+    _wizGroupOptions = Array.isArray(data) ? data : [];
+    _wizUpdateDatalists();
+  } catch (_) {}
+}
+// Maps wizard flowType to Genesys Cloud API type enum for flow search filtering
+const WIZ_FLOW_TYPE_API = {
+  inboundCall:         'INBOUNDCALL',
+  inboundEmail:        'INBOUNDEMAIL',
+  inboundShortMessage: 'INBOUNDSHORTMESSAGE',
+  inboundChat:         'INBOUNDCHAT',
+  outboundCall:        'OUTBOUNDCALL',
+  botFlow:             'BOT',
+  digitalBot:          'DIGITALBOT',
+  workflow:            'WORKFLOW',
+  commonModule:        'COMMONMODULE',
+  secureCall:          'SECURECALL',
+  voicemail:           'VOICEMAIL',
+  inqueueCall:         'INQUEUECALL',
+  inqueueEmail:        'INQUEUEEMAIL',
+  inqueueShortMessage: 'INQUEUESHORTMESSAGE',
+  voiceSurvey:         'VOICESURVEY',
+  surveyInvite:        'SURVEYINVITE',
+};
+async function wizSearchFlows(val) {
+  const id = wiz.customerId;
+  if (!id || val.length < 2) return;
+  const apiType = WIZ_FLOW_TYPE_API[wiz.flowType] || '';
+  try {
+    const params = new URLSearchParams({ name: val });
+    if (apiType) params.append('type', apiType);
+    const data = await fetch(`/api/customers/${id}/flows?${params}`).then(r => r.json());
+    _wizFlowOptions = Array.isArray(data) ? data : [];
+    _wizUpdateDatalists();
+  } catch (_) {}
+}
+
+function wizSearchActions(val, i) {
+  // Client-side filtering of pre-loaded list — no API call needed per keystroke.
+  // The Genesys Actions API does not support wildcard search; filtering locally is instant.
+  const q = val.toLowerCase();
+  const filtered = q.length < 1
+    ? _wizDaOptions
+    : _wizDaOptions.filter(a => a.name.toLowerCase().includes(q));
+  const adl = document.getElementById(`wiz-da-datalist-${i}`);
+  if (adl) adl.innerHTML = filtered.map(a => `<option value="${a.name}">`).join('');
+
+  // Trigger schema fetch when user selects an exact match
+  const match = _wizDaOptions.find(a => a.name === val);
+  if (match) {
+    const da = wiz.dataActions[i];
+    if (!da) return;
+    if (da.actionId === match.id && da.schemaFetched) return; // already loaded
+    _wizCollect();
+    const da2 = wiz.dataActions[i]; // re-read after collect
+    if (!da2) return;
+    da2.actionName      = match.name;
+    da2.actionId        = match.id;
+    da2.category        = match.category;
+    da2.integrationName = match.integrationName;
+    da2.schemaFetched   = false;
+    da2.schemaError     = '';
+    _wizRender();
+    wizFetchActionSchema(i, match.id);
+  }
+}
+
+function wizSearchTables(i, val) {
+  // Client-side filtering of pre-loaded list — same approach as wizSearchActions.
+  const q = val.toLowerCase();
+  const filtered = q.length < 1
+    ? _wizDtOptions
+    : _wizDtOptions.filter(t => t.name.toLowerCase().includes(q));
+  const dl = document.getElementById(`wiz-dt-datalist-${i}`);
+  if (dl) dl.innerHTML = filtered.map(t => `<option value="${t.name}">`).join('');
+  // Trigger key-hint fetch when user selects an exact match
+  wizFetchTableKey(i, val);
+}
+
+async function wizFetchActionSchema(i, actionId) {
+  const id = wiz.customerId;
+  if (!id || !actionId) return;
+  const da = wiz.dataActions[i];
+  if (!da) return;
+  try {
+    const data = await fetch(`/api/customers/${id}/actions/${actionId}/schema`).then(r => r.json());
+    if (data.error) {
+      da.schemaError = `Fejl: ${data.error}`;
+      _wizRender(); return;
+    }
+    const inputs  = Array.isArray(data.inputs)  ? data.inputs  : [];
+    const outputs = Array.isArray(data.outputs) ? data.outputs : [];
+    // Merge inputs (keep existing values)
+    const existInputNames = da.inputs.map(x => x.name);
+    inputs.forEach(p => {
+      if (!existInputNames.includes(p.name))
+        da.inputs.push({ name: p.name, type: p.type, required: p.required, valueType: 'lit', value: '' });
+    });
+    // Merge outputs with auto-generated variable names
+    const existOutNames = da.successOutputs.map(x => x.name);
+    outputs.forEach(p => {
+      if (!existOutNames.includes(p.name)) {
+        const prefix = {integer:'i_',decimal:'d_',boolean:'b_',string:'s_',object:'j_',number:'d_'}[p.type] || 's_';
+        da.successOutputs.push({
+          name: p.name, type: p.type, use: false,
+          varName: `Flow.${prefix}${p.name}`,
+          varType: p.type==='integer'?'integer':p.type==='boolean'?'boolean':p.type==='number'?'decimal':p.type==='object'?'json':'string'
+        });
+      }
+    });
+    da.failureOutputs = outputs.map(p => ({ name: p.name }));
+    da.schemaFetched  = true;
+    da.schemaError    = '';
+    _wizRender();
+  } catch (e) {
+    da.schemaError = 'Kunne ikke hente schema — tjek forbindelsen';
+    _wizRender();
+  }
+}
+
+async function wizFetchTableKey(dtIdx, tableName) {
+  const id = wiz.customerId;
+  if (!id || !tableName) return;
+  const tableInfo = _wizDtOptions.find(t => t.name === tableName);
+  if (!tableInfo) return;
+  try {
+    const data = await fetch(`/api/customers/${id}/datatables/${tableInfo.id}`).then(r => r.json());
+    if (data.keyTitle) {
+      const lbl = document.getElementById(`wdt-key-hint-${dtIdx}`);
+      if (lbl) lbl.textContent = `Nøgle-kolonne: ${data.keyTitle}`;
+      const lv = document.getElementById(`wdt-lv-${dtIdx}`);
+      if (lv && !lv.value) lv.placeholder = data.keyTitle;
+      // Store schema info
+      _wizCollect();
+      const dt = wiz.dataTables[dtIdx];
+      if (dt) {
+        dt.isJsonTable = data.isJsonTable;
+        dt.tableKeyTitle = data.keyTitle;
+        dt.tableColumns = data.columns || [];
+        // If regular table and no fields yet, pre-populate columns
+        if (!data.isJsonTable && dt.fields.length === 0 && data.columns.length > 0) {
+          const prefix = {integer:'i_',decimal:'d_',boolean:'b_',string:'s_'};
+          dt.fields = data.columns.map(c => {
+            const p = prefix[c.type] || 's_';
+            return { key: c.name, varName: `Flow.${p}${c.name}`, varType: c.type === 'integer' ? 'integer' : c.type === 'boolean' ? 'boolean' : 'string', scope: 'Flow' };
+          });
+        }
+        _wizRender();
+      }
+    }
+  } catch (_) {}
+}
+
+function closeYamlWizard() {
+  document.getElementById('yaml-wiz-overlay').style.display = 'none';
+}
+
+// Collect current form values into wiz state
+function _wizCollect() {
+  const g = id => document.getElementById(id);
+  if (wiz.step === 1) {
+    const prevCust  = wiz.customerId;
+    wiz.customerId  = g('wiz-cust')?.value || wiz.customerId;
+    wiz.flowType    = g('wiz-ft')?.value   || wiz.flowType;
+    wiz.flowName    = g('wiz-fn')?.value.trim() || '';
+    wiz.genesysLang = g('wiz-gl')?.value   || wiz.genesysLang;
+    if (!wiz.flowName) { _wizShowErr('Flow navn er påkrævet'); return false; }
+    if (wiz.customerId && wiz.customerId !== prevCust) _wizFetchOrgResources();
+  } else if (wiz.step === 2) {
+    wiz.dataTables.forEach((dt, i) => {
+      dt.tableName   = g(`wdt-tbl-${i}`)?.value.trim() || '';
+      // isJsonTable is driven by the explicit checkbox — user has final say over auto-detection
+      const jtCb = g(`wdt-jt-${i}`);
+      if (jtCb) dt.isJsonTable = jtCb.checked;
+      dt.lookupType  = g(`wdt-ltp-${i}`)?.value || 'lit';
+      dt.lookupValue = g(`wdt-lv-${i}`)?.value.trim() || '';
+      dt.resultVar   = g(`wdt-rv-${i}`)?.value.trim() || 'State.dt_s_result';
+      dt.parseJson   = g(`wdt-pj-${i}`)?.checked ?? true;
+      dt.jsonVar     = g(`wdt-jv-${i}`)?.value.trim() || 'State.dt_j_result';
+      dt.fields.forEach((f, j) => {
+        f.key     = g(`wdt-fk-${i}-${j}`)?.value.trim() || '';
+        f.varName = g(`wdt-fv-${i}-${j}`)?.value.trim() || '';
+        f.varType = g(`wdt-ft-${i}-${j}`)?.value || 'string';
+        f.scope   = g(`wdt-fscope-${i}-${j}`)?.dataset?.scope || 'State';
+      });
+    });
+    wiz.dataActions.forEach((da, i) => {
+      da.actionName = g(`wda-name-${i}`)?.value.trim() || '';
+      da.timeout    = parseInt(g(`wda-timeout-${i}`)?.value) || 1;
+      da.inputs.forEach((inp, j) => {
+        inp.valueType = g(`wda-ivt-${i}-${j}`)?.value || 'lit';
+        inp.value     = g(`wda-iv-${i}-${j}`)?.value.trim() || '';
+      });
+      da.successOutputs.forEach((out, j) => {
+        out.use     = g(`wda-ou-${i}-${j}`)?.checked ?? false;
+        out.varName = g(`wda-ov-${i}-${j}`)?.value.trim() || out.varName;
+        out.varType = g(`wda-ovt-${i}-${j}`)?.value || 'string';
+      });
+    });
+  } else if (wiz.step === 3) {
+    wiz.hasInitialAudio = g('wiz-hia')?.checked ?? false;
+    wiz.initialAudioTts = g('wiz-ia-tts')?.value.trim() || '';
+    wiz.hasDisconnect   = g('wiz-hda')?.checked ?? false;
+    wiz.disconnectTts   = g('wiz-d-tts')?.value.trim() || '';
+    wiz.transferType    = g('wiz-tt')?.value  || 'disconnect';
+    wiz.transferQueue   = g('wiz-tq')?.value.trim() || '';
+    wiz.transferValue   = g('wiz-tv')?.value.trim() || '';
+    // Keep transferType consistent for email flows
+    const isEmailFlow = ['inboundEmail','inqueueEmail','inqueueShortMessage'].includes(wiz.flowType);
+    if (isEmailFlow && !wiz.transferType) wiz.transferType = 'acd';
+  }
+  return true;
+}
+
+function _wizShowErr(msg) {
+  const el = document.getElementById('wiz-err');
+  if (el) { el.textContent = msg; el.style.display = 'block'; }
+}
+
+function wizNext() {
+  if (!_wizCollect()) return;
+  wiz.step = Math.min(wiz.step + 1, 4);
+  _wizRender();
+}
+function wizBack() {
+  _wizCollect();
+  wiz.step = Math.max(wiz.step - 1, 1);
+  _wizRender();
+}
+function wizAddTable() {
+  _wizCollect();
+  const n = wiz.dataTables.length;
+  wiz.dataTables.push({
+    tableName: '', lookupType: 'lit', lookupValue: '',
+    resultVar: n === 0 ? 'State.dt_s_result' : `State.dt_s_result_${n + 1}`,
+    parseJson: true,
+    jsonVar:   n === 0 ? 'State.dt_j_result' : `State.dt_j_result_${n + 1}`,
+    fields: [],
+    isJsonTable: true,   // default, updated when schema is fetched
+    tableKeyTitle: '',
+    tableColumns: []
+  });
+  _wizRender();
+}
+function wizRemoveTable(i) { _wizCollect(); wiz.dataTables.splice(i, 1); _wizRender(); }
+function wizAddField(i)    { _wizCollect(); wiz.dataTables[i].fields.push({ key:'', varName:'', varType:'string', scope:'State' }); _wizRender(); }
+function wizRemoveField(i,j){ _wizCollect(); wiz.dataTables[i].fields.splice(j,1); _wizRender(); }
+function wizAddAction() {
+  _wizCollect();
+  wiz.dataActions.push({ actionName:'', actionId:'', category:'', integrationName:'', timeout:1, schemaFetched:false, schemaError:'', inputs:[], successOutputs:[], failureOutputs:[] });
+  _wizRender();
+}
+function wizRemoveAction(i) { _wizCollect(); wiz.dataActions.splice(i,1); _wizRender(); }
+
+function _wizRender() {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById(`wiz-si-${i}`);
+    if (el) el.className = 'wiz-si' + (i === wiz.step ? ' active' : i < wiz.step ? ' done' : '');
+  }
+  const back = document.getElementById('wiz-back');
+  const next = document.getElementById('wiz-next');
+  back.style.visibility = wiz.step === 1 ? 'hidden' : '';
+  if (wiz.step === 4) {
+    next.textContent = '✓ Brug YAML';
+    next.onclick = wizUseYaml;
+    next.className = 'btn btn-green';
+  } else {
+    next.textContent = 'Næste →';
+    next.onclick = wizNext;
+    next.className = 'btn btn-primary';
+  }
+  const sub = WIZ_FLOW_TYPES.find(x => x.v === wiz.flowType);
+  document.getElementById('wiz-hdr-sub').textContent =
+    wiz.flowName ? `${sub?.l || wiz.flowType} · ${wiz.flowName}` : sub?.l || '';
+
+  const body = document.getElementById('wiz-body');
+  if      (wiz.step === 1) _wizS1(body);
+  else if (wiz.step === 2) { _wizS2(body); _wizUpdateDatalists(); }
+  else if (wiz.step === 3) _wizS3(body);
+  else                     _wizS4(body);
+}
+
+function _errBox() {
+  return `<div class="wiz-err" id="wiz-err"></div>`;
+}
+
+function _wizS1(body) {
+  const fts = WIZ_FLOW_TYPES.map(x =>
+    `<option value="${x.v}"${x.v===wiz.flowType?' selected':''}>${x.l}</option>`).join('');
+  const lgs = WIZ_GENESYS_LANGS.map(x =>
+    `<option value="${x.v}"${x.v===wiz.genesysLang?' selected':''}>${x.l}</option>`).join('');
+  const custs = '<option value="">— Vælg kunde (til datatabeller/køer) —</option>' +
+    customers.map(c => `<option value="${c.id}"${c.id===wiz.customerId?' selected':''}>${c.name} (${c.region})</option>`).join('');
+  body.innerHTML = `
+    ${_errBox()}
+    <div style="grid-column:1/-1;margin-bottom:12px">
+      <label>Kunde / Org <span style="font-size:10px;color:var(--muted)">(bruges til at hente datatabeller og køer)</span></label>
+      <select id="wiz-cust" onchange="wiz.customerId=this.value;_wizFetchOrgResources()">${custs}</select>
+    </div>
+    <div class="grid-2" style="gap:16px">
+      <div>
+        <label>Flow type *</label>
+        <select id="wiz-ft">${fts}</select>
+      </div>
+      <div>
+        <label>Sprog i flow (defaultLanguage)</label>
+        <select id="wiz-gl">${lgs}</select>
+      </div>
+      <div style="grid-column:1/-1">
+        <label>Flow navn *</label>
+        <input id="wiz-fn" value="${wiz.flowName.replace(/"/g,'&quot;')}" placeholder="Mit Flow" autofocus/>
+      </div>
+    </div>
+    <div style="margin-top:14px;padding:10px 14px;background:rgba(75,142,241,.07);border:1px solid rgba(75,142,241,.2);border-radius:6px;font-size:12px;color:var(--muted)">
+      💡 Vælg en kunde øverst — så hentes datatabeller og køer automatisk til brug i trin 2 og 3.
+    </div>`;
+}
+
+function _wizS2(body) {
+  const vtOpts = (cur) => WIZ_VAR_TYPES.map(x =>
+    `<option value="${x.v}"${x.v===cur?' selected':''}>${x.l}</option>`).join('');
+
+  const tablesHtml = wiz.dataTables.length === 0
+    ? `<div style="text-align:center;padding:32px 16px;color:var(--muted);font-size:13px;
+         border:2px dashed var(--border2);border-radius:8px">
+         Ingen datatabeller. Klik "+ Tilføj datatabel" for at tilføje en.
+       </div>`
+    : wiz.dataTables.map((dt, i) => `
+      <div class="card" style="margin-bottom:12px;padding:16px 20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div style="font-size:13px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            📊 Datatabel ${i+1}${dt.tableName ? ' — <span style="color:var(--text)">'+dt.tableName+'</span>' : ''}
+            ${dt.tableName
+              ? (dt.isJsonTable !== false
+                  ? '<span style="font-size:10px;font-weight:700;background:var(--blue);color:#fff;padding:2px 8px;border-radius:10px">JSON tabel</span>'
+                  : '<span style="font-size:10px;font-weight:700;background:var(--bg2);color:var(--text);border:1px solid var(--border2);padding:2px 8px;border-radius:10px">Multi-kolonne</span>')
+              : ''}
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="wizRemoveTable(${i})">✕ Fjern</button>
+        </div>
+        <datalist id="wiz-dt-datalist-${i}"></datalist>
+        <div class="grid-2" style="gap:10px;margin-bottom:10px">
+          <div>
+            <label>Tabel navn *</label>
+            <input id="wdt-tbl-${i}" value="${dt.tableName}" placeholder="SystemConfig"
+              list="wiz-dt-datalist-${i}" autocomplete="off"
+              oninput="wizSearchTables(${i}, this.value)"/>
+            <div id="wdt-key-hint-${i}" style="font-size:11px;color:var(--muted);margin-top:3px">
+              ${dt.tableKeyTitle ? 'Nøgle-kolonne: '+dt.tableKeyTitle : ''}
+            </div>
+          </div>
+          <div>
+            <label>Resultat-variabel (streng)</label>
+            <input id="wdt-rv-${i}" value="${dt.resultVar}" placeholder="State.dt_s_result"/>
+          </div>
+          <div>
+            <label>Lookup type</label>
+            <select id="wdt-ltp-${i}">
+              <option value="lit"${dt.lookupType==='lit'?' selected':''}>Literal (fast tekst)</option>
+              <option value="var"${dt.lookupType==='var'?' selected':''}>Variabel</option>
+            </select>
+          </div>
+          <div>
+            <label>Lookup værdi</label>
+            <input id="wdt-lv-${i}" value="${dt.lookupValue}"
+              placeholder="${dt.lookupType==='var'?'State.s_key':dt.tableKeyTitle||dt.tableName||'SystemConfig'}"/>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;padding:9px 14px;background:var(--hover);
+             border-radius:6px;margin-bottom:12px;flex-wrap:wrap">
+          <input type="checkbox" id="wdt-jt-${i}" ${dt.isJsonTable!==false?'checked':''} style="width:auto;flex-shrink:0"
+            onchange="_wizCollect();_wizRender()"/>
+          <label style="margin:0;font-size:12px;cursor:pointer;font-weight:600" for="wdt-jt-${i}">
+            JSON tabel (Value-kolonne indeholder JSON-streng)
+          </label>
+          <span style="font-size:11px;color:var(--muted);margin-left:auto">
+            ${dt.tableKeyTitle ? '🔑 Nøgle: '+dt.tableKeyTitle : ''}
+          </span>
+        </div>
+        <div style="display:${dt.isJsonTable===false?'none':'flex'};align-items:center;gap:12px;padding:9px 14px;background:var(--hover);
+             border-radius:6px;margin-bottom:12px;flex-wrap:wrap">
+          <input type="checkbox" id="wdt-pj-${i}" ${dt.parseJson?'checked':''} style="width:auto;flex-shrink:0"
+            onchange="document.getElementById('wdt-jv-wrap-${i}').style.display=this.checked?'flex':'none'"/>
+          <label style="margin:0;font-size:12px;cursor:pointer" for="wdt-pj-${i}">
+            Parse resultat som JSON (JsonParse)
+          </label>
+          <div id="wdt-jv-wrap-${i}" style="display:${dt.parseJson?'flex':'none'};align-items:center;gap:6px;margin-left:auto">
+            <label style="margin:0;font-size:11px;white-space:nowrap">JSON-variabel:</label>
+            <input id="wdt-jv-${i}" value="${dt.jsonVar}" placeholder="State.dt_j_result" style="width:190px"/>
+          </div>
+        </div>
+
+        <!-- JSON field extraction -->
+        <div style="border-top:1px solid var(--border);padding-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div style="font-size:10px;letter-spacing:1px;color:var(--muted)">${dt.isJsonTable===false ? 'KOLONNER AT UDTRÆKKE' : 'JSON FELTER AT UDTRÆKKE'}</div>
+            <button class="btn btn-secondary btn-sm" onclick="wizAddField(${i})">+ Tilføj felt</button>
+          </div>
+          ${dt.isJsonTable !== false ? `
+          <div style="font-size:11px;color:var(--muted);background:var(--hover);border-radius:5px;padding:7px 10px;margin-bottom:10px">
+            💡 JSON tabel — <code>Value</code>-kolonnen indeholder en JSON-streng. Tilføj de nøgler du vil udtrække
+            (f.eks. <code>Random</code>, <code>Interval</code>). Aktivér "Parse JSON" ovenfor for at bruge
+            <code>GetJsonObjectProperty</code>.
+          </div>` : ''}
+          ${dt.fields.length === 0
+            ? `<div style="color:var(--muted);font-size:12px;padding:4px 0">${dt.isJsonTable !== false ? 'Ingen JSON-felter — klik "+ Tilføj felt" for at tilføje nøgler at udtrække.' : 'Ingen felter — klik "+ Tilføj felt".'}</div>`
+            : dt.fields.map((f, j) => {
+                const sc = f.scope || 'State';
+                const scBg = sc==='Flow' ? 'var(--accent)' : 'var(--bg2)';
+                const scCol = sc==='Flow' ? '#fff' : 'var(--text)';
+                return `
+              <div style="display:grid;grid-template-columns:1fr 1fr auto 1fr auto;gap:6px;align-items:${j===0?'flex-end':'center'};margin-bottom:6px">
+                <div>
+                  ${j===0?`<label style="font-size:10px">${dt.isJsonTable!==false?'JSON-nøgle':'Kolonne'}</label>`:''}
+                  <input id="wdt-fk-${i}-${j}" value="${f.key}" placeholder="FlowId"
+                    oninput="wizAutoVarName(${i},${j})"/>
+                </div>
+                <div>
+                  ${j===0?'<label style="font-size:10px">Variabel navn</label>':''}
+                  <input id="wdt-fv-${i}-${j}" value="${f.varName}" placeholder="State.s_FlowId"
+                    oninput="this.dataset.manual='1'"/>
+                </div>
+                <div ${j===0?'style="padding-top:18px"':''}>
+                  <button id="wdt-fscope-${i}-${j}" data-scope="${sc}"
+                    onclick="wizToggleScope(${i},${j})"
+                    style="padding:5px 8px;font-size:11px;font-weight:700;border-radius:4px;border:1px solid var(--border2);cursor:pointer;white-space:nowrap;background:${scBg};color:${scCol}"
+                    title="Skift scope: State / Flow">${sc}.</button>
+                </div>
+                <div>
+                  ${j===0?'<label style="font-size:10px">Type</label>':''}
+                  <select id="wdt-ft-${i}-${j}" onchange="wizAutoVarName(${i},${j})">${vtOpts(f.varType)}</select>
+                </div>
+                <div ${j===0?'style="padding-top:18px"':''}>
+                  <button class="btn btn-danger btn-sm" style="padding:5px 8px"
+                    onclick="wizRemoveField(${i},${j})">✕</button>
+                </div>
+              </div>`;}).join('')}
+        </div>
+      </div>`).join('');
+
+  // ── Data Actions ─────────────────────────────────────────────────────────
+  const vtOpts2 = (cur) => WIZ_VAR_TYPES.map(x =>
+    `<option value="${x.v}"${x.v===cur?' selected':''}>${x.l}</option>`).join('');
+
+  const actionsHtml = wiz.dataActions.length === 0
+    ? ''
+    : wiz.dataActions.map((da, i) => `
+      <div class="card" style="margin-bottom:12px;padding:16px 20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div style="font-size:13px;font-weight:700;color:#a78bfa">
+            ⚡ Data Action ${i+1}${da.actionName ? ' — <span style="color:var(--text)">'+da.actionName+'</span>' : ''}
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="wizRemoveAction(${i})">✕ Fjern</button>
+        </div>
+        <datalist id="wiz-da-datalist-${i}"></datalist>
+        <div class="grid-2" style="gap:10px;margin-bottom:8px">
+          <div>
+            <label>Action navn *</label>
+            <input id="wda-name-${i}" value="${da.actionName.replace(/"/g,'&quot;')}"
+              list="wiz-da-datalist-${i}" autocomplete="off"
+              placeholder="Skriv for at søge data actions..."
+              oninput="wizSearchActions(this.value,${i})"/>
+            <div id="wiz-da-intlabel-${i}" style="font-size:11px;color:var(--muted);margin-top:3px">
+              ${da.integrationName ? 'Integration: '+da.integrationName : ''}
+            </div>
+          </div>
+          <div>
+            <label>Timeout (minutter)</label>
+            <input id="wda-timeout-${i}" type="number" min="1" max="60"
+              value="${da.timeout||1}" style="width:80px"/>
+          </div>
+        </div>
+        ${da.schemaFetched ? `
+        <!-- Inputs -->
+        ${da.inputs.length > 0 ? `
+        <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:6px">
+          <div style="font-size:10px;letter-spacing:1px;color:var(--muted);margin-bottom:8px">INPUT PARAMETRE</div>
+          ${da.inputs.map((inp, j) => `
+          <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:${j===0?'flex-end':'center'};margin-bottom:6px">
+            <div>
+              ${j===0?'<label style="font-size:10px">Parameter</label>':''}
+              <div style="padding:6px 10px;background:var(--hover);border-radius:4px;font-size:12px;font-family:monospace">
+                ${inp.name}${inp.required?' <span style="color:var(--red)">*</span>':''}
+              </div>
+            </div>
+            <div>
+              ${j===0?'<label style="font-size:10px">Type</label>':''}
+              <select id="wda-ivt-${i}-${j}" style="width:100px">
+                <option value="lit"${inp.valueType==='lit'?' selected':''}>Literal</option>
+                <option value="exp"${inp.valueType==='exp'?' selected':''}>Variabel</option>
+                <option value="none"${inp.valueType==='none'?' selected':''}>— Ingen —</option>
+              </select>
+            </div>
+            <div>
+              ${j===0?'<label style="font-size:10px">Værdi</label>':''}
+              <input id="wda-iv-${i}-${j}" value="${(inp.value||'').replace(/"/g,'&quot;')}"
+                placeholder="${inp.valueType==='exp'?'Flow.s_myVar':'tekst eller tal'}"/>
+            </div>
+          </div>`).join('')}
+        </div>` : ''}
+        <!-- Success Outputs -->
+        ${da.successOutputs.length > 0 ? `
+        <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:6px">
+          <div style="font-size:10px;letter-spacing:1px;color:var(--muted);margin-bottom:8px">OUTPUT → VARIABLER (sæt flueben for at gemme)</div>
+          ${da.successOutputs.map((out, j) => `
+          <div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:6px;align-items:${j===0?'flex-end':'center'};margin-bottom:6px">
+            <div ${j===0?'style="padding-top:18px"':''}>
+              <input type="checkbox" id="wda-ou-${i}-${j}" ${out.use?'checked':''} style="width:auto"/>
+            </div>
+            <div>
+              ${j===0?'<label style="font-size:10px">Output parameter</label>':''}
+              <div style="padding:6px 10px;background:var(--hover);border-radius:4px;font-size:12px;font-family:monospace;opacity:${out.use?'1':'0.5'}">
+                ${out.name}
+              </div>
+            </div>
+            <div>
+              ${j===0?'<label style="font-size:10px">Variabel navn</label>':''}
+              <input id="wda-ov-${i}-${j}" value="${(out.varName||'').replace(/"/g,'&quot;')}"
+                placeholder="Flow.s_output" ${out.use?'':'disabled style="opacity:0.4"'}/>
+            </div>
+            <div>
+              ${j===0?'<label style="font-size:10px">Type</label>':''}
+              <select id="wda-ovt-${i}-${j}" ${out.use?'':'disabled style="opacity:0.4"'}>${vtOpts2(out.varType)}</select>
+            </div>
+          </div>`).join('')}
+        </div>` : ''}
+        ` : da.actionName ? `<div style="font-size:12px;color:${da.schemaError?'var(--red)':'var(--muted)'};padding:8px 0">
+          ${da.schemaError || `Henter schema for "${da.actionName}"…`}
+        </div>` : ''}
+      </div>`).join('');
+
+  body.innerHTML = `
+    ${_errBox()}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-size:13px;color:var(--muted)">
+        Konfigurér lookups for <strong style="color:var(--text)">${wiz.flowName||'dit flow'}</strong>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary btn-sm" onclick="wizAddTable()">+ Datatabel</button>
+        <button class="btn btn-sm" style="background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.3)" onclick="wizAddAction()">⚡ Data Action</button>
+      </div>
+    </div>
+    ${tablesHtml}
+    ${actionsHtml}`;
+}
+
+function _wizOnTransferChange(sel) {
+  // Save current DOM values to wiz before re-rendering
+  const g = id => document.getElementById(id);
+  wiz.transferType    = sel.value;
+  wiz.disconnectTts   = g('wiz-d-tts')?.value   ?? wiz.disconnectTts;
+  wiz.hasDisconnect   = g('wiz-hda')?.checked    ?? wiz.hasDisconnect;
+  wiz.initialAudioTts = g('wiz-ia-tts')?.value  ?? wiz.initialAudioTts;
+  wiz.hasInitialAudio = g('wiz-hia')?.checked    ?? wiz.hasInitialAudio;
+  wiz.transferQueue   = g('wiz-tq')?.value.trim() ?? wiz.transferQueue;
+  wiz.transferValue   = g('wiz-tv')?.value.trim() ?? wiz.transferValue;
+  _wizS3(document.getElementById('wiz-body'));
+}
+
+function _wizS3(body) {
+  // Flow types that support disconnect/transfer choices
+  const hasTransfer = ['inboundCall','outboundCall','inboundShortMessage','inboundChat',
+                       'secureCall','voicemail','inqueueCall'].includes(wiz.flowType);
+  const isEmail     = ['inboundEmail','inqueueEmail','inqueueShortMessage'].includes(wiz.flowType);
+  // Flow types that have audio (voice)
+  const hasAudio    = ['inboundCall','outboundCall','inboundChat','secureCall',
+                       'voicemail','inqueueCall'].includes(wiz.flowType);
+
+  if (!hasTransfer && !isEmail) {
+    body.innerHTML = `
+      <div style="text-align:center;padding:48px 20px;color:var(--muted);font-size:13px">
+        <div style="font-size:36px;margin-bottom:12px">⚙️</div>
+        <div>Ingen ekstra konfiguration for
+          <strong>${WIZ_FLOW_TYPES.find(x=>x.v===wiz.flowType)?.l||wiz.flowType}</strong>.
+        </div>
+        <div style="font-size:11px;margin-top:8px;color:var(--border2)">
+          Klik <strong>Næste</strong> for at se det genererede YAML.
+        </div>
+      </div>`;
+    return;
+  }
+
+  const tt = wiz.transferType || (isEmail ? 'acd' : 'disconnect');
+  const showQueue  = tt === 'acd';
+  const showNumber = tt === 'number';
+
+  const transferOpts = isEmail
+    ? `<option value="acd" ${tt==='acd'?'selected':''}>Transfer to ACD</option>`
+    : `<option value="disconnect" ${tt==='disconnect'?'selected':''}>Disconnect</option>
+       <option value="acd"        ${tt==='acd'?'selected':''}>Transfer to ACD</option>
+       <option value="user"       ${tt==='user'?'selected':''}>Transfer to User</option>
+       <option value="number"     ${tt==='number'?'selected':''}>Transfer to Number</option>
+       <option value="group"      ${tt==='group'?'selected':''}>Transfer to Group</option>
+       <option value="flow"       ${tt==='flow'?'selected':''}>Transfer to Flow</option>`;
+
+  body.innerHTML = `
+    ${_errBox()}
+    ${hasAudio ? `
+    <div class="card" style="margin-bottom:12px;padding:16px 20px">
+      <div class="card-title">INITIAL AUDIO (velkomstbesked)</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <input type="checkbox" id="wiz-hia" style="width:auto" ${wiz.hasInitialAudio?'checked':''}
+          onchange="document.getElementById('wiz-ia-wrap').style.display=this.checked?'block':'none'"/>
+        <label style="margin:0;font-size:12px;cursor:pointer" for="wiz-hia">
+          Tilføj velkomst-lyd (playAudio TTS) i starten af flowet
+        </label>
+      </div>
+      <div id="wiz-ia-wrap" style="display:${wiz.hasInitialAudio?'block':'none'}">
+        <label>TTS tekst</label>
+        <input id="wiz-ia-tts" value="${(wiz.initialAudioTts||'').replace(/"/g,'&quot;')}"
+          placeholder="Velkommen. Vent venligst mens vi finder den rette afdeling..."/>
+      </div>
+    </div>` : ''}
+    <div class="card" style="padding:16px 20px;margin-bottom:12px">
+      <div class="card-title">AFSLUTNING / TRANSFER</div>
+      <datalist id="wiz-q-datalist"></datalist>
+      <datalist id="wiz-u-datalist"></datalist>
+      <datalist id="wiz-g-datalist"></datalist>
+      <datalist id="wiz-f-datalist"></datalist>
+      <label>Type</label>
+      <select id="wiz-tt" onchange="_wizOnTransferChange(this)">${transferOpts}</select>
+      ${showQueue ? `
+      <label style="margin-top:10px">Kø navn</label>
+      <input id="wiz-tq" value="${(wiz.transferQueue||'').replace(/"/g,'&quot;')}"
+        list="wiz-q-datalist" autocomplete="off" placeholder="Skriv for at søge køer..."
+        oninput="wizSearchQueues(this.value)"/>` : ''}
+      ${tt === 'user' ? `
+      <label style="margin-top:10px">Bruger</label>
+      <input id="wiz-tv" value="${(wiz.transferValue||'').replace(/"/g,'&quot;')}"
+        list="wiz-u-datalist" autocomplete="off" placeholder="Skriv for at søge brugere..."
+        oninput="wizSearchUsers(this.value)"/>` : ''}
+      ${tt === 'group' ? `
+      <label style="margin-top:10px">Gruppe</label>
+      <input id="wiz-tv" value="${(wiz.transferValue||'').replace(/"/g,'&quot;')}"
+        list="wiz-g-datalist" autocomplete="off" placeholder="Skriv for at søge grupper..."
+        oninput="wizSearchGroups(this.value)"/>` : ''}
+      ${tt === 'flow' ? `
+      <label style="margin-top:10px">Flow navn</label>
+      <input id="wiz-tv" value="${(wiz.transferValue||'').replace(/"/g,'&quot;')}"
+        list="wiz-f-datalist" autocomplete="off" placeholder="Skriv for at søge flows..."
+        oninput="wizSearchFlows(this.value)"/>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">
+        Søger kun ${WIZ_FLOW_TYPES.find(x=>x.v===wiz.flowType)?.l||wiz.flowType}-flows (samme type som dette flow)
+      </div>` : ''}
+      ${showNumber ? `
+      <label style="margin-top:10px">Telefonnummer</label>
+      <input id="wiz-tv" value="${(wiz.transferValue||'').replace(/"/g,'&quot;')}"
+        placeholder="+4512345678"/>` : ''}
+      ${hasAudio ? `
+      <div style="margin-top:14px;border-top:1px solid var(--border1);padding-top:12px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <input type="checkbox" id="wiz-hda" style="width:auto" ${wiz.hasDisconnect?'checked':''}
+            onchange="document.getElementById('wiz-da-wrap').style.display=this.checked?'block':'none'"/>
+          <label style="margin:0;font-size:12px;cursor:pointer" for="wiz-hda">
+            Tilføj afslutningslyd (playAudio TTS) inden afslutning/transfer
+          </label>
+        </div>
+        <div id="wiz-da-wrap" style="display:${wiz.hasDisconnect?'block':'none'}">
+          <label>TTS tekst</label>
+          <input id="wiz-d-tts" value="${(wiz.disconnectTts||'').replace(/"/g,'&quot;')}"
+            placeholder="Farvel og tak fordi du ringede."/>
+        </div>
+      </div>` : ''}
+    </div>`;
+
+  _wizUpdateDatalists();
+}
+
+function _wizS4(body) {
+  const yaml = _genYaml();
+  body.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:12px;color:var(--muted)">
+        Gennemse YAML — klik <strong style="color:var(--green)">✓ Brug YAML</strong> for at sende til Import-siden.
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="
+        navigator.clipboard.writeText(document.getElementById('wiz-out').textContent)
+          .then(()=>{this.textContent='✓ Kopieret!';setTimeout(()=>this.textContent='📋 Kopiér',1800)})
+      ">📋 Kopiér</button>
+    </div>
+    <pre id="wiz-out" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;
+      padding:16px;font-family:var(--mono);font-size:11px;line-height:1.65;max-height:460px;
+      overflow-y:auto;white-space:pre;color:var(--text)">${yaml.replace(/</g,'&lt;')}</pre>`;
+}
+
+function wizUseYaml() {
+  const yaml = document.getElementById('wiz-out')?.textContent || '';
+  if (!yaml) return;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelector('[data-page=import]').classList.add('active');
+  document.getElementById('page-import').classList.add('active');
+  populateCustomerSelects(['im-customer']);
+  document.getElementById('im-yaml').value = yaml;
+  document.getElementById('im-filename').value =
+    (wiz.flowName.replace(/[^a-zA-Z0-9_\-æøåÆØÅ]/g,'_') || 'flow') + '_v1-0.yaml';
+  closeYamlWizard();
+  showAlert('im-alert', `✓ YAML fra Flow Builder indsat: ${document.getElementById('im-filename').value}`, 'ok');
+}
+
+// ── YAML generator ────────────────────────────────────────────────────────────
+// Indentation rule for YAML list items:
+//   p(N, '- KEY:')  →  children of KEY must be at p(N+2, ...) because
+//   '- ' uses 2 chars before KEY, so KEY is at column N*2+2 and children
+//   must be indented beyond that (N*2+4 = level N+2).
+function _genYaml() {
+  const I = '  ';
+  const lines = [];
+  const p = (n, s) => lines.push(I.repeat(n) + s);
+  const nl = () => lines.push('');
+
+  // Collect & deduplicate variable declarations
+  const seen = new Set();
+  const flowVars = [], stateVars = [];
+  const addV = (vtype, name, extras) => {
+    if (!name || seen.has(name)) return;
+    seen.add(name);
+    (name.startsWith('Flow.') ? flowVars : stateVars).push({ vtype, name, ...extras });
+  };
+  wiz.dataTables.forEach(dt => {
+    addV('stringVariable', dt.resultVar, {});
+    if (dt.parseJson && dt.jsonVar) addV('jsonVariable', dt.jsonVar, {});
+    dt.fields.filter(f => f.varName).forEach(f => {
+      const vt = f.varType==='json'?'jsonVariable':f.varType==='integer'?'integerVariable':
+                 f.varType==='decimal'?'decimalVariable':f.varType==='boolean'?'booleanVariable':
+                 f.varType==='dateTime'?'dateTimeVariable':'stringVariable';
+      addV(vt, f.varName, { varType: f.varType });
+    });
+  });
+  wiz.dataActions.forEach(da => {
+    da.successOutputs.filter(o => o.use && o.varName).forEach(o => {
+      const vt = o.varType==='json'?'jsonVariable':o.varType==='integer'?'integerVariable':
+                 o.varType==='decimal'?'decimalVariable':o.varType==='boolean'?'booleanVariable':
+                 'stringVariable';
+      addV(vt, o.varName, { varType: o.varType });
+    });
+  });
+
+  const emitVar = (v, base) => {
+    p(base,   `- ${v.vtype}:`);
+    p(base+2, `name: ${v.name}`);
+    p(base+2, `initialValue:`);
+    p(base+3, `noValue: true`);
+    p(base+2, `isInput: false`);
+    p(base+2, `isOutput: false`);
+  };
+
+  // ── Flow type metadata ──────────────────────────────────────────────────────
+  // stateVarOk: true  → State. prefix is valid (kept as-is); false → remap to varRemap prefix
+  // inline:     null  → standard container (states/tasks/bots)
+  //             'startUpState'       → inqueue with single inline state object
+  //             'startUpTaskActions' → inqueue with flat inline actions list
+  const FLOW_META = {
+    // Initial Flows
+    workflow:            { cont:'states', item:'state', contName:'Default State', stateVarOk:true,  varRemap:null,   notFound:'endWorkflow', term:'endWorkflow',  hasRef:true,  inline:null },
+    inboundCall:         { cont:'tasks',  item:'task',  contName:'Default Task',  stateVarOk:false, varRemap:'Task', notFound:'disconnect',  term:'disconnect',   hasRef:true,  inline:null },
+    outboundCall:        { cont:'tasks',  item:'task',  contName:'Default Task',  stateVarOk:false, varRemap:'Task', notFound:'disconnect',  term:'disconnect',   hasRef:true,  inline:null },
+    inboundEmail:        { cont:'states', item:'state', contName:'Default State', stateVarOk:true,  varRemap:null,   notFound:'endState',    term:'transferToAcd',hasRef:true,  inline:null },
+    inboundShortMessage: { cont:'states', item:'state', contName:'Default State', stateVarOk:true,  varRemap:null,   notFound:'endState',    term:'disconnect',   hasRef:true,  inline:null },
+    inboundChat:         { cont:'states', item:'state', contName:'Default State', stateVarOk:true,  varRemap:null,   notFound:'endState',    term:'disconnect',   hasRef:true,  inline:null },
+    // Supporting Flows
+    botFlow:             { cont:'bots',   item:'bot',   contName:'Default Bot',   stateVarOk:false, varRemap:'Flow', notFound:'exitBotFlow', term:'exitBotFlow',  hasRef:true,  inline:null },
+    digitalBot:          { cont:'bots',   item:'bot',   contName:'Default Bot',   stateVarOk:false, varRemap:'Flow', notFound:'exitBot',     term:'exitBot',      hasRef:true,  inline:null },
+    voiceSurvey:         { cont:'bots',   item:'bot',   contName:'Default Bot',   stateVarOk:false, varRemap:'Flow', notFound:'endTask',     term:'endTask',      hasRef:true,  inline:null },
+    commonModule:        { cont:null,     item:null,    contName:null,            stateVarOk:false, varRemap:'Task', notFound:'endTask',     term:'endTask',      hasRef:false, inline:'startUpTaskActions' },
+    secureCall:          { cont:'tasks',  item:'task',  contName:'Default Task',  stateVarOk:false, varRemap:'Task', notFound:'disconnect',  term:'disconnect',   hasRef:true,  inline:null },
+    voicemail:           { cont:'tasks',  item:'task',  contName:'Default Task',  stateVarOk:false, varRemap:'Task', notFound:'disconnect',  term:'disconnect',   hasRef:true,  inline:null },
+    inqueueCall:         { cont:null,     item:null,    contName:null,            stateVarOk:false, varRemap:'Task', notFound:'disconnect',  term:'disconnect',   hasRef:false, inline:'startUpTaskActions' },
+    inqueueEmail:        { cont:null,     item:null,    contName:'Initial State', stateVarOk:true,  varRemap:null,   notFound:'endState',    term:'endState',     hasRef:false, inline:'startUpState' },
+    inqueueShortMessage: { cont:null,     item:null,    contName:'Initial State', stateVarOk:true,  varRemap:null,   notFound:'endState',    term:'endState',     hasRef:false, inline:'startUpState' },
+    // Post Interaction
+    surveyInvite:        { cont:'states', item:'state', contName:'Default State', stateVarOk:true,  varRemap:null,   notFound:'endState',    term:'endState',     hasRef:true,  inline:null },
+  };
+
+  const ft = FLOW_META[wiz.flowType] || FLOW_META.workflow;
+  const refId = ft.contName ? `${ft.contName}_1` : null;
+  const normVar = name => (!name || ft.stateVarOk || !name.startsWith('State.'))
+    ? name : (ft.varRemap || 'Flow') + '.' + name.slice(6);
+
+  // Variable placement by flow structure:
+  //   stateVarOk          → Flow.→flow level, State.→container (state/bot) level
+  //   bots                → all→flow level (everything remapped to Flow.)
+  //   startUpTaskActions  → Flow.→flow level, Task.(remapped)→startUpTaskVariables:
+  //   tasks (no stateVarOk) → Flow.→flow level, Task.(remapped)→task.variables:
+  let allFlowVars, allContainerVars, allInlineTaskVars = [];
+  if (ft.stateVarOk) {
+    allFlowVars      = flowVars;
+    allContainerVars = stateVars;
+  } else if (ft.cont === 'bots') {
+    allFlowVars      = [...flowVars, ...stateVars].map(v => ({ ...v, name: normVar(v.name) }));
+    allContainerVars = [];
+  } else if (ft.inline === 'startUpTaskActions') {
+    allFlowVars       = flowVars;
+    allContainerVars  = [];
+    allInlineTaskVars = stateVars.map(v => ({ ...v, name: normVar(v.name) }));
+  } else {
+    // task-based: inboundCall, outboundCall, secureCall, voicemail
+    allFlowVars      = flowVars;
+    allContainerVars = stateVars.map(v => ({ ...v, name: normVar(v.name) }));
+  }
+
+  // ── Root + header ───────────────────────────────────────────────────────────
+  p(0, `${wiz.flowType}:`);
+  p(1, `name: "${wiz.flowName}"`);
+  if (ft.hasRef) {
+    p(1, `startUpRef: "/${wiz.flowType}/${ft.cont}/${ft.item}[${refId}]"`);
+  }
+  p(1, `defaultLanguage: ${wiz.genesysLang}`);
+  p(1, `supportedLanguages:`);
+  p(2, `${wiz.genesysLang}:`);
+  p(3, `none: true`);
+
+  // Flow-level variables (for startUpState flows all vars go inside the inline state)
+  if (allFlowVars.length && ft.inline !== 'startUpState') {
+    nl();
+    p(1, 'variables:');
+    allFlowVars.forEach(v => emitVar(v, 2));
+  }
+
+  nl();
+  if (['inboundCall','inboundShortMessage'].includes(wiz.flowType)) {
+    if (wiz.hasInitialAudio && wiz.initialAudioTts) {
+      p(1,'initialAudio:'); p(2,`tts: "${wiz.initialAudioTts}"`); nl();
+    }
+  }
+
+  // ── Actions emitter — parameterised by indent 'a' (level of '- action:' items)
+  // All offsets are relative to 'a' so the same code works for all container styles.
+  const emitActions = a => {
+    wiz.dataTables.forEach(dt => {
+      if (!dt.tableName) return;
+      nl();
+      const nR = normVar(dt.resultVar);
+      const nJ = normVar(dt.jsonVar);
+      p(a,   `- dataTableLookup:`);
+      p(a+2, `name: Data Table Lookup ${dt.tableName}`);
+      p(a+2, `lookupValue:`);
+      dt.lookupType === 'var' ? p(a+3,`exp: ${dt.lookupValue}`) : p(a+3,`lit: ${dt.lookupValue}`);
+      p(a+2, `dataTable:`);
+      p(a+3, `${dt.tableName}:`);
+      p(a+4, `foundOutputs:`);
+      if (dt.isJsonTable !== false) {
+        p(a+5, `Value:`); p(a+6, `var: ${nR}`);
+      } else {
+        dt.fields.filter(f => f.key && f.varName).forEach(f => {
+          p(a+5, `${f.key}:`); p(a+6, `var: ${normVar(f.varName)}`);
+        });
+      }
+      p(a+4, `failureOutputs:`);
+      p(a+5, `errorType:`);    p(a+6, `noValue: true`);
+      p(a+5, `errorMessage:`); p(a+6, `noValue: true`);
+      p(a+2, `outputs:`);
+      p(a+3, `found:`);
+      p(a+4, `actions:`);
+
+      if (dt.isJsonTable !== false) {
+        if (dt.parseJson && dt.jsonVar) {
+          p(a+5, `- updateData:`);
+          p(a+7, `name: Parse JSON`);
+          p(a+7, `statements:`);
+          p(a+8, `- json:`);
+          p(a+10,`variable: ${nJ}`);
+          p(a+10,`value:`);
+          p(a+11,`exp: JsonParse(${nR})`);
+        }
+
+        const fields = dt.fields.filter(f => f.key && f.varName);
+        if (fields.length) {
+          p(a+5, `- updateData:`);
+          p(a+7, `name: Update data from ${dt.tableName}`);
+          p(a+7, `statements:`);
+          fields.forEach(f => {
+            const nV = normVar(f.varName);
+            const src = dt.parseJson && dt.jsonVar ? nJ : nR;
+            const exp =
+              f.varType==='splitstr' ? `split(ToString(GetJsonObjectProperty(${src},"${f.key}")),",")` :
+              f.varType==='integer'  ? `ToInt(GetJsonObjectProperty(${src},"${f.key}"))` :
+              f.varType==='decimal'  ? `ToDecimal(GetJsonObjectProperty(${src},"${f.key}"))` :
+              f.varType==='boolean'  ? `ToBool(GetJsonObjectProperty(${src},"${f.key}"))` :
+              f.varType==='json'     ? `GetJsonObjectProperty(${src},"${f.key}")` :
+              f.varType==='dateTime' ? `ToDate(ToString(GetJsonObjectProperty(${src},"${f.key}")))` :
+                                       `ToString(GetJsonObjectProperty(${src},"${f.key}"))`;
+            const st = f.varType==='integer'?'integer':f.varType==='decimal'?'decimal':
+                       f.varType==='boolean'?'boolean':f.varType==='json'?'json':'string';
+            p(a+8, `- ${st}:`);
+            p(a+10,`variable: ${nV}`);
+            p(a+10,`value:`);
+            p(a+11,`exp: ${exp}`);
+          });
+        }
+      }
+
+      p(a+3, `notFound:`);
+      p(a+4, `actions:`);
+      if (ft.notFound === 'endWorkflow') {
+        p(a+5,`- endWorkflow:`); p(a+7,`name: End - Not Found`); p(a+7,`exitReason:`); p(a+8,`noValue: true`);
+      } else {
+        p(a+5,`- ${ft.notFound}:`); p(a+7,`name: End - Not Found`);
+      }
+    });
+
+    // ── Data Actions ────────────────────────────────────────────────────────
+    wiz.dataActions.forEach(da => {
+      if (!da.actionName) return;
+      nl();
+      p(a,   `- callData:`);
+      p(a+2, `name: "Call ${da.actionName}"`);
+      p(a+2, `timeout:`);
+      p(a+3, `lit:`);
+      p(a+4, `minutes: ${da.timeout || 1}`);
+      p(a+2, `category:`);
+      p(a+3, `${da.category || 'Genesys Cloud Data Actions'}:`);
+      p(a+4, `dataAction:`);
+      p(a+5, `${da.actionName}:`);
+      if (da.inputs.length) {
+        p(a+6, `inputs:`);
+        da.inputs.forEach(inp => {
+          if (inp.valueType === 'none') return;
+          p(a+7, `${inp.name}:`);
+          if (inp.valueType === 'exp') p(a+8, `exp: ${inp.value || 'noValue: true'}`);
+          else p(a+8, `lit: "${inp.value}"`);
+        });
+      }
+      if (da.successOutputs.length) {
+        p(a+6, `successOutputs:`);
+        da.successOutputs.forEach(out => {
+          p(a+7, `${out.name}:`);
+          if (out.use && out.varName) p(a+8, `var: ${normVar(out.varName)}`);
+          else p(a+8, `noValue: true`);
+        });
+      }
+      if (da.failureOutputs && da.failureOutputs.length) {
+        p(a+6, `failureOutputs:`);
+        da.failureOutputs.forEach(fo => {
+          p(a+7, `${fo.name}:`); p(a+8, `noValue: true`);
+        });
+      }
+      p(a+2, `outputs:`);
+      p(a+3, `success:`);
+      p(a+4, `actions: []`);
+      p(a+3, `failure:`);
+      p(a+4, `actions:`);
+      p(a+5, `- ${ft.notFound}:`); p(a+7, `name: ${da.actionName} - Failure`);
+      p(a+3, `timeout:`);
+      p(a+4, `actions:`);
+      p(a+5, `- ${ft.notFound}:`); p(a+7, `name: ${da.actionName} - Timeout`);
+    });
+
+    // Terminal action
+    nl();
+    const tt  = wiz.transferType || 'disconnect';
+    const tq  = wiz.transferQueue   || '';
+    const tv  = wiz.transferValue   || '';  // user/number/group/flow value
+    const canTransfer = !['endWorkflow','endState','endTask','exitBotFlow','exitBot'].includes(ft.term);
+    // Helper: emit optional goodbye playAudio before disconnect/transfer
+    const emitGoodbye = () => {
+      if (wiz.hasDisconnect && wiz.disconnectTts) {
+        p(a,`- playAudio:`); p(a+2,`name: Goodbye`);
+        p(a+2,`audio:`); p(a+3,`tts: "${wiz.disconnectTts}"`);
+      }
+    };
+    if (ft.term === 'endWorkflow') {
+      p(a,`- endWorkflow:`); p(a+2,`name: End Workflow`); p(a+2,`exitReason:`); p(a+3,`noValue: true`);
+    } else if (ft.term === 'exitBotFlow') {
+      p(a,`- exitBotFlow:`); p(a+2,`name: Exit`);
+    } else if (ft.term === 'exitBot') {
+      p(a,`- exitBot:`); p(a+2,`name: Exit`);
+    } else if (ft.term === 'endState') {
+      p(a,`- endState:`); p(a+2,`name: End State`);
+    } else if (ft.term === 'endTask') {
+      p(a,`- endTask:`); p(a+2,`name: End Task`);
+    } else if (canTransfer && tt === 'acd') {
+      emitGoodbye();
+      p(a,`- transferToAcd:`); p(a+2,`name: Transfer to ACD`);
+      if (tq) { p(a+2,`targetQueue:`); p(a+3,`lit:`); p(a+4,`name: "${tq}"`); }
+    } else if (canTransfer && tt === 'user') {
+      emitGoodbye();
+      p(a,`- transferToUser:`); p(a+2,`name: Transfer to User`);
+      if (tv) { p(a+2,`targetUser:`); p(a+3,`lit:`); p(a+4,`name: "${tv}"`); }
+    } else if (canTransfer && tt === 'number') {
+      emitGoodbye();
+      p(a,`- transferToNumber:`); p(a+2,`name: Transfer to Number`);
+      if (tv) { p(a+2,`transferAddress:`); p(a+3,`lit: "${tv}"`); }
+    } else if (canTransfer && tt === 'group') {
+      emitGoodbye();
+      p(a,`- transferToGroup:`); p(a+2,`name: Transfer to Group`);
+      if (tv) { p(a+2,`targetGroup:`); p(a+3,`lit:`); p(a+4,`name: "${tv}"`); }
+    } else if (canTransfer && tt === 'flow') {
+      emitGoodbye();
+      p(a,`- transferToFlow:`); p(a+2,`name: Transfer to Flow`);
+      if (tv) { p(a+2,`targetFlow:`); p(a+3,`lit:`); p(a+4,`name: "${tv}"`); }
+    } else if (ft.term === 'transferToAcd') {
+      // inboundEmail default — always transfer
+      p(a,`- transferToAcd:`); p(a+2,`name: Transfer to ACD`);
+      if (tq) { p(a+2,`targetQueue:`); p(a+3,`lit:`); p(a+4,`name: "${tq}"`); }
+    } else {
+      // disconnect (default)
+      emitGoodbye();
+      p(a,`- disconnect:`); p(a+2,`name: Disconnect`);
+    }
+  };
+
+  // ── Emit container structure ─────────────────────────────────────────────────
+  if (ft.inline === 'startUpTaskActions') {
+    // commonModule/inqueueCall: flat action list under startUpTaskActions
+    p(1, `startUpTaskActions:`);
+    emitActions(2);
+    if (allInlineTaskVars.length) {
+      nl();
+      p(1, 'startUpTaskVariables:');
+      allInlineTaskVars.forEach(v => emitVar(v, 2));
+    }
+  } else if (ft.inline === 'startUpState') {
+    // inqueueEmail, inqueueShortMessage: single inline state object
+    p(1, `startUpState:`);
+    p(2, `name: ${ft.contName}`);
+    p(2, `refId: ${refId}`);
+    const stVars = [...allFlowVars, ...allContainerVars];
+    if (stVars.length) {
+      p(2, 'variables:');
+      stVars.forEach(v => emitVar(v, 3));
+    }
+    p(2, 'actions:');
+    emitActions(3);
+  } else {
+    // Standard: states / tasks / bots
+    p(1, `${ft.cont}:`);
+    p(2, `- ${ft.item}:`);
+    p(4, `name: ${ft.contName}`);
+    p(4, `refId: ${refId}`);
+    if (allContainerVars.length) {
+      p(4, 'variables:');
+      allContainerVars.forEach(v => emitVar(v, 5));
+    }
+    p(4, 'actions:');
+    emitActions(5);
+  }
+
+  return lines.join('\n');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "editor.tabSize": 2,
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "files.exclude": {
+    "node_modules": true,
+    "flows": true
+  },
+  "editor.rulers": [100],
+  "yaml.schemas": {
+    "https://json.schemastore.org/package.json": "package.json"
+  },
+  "terminal.integrated.cwd": "${workspaceFolder}"
+}

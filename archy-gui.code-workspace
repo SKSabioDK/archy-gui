@@ -1,0 +1,36 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "editor.tabSize": 2,
+    "editor.formatOnSave": true,
+    "files.exclude": {
+      "node_modules": true
+    },
+    "terminal.integrated.cwd": "${workspaceFolder}"
+  },
+  "extensions": {
+    "recommendations": [
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "redhat.vscode-yaml"
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "type": "node",
+        "request": "launch",
+        "name": "▶ Start Archy GUI Server",
+        "program": "${workspaceFolder}/server.js",
+        "console": "integratedTerminal",
+        "restart": true,
+        "skipFiles": ["<node_internals>/**"]
+      }
+    ]
+  }
+}
