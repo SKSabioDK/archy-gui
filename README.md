@@ -1,10 +1,19 @@
-# Archy GUI — Flow Manager · v1.3.5
+# Archy GUI — Flow Manager · v1.3.6
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.3.6
+---
+**🇩🇰 Dansk**
+- **Versionstjek** — Serveren henter `package.json` fra GitHub ved opstart (og én gang i døgnet). Hvis der er en nyere version, vises en gul banner øverst i indholdsområdet med link til GitHub Releases. Banneret oversættes til valgt sprog og forsvinder ved klik på ✕.
+
+---
+**🇬🇧 English**
+- **Version check** — On startup (and once every 24 hours) the server fetches `package.json` from GitHub. If a newer version exists, a yellow banner appears at the top of the main area with a link to GitHub Releases. The banner is translated to the selected language and can be dismissed with ✕.
 
 ### v1.3.5
 ---

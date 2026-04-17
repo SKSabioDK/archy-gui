@@ -112,6 +112,23 @@
   .chip-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border2); flex-shrink: 0; }
   .chip-dot.online { background: var(--green); }
 
+  /* Update banner */
+  #update-banner {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(241,196,15,.1);
+    border-bottom: 1px solid rgba(241,196,15,.3);
+    padding: 8px 24px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12px; color: var(--yellow); font-family: var(--mono);
+  }
+  #update-banner a { color: var(--yellow); font-weight: 700; text-decoration: none; }
+  #update-banner a:hover { text-decoration: underline; }
+  #update-banner .banner-dismiss {
+    margin-left: auto; background: none; border: none;
+    color: var(--yellow); cursor: pointer; font-size: 15px; padding: 0 2px; opacity: .6;
+  }
+  #update-banner .banner-dismiss:hover { opacity: 1; }
+
   /* Main area */
   .page { display: none; padding: 28px 32px; }
   .page.active { display: block; }
@@ -332,11 +349,19 @@
     <div id="sidebarCustomers"></div>
 
     <div class="spacer"></div>
-    <div class="version">v1.3.5 · Archy GUI</div>
+    <div class="version">v1.3.6 · Archy GUI</div>
   </div>
 
   <!-- Main -->
   <div class="main">
+
+    <!-- Update banner (shown when a newer version is available on GitHub) -->
+    <div id="update-banner" style="display:none">
+      <span>🔔</span>
+      <span id="update-banner-txt"></span>
+      <a id="update-banner-link" href="https://github.com/skndkprivat/ArchyGUI/releases" target="_blank" rel="noopener"></a>
+      <button class="banner-dismiss" onclick="document.getElementById('update-banner').style.display='none'" title="Dismiss">✕</button>
+    </div>
 
     <!-- CUSTOMERS PAGE -->
     <div class="page active" id="page-customers">
@@ -849,6 +874,7 @@ const LANGS = {
     err_label:'Fejl', confirm_clear_log:'Ryd hele loggen i hukommelsen?',
     key_column_hint:'Nøgle-kolonne:', key_label:'🔑 Nøgle:',
     btn_choose_file:'📂 Vælg fil', no_file_chosen:'Ingen fil valgt',
+    update_available:'Ny version tilgængelig:', update_see_gh:'Se på GitHub',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -965,6 +991,7 @@ const LANGS = {
     err_label:'Error', confirm_clear_log:'Clear the entire log from memory?',
     key_column_hint:'Key column:', key_label:'🔑 Key:',
     btn_choose_file:'📂 Choose file', no_file_chosen:'No file chosen',
+    update_available:'New version available:', update_see_gh:'View on GitHub',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -1081,6 +1108,7 @@ const LANGS = {
     err_label:'Erreur', confirm_clear_log:'Vider tout le journal de la mémoire ?',
     key_column_hint:'Colonne clé :', key_label:'🔑 Clé :',
     btn_choose_file:'📂 Choisir un fichier', no_file_chosen:'Aucun fichier sélectionné',
+    update_available:'Nouvelle version disponible :', update_see_gh:'Voir sur GitHub',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -1197,6 +1225,7 @@ const LANGS = {
     err_label:'Fout', confirm_clear_log:'Wilt u het volledige logboek uit het geheugen wissen?',
     key_column_hint:'Sleutelkolom:', key_label:'🔑 Sleutel:',
     btn_choose_file:'📂 Bestand kiezen', no_file_chosen:'Geen bestand gekozen',
+    update_available:'Nieuwe versie beschikbaar:', update_see_gh:'Bekijk op GitHub',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -1313,6 +1342,7 @@ const LANGS = {
     err_label:'Error', confirm_clear_log:'¿Borrar todo el registro de la memoria?',
     key_column_hint:'Columna clave:', key_label:'🔑 Clave:',
     btn_choose_file:'📂 Elegir archivo', no_file_chosen:'Ningún archivo seleccionado',
+    update_available:'Nueva versión disponible:', update_see_gh:'Ver en GitHub',
   }
 };
 
@@ -1353,6 +1383,16 @@ function setLang(lang) {
   // Refresh syslog count if visible
   const cnt = document.getElementById('syslog-count');
   if (cnt && cnt.textContent) loadLog();
+  // Re-translate update banner if it is visible
+  const banner = document.getElementById('update-banner');
+  if (banner && banner.style.display !== 'none') {
+    const txtEl  = document.getElementById('update-banner-txt');
+    const linkEl = document.getElementById('update-banner-link');
+    const ver    = banner.dataset.latest || '';
+    const cur    = banner.dataset.current || '';
+    if (ver) txtEl.textContent  = `${t('update_available')} v${ver} (v${cur})  —  `;
+    linkEl.textContent = t('update_see_gh');
+  }
 }
 
 function applyStoredLang() {
@@ -1382,12 +1422,28 @@ window.onload = async () => {
   applyStoredLang();
   await refreshCustomers();
   checkArchy();
+  checkVersion();
 };
 
 async function checkArchy() {
   // We can only infer archy availability server-side; just show ready
   document.getElementById('archyStatusTxt').textContent = t('archy_ready');
   document.getElementById('archyStatus').classList.add('ok');
+}
+
+async function checkVersion() {
+  try {
+    const data = await fetch('/api/version').then(r => r.json());
+    if (!data.updateAvailable) return;
+    const banner  = document.getElementById('update-banner');
+    const txtEl   = document.getElementById('update-banner-txt');
+    const linkEl  = document.getElementById('update-banner-link');
+    banner.dataset.latest  = data.latest;
+    banner.dataset.current = data.current;
+    txtEl.textContent  = `${t('update_available')} v${data.latest} (v${data.current})  —  `;
+    linkEl.textContent = t('update_see_gh');
+    banner.style.display = 'flex';
+  } catch (_) { /* silently ignore — version check is optional */ }
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────

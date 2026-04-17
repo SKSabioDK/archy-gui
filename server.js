@@ -6,6 +6,8 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 
+const CURRENT_VERSION = require('./package.json').version;
+
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -24,6 +26,32 @@ const pkceStore  = {}; // { [customerId]: { verifier } }  — temporary during l
 function base64url(buf) {
   return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
+
+// ── Version check ────────────────────────────────────────────────────────────
+
+let versionInfo = { current: CURRENT_VERSION, latest: null, updateAvailable: false, checkedAt: null };
+
+async function checkForUpdate() {
+  try {
+    const r = await axios.get(
+      'https://raw.githubusercontent.com/skndkprivat/ArchyGUI/main/package.json',
+      { timeout: 7000 }
+    );
+    const latest = r.data.version;
+    const updateAvailable = latest !== CURRENT_VERSION;
+    versionInfo = { current: CURRENT_VERSION, latest, updateAvailable, checkedAt: new Date().toISOString() };
+    if (updateAvailable) {
+      addLog('WARN', `Update available: v${latest} (running v${CURRENT_VERSION})`, null, 'SYSTEM');
+    } else {
+      addLog('INFO', `Version check: up to date (v${CURRENT_VERSION})`, null, 'SYSTEM');
+    }
+  } catch (e) {
+    versionInfo = { current: CURRENT_VERSION, latest: null, updateAvailable: false, checkedAt: new Date().toISOString(), error: e.message };
+    addLog('WARN', `Version check failed: ${e.message}`, null, 'SYSTEM');
+  }
+}
+
+app.get('/api/version', (req, res) => res.json(versionInfo));
 
 // ── System Log ────────────────────────────────────────────────────────────────
 
@@ -830,4 +858,7 @@ const PORT = process.env.PORT || 3737;
 app.listen(PORT, () => {
   console.log(`Archy GUI running on http://localhost:${PORT}`);
   addLog('INFO', `Archy GUI started on port ${PORT}`, null, 'SYSTEM');
+  // Check for updates on startup, then once every 24 hours
+  checkForUpdate();
+  setInterval(checkForUpdate, 24 * 60 * 60 * 1000);
 });
