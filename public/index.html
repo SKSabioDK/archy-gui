@@ -785,6 +785,8 @@ const LANGS = {
     err_fields_required:'Alle felter er påkrævet', msg_customer_added:'Kunde tilføjet:',
     nav_readme:'README', page_readme_sub:'Dokumentation & hjælp', loading_readme:'Henter README…',
     btn_yaml_builder:'📝 Flow Builder',
+    opt_select_customer:'— Vælg kunde —',
+    err_select_customer_flow:'Vælg kunde og flow', err_select_customer_yaml:'Vælg kunde og indsæt YAML',
     wiz_step1:'1 · Flow info', wiz_step2:'2 · Datatabeller', wiz_step3:'3 · Ekstra', wiz_step4:'4 · Preview',
     wiz_back:'← Tilbage', wiz_next:'Næste →', wiz_use_yaml:'✓ Brug YAML',
     wiz_s1_customer:'Kunde / Org', wiz_s1_cust_hint:'(bruges til at hente datatabeller, køer og prompts)',
@@ -884,6 +886,8 @@ const LANGS = {
     err_fields_required:'All fields are required', msg_customer_added:'Customer added:',
     nav_readme:'README', page_readme_sub:'Documentation & help', loading_readme:'Loading README…',
     btn_yaml_builder:'📝 Flow Builder',
+    opt_select_customer:'— Select customer —',
+    err_select_customer_flow:'Select customer and flow', err_select_customer_yaml:'Select customer and paste YAML',
     wiz_step1:'1 · Flow info', wiz_step2:'2 · Data & Actions', wiz_step3:'3 · Extra', wiz_step4:'4 · Preview',
     wiz_back:'← Back', wiz_next:'Next →', wiz_use_yaml:'✓ Use YAML',
     wiz_s1_customer:'Customer / Org', wiz_s1_cust_hint:'(used to fetch data tables, queues and prompts)',
@@ -983,6 +987,8 @@ const LANGS = {
     err_fields_required:'Tous les champs sont requis', msg_customer_added:'Client ajouté :',
     nav_readme:'README', page_readme_sub:'Documentation & aide', loading_readme:'Chargement du README…',
     btn_yaml_builder:'📝 Flow Builder',
+    opt_select_customer:'— Sélectionner un client —',
+    err_select_customer_flow:'Sélectionnez un client et un flow', err_select_customer_yaml:'Sélectionnez un client et collez le YAML',
     wiz_step1:'1 · Flow info', wiz_step2:'2 · Données & Actions', wiz_step3:'3 · Extra', wiz_step4:'4 · Aperçu',
     wiz_back:'← Retour', wiz_next:'Suivant →', wiz_use_yaml:'✓ Utiliser YAML',
     wiz_s1_customer:'Client / Org', wiz_s1_cust_hint:'(pour récupérer tables, files et prompts)',
@@ -1082,6 +1088,8 @@ const LANGS = {
     err_fields_required:'Alle velden zijn verplicht', msg_customer_added:'Klant toegevoegd:',
     nav_readme:'README', page_readme_sub:'Documentatie & hulp', loading_readme:'README laden…',
     btn_yaml_builder:'📝 Flow Builder',
+    opt_select_customer:'— Klant selecteren —',
+    err_select_customer_flow:'Klant en flow selecteren', err_select_customer_yaml:'Klant selecteren en YAML invoegen',
     wiz_step1:'1 · Flow info', wiz_step2:'2 · Gegevens & Acties', wiz_step3:'3 · Extra', wiz_step4:'4 · Preview',
     wiz_back:'← Terug', wiz_next:'Volgende →', wiz_use_yaml:'✓ YAML gebruiken',
     wiz_s1_customer:'Klant / Org', wiz_s1_cust_hint:'(voor ophalen datatabellen, wachtrijen en prompts)',
@@ -1181,6 +1189,8 @@ const LANGS = {
     err_fields_required:'Todos los campos son obligatorios', msg_customer_added:'Cliente añadido:',
     nav_readme:'README', page_readme_sub:'Documentación y ayuda', loading_readme:'Cargando README…',
     btn_yaml_builder:'📝 Flow Builder',
+    opt_select_customer:'— Seleccionar cliente —',
+    err_select_customer_flow:'Selecciona cliente y flow', err_select_customer_yaml:'Selecciona cliente e inserta YAML',
     wiz_step1:'1 · Flow info', wiz_step2:'2 · Datos & Acciones', wiz_step3:'3 · Extra', wiz_step4:'4 · Vista previa',
     wiz_back:'← Atrás', wiz_next:'Siguiente →', wiz_use_yaml:'✓ Usar YAML',
     wiz_s1_customer:'Cliente / Org', wiz_s1_cust_hint:'(para obtener tablas de datos, colas y prompts)',
@@ -1482,7 +1492,7 @@ function populateCustomerSelects(ids) {
     const el = document.getElementById(id);
     if (!el) return;
     const cur = el.value;
-    el.innerHTML = '<option value="">— Vælg kunde —</option>' +
+    el.innerHTML = `<option value="">${t('opt_select_customer')}</option>` +
       customers.map(c => `<option value="${c.id}">${c.name} (${c.region})</option>`).join('');
     if (cur) el.value = cur;
   });
@@ -1703,7 +1713,7 @@ async function doExport() {
   const flowName = document.getElementById('ex-name').value.trim();
   const flowType = document.getElementById('ex-type').value;
   showAlert('ex-alert', '');
-  if (!customerId || !flowName) return showAlert('ex-alert', 'Vælg kunde og flow', 'err');
+  if (!customerId || !flowName) return showAlert('ex-alert', t('err_select_customer_flow'), 'err');
   showAlert('ex-alert', '<span class="spin"></span> Eksporterer via Archy…', 'info');
   document.getElementById('ex-result').style.display = 'none';
 
@@ -1744,7 +1754,7 @@ async function cancelExportAll() {
 
 async function doExportAll() {
   const customerId = document.getElementById('ex-customer').value;
-  if (!customerId) return showAlert('ex-alert', 'Vælg en kunde først', 'err');
+  if (!customerId) return showAlert('ex-alert', t('err_select_customer_flow'), 'err');
 
   const progressBox = document.getElementById('ex-all-progress');
   const logBox      = document.getElementById('ex-all-log');
@@ -1858,7 +1868,7 @@ async function doImport() {
   const fileName = document.getElementById('im-filename').value.trim() || 'flow.yaml';
   const action = document.getElementById('im-action').value;
   showAlert('im-alert', '');
-  if (!customerId || !yamlContent) return showAlert('im-alert', 'Vælg kunde og indsæt YAML', 'err');
+  if (!customerId || !yamlContent) return showAlert('im-alert', t('err_select_customer_yaml'), 'err');
   showAlert('im-alert', '<span class="spin"></span> Importerer…', 'info');
 
   const res = await fetch('/api/import', {
