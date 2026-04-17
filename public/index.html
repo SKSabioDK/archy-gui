@@ -332,7 +332,7 @@
     <div id="sidebarCustomers"></div>
 
     <div class="spacer"></div>
-    <div class="version">v1.3.3 · Archy GUI</div>
+    <div class="version">v1.3.4 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -711,14 +711,14 @@
       <button onclick="closeYamlWizard()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;line-height:1;padding:2px 6px">✕</button>
     </div>
     <div class="wiz-steps">
-      <div class="wiz-si active" id="wiz-si-1">1 · Flow info</div>
-      <div class="wiz-si" id="wiz-si-2">2 · Datatabeller</div>
-      <div class="wiz-si" id="wiz-si-3">3 · Ekstra</div>
-      <div class="wiz-si" id="wiz-si-4">4 · Preview</div>
+      <div class="wiz-si active" id="wiz-si-1" data-i18n="wiz_step1">1 · Flow info</div>
+      <div class="wiz-si" id="wiz-si-2" data-i18n="wiz_step2">2 · Datatabeller</div>
+      <div class="wiz-si" id="wiz-si-3" data-i18n="wiz_step3">3 · Ekstra</div>
+      <div class="wiz-si" id="wiz-si-4" data-i18n="wiz_step4">4 · Preview</div>
     </div>
     <div class="wiz-body" id="wiz-body"></div>
     <div class="wiz-footer">
-      <button class="btn btn-secondary" id="wiz-back" onclick="wizBack()">← Tilbage</button>
+      <button class="btn btn-secondary" id="wiz-back" onclick="wizBack()" data-i18n="wiz_back">← Tilbage</button>
       <button class="btn btn-primary"   id="wiz-next" onclick="wizNext()">Næste →</button>
     </div>
   </div>
@@ -785,6 +785,51 @@ const LANGS = {
     err_fields_required:'Alle felter er påkrævet', msg_customer_added:'Kunde tilføjet:',
     nav_readme:'README', page_readme_sub:'Dokumentation & hjælp', loading_readme:'Henter README…',
     btn_yaml_builder:'📝 Flow Builder',
+    wiz_step1:'1 · Flow info', wiz_step2:'2 · Datatabeller', wiz_step3:'3 · Ekstra', wiz_step4:'4 · Preview',
+    wiz_back:'← Tilbage', wiz_next:'Næste →', wiz_use_yaml:'✓ Brug YAML',
+    wiz_s1_customer:'Kunde / Org', wiz_s1_cust_hint:'(bruges til at hente datatabeller, køer og prompts)',
+    wiz_s1_cust_ph:'— Vælg kunde (til datatabeller/køer/prompts) —',
+    wiz_s1_flowtype:'Flow type *', wiz_s1_lang:'Sprog i flow (defaultLanguage)', wiz_s1_flowname:'Flow navn *',
+    wiz_s1_tip:'💡 Vælg en kunde øverst — datatabeller, køer og prompts hentes automatisk til brug i trin 2 og 3.',
+    wiz_s2_desc:'Konfigurér lookups for', wiz_add_table:'+ Datatabel', wiz_add_action:'⚡ Data Action',
+    wiz_dt_title:'Datatabel', wiz_remove:'✕ Fjern',
+    wiz_dt_name:'Tabel navn *', wiz_dt_resultvar:'Resultat-variabel (streng)',
+    wiz_dt_lookuptype:'Lookup type', wiz_dt_lit:'Literal (fast tekst)', wiz_dt_var:'Variabel',
+    wiz_dt_lookupval:'Lookup værdi', wiz_dt_json_cb:'JSON tabel (Value-kolonne indeholder JSON-streng)',
+    wiz_dt_parsejson:'Parse resultat som JSON (JsonParse)', wiz_dt_jsonvar:'JSON-variabel:',
+    wiz_dt_cols_hdr:'KOLONNER AT UDTRÆKKE', wiz_dt_json_hdr:'JSON FELTER AT UDTRÆKKE',
+    wiz_add_field:'+ Tilføj felt',
+    wiz_dt_json_hint:'💡 JSON tabel — Value-kolonnen indeholder en JSON-streng. Tilføj nøgler at udtrække (f.eks. Random, Interval). Aktivér "Parse JSON" for at bruge GetJsonObjectProperty.',
+    wiz_dt_empty:'Ingen datatabeller. Klik "+ Datatabel" for at tilføje en.',
+    wiz_dt_no_fields_json:'Ingen JSON-felter — klik "+ Tilføj felt" for at tilføje nøgler.',
+    wiz_dt_no_fields:'Ingen felter — klik "+ Tilføj felt".',
+    wiz_dt_jsonkey:'JSON-nøgle', wiz_dt_column:'Kolonne', wiz_dt_varname:'Variabel navn', wiz_dt_type:'Type',
+    wiz_da_title:'Data Action', wiz_da_name:'Action navn *',
+    wiz_da_search_ph:'Skriv for at søge data actions...',
+    wiz_da_timeout:'Timeout (minutter)', wiz_da_integration:'Integration:',
+    wiz_da_inputs_hdr:'INPUT PARAMETRE', wiz_da_param:'Parameter',
+    wiz_da_none:'— Ingen —', wiz_da_value:'Værdi',
+    wiz_da_outputs_hdr:'OUTPUT → VARIABLER (sæt flueben for at gemme)',
+    wiz_da_outparam:'Output parameter', wiz_da_schema_loading:'Henter schema for',
+    wiz_s3_initialaudio:'INITIAL AUDIO (velkomstbesked)',
+    wiz_s3_initial_cb:'Tilføj velkomst-lyd (playAudio) i starten af flowet',
+    wiz_s3_audio_type:'Lydtype:', wiz_tts:'TTS', wiz_prompt:'Prompt',
+    wiz_s3_tts:'TTS tekst', wiz_prompt_name:'Prompt navn',
+    wiz_prompt_search_ph:'Skriv for at søge prompts...',
+    wiz_s3_endtransfer:'AFSLUTNING / TRANSFER', wiz_s3_type:'Type',
+    wiz_s3_queuename:'Kø navn', wiz_s3_user:'Bruger', wiz_s3_group:'Gruppe',
+    wiz_s3_flowname:'Flow navn', wiz_s3_phone:'Telefonnummer',
+    wiz_s3_goodbye_cb:'Tilføj afslutningslyd (playAudio) inden afslutning/transfer',
+    wiz_s3_queues_ph:'Skriv for at søge køer...',
+    wiz_s3_users_ph:'Skriv for at søge brugere...',
+    wiz_s3_groups_ph:'Skriv for at søge grupper...',
+    wiz_s3_flows_ph:'Skriv for at søge flows...',
+    wiz_s3_same_type:'Søger kun {type}-flows (samme type som dette flow)',
+    wiz_s3_no_config:'Ingen ekstra konfiguration for',
+    wiz_s3_click_next:'Klik Næste for at se det genererede YAML.',
+    wiz_s4_desc:'Gennemse YAML — klik ✓ Brug YAML for at sende til Import-siden.',
+    wiz_copy:'📋 Kopiér', wiz_copied:'✓ Kopieret!',
+    wiz_use_yaml_success:'✓ YAML fra Flow Builder indsat:',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -839,6 +884,51 @@ const LANGS = {
     err_fields_required:'All fields are required', msg_customer_added:'Customer added:',
     nav_readme:'README', page_readme_sub:'Documentation & help', loading_readme:'Loading README…',
     btn_yaml_builder:'📝 Flow Builder',
+    wiz_step1:'1 · Flow info', wiz_step2:'2 · Data & Actions', wiz_step3:'3 · Extra', wiz_step4:'4 · Preview',
+    wiz_back:'← Back', wiz_next:'Next →', wiz_use_yaml:'✓ Use YAML',
+    wiz_s1_customer:'Customer / Org', wiz_s1_cust_hint:'(used to fetch data tables, queues and prompts)',
+    wiz_s1_cust_ph:'— Select customer (for data tables/queues/prompts) —',
+    wiz_s1_flowtype:'Flow type *', wiz_s1_lang:'Flow language (defaultLanguage)', wiz_s1_flowname:'Flow name *',
+    wiz_s1_tip:'💡 Select a customer above — data tables, queues and prompts will be fetched automatically for steps 2 and 3.',
+    wiz_s2_desc:'Configure lookups for', wiz_add_table:'+ Data Table', wiz_add_action:'⚡ Data Action',
+    wiz_dt_title:'Data Table', wiz_remove:'✕ Remove',
+    wiz_dt_name:'Table name *', wiz_dt_resultvar:'Result variable (string)',
+    wiz_dt_lookuptype:'Lookup type', wiz_dt_lit:'Literal (fixed text)', wiz_dt_var:'Variable',
+    wiz_dt_lookupval:'Lookup value', wiz_dt_json_cb:'JSON table (Value column contains JSON string)',
+    wiz_dt_parsejson:'Parse result as JSON (JsonParse)', wiz_dt_jsonvar:'JSON variable:',
+    wiz_dt_cols_hdr:'COLUMNS TO EXTRACT', wiz_dt_json_hdr:'JSON FIELDS TO EXTRACT',
+    wiz_add_field:'+ Add field',
+    wiz_dt_json_hint:'💡 JSON table — the Value column contains a JSON string. Add the keys you want to extract (e.g. Random, Interval). Enable "Parse JSON" to use GetJsonObjectProperty.',
+    wiz_dt_empty:'No data tables. Click "+ Data Table" to add one.',
+    wiz_dt_no_fields_json:'No JSON fields — click "+ Add field" to add keys to extract.',
+    wiz_dt_no_fields:'No fields — click "+ Add field".',
+    wiz_dt_jsonkey:'JSON key', wiz_dt_column:'Column', wiz_dt_varname:'Variable name', wiz_dt_type:'Type',
+    wiz_da_title:'Data Action', wiz_da_name:'Action name *',
+    wiz_da_search_ph:'Type to search data actions...',
+    wiz_da_timeout:'Timeout (minutes)', wiz_da_integration:'Integration:',
+    wiz_da_inputs_hdr:'INPUT PARAMETERS', wiz_da_param:'Parameter',
+    wiz_da_none:'— None —', wiz_da_value:'Value',
+    wiz_da_outputs_hdr:'OUTPUT → VARIABLES (check to save)',
+    wiz_da_outparam:'Output parameter', wiz_da_schema_loading:'Fetching schema for',
+    wiz_s3_initialaudio:'INITIAL AUDIO (greeting)',
+    wiz_s3_initial_cb:'Add welcome audio (playAudio) at the start of the flow',
+    wiz_s3_audio_type:'Audio type:', wiz_tts:'TTS', wiz_prompt:'Prompt',
+    wiz_s3_tts:'TTS text', wiz_prompt_name:'Prompt name',
+    wiz_prompt_search_ph:'Type to search prompts...',
+    wiz_s3_endtransfer:'END / TRANSFER', wiz_s3_type:'Type',
+    wiz_s3_queuename:'Queue name', wiz_s3_user:'User', wiz_s3_group:'Group',
+    wiz_s3_flowname:'Flow name', wiz_s3_phone:'Phone number',
+    wiz_s3_goodbye_cb:'Add goodbye audio (playAudio) before end/transfer',
+    wiz_s3_queues_ph:'Type to search queues...',
+    wiz_s3_users_ph:'Type to search users...',
+    wiz_s3_groups_ph:'Type to search groups...',
+    wiz_s3_flows_ph:'Type to search flows...',
+    wiz_s3_same_type:'Searching only {type} flows (same type as this flow)',
+    wiz_s3_no_config:'No extra configuration for',
+    wiz_s3_click_next:'Click Next to see the generated YAML.',
+    wiz_s4_desc:'Review YAML — click ✓ Use YAML to send to the Import page.',
+    wiz_copy:'📋 Copy', wiz_copied:'✓ Copied!',
+    wiz_use_yaml_success:'✓ YAML from Flow Builder inserted:',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -893,6 +983,51 @@ const LANGS = {
     err_fields_required:'Tous les champs sont requis', msg_customer_added:'Client ajouté :',
     nav_readme:'README', page_readme_sub:'Documentation & aide', loading_readme:'Chargement du README…',
     btn_yaml_builder:'📝 Flow Builder',
+    wiz_step1:'1 · Flow info', wiz_step2:'2 · Données & Actions', wiz_step3:'3 · Extra', wiz_step4:'4 · Aperçu',
+    wiz_back:'← Retour', wiz_next:'Suivant →', wiz_use_yaml:'✓ Utiliser YAML',
+    wiz_s1_customer:'Client / Org', wiz_s1_cust_hint:'(pour récupérer tables, files et prompts)',
+    wiz_s1_cust_ph:'— Sélectionner un client (tables/files/prompts) —',
+    wiz_s1_flowtype:'Type de flow *', wiz_s1_lang:'Langue du flow (defaultLanguage)', wiz_s1_flowname:'Nom du flow *',
+    wiz_s1_tip:"💡 Sélectionnez un client ci-dessus — les tables, files et prompts seront récupérés automatiquement.",
+    wiz_s2_desc:'Configurer les lookups pour', wiz_add_table:'+ Table de données', wiz_add_action:'⚡ Data Action',
+    wiz_dt_title:'Table de données', wiz_remove:'✕ Supprimer',
+    wiz_dt_name:'Nom de la table *', wiz_dt_resultvar:'Variable résultat (chaîne)',
+    wiz_dt_lookuptype:'Type de lookup', wiz_dt_lit:'Littéral (texte fixe)', wiz_dt_var:'Variable',
+    wiz_dt_lookupval:'Valeur de lookup', wiz_dt_json_cb:'Table JSON (colonne Value contient une chaîne JSON)',
+    wiz_dt_parsejson:'Parser le résultat en JSON (JsonParse)', wiz_dt_jsonvar:'Variable JSON :',
+    wiz_dt_cols_hdr:'COLONNES À EXTRAIRE', wiz_dt_json_hdr:'CHAMPS JSON À EXTRAIRE',
+    wiz_add_field:'+ Ajouter un champ',
+    wiz_dt_json_hint:"💡 Table JSON — la colonne Value contient une chaîne JSON. Ajoutez les clés à extraire. Activez « Parser JSON » pour utiliser GetJsonObjectProperty.",
+    wiz_dt_empty:'Aucune table. Cliquez sur « + Table de données ».',
+    wiz_dt_no_fields_json:"Aucun champ JSON — cliquez sur « + Ajouter un champ ».",
+    wiz_dt_no_fields:"Aucun champ — cliquez sur « + Ajouter un champ ».",
+    wiz_dt_jsonkey:'Clé JSON', wiz_dt_column:'Colonne', wiz_dt_varname:'Nom de variable', wiz_dt_type:'Type',
+    wiz_da_title:'Data Action', wiz_da_name:"Nom de l'action *",
+    wiz_da_search_ph:'Tapez pour rechercher des actions...',
+    wiz_da_timeout:"Délai d'attente (minutes)", wiz_da_integration:'Intégration :',
+    wiz_da_inputs_hdr:"PARAMÈTRES D'ENTRÉE", wiz_da_param:'Paramètre',
+    wiz_da_none:'— Aucun —', wiz_da_value:'Valeur',
+    wiz_da_outputs_hdr:'SORTIE → VARIABLES (cocher pour enregistrer)',
+    wiz_da_outparam:'Paramètre de sortie', wiz_da_schema_loading:'Récupération du schéma pour',
+    wiz_s3_initialaudio:"AUDIO INITIAL (message d'accueil)",
+    wiz_s3_initial_cb:'Ajouter un audio de bienvenue (playAudio) au début du flow',
+    wiz_s3_audio_type:'Type audio :', wiz_tts:'TTS', wiz_prompt:'Prompt',
+    wiz_s3_tts:'Texte TTS', wiz_prompt_name:'Nom du prompt',
+    wiz_prompt_search_ph:'Tapez pour rechercher des prompts...',
+    wiz_s3_endtransfer:'FIN / TRANSFERT', wiz_s3_type:'Type',
+    wiz_s3_queuename:'Nom de la file', wiz_s3_user:'Utilisateur', wiz_s3_group:'Groupe',
+    wiz_s3_flowname:'Nom du flow', wiz_s3_phone:'Numéro de téléphone',
+    wiz_s3_goodbye_cb:'Ajouter un audio de fin (playAudio) avant la fin/transfert',
+    wiz_s3_queues_ph:'Tapez pour rechercher des files...',
+    wiz_s3_users_ph:'Tapez pour rechercher des utilisateurs...',
+    wiz_s3_groups_ph:'Tapez pour rechercher des groupes...',
+    wiz_s3_flows_ph:'Tapez pour rechercher des flows...',
+    wiz_s3_same_type:'Recherche uniquement les flows de type {type}',
+    wiz_s3_no_config:'Aucune configuration supplémentaire pour',
+    wiz_s3_click_next:'Cliquez sur Suivant pour voir le YAML.',
+    wiz_s4_desc:'Vérifiez le YAML — cliquez sur ✓ Utiliser YAML pour envoyer à la page Import.',
+    wiz_copy:'📋 Copier', wiz_copied:'✓ Copié !',
+    wiz_use_yaml_success:'✓ YAML du Flow Builder inséré :',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -947,6 +1082,51 @@ const LANGS = {
     err_fields_required:'Alle velden zijn verplicht', msg_customer_added:'Klant toegevoegd:',
     nav_readme:'README', page_readme_sub:'Documentatie & hulp', loading_readme:'README laden…',
     btn_yaml_builder:'📝 Flow Builder',
+    wiz_step1:'1 · Flow info', wiz_step2:'2 · Gegevens & Acties', wiz_step3:'3 · Extra', wiz_step4:'4 · Preview',
+    wiz_back:'← Terug', wiz_next:'Volgende →', wiz_use_yaml:'✓ YAML gebruiken',
+    wiz_s1_customer:'Klant / Org', wiz_s1_cust_hint:'(voor ophalen datatabellen, wachtrijen en prompts)',
+    wiz_s1_cust_ph:'— Klant selecteren (datatabellen/wachtrijen/prompts) —',
+    wiz_s1_flowtype:'Flow type *', wiz_s1_lang:'Taal in flow (defaultLanguage)', wiz_s1_flowname:'Flow naam *',
+    wiz_s1_tip:'💡 Selecteer een klant hierboven — datatabellen, wachtrijen en prompts worden automatisch opgehaald.',
+    wiz_s2_desc:'Lookups configureren voor', wiz_add_table:'+ Datatabel', wiz_add_action:'⚡ Data Action',
+    wiz_dt_title:'Datatabel', wiz_remove:'✕ Verwijderen',
+    wiz_dt_name:'Tabelnaam *', wiz_dt_resultvar:'Resultaatvariabele (tekst)',
+    wiz_dt_lookuptype:'Lookup type', wiz_dt_lit:'Literal (vaste tekst)', wiz_dt_var:'Variabele',
+    wiz_dt_lookupval:'Lookup waarde', wiz_dt_json_cb:'JSON-tabel (Value-kolom bevat JSON-tekenreeks)',
+    wiz_dt_parsejson:'Resultaat als JSON verwerken (JsonParse)', wiz_dt_jsonvar:'JSON-variabele:',
+    wiz_dt_cols_hdr:'TE EXTRAHEREN KOLOMMEN', wiz_dt_json_hdr:'TE EXTRAHEREN JSON-VELDEN',
+    wiz_add_field:'+ Veld toevoegen',
+    wiz_dt_json_hint:'💡 JSON-tabel — de Value-kolom bevat een JSON-tekenreeks. Voeg sleutels toe die u wilt extraheren. Schakel "JSON verwerken" in voor GetJsonObjectProperty.',
+    wiz_dt_empty:'Geen datatabellen. Klik op "+ Datatabel" om er een toe te voegen.',
+    wiz_dt_no_fields_json:'Geen JSON-velden — klik op "+ Veld toevoegen".',
+    wiz_dt_no_fields:'Geen velden — klik op "+ Veld toevoegen".',
+    wiz_dt_jsonkey:'JSON-sleutel', wiz_dt_column:'Kolom', wiz_dt_varname:'Variabelenaam', wiz_dt_type:'Type',
+    wiz_da_title:'Data Action', wiz_da_name:'Actienaam *',
+    wiz_da_search_ph:'Typ om data actions te zoeken...',
+    wiz_da_timeout:'Time-out (minuten)', wiz_da_integration:'Integratie:',
+    wiz_da_inputs_hdr:'INVOERPARAMETERS', wiz_da_param:'Parameter',
+    wiz_da_none:'— Geen —', wiz_da_value:'Waarde',
+    wiz_da_outputs_hdr:'UITVOER → VARIABELEN (aanvinken om op te slaan)',
+    wiz_da_outparam:'Uitvoerparameter', wiz_da_schema_loading:'Schema ophalen voor',
+    wiz_s3_initialaudio:'INITIEEL AUDIO (begroeting)',
+    wiz_s3_initial_cb:'Welkomstgeluid (playAudio) toevoegen aan het begin van de flow',
+    wiz_s3_audio_type:'Audiotype:', wiz_tts:'TTS', wiz_prompt:'Prompt',
+    wiz_s3_tts:'TTS-tekst', wiz_prompt_name:'Promptnaam',
+    wiz_prompt_search_ph:'Typ om prompts te zoeken...',
+    wiz_s3_endtransfer:'AFSLUITING / DOORVERBINDEN', wiz_s3_type:'Type',
+    wiz_s3_queuename:'Wachtrijnaam', wiz_s3_user:'Gebruiker', wiz_s3_group:'Groep',
+    wiz_s3_flowname:'Flow naam', wiz_s3_phone:'Telefoonnummer',
+    wiz_s3_goodbye_cb:'Afsluitingsgeluid (playAudio) toevoegen vóór afsluiting/doorverbinden',
+    wiz_s3_queues_ph:'Typ om wachtrijen te zoeken...',
+    wiz_s3_users_ph:'Typ om gebruikers te zoeken...',
+    wiz_s3_groups_ph:'Typ om groepen te zoeken...',
+    wiz_s3_flows_ph:'Typ om flows te zoeken...',
+    wiz_s3_same_type:'Zoekt alleen {type}-flows (zelfde type als dit flow)',
+    wiz_s3_no_config:'Geen extra configuratie voor',
+    wiz_s3_click_next:'Klik op Volgende om de gegenereerde YAML te zien.',
+    wiz_s4_desc:'Bekijk YAML — klik op ✓ YAML gebruiken om naar de importpagina te sturen.',
+    wiz_copy:'📋 Kopiëren', wiz_copied:'✓ Gekopieerd!',
+    wiz_use_yaml_success:'✓ YAML van Flow Builder ingevoegd:',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -1001,6 +1181,51 @@ const LANGS = {
     err_fields_required:'Todos los campos son obligatorios', msg_customer_added:'Cliente añadido:',
     nav_readme:'README', page_readme_sub:'Documentación y ayuda', loading_readme:'Cargando README…',
     btn_yaml_builder:'📝 Flow Builder',
+    wiz_step1:'1 · Flow info', wiz_step2:'2 · Datos & Acciones', wiz_step3:'3 · Extra', wiz_step4:'4 · Vista previa',
+    wiz_back:'← Atrás', wiz_next:'Siguiente →', wiz_use_yaml:'✓ Usar YAML',
+    wiz_s1_customer:'Cliente / Org', wiz_s1_cust_hint:'(para obtener tablas de datos, colas y prompts)',
+    wiz_s1_cust_ph:'— Seleccionar cliente (tablas/colas/prompts) —',
+    wiz_s1_flowtype:'Tipo de flow *', wiz_s1_lang:'Idioma del flow (defaultLanguage)', wiz_s1_flowname:'Nombre del flow *',
+    wiz_s1_tip:'💡 Selecciona un cliente arriba — las tablas, colas y prompts se cargarán automáticamente para los pasos 2 y 3.',
+    wiz_s2_desc:'Configurar lookups para', wiz_add_table:'+ Tabla de datos', wiz_add_action:'⚡ Data Action',
+    wiz_dt_title:'Tabla de datos', wiz_remove:'✕ Eliminar',
+    wiz_dt_name:'Nombre de tabla *', wiz_dt_resultvar:'Variable resultado (texto)',
+    wiz_dt_lookuptype:'Tipo de lookup', wiz_dt_lit:'Literal (texto fijo)', wiz_dt_var:'Variable',
+    wiz_dt_lookupval:'Valor de lookup', wiz_dt_json_cb:'Tabla JSON (columna Value contiene cadena JSON)',
+    wiz_dt_parsejson:'Analizar resultado como JSON (JsonParse)', wiz_dt_jsonvar:'Variable JSON:',
+    wiz_dt_cols_hdr:'COLUMNAS A EXTRAER', wiz_dt_json_hdr:'CAMPOS JSON A EXTRAER',
+    wiz_add_field:'+ Añadir campo',
+    wiz_dt_json_hint:'💡 Tabla JSON — la columna Value contiene una cadena JSON. Añade las claves a extraer (p. ej. Random, Interval). Activa "Analizar JSON" para usar GetJsonObjectProperty.',
+    wiz_dt_empty:'Sin tablas de datos. Haz clic en "+ Tabla de datos" para añadir una.',
+    wiz_dt_no_fields_json:'Sin campos JSON — haz clic en "+ Añadir campo".',
+    wiz_dt_no_fields:'Sin campos — haz clic en "+ Añadir campo".',
+    wiz_dt_jsonkey:'Clave JSON', wiz_dt_column:'Columna', wiz_dt_varname:'Nombre de variable', wiz_dt_type:'Tipo',
+    wiz_da_title:'Data Action', wiz_da_name:'Nombre de acción *',
+    wiz_da_search_ph:'Escribe para buscar acciones de datos...',
+    wiz_da_timeout:'Tiempo de espera (minutos)', wiz_da_integration:'Integración:',
+    wiz_da_inputs_hdr:'PARÁMETROS DE ENTRADA', wiz_da_param:'Parámetro',
+    wiz_da_none:'— Ninguno —', wiz_da_value:'Valor',
+    wiz_da_outputs_hdr:'SALIDA → VARIABLES (marcar para guardar)',
+    wiz_da_outparam:'Parámetro de salida', wiz_da_schema_loading:'Obteniendo esquema de',
+    wiz_s3_initialaudio:'AUDIO INICIAL (bienvenida)',
+    wiz_s3_initial_cb:'Añadir audio de bienvenida (playAudio) al inicio del flow',
+    wiz_s3_audio_type:'Tipo de audio:', wiz_tts:'TTS', wiz_prompt:'Prompt',
+    wiz_s3_tts:'Texto TTS', wiz_prompt_name:'Nombre del prompt',
+    wiz_prompt_search_ph:'Escribe para buscar prompts...',
+    wiz_s3_endtransfer:'FINALIZACIÓN / TRANSFERENCIA', wiz_s3_type:'Tipo',
+    wiz_s3_queuename:'Nombre de cola', wiz_s3_user:'Usuario', wiz_s3_group:'Grupo',
+    wiz_s3_flowname:'Nombre del flow', wiz_s3_phone:'Número de teléfono',
+    wiz_s3_goodbye_cb:'Añadir audio de despedida (playAudio) antes de finalizar/transferir',
+    wiz_s3_queues_ph:'Escribe para buscar colas...',
+    wiz_s3_users_ph:'Escribe para buscar usuarios...',
+    wiz_s3_groups_ph:'Escribe para buscar grupos...',
+    wiz_s3_flows_ph:'Escribe para buscar flows...',
+    wiz_s3_same_type:'Buscando solo flows de tipo {type}',
+    wiz_s3_no_config:'Sin configuración adicional para',
+    wiz_s3_click_next:'Haz clic en Siguiente para ver el YAML generado.',
+    wiz_s4_desc:'Revisa el YAML — haz clic en ✓ Usar YAML para enviarlo a la página de importación.',
+    wiz_copy:'📋 Copiar', wiz_copied:'✓ ¡Copiado!',
+    wiz_use_yaml_success:'✓ YAML de Flow Builder insertado:',
   }
 };
 
@@ -1950,7 +2175,8 @@ let _wizQueueOptions = [];  // [{id,name}]
 let _wizUserOptions  = [];  // [{id,name}]
 let _wizGroupOptions = [];  // [{id,name}]
 let _wizFlowOptions  = [];  // [{id,name}]
-let _wizDaOptions  = [];  // [{id,name,category,integrationName}]
+let _wizDaOptions      = [];  // [{id,name,category,integrationName}]
+let _wizPromptOptions  = [];  // [{id,name}]
 
 function openYamlWizard() {
   const langMap = { da:'da-dk', en:'en-us', fr:'fr-fr', nl:'nl-nl', es:'es-es' };
@@ -1965,8 +2191,12 @@ function openYamlWizard() {
     dataTables: [],
     hasInitialAudio: false,
     initialAudioTts: '',
+    initialAudioType: 'tts',
+    initialAudioPrompt: '',
     hasDisconnect: false,
     disconnectTts: '',
+    disconnectAudioType: 'tts',
+    disconnectPrompt: '',
     transferType:  'disconnect',
     transferQueue: '',
     transferValue: '',
@@ -1995,6 +2225,11 @@ async function _wizFetchOrgResources() {
     _wizDaOptions    = Array.isArray(daRes) ? daRes : [];
     _wizUpdateDatalists();
   } catch (_) {}
+  // Fetch prompts
+  try {
+    const prData = await fetch(`/api/customers/${id}/prompts`).then(r => r.json());
+    _wizPromptOptions = Array.isArray(prData) ? prData : [];
+  } catch (_) { _wizPromptOptions = []; }
 }
 
 function _wizUpdateDatalists() {
@@ -2071,6 +2306,26 @@ async function wizSearchGroups(val) {
     _wizGroupOptions = Array.isArray(data) ? data : [];
     _wizUpdateDatalists();
   } catch (_) {}
+}
+async function wizSearchPrompts(prefix, val) {
+  const id = wiz.customerId;
+  if (!id) return;
+  const q = val.toLowerCase();
+  const filtered = q.length < 1
+    ? _wizPromptOptions
+    : _wizPromptOptions.filter(p => p.name.toLowerCase().includes(q));
+  if (filtered.length === 0 && val.length >= 2) {
+    try {
+      const data = await fetch(`/api/customers/${id}/prompts?name=${encodeURIComponent(val)}`).then(r => r.json());
+      if (Array.isArray(data)) {
+        data.forEach(p => { if (!_wizPromptOptions.find(x => x.id === p.id)) _wizPromptOptions.push(p); });
+      }
+    } catch (_) {}
+  }
+  const dlId = prefix === 'ia' ? 'wiz-ia-prompt-datalist' : 'wiz-da-prompt-datalist';
+  const dl = document.getElementById(dlId);
+  if (dl) dl.innerHTML = (filtered.length ? filtered : _wizPromptOptions)
+    .map(p => `<option value="${p.name}">`).join('');
 }
 // Maps wizard flowType to Genesys Cloud API type enum for flow search filtering
 const WIZ_FLOW_TYPE_API = {
@@ -2233,7 +2488,7 @@ function _wizCollect() {
     wiz.flowType    = g('wiz-ft')?.value   || wiz.flowType;
     wiz.flowName    = g('wiz-fn')?.value.trim() || '';
     wiz.genesysLang = g('wiz-gl')?.value   || wiz.genesysLang;
-    if (!wiz.flowName) { _wizShowErr('Flow navn er påkrævet'); return false; }
+    if (!wiz.flowName) { _wizShowErr(t('wiz_s1_flowname') + ' — ' + t('err_fields_required')); return false; }
     if (wiz.customerId && wiz.customerId !== prevCust) _wizFetchOrgResources();
   } else if (wiz.step === 2) {
     wiz.dataTables.forEach((dt, i) => {
@@ -2267,10 +2522,12 @@ function _wizCollect() {
       });
     });
   } else if (wiz.step === 3) {
-    wiz.hasInitialAudio = g('wiz-hia')?.checked ?? false;
-    wiz.initialAudioTts = g('wiz-ia-tts')?.value.trim() || '';
-    wiz.hasDisconnect   = g('wiz-hda')?.checked ?? false;
-    wiz.disconnectTts   = g('wiz-d-tts')?.value.trim() || '';
+    wiz.hasInitialAudio   = g('wiz-hia')?.checked ?? false;
+    wiz.initialAudioTts   = g('wiz-ia-tts')?.value.trim() || wiz.initialAudioTts || '';
+    wiz.initialAudioPrompt= g('wiz-ia-prompt')?.value.trim() || wiz.initialAudioPrompt || '';
+    wiz.hasDisconnect     = g('wiz-hda')?.checked ?? false;
+    wiz.disconnectTts     = g('wiz-d-tts')?.value.trim() || wiz.disconnectTts || '';
+    wiz.disconnectPrompt  = g('wiz-d-prompt')?.value.trim() || wiz.disconnectPrompt || '';
     wiz.transferType    = g('wiz-tt')?.value  || 'disconnect';
     wiz.transferQueue   = g('wiz-tq')?.value.trim() || '';
     wiz.transferValue   = g('wiz-tv')?.value.trim() || '';
@@ -2330,14 +2587,15 @@ function _wizRender() {
   const next = document.getElementById('wiz-next');
   back.style.visibility = wiz.step === 1 ? 'hidden' : '';
   if (wiz.step === 4) {
-    next.textContent = '✓ Brug YAML';
+    next.textContent = t('wiz_use_yaml');
     next.onclick = wizUseYaml;
     next.className = 'btn btn-green';
   } else {
-    next.textContent = 'Næste →';
+    next.textContent = t('wiz_next');
     next.onclick = wizNext;
     next.className = 'btn btn-primary';
   }
+  document.getElementById('wiz-back').textContent = t('wiz_back');
   const sub = WIZ_FLOW_TYPES.find(x => x.v === wiz.flowType);
   document.getElementById('wiz-hdr-sub').textContent =
     wiz.flowName ? `${sub?.l || wiz.flowType} · ${wiz.flowName}` : sub?.l || '';
@@ -2358,30 +2616,30 @@ function _wizS1(body) {
     `<option value="${x.v}"${x.v===wiz.flowType?' selected':''}>${x.l}</option>`).join('');
   const lgs = WIZ_GENESYS_LANGS.map(x =>
     `<option value="${x.v}"${x.v===wiz.genesysLang?' selected':''}>${x.l}</option>`).join('');
-  const custs = '<option value="">— Vælg kunde (til datatabeller/køer) —</option>' +
+  const custs = `<option value="">${t('wiz_s1_cust_ph')}</option>` +
     customers.map(c => `<option value="${c.id}"${c.id===wiz.customerId?' selected':''}>${c.name} (${c.region})</option>`).join('');
   body.innerHTML = `
     ${_errBox()}
     <div style="grid-column:1/-1;margin-bottom:12px">
-      <label>Kunde / Org <span style="font-size:10px;color:var(--muted)">(bruges til at hente datatabeller og køer)</span></label>
+      <label>${t('wiz_s1_customer')} <span style="font-size:10px;color:var(--muted)">${t('wiz_s1_cust_hint')}</span></label>
       <select id="wiz-cust" onchange="wiz.customerId=this.value;_wizFetchOrgResources()">${custs}</select>
     </div>
     <div class="grid-2" style="gap:16px">
       <div>
-        <label>Flow type *</label>
+        <label>${t('wiz_s1_flowtype')}</label>
         <select id="wiz-ft">${fts}</select>
       </div>
       <div>
-        <label>Sprog i flow (defaultLanguage)</label>
+        <label>${t('wiz_s1_lang')}</label>
         <select id="wiz-gl">${lgs}</select>
       </div>
       <div style="grid-column:1/-1">
-        <label>Flow navn *</label>
-        <input id="wiz-fn" value="${wiz.flowName.replace(/"/g,'&quot;')}" placeholder="Mit Flow" autofocus/>
+        <label>${t('wiz_s1_flowname')}</label>
+        <input id="wiz-fn" value="${wiz.flowName.replace(/"/g,'&quot;')}" placeholder="My Flow" autofocus/>
       </div>
     </div>
     <div style="margin-top:14px;padding:10px 14px;background:rgba(75,142,241,.07);border:1px solid rgba(75,142,241,.2);border-radius:6px;font-size:12px;color:var(--muted)">
-      💡 Vælg en kunde øverst — så hentes datatabeller og køer automatisk til brug i trin 2 og 3.
+      ${t('wiz_s1_tip')}
     </div>`;
 }
 
@@ -2392,25 +2650,25 @@ function _wizS2(body) {
   const tablesHtml = wiz.dataTables.length === 0
     ? `<div style="text-align:center;padding:32px 16px;color:var(--muted);font-size:13px;
          border:2px dashed var(--border2);border-radius:8px">
-         Ingen datatabeller. Klik "+ Tilføj datatabel" for at tilføje en.
+         ${t('wiz_dt_empty')}
        </div>`
     : wiz.dataTables.map((dt, i) => `
       <div class="card" style="margin-bottom:12px;padding:16px 20px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
           <div style="font-size:13px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            📊 Datatabel ${i+1}${dt.tableName ? ' — <span style="color:var(--text)">'+dt.tableName+'</span>' : ''}
+            📊 ${t('wiz_dt_title')} ${i+1}${dt.tableName ? ' — <span style="color:var(--text)">'+dt.tableName+'</span>' : ''}
             ${dt.tableName
               ? (dt.isJsonTable !== false
                   ? '<span style="font-size:10px;font-weight:700;background:var(--blue);color:#fff;padding:2px 8px;border-radius:10px">JSON tabel</span>'
                   : '<span style="font-size:10px;font-weight:700;background:var(--bg2);color:var(--text);border:1px solid var(--border2);padding:2px 8px;border-radius:10px">Multi-kolonne</span>')
               : ''}
           </div>
-          <button class="btn btn-danger btn-sm" onclick="wizRemoveTable(${i})">✕ Fjern</button>
+          <button class="btn btn-danger btn-sm" onclick="wizRemoveTable(${i})">${t('wiz_remove')}</button>
         </div>
         <datalist id="wiz-dt-datalist-${i}"></datalist>
         <div class="grid-2" style="gap:10px;margin-bottom:10px">
           <div>
-            <label>Tabel navn *</label>
+            <label>${t('wiz_dt_name')}</label>
             <input id="wdt-tbl-${i}" value="${dt.tableName}" placeholder="SystemConfig"
               list="wiz-dt-datalist-${i}" autocomplete="off"
               oninput="wizSearchTables(${i}, this.value)"/>
@@ -2419,18 +2677,18 @@ function _wizS2(body) {
             </div>
           </div>
           <div>
-            <label>Resultat-variabel (streng)</label>
+            <label>${t('wiz_dt_resultvar')}</label>
             <input id="wdt-rv-${i}" value="${dt.resultVar}" placeholder="State.dt_s_result"/>
           </div>
           <div>
-            <label>Lookup type</label>
+            <label>${t('wiz_dt_lookuptype')}</label>
             <select id="wdt-ltp-${i}">
-              <option value="lit"${dt.lookupType==='lit'?' selected':''}>Literal (fast tekst)</option>
-              <option value="var"${dt.lookupType==='var'?' selected':''}>Variabel</option>
+              <option value="lit"${dt.lookupType==='lit'?' selected':''}>${t('wiz_dt_lit')}</option>
+              <option value="var"${dt.lookupType==='var'?' selected':''}>${t('wiz_dt_var')}</option>
             </select>
           </div>
           <div>
-            <label>Lookup værdi</label>
+            <label>${t('wiz_dt_lookupval')}</label>
             <input id="wdt-lv-${i}" value="${dt.lookupValue}"
               placeholder="${dt.lookupType==='var'?'State.s_key':dt.tableKeyTitle||dt.tableName||'SystemConfig'}"/>
           </div>
@@ -2440,7 +2698,7 @@ function _wizS2(body) {
           <input type="checkbox" id="wdt-jt-${i}" ${dt.isJsonTable!==false?'checked':''} style="width:auto;flex-shrink:0"
             onchange="_wizCollect();_wizRender()"/>
           <label style="margin:0;font-size:12px;cursor:pointer;font-weight:600" for="wdt-jt-${i}">
-            JSON tabel (Value-kolonne indeholder JSON-streng)
+            ${t('wiz_dt_json_cb')}
           </label>
           <span style="font-size:11px;color:var(--muted);margin-left:auto">
             ${dt.tableKeyTitle ? '🔑 Nøgle: '+dt.tableKeyTitle : ''}
@@ -2451,10 +2709,10 @@ function _wizS2(body) {
           <input type="checkbox" id="wdt-pj-${i}" ${dt.parseJson?'checked':''} style="width:auto;flex-shrink:0"
             onchange="document.getElementById('wdt-jv-wrap-${i}').style.display=this.checked?'flex':'none'"/>
           <label style="margin:0;font-size:12px;cursor:pointer" for="wdt-pj-${i}">
-            Parse resultat som JSON (JsonParse)
+            ${t('wiz_dt_parsejson')}
           </label>
           <div id="wdt-jv-wrap-${i}" style="display:${dt.parseJson?'flex':'none'};align-items:center;gap:6px;margin-left:auto">
-            <label style="margin:0;font-size:11px;white-space:nowrap">JSON-variabel:</label>
+            <label style="margin:0;font-size:11px;white-space:nowrap">${t('wiz_dt_jsonvar')}</label>
             <input id="wdt-jv-${i}" value="${dt.jsonVar}" placeholder="State.dt_j_result" style="width:190px"/>
           </div>
         </div>
@@ -2462,17 +2720,15 @@ function _wizS2(body) {
         <!-- JSON field extraction -->
         <div style="border-top:1px solid var(--border);padding-top:12px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <div style="font-size:10px;letter-spacing:1px;color:var(--muted)">${dt.isJsonTable===false ? 'KOLONNER AT UDTRÆKKE' : 'JSON FELTER AT UDTRÆKKE'}</div>
-            <button class="btn btn-secondary btn-sm" onclick="wizAddField(${i})">+ Tilføj felt</button>
+            <div style="font-size:10px;letter-spacing:1px;color:var(--muted)">${dt.isJsonTable===false ? t('wiz_dt_cols_hdr') : t('wiz_dt_json_hdr')}</div>
+            <button class="btn btn-secondary btn-sm" onclick="wizAddField(${i})">${t('wiz_add_field')}</button>
           </div>
           ${dt.isJsonTable !== false ? `
           <div style="font-size:11px;color:var(--muted);background:var(--hover);border-radius:5px;padding:7px 10px;margin-bottom:10px">
-            💡 JSON tabel — <code>Value</code>-kolonnen indeholder en JSON-streng. Tilføj de nøgler du vil udtrække
-            (f.eks. <code>Random</code>, <code>Interval</code>). Aktivér "Parse JSON" ovenfor for at bruge
-            <code>GetJsonObjectProperty</code>.
+            ${t('wiz_dt_json_hint')}
           </div>` : ''}
           ${dt.fields.length === 0
-            ? `<div style="color:var(--muted);font-size:12px;padding:4px 0">${dt.isJsonTable !== false ? 'Ingen JSON-felter — klik "+ Tilføj felt" for at tilføje nøgler at udtrække.' : 'Ingen felter — klik "+ Tilføj felt".'}</div>`
+            ? `<div style="color:var(--muted);font-size:12px;padding:4px 0">${dt.isJsonTable !== false ? t('wiz_dt_no_fields_json') : t('wiz_dt_no_fields')}</div>`
             : dt.fields.map((f, j) => {
                 const sc = f.scope || 'State';
                 const scBg = sc==='Flow' ? 'var(--accent)' : 'var(--bg2)';
@@ -2480,12 +2736,12 @@ function _wizS2(body) {
                 return `
               <div style="display:grid;grid-template-columns:1fr 1fr auto 1fr auto;gap:6px;align-items:${j===0?'flex-end':'center'};margin-bottom:6px">
                 <div>
-                  ${j===0?`<label style="font-size:10px">${dt.isJsonTable!==false?'JSON-nøgle':'Kolonne'}</label>`:''}
+                  ${j===0?`<label style="font-size:10px">${dt.isJsonTable!==false?t('wiz_dt_jsonkey'):t('wiz_dt_column')}</label>`:''}
                   <input id="wdt-fk-${i}-${j}" value="${f.key}" placeholder="FlowId"
                     oninput="wizAutoVarName(${i},${j})"/>
                 </div>
                 <div>
-                  ${j===0?'<label style="font-size:10px">Variabel navn</label>':''}
+                  ${j===0?`<label style="font-size:10px">${t('wiz_dt_varname')}</label>`:''}
                   <input id="wdt-fv-${i}-${j}" value="${f.varName}" placeholder="State.s_FlowId"
                     oninput="this.dataset.manual='1'"/>
                 </div>
@@ -2496,7 +2752,7 @@ function _wizS2(body) {
                     title="Skift scope: State / Flow">${sc}.</button>
                 </div>
                 <div>
-                  ${j===0?'<label style="font-size:10px">Type</label>':''}
+                  ${j===0?`<label style="font-size:10px">${t('wiz_dt_type')}</label>`:''}
                   <select id="wdt-ft-${i}-${j}" onchange="wizAutoVarName(${i},${j})">${vtOpts(f.varType)}</select>
                 </div>
                 <div ${j===0?'style="padding-top:18px"':''}>
@@ -2517,24 +2773,24 @@ function _wizS2(body) {
       <div class="card" style="margin-bottom:12px;padding:16px 20px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
           <div style="font-size:13px;font-weight:700;color:#a78bfa">
-            ⚡ Data Action ${i+1}${da.actionName ? ' — <span style="color:var(--text)">'+da.actionName+'</span>' : ''}
+            ⚡ ${t('wiz_da_title')} ${i+1}${da.actionName ? ' — <span style="color:var(--text)">'+da.actionName+'</span>' : ''}
           </div>
-          <button class="btn btn-danger btn-sm" onclick="wizRemoveAction(${i})">✕ Fjern</button>
+          <button class="btn btn-danger btn-sm" onclick="wizRemoveAction(${i})">${t('wiz_remove')}</button>
         </div>
         <datalist id="wiz-da-datalist-${i}"></datalist>
         <div class="grid-2" style="gap:10px;margin-bottom:8px">
           <div>
-            <label>Action navn *</label>
+            <label>${t('wiz_da_name')}</label>
             <input id="wda-name-${i}" value="${da.actionName.replace(/"/g,'&quot;')}"
               list="wiz-da-datalist-${i}" autocomplete="off"
-              placeholder="Skriv for at søge data actions..."
+              placeholder="${t('wiz_da_search_ph')}"
               oninput="wizSearchActions(this.value,${i})"/>
             <div id="wiz-da-intlabel-${i}" style="font-size:11px;color:var(--muted);margin-top:3px">
-              ${da.integrationName ? 'Integration: '+da.integrationName : ''}
+              ${da.integrationName ? t('wiz_da_integration')+' '+da.integrationName : ''}
             </div>
           </div>
           <div>
-            <label>Timeout (minutter)</label>
+            <label>${t('wiz_da_timeout')}</label>
             <input id="wda-timeout-${i}" type="number" min="1" max="60"
               value="${da.timeout||1}" style="width:80px"/>
           </div>
@@ -2543,25 +2799,25 @@ function _wizS2(body) {
         <!-- Inputs -->
         ${da.inputs.length > 0 ? `
         <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:6px">
-          <div style="font-size:10px;letter-spacing:1px;color:var(--muted);margin-bottom:8px">INPUT PARAMETRE</div>
+          <div style="font-size:10px;letter-spacing:1px;color:var(--muted);margin-bottom:8px">${t('wiz_da_inputs_hdr')}</div>
           ${da.inputs.map((inp, j) => `
           <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:${j===0?'flex-end':'center'};margin-bottom:6px">
             <div>
-              ${j===0?'<label style="font-size:10px">Parameter</label>':''}
+              ${j===0?`<label style="font-size:10px">${t('wiz_da_param')}</label>`:''}
               <div style="padding:6px 10px;background:var(--hover);border-radius:4px;font-size:12px;font-family:monospace">
                 ${inp.name}${inp.required?' <span style="color:var(--red)">*</span>':''}
               </div>
             </div>
             <div>
-              ${j===0?'<label style="font-size:10px">Type</label>':''}
+              ${j===0?`<label style="font-size:10px">${t('wiz_dt_type')}</label>`:''}
               <select id="wda-ivt-${i}-${j}" style="width:100px">
                 <option value="lit"${inp.valueType==='lit'?' selected':''}>Literal</option>
-                <option value="exp"${inp.valueType==='exp'?' selected':''}>Variabel</option>
-                <option value="none"${inp.valueType==='none'?' selected':''}>— Ingen —</option>
+                <option value="exp"${inp.valueType==='exp'?' selected':''}>${t('wiz_dt_var')}</option>
+                <option value="none"${inp.valueType==='none'?' selected':''}>${t('wiz_da_none')}</option>
               </select>
             </div>
             <div>
-              ${j===0?'<label style="font-size:10px">Værdi</label>':''}
+              ${j===0?`<label style="font-size:10px">${t('wiz_da_value')}</label>`:''}
               <input id="wda-iv-${i}-${j}" value="${(inp.value||'').replace(/"/g,'&quot;')}"
                 placeholder="${inp.valueType==='exp'?'Flow.s_myVar':'tekst eller tal'}"/>
             </div>
@@ -2570,31 +2826,31 @@ function _wizS2(body) {
         <!-- Success Outputs -->
         ${da.successOutputs.length > 0 ? `
         <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:6px">
-          <div style="font-size:10px;letter-spacing:1px;color:var(--muted);margin-bottom:8px">OUTPUT → VARIABLER (sæt flueben for at gemme)</div>
+          <div style="font-size:10px;letter-spacing:1px;color:var(--muted);margin-bottom:8px">${t('wiz_da_outputs_hdr')}</div>
           ${da.successOutputs.map((out, j) => `
           <div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:6px;align-items:${j===0?'flex-end':'center'};margin-bottom:6px">
             <div ${j===0?'style="padding-top:18px"':''}>
               <input type="checkbox" id="wda-ou-${i}-${j}" ${out.use?'checked':''} style="width:auto"/>
             </div>
             <div>
-              ${j===0?'<label style="font-size:10px">Output parameter</label>':''}
+              ${j===0?`<label style="font-size:10px">${t('wiz_da_outparam')}</label>`:''}
               <div style="padding:6px 10px;background:var(--hover);border-radius:4px;font-size:12px;font-family:monospace;opacity:${out.use?'1':'0.5'}">
                 ${out.name}
               </div>
             </div>
             <div>
-              ${j===0?'<label style="font-size:10px">Variabel navn</label>':''}
+              ${j===0?`<label style="font-size:10px">${t('wiz_dt_varname')}</label>`:''}
               <input id="wda-ov-${i}-${j}" value="${(out.varName||'').replace(/"/g,'&quot;')}"
                 placeholder="Flow.s_output" ${out.use?'':'disabled style="opacity:0.4"'}/>
             </div>
             <div>
-              ${j===0?'<label style="font-size:10px">Type</label>':''}
+              ${j===0?`<label style="font-size:10px">${t('wiz_dt_type')}</label>`:''}
               <select id="wda-ovt-${i}-${j}" ${out.use?'':'disabled style="opacity:0.4"'}>${vtOpts2(out.varType)}</select>
             </div>
           </div>`).join('')}
         </div>` : ''}
         ` : da.actionName ? `<div style="font-size:12px;color:${da.schemaError?'var(--red)':'var(--muted)'};padding:8px 0">
-          ${da.schemaError || `Henter schema for "${da.actionName}"…`}
+          ${da.schemaError || `${t('wiz_da_schema_loading')} "${da.actionName}"…`}
         </div>` : ''}
       </div>`).join('');
 
@@ -2602,11 +2858,11 @@ function _wizS2(body) {
     ${_errBox()}
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <div style="font-size:13px;color:var(--muted)">
-        Konfigurér lookups for <strong style="color:var(--text)">${wiz.flowName||'dit flow'}</strong>
+        ${t('wiz_s2_desc')} <strong style="color:var(--text)">${wiz.flowName||'…'}</strong>
       </div>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-secondary btn-sm" onclick="wizAddTable()">+ Datatabel</button>
-        <button class="btn btn-sm" style="background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.3)" onclick="wizAddAction()">⚡ Data Action</button>
+        <button class="btn btn-secondary btn-sm" onclick="wizAddTable()">${t('wiz_add_table')}</button>
+        <button class="btn btn-sm" style="background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.3)" onclick="wizAddAction()">${t('wiz_add_action')}</button>
       </div>
     </div>
     ${tablesHtml}
@@ -2616,13 +2872,15 @@ function _wizS2(body) {
 function _wizOnTransferChange(sel) {
   // Save current DOM values to wiz before re-rendering
   const g = id => document.getElementById(id);
-  wiz.transferType    = sel.value;
-  wiz.disconnectTts   = g('wiz-d-tts')?.value   ?? wiz.disconnectTts;
-  wiz.hasDisconnect   = g('wiz-hda')?.checked    ?? wiz.hasDisconnect;
-  wiz.initialAudioTts = g('wiz-ia-tts')?.value  ?? wiz.initialAudioTts;
-  wiz.hasInitialAudio = g('wiz-hia')?.checked    ?? wiz.hasInitialAudio;
-  wiz.transferQueue   = g('wiz-tq')?.value.trim() ?? wiz.transferQueue;
-  wiz.transferValue   = g('wiz-tv')?.value.trim() ?? wiz.transferValue;
+  wiz.transferType      = sel.value;
+  wiz.disconnectTts     = g('wiz-d-tts')?.value.trim()    ?? wiz.disconnectTts;
+  wiz.disconnectPrompt  = g('wiz-d-prompt')?.value.trim() ?? wiz.disconnectPrompt;
+  wiz.hasDisconnect     = g('wiz-hda')?.checked           ?? wiz.hasDisconnect;
+  wiz.initialAudioTts   = g('wiz-ia-tts')?.value.trim()   ?? wiz.initialAudioTts;
+  wiz.initialAudioPrompt= g('wiz-ia-prompt')?.value.trim()?? wiz.initialAudioPrompt;
+  wiz.hasInitialAudio   = g('wiz-hia')?.checked           ?? wiz.hasInitialAudio;
+  wiz.transferQueue     = g('wiz-tq')?.value.trim()       ?? wiz.transferQueue;
+  wiz.transferValue     = g('wiz-tv')?.value.trim()       ?? wiz.transferValue;
   _wizS3(document.getElementById('wiz-body'));
 }
 
@@ -2639,11 +2897,11 @@ function _wizS3(body) {
     body.innerHTML = `
       <div style="text-align:center;padding:48px 20px;color:var(--muted);font-size:13px">
         <div style="font-size:36px;margin-bottom:12px">⚙️</div>
-        <div>Ingen ekstra konfiguration for
+        <div>${t('wiz_s3_no_config')}
           <strong>${WIZ_FLOW_TYPES.find(x=>x.v===wiz.flowType)?.l||wiz.flowType}</strong>.
         </div>
         <div style="font-size:11px;margin-top:8px;color:var(--border2)">
-          Klik <strong>Næste</strong> for at se det genererede YAML.
+          ${t('wiz_s3_click_next')}
         </div>
       </div>`;
     return;
@@ -2652,6 +2910,8 @@ function _wizS3(body) {
   const tt = wiz.transferType || (isEmail ? 'acd' : 'disconnect');
   const showQueue  = tt === 'acd';
   const showNumber = tt === 'number';
+  const iaType = wiz.initialAudioType || 'tts';
+  const daType = wiz.disconnectAudioType || 'tts';
 
   const transferOpts = isEmail
     ? `<option value="acd" ${tt==='acd'?'selected':''}>Transfer to ACD</option>`
@@ -2662,57 +2922,82 @@ function _wizS3(body) {
        <option value="group"      ${tt==='group'?'selected':''}>Transfer to Group</option>
        <option value="flow"       ${tt==='flow'?'selected':''}>Transfer to Flow</option>`;
 
+  const audioTypeRow = (prefix, curType) => `
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:8px">
+      <span style="font-size:12px;color:var(--muted)">${t('wiz_s3_audio_type')}</span>
+      <label style="margin:0;font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer">
+        <input type="radio" name="${prefix}-atype" value="tts" ${curType==='tts'?'checked':''}
+          onchange="${prefix==='ia'?'wiz.initialAudioType':'wiz.disconnectAudioType'}=\'tts\';_wizS3(document.getElementById(\'wiz-body\'))">
+        ${t('wiz_tts')}
+      </label>
+      <label style="margin:0;font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer">
+        <input type="radio" name="${prefix}-atype" value="prompt" ${curType==='prompt'?'checked':''}
+          onchange="${prefix==='ia'?'wiz.initialAudioType':'wiz.disconnectAudioType'}=\'prompt\';_wizS3(document.getElementById(\'wiz-body\'))">
+        ${t('wiz_prompt')}
+      </label>
+    </div>`;
+
   body.innerHTML = `
     ${_errBox()}
     ${hasAudio ? `
     <div class="card" style="margin-bottom:12px;padding:16px 20px">
-      <div class="card-title">INITIAL AUDIO (velkomstbesked)</div>
+      <div class="card-title">${t('wiz_s3_initialaudio')}</div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
         <input type="checkbox" id="wiz-hia" style="width:auto" ${wiz.hasInitialAudio?'checked':''}
           onchange="document.getElementById('wiz-ia-wrap').style.display=this.checked?'block':'none'"/>
         <label style="margin:0;font-size:12px;cursor:pointer" for="wiz-hia">
-          Tilføj velkomst-lyd (playAudio TTS) i starten af flowet
+          ${t('wiz_s3_initial_cb')}
         </label>
       </div>
       <div id="wiz-ia-wrap" style="display:${wiz.hasInitialAudio?'block':'none'}">
-        <label>TTS tekst</label>
+        <datalist id="wiz-ia-prompt-datalist"></datalist>
+        ${audioTypeRow('ia', iaType)}
+        ${iaType==='tts' ? `
+        <label>${t('wiz_s3_tts')}</label>
         <input id="wiz-ia-tts" value="${(wiz.initialAudioTts||'').replace(/"/g,'&quot;')}"
-          placeholder="Velkommen. Vent venligst mens vi finder den rette afdeling..."/>
+          placeholder="Welcome. Please hold while we find the right department..."/>
+        ` : `
+        <label>${t('wiz_prompt_name')}</label>
+        <input id="wiz-ia-prompt" value="${(wiz.initialAudioPrompt||'').replace(/"/g,'&quot;')}"
+          list="wiz-ia-prompt-datalist" autocomplete="off"
+          placeholder="${t('wiz_prompt_search_ph')}"
+          oninput="wizSearchPrompts('ia', this.value)"/>
+        `}
       </div>
     </div>` : ''}
     <div class="card" style="padding:16px 20px;margin-bottom:12px">
-      <div class="card-title">AFSLUTNING / TRANSFER</div>
+      <div class="card-title">${t('wiz_s3_endtransfer')}</div>
       <datalist id="wiz-q-datalist"></datalist>
       <datalist id="wiz-u-datalist"></datalist>
       <datalist id="wiz-g-datalist"></datalist>
       <datalist id="wiz-f-datalist"></datalist>
-      <label>Type</label>
+      <label>${t('wiz_s3_type')}</label>
       <select id="wiz-tt" onchange="_wizOnTransferChange(this)">${transferOpts}</select>
       ${showQueue ? `
-      <label style="margin-top:10px">Kø navn</label>
+      <label style="margin-top:10px">${t('wiz_s3_queuename')}</label>
       <input id="wiz-tq" value="${(wiz.transferQueue||'').replace(/"/g,'&quot;')}"
-        list="wiz-q-datalist" autocomplete="off" placeholder="Skriv for at søge køer..."
+        list="wiz-q-datalist" autocomplete="off" placeholder="${t('wiz_s3_queues_ph')}"
         oninput="wizSearchQueues(this.value)"/>` : ''}
       ${tt === 'user' ? `
-      <label style="margin-top:10px">Bruger</label>
+      <label style="margin-top:10px">${t('wiz_s3_user')}</label>
       <input id="wiz-tv" value="${(wiz.transferValue||'').replace(/"/g,'&quot;')}"
-        list="wiz-u-datalist" autocomplete="off" placeholder="Skriv for at søge brugere..."
+        list="wiz-u-datalist" autocomplete="off" placeholder="${t('wiz_s3_users_ph')}"
         oninput="wizSearchUsers(this.value)"/>` : ''}
       ${tt === 'group' ? `
-      <label style="margin-top:10px">Gruppe</label>
+      <label style="margin-top:10px">${t('wiz_s3_group')}</label>
       <input id="wiz-tv" value="${(wiz.transferValue||'').replace(/"/g,'&quot;')}"
-        list="wiz-g-datalist" autocomplete="off" placeholder="Skriv for at søge grupper..."
+        list="wiz-g-datalist" autocomplete="off" placeholder="${t('wiz_s3_groups_ph')}"
         oninput="wizSearchGroups(this.value)"/>` : ''}
       ${tt === 'flow' ? `
-      <label style="margin-top:10px">Flow navn</label>
+      <label style="margin-top:10px">${t('wiz_s3_flowname')}</label>
       <input id="wiz-tv" value="${(wiz.transferValue||'').replace(/"/g,'&quot;')}"
-        list="wiz-f-datalist" autocomplete="off" placeholder="Skriv for at søge flows..."
+        list="wiz-f-datalist" autocomplete="off" placeholder="${t('wiz_s3_flows_ph')}"
         oninput="wizSearchFlows(this.value)"/>
       <div style="font-size:11px;color:var(--muted);margin-top:4px">
-        Søger kun ${WIZ_FLOW_TYPES.find(x=>x.v===wiz.flowType)?.l||wiz.flowType}-flows (samme type som dette flow)
+        ${t('wiz_s3_same_type').replace('{type}', WIZ_FLOW_TYPES.find(x=>x.v===wiz.flowType)?.l||wiz.flowType)}
       </div>` : ''}
       ${showNumber ? `
-      <label style="margin-top:10px">Telefonnummer</label>
+      <label style="margin-top:10px">${t('wiz_s3_phone')}</label>
       <input id="wiz-tv" value="${(wiz.transferValue||'').replace(/"/g,'&quot;')}"
         placeholder="+4512345678"/>` : ''}
       ${hasAudio ? `
@@ -2721,13 +3006,23 @@ function _wizS3(body) {
           <input type="checkbox" id="wiz-hda" style="width:auto" ${wiz.hasDisconnect?'checked':''}
             onchange="document.getElementById('wiz-da-wrap').style.display=this.checked?'block':'none'"/>
           <label style="margin:0;font-size:12px;cursor:pointer" for="wiz-hda">
-            Tilføj afslutningslyd (playAudio TTS) inden afslutning/transfer
+            ${t('wiz_s3_goodbye_cb')}
           </label>
         </div>
         <div id="wiz-da-wrap" style="display:${wiz.hasDisconnect?'block':'none'}">
-          <label>TTS tekst</label>
+          <datalist id="wiz-da-prompt-datalist"></datalist>
+          ${audioTypeRow('da', daType)}
+          ${daType==='tts' ? `
+          <label>${t('wiz_s3_tts')}</label>
           <input id="wiz-d-tts" value="${(wiz.disconnectTts||'').replace(/"/g,'&quot;')}"
-            placeholder="Farvel og tak fordi du ringede."/>
+            placeholder="Goodbye and thank you for calling."/>
+          ` : `
+          <label>${t('wiz_prompt_name')}</label>
+          <input id="wiz-d-prompt" value="${(wiz.disconnectPrompt||'').replace(/"/g,'&quot;')}"
+            list="wiz-da-prompt-datalist" autocomplete="off"
+            placeholder="${t('wiz_prompt_search_ph')}"
+            oninput="wizSearchPrompts('da', this.value)"/>
+          `}
         </div>
       </div>` : ''}
     </div>`;
@@ -2740,12 +3035,12 @@ function _wizS4(body) {
   body.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <div style="font-size:12px;color:var(--muted)">
-        Gennemse YAML — klik <strong style="color:var(--green)">✓ Brug YAML</strong> for at sende til Import-siden.
+        ${t('wiz_s4_desc')}
       </div>
       <button class="btn btn-secondary btn-sm" onclick="
         navigator.clipboard.writeText(document.getElementById('wiz-out').textContent)
-          .then(()=>{this.textContent='✓ Kopieret!';setTimeout(()=>this.textContent='📋 Kopiér',1800)})
-      ">📋 Kopiér</button>
+          .then(()=>{this.textContent='${t('wiz_copied').replace(/'/g,"\\'")}';setTimeout(()=>this.textContent='${t('wiz_copy').replace(/'/g,"\\'")}',1800)})
+      ">${t('wiz_copy')}</button>
     </div>
     <pre id="wiz-out" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;
       padding:16px;font-family:var(--mono);font-size:11px;line-height:1.65;max-height:460px;
@@ -2764,7 +3059,7 @@ function wizUseYaml() {
   document.getElementById('im-filename').value =
     (wiz.flowName.replace(/[^a-zA-Z0-9_\-æøåÆØÅ]/g,'_') || 'flow') + '_v1-0.yaml';
   closeYamlWizard();
-  showAlert('im-alert', `✓ YAML fra Flow Builder indsat: ${document.getElementById('im-filename').value}`, 'ok');
+  showAlert('im-alert', `${t('wiz_use_yaml_success')} ${document.getElementById('im-filename').value}`, 'ok');
 }
 
 // ── YAML generator ────────────────────────────────────────────────────────────
@@ -2888,8 +3183,15 @@ function _genYaml() {
 
   nl();
   if (['inboundCall','inboundShortMessage'].includes(wiz.flowType)) {
-    if (wiz.hasInitialAudio && wiz.initialAudioTts) {
-      p(1,'initialAudio:'); p(2,`tts: "${wiz.initialAudioTts}"`); nl();
+    const iaType = wiz.initialAudioType || 'tts';
+    if (wiz.hasInitialAudio && (iaType==='tts' ? wiz.initialAudioTts : wiz.initialAudioPrompt)) {
+      p(1,'initialAudio:');
+      if (iaType === 'prompt' && wiz.initialAudioPrompt) {
+        p(2,'prompt:'); p(3,`name: "${wiz.initialAudioPrompt}"`);
+      } else {
+        p(2,`tts: "${wiz.initialAudioTts}"`);
+      }
+      nl();
     }
   }
 
@@ -2990,18 +3292,12 @@ function _genYaml() {
           else p(a+8, `lit: "${inp.value}"`);
         });
       }
-      if (da.successOutputs.length) {
+      const usedOutputs = da.successOutputs.filter(out => out.use && out.varName);
+      if (usedOutputs.length) {
         p(a+6, `successOutputs:`);
-        da.successOutputs.forEach(out => {
+        usedOutputs.forEach(out => {
           p(a+7, `${out.name}:`);
-          if (out.use && out.varName) p(a+8, `var: ${normVar(out.varName)}`);
-          else p(a+8, `noValue: true`);
-        });
-      }
-      if (da.failureOutputs && da.failureOutputs.length) {
-        p(a+6, `failureOutputs:`);
-        da.failureOutputs.forEach(fo => {
-          p(a+7, `${fo.name}:`); p(a+8, `noValue: true`);
+          p(a+8, `var: ${normVar(out.varName)}`);
         });
       }
       p(a+2, `outputs:`);
@@ -3023,9 +3319,16 @@ function _genYaml() {
     const canTransfer = !['endWorkflow','endState','endTask','exitBotFlow','exitBot'].includes(ft.term);
     // Helper: emit optional goodbye playAudio before disconnect/transfer
     const emitGoodbye = () => {
-      if (wiz.hasDisconnect && wiz.disconnectTts) {
+      const daType = wiz.disconnectAudioType || 'tts';
+      const hasAudioContent = daType === 'prompt' ? wiz.disconnectPrompt : wiz.disconnectTts;
+      if (wiz.hasDisconnect && hasAudioContent) {
         p(a,`- playAudio:`); p(a+2,`name: Goodbye`);
-        p(a+2,`audio:`); p(a+3,`tts: "${wiz.disconnectTts}"`);
+        p(a+2,`audio:`);
+        if (daType === 'prompt' && wiz.disconnectPrompt) {
+          p(a+3,`prompt:`); p(a+4,`name: "${wiz.disconnectPrompt}"`);
+        } else {
+          p(a+3,`tts: "${wiz.disconnectTts}"`);
+        }
       }
     };
     if (ft.term === 'endWorkflow') {

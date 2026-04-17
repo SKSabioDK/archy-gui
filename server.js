@@ -342,6 +342,23 @@ app.get('/api/customers/:id/groups', async (req, res) => {
   }
 });
 
+app.get('/api/customers/:id/prompts', async (req, res) => {
+  const customer = loadCustomers().find(c => c.id === req.params.id);
+  if (!customer) return res.status(404).json({ error: 'Not found' });
+  const search = (req.query.name || '').trim();
+  try {
+    const { token, apiBase } = await getToken(customer);
+    const r = await axios.get(`${apiBase}/api/v2/architect/prompts`, {
+      headers: { Authorization: `Bearer ${token}` },
+      params: { pageSize: 50, sortBy: 'name', sortOrder: 'ASC',
+                ...(search ? { name: `*${search}*` } : {}) }
+    });
+    res.json((r.data.entities || []).map(p => ({ id: p.id, name: p.name })));
+  } catch (e) {
+    res.status(500).json({ error: e.response?.data?.message || e.message });
+  }
+});
+
 // ── List Flows ───────────────────────────────────────────────────────────────
 
 const FLOW_TYPES = ['inboundcall', 'outboundcall', 'inboundshortmessage', 'inboundemail',

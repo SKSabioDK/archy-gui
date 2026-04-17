@@ -1,10 +1,23 @@
-# Archy GUI — Flow Manager · v1.3.3
+# Archy GUI — Flow Manager · v1.3.4
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.3.4
+---
+**🇩🇰 Dansk**
+- **Flow Builder: Sprogunderstøttelse** — Alle tekster i wizard-dialogen skifter nu sprog når brugeren ændrer sprog. Alle 5 sprog understøttes (da/en/fr/nl/es).
+- **Prompts-søgning** — Trin 3 (Afslutning/Transfer) og initial audio kan nu bruge Genesys Cloud architect-prompts i stedet for TTS. Søg og vælg prompt via datalist.
+- **YAML-fejl i Data Action fikset** — `successOutputs` genererede `noValue: true` for ubrugte outputs, hvilket fik Archy til at fejle (exit 100). Nu emitteres kun outputs der faktisk er aktiveret med en variabel.
+
+---
+**🇬🇧 English**
+- **Flow Builder: Language support** — All wizard dialog texts now switch language when the user changes the language. All 5 languages supported (da/en/fr/nl/es).
+- **Prompt search** — Step 3 (End/Transfer) and initial audio can now use Genesys Cloud architect prompts instead of TTS. Search and select a prompt via a datalist.
+- **YAML bug in Data Action fixed** — `successOutputs` was generating `noValue: true` for unused outputs, causing Archy to fail (exit 100). Now only outputs that are actually enabled with a variable are emitted.
 
 ### v1.3.3
 - **Spansk sprogunderstøttelse** — 🇪🇸 Español tilføjet som femte sprog i sprogselectoren.
@@ -221,7 +234,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, and OAuth PKCE login.
 
-> Current version: **v1.3.3** — see [Changelog](#changelog) above.
+> Current version: **v1.3.4** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
