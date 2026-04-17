@@ -89,7 +89,7 @@ app.post('/api/customers', (req, res) => {
   };
   customers.push(customer);
   saveCustomers(customers);
-  addLog('INFO', `Kunde oprettet: ${name} (region: ${region}, auth: ${customer.authType})`, name, 'CUSTOMER');
+  addLog('INFO', `Customer created: ${name} (region: ${region}, auth: ${customer.authType})`, name, 'CUSTOMER');
   res.json({ ...customer, clientSecret: '••••••••' });
 });
 
@@ -100,7 +100,7 @@ app.put('/api/customers/:id', (req, res) => {
   const updated = { ...customers[idx], ...req.body };
   customers[idx] = updated;
   saveCustomers(customers);
-  addLog('INFO', `Kunde opdateret: ${updated.name}`, updated.name, 'CUSTOMER');
+  addLog('INFO', `Customer updated: ${updated.name}`, updated.name, 'CUSTOMER');
   res.json({ ...updated, clientSecret: '••••••••' });
 });
 
@@ -108,7 +108,7 @@ app.delete('/api/customers/:id', (req, res) => {
   const customers = loadCustomers();
   const customer = customers.find(c => c.id === req.params.id);
   saveCustomers(customers.filter(c => c.id !== req.params.id));
-  addLog('WARN', `Kunde slettet: ${customer?.name || req.params.id}`, customer?.name, 'CUSTOMER');
+  addLog('WARN', `Customer deleted: ${customer?.name || req.params.id}`, customer?.name, 'CUSTOMER');
   res.json({ ok: true });
 });
 
@@ -133,7 +133,7 @@ app.get('/api/auth/login/:id', (req, res) => {
     `&code_challenge=${challenge}&code_challenge_method=S256` +
     `&state=${encodeURIComponent(customer.id)}`;
 
-  addLog('INFO', `PKCE login initieret for ${customer.name}`, customer.name, 'CUSTOMER');
+  addLog('INFO', `PKCE login initiated for ${customer.name}`, customer.name, 'CUSTOMER');
   res.json({ url });
 });
 
@@ -162,14 +162,14 @@ app.get('/auth/callback', async (req, res) => {
 <script>setTimeout(()=>window.close(),2500)</script>
 </body></html>`);
 
-  if (error) return page(false, 'Login fejlede', String(error).replace(/</g,'&lt;'));
-  if (!code || !state) return page(false, 'Ugyldigt svar', 'Ingen kode eller state modtaget.');
+  if (error) return page(false, 'Login failed', String(error).replace(/</g,'&lt;'));
+  if (!code || !state) return page(false, 'Invalid response', 'No code or state received.');
 
   const customer = loadCustomers().find(c => c.id === state);
-  if (!customer) return page(false, 'Ukendt kunde', `State: ${state}`);
+  if (!customer) return page(false, 'Unknown customer', `State: ${state}`);
 
   const pkce = pkceStore[state];
-  if (!pkce) return page(false, 'Session udløbet', 'Start venligst login igen fra Archy GUI.');
+  if (!pkce) return page(false, 'Session expired', 'Please start the login again from Archy GUI.');
   delete pkceStore[state];
 
   const apiBase    = REGION_MAP[customer.region] || `https://api.${customer.region}`;
@@ -191,12 +191,12 @@ app.get('/auth/callback', async (req, res) => {
     const { access_token, expires_in } = resp.data;
     const expiresAt = Date.now() + ((expires_in || 86400) * 1000) - 60000;
     tokenStore[customer.id] = { token: access_token, expiresAt };
-    addLog('SUCCESS', `PKCE OAuth login lykkedes for ${customer.name}`, customer.name, 'CUSTOMER');
-    page(true, 'Logget ind!', 'Du kan lukke dette vindue og vende tilbage til Archy GUI.');
+    addLog('SUCCESS', `PKCE OAuth login succeeded for ${customer.name}`, customer.name, 'CUSTOMER');
+    page(true, 'Logged in!', 'You can close this window and return to Archy GUI.');
   } catch (e) {
     const msg = e.response?.data?.description || e.response?.data?.error || e.message;
-    addLog('ERROR', `PKCE token-udveksling fejlede for ${customer.name}: ${msg}`, customer.name, 'CUSTOMER');
-    page(false, 'Token-udveksling fejlede', String(msg).replace(/</g,'&lt;'));
+    addLog('ERROR', `PKCE token exchange failed for ${customer.name}: ${msg}`, customer.name, 'CUSTOMER');
+    page(false, 'Token exchange failed', String(msg).replace(/</g,'&lt;'));
   }
 });
 
@@ -219,10 +219,10 @@ async function getToken(customer) {
   // OAuth (PKCE) customers — use stored token
   if (customer.authType === 'oauth') {
     const stored = tokenStore[customer.id];
-    if (!stored) throw new Error(`OAuth token mangler for "${customer.name}" — klik på Login-knappen`);
+    if (!stored) throw new Error(`OAuth token missing for "${customer.name}" — click the Login button`);
     if (Date.now() > stored.expiresAt) {
       delete tokenStore[customer.id];
-      throw new Error(`OAuth token udløbet for "${customer.name}" — log ind igen`);
+      throw new Error(`OAuth token expired for "${customer.name}" — please log in again`);
     }
     return { token: stored.token, apiBase };
   }
@@ -243,7 +243,7 @@ async function getToken(customer) {
 app.post('/api/customers/:id/test', async (req, res) => {
   const customer = loadCustomers().find(c => c.id === req.params.id);
   if (!customer) return res.status(404).json({ error: 'Not found' });
-  addLog('INFO', `Tester forbindelse til ${customer.name} (${customer.region})`, customer.name, 'TEST');
+  addLog('INFO', `Testing connection to ${customer.name} (${customer.region})`, customer.name, 'TEST');
   try {
     const { token, apiBase } = await getToken(customer);
     // /users/me requires a user-context token (PKCE). For Client Credentials we
@@ -252,18 +252,18 @@ app.post('/api/customers/:id/test', async (req, res) => {
       const me = await axios.get(`${apiBase}/api/v2/users/me`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      addLog('SUCCESS', `Forbundet til ${customer.name} — bruger: ${me.data.name}, org: ${me.data.organization?.name || '?'}`, customer.name, 'TEST');
+      addLog('SUCCESS', `Connected to ${customer.name} — user: ${me.data.name}, org: ${me.data.organization?.name || '?'}`, customer.name, 'TEST');
       res.json({ ok: true, name: me.data.name, org: me.data.organization?.name });
     } else {
       const org = await axios.get(`${apiBase}/api/v2/organizations/me`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      addLog('SUCCESS', `Forbundet til ${customer.name} — org: ${org.data.name || '?'} (Client Credentials)`, customer.name, 'TEST');
+      addLog('SUCCESS', `Connected to ${customer.name} — org: ${org.data.name || '?'} (Client Credentials)`, customer.name, 'TEST');
       res.json({ ok: true, name: `(Client Credentials)`, org: org.data.name });
     }
   } catch (e) {
     const errMsg = e.response?.data?.message || e.message;
-    addLog('ERROR', `Forbindelsesfejl for ${customer.name}: ${errMsg}`, customer.name, 'TEST');
+    addLog('ERROR', `Connection error for ${customer.name}: ${errMsg}`, customer.name, 'TEST');
     res.status(401).json({ error: errMsg });
   }
 });
@@ -369,7 +369,7 @@ app.get('/api/customers/:id/flows', async (req, res) => {
   if (!customer) return res.status(404).json({ error: 'Not found' });
   const nameFilter = (req.query.name || '').trim();
   const typeFilter = (req.query.type || '').trim();
-  addLog('INFO', `Henter flows for ${customer.name}`, customer.name, 'FLOWS');
+  addLog('INFO', `Fetching flows for ${customer.name}`, customer.name, 'FLOWS');
   try {
     const { token, apiBase } = await getToken(customer);
     // When name filter is given, do a single-page search instead of full pagination
@@ -406,11 +406,11 @@ app.get('/api/customers/:id/flows', async (req, res) => {
       if (flows.length < 100) break;
       page++;
     }
-    addLog('SUCCESS', `Hentet ${allFlows.length} flows for ${customer.name}`, customer.name, 'FLOWS');
+    addLog('SUCCESS', `Fetched ${allFlows.length} flows for ${customer.name}`, customer.name, 'FLOWS');
     res.json(allFlows);
   } catch (e) {
     const errMsg = e.response?.data?.message || e.message;
-    addLog('ERROR', `Flows-fejl for ${customer.name}: ${errMsg}`, customer.name, 'FLOWS');
+    addLog('ERROR', `Flows error for ${customer.name}: ${errMsg}`, customer.name, 'FLOWS');
     res.status(500).json({ error: errMsg });
   }
 });
@@ -531,7 +531,7 @@ function archyCredFlags(customer) {
   if (customer.authType === 'oauth') {
     const stored = tokenStore[customer.id];
     if (!stored || Date.now() > stored.expiresAt)
-      throw new Error(`OAuth token mangler eller udløbet for "${customer.name}" — log ind igen`);
+      throw new Error(`OAuth token missing or expired for "${customer.name}" — please log in again`);
     return `--authToken ${q(stored.token)} --location ${q(customer.region)}`;
   }
 
@@ -541,7 +541,7 @@ function archyCredFlags(customer) {
 
 function runArchy(args, customer) {
   return new Promise((resolve, reject) => {
-    if (!ARCHY_DIR) return reject(new Error('archy ikke fundet i PATH'));
+    if (!ARCHY_DIR) return reject(new Error('archy not found in PATH'));
     const cmd = `archy ${args} ${archyCredFlags(customer)}`;
     exec(cmd, { cwd: ARCHY_DIR, shell: 'cmd.exe', timeout: 120000 }, (err, stdout, stderr) => {
       if (err) reject(new Error(stderr || stdout || err.message));
@@ -561,7 +561,7 @@ app.post('/api/export', async (req, res) => {
   if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir, { recursive: true });
 
   const flowTypeLower = flowType.toLowerCase();
-  addLog('INFO', `Eksporterer flow "${flowName}" (${flowTypeLower}) fra ${customer.name}`, customer.name, 'EXPORT');
+  addLog('INFO', `Exporting flow "${flowName}" (${flowTypeLower}) from ${customer.name}`, customer.name, 'EXPORT');
 
   try {
     await runArchy(
@@ -573,10 +573,10 @@ app.post('/api/export', async (req, res) => {
     const match = files.find(f => f.toLowerCase().includes(flowName.toLowerCase().replace(/\s+/g, '')));
     const yamlFile = match || files[files.length - 1];
     const content = fs.readFileSync(path.join(exportDir, yamlFile), 'utf8');
-    addLog('SUCCESS', `Eksporteret: ${yamlFile} → ${exportDir}`, customer.name, 'EXPORT');
+    addLog('SUCCESS', `Exported: ${yamlFile} → ${exportDir}`, customer.name, 'EXPORT');
     res.json({ ok: true, fileName: yamlFile, content, savedTo: exportDir });
   } catch (e) {
-    addLog('ERROR', `Eksport fejlede for "${flowName}": ${e.message}`, customer.name, 'EXPORT');
+    addLog('ERROR', `Export failed for "${flowName}": ${e.message}`, customer.name, 'EXPORT');
     res.status(500).json({ error: e.message });
   }
 });
@@ -602,7 +602,7 @@ app.post('/api/export-all', async (req, res) => {
   if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir, { recursive: true });
   job.savedTo = exportDir;
 
-  addLog('INFO', `Starter eksport af ALLE flows for ${customer.name}`, customer.name, 'EXPORT');
+  addLog('INFO', `Starting export of ALL flows for ${customer.name}`, customer.name, 'EXPORT');
 
   // Fetch all flows first
   let allFlows = [];
@@ -621,19 +621,19 @@ app.post('/api/export-all', async (req, res) => {
     }
   } catch (e) {
     const errMsg = e.response?.data?.message || e.message;
-    addLog('ERROR', `Kunne ikke hente flows for ${customer.name}: ${errMsg}`, customer.name, 'EXPORT');
+    addLog('ERROR', `Could not fetch flows for ${customer.name}: ${errMsg}`, customer.name, 'EXPORT');
     job.status = 'error'; job.error = errMsg; job.done = true;
     return;
   }
 
   job.total = allFlows.length;
   job.status = 'running';
-  addLog('INFO', `Fandt ${allFlows.length} flows — starter eksport til ${exportDir}`, customer.name, 'EXPORT');
+  addLog('INFO', `Found ${allFlows.length} flows — starting export to ${exportDir}`, customer.name, 'EXPORT');
 
   // Export each flow sequentially — check cancelled flag before each flow
   for (const flow of allFlows) {
     if (job.cancelled) {
-      addLog('WARN', `Eksport annulleret af bruger efter ${job.current}/${job.total} flows`, customer.name, 'EXPORT');
+      addLog('WARN', `Export cancelled by user after ${job.current}/${job.total} flows`, customer.name, 'EXPORT');
       break;
     }
     try {
@@ -643,11 +643,11 @@ app.post('/api/export-all', async (req, res) => {
       );
       job.results.push({ name: flow.name, type: flow.type.toLowerCase(), ok: true });
       job.succeeded++;
-      addLog('SUCCESS', `Eksporteret: "${flow.name}" (${flow.type.toLowerCase()})`, customer.name, 'EXPORT');
+      addLog('SUCCESS', `Exported: "${flow.name}" (${flow.type.toLowerCase()})`, customer.name, 'EXPORT');
     } catch (e) {
       job.results.push({ name: flow.name, type: flow.type.toLowerCase(), ok: false, error: e.message });
       job.failed++;
-      addLog('ERROR', `Fejl ved eksport af "${flow.name}": ${e.message}`, customer.name, 'EXPORT');
+      addLog('ERROR', `Error exporting "${flow.name}": ${e.message}`, customer.name, 'EXPORT');
     }
     job.current++;
   }
@@ -656,8 +656,8 @@ app.post('/api/export-all', async (req, res) => {
   job.status = job.cancelled ? 'cancelled' : 'done';
   addLog(job.cancelled ? 'WARN' : job.failed === 0 ? 'SUCCESS' : 'WARN',
     job.cancelled
-      ? `Eksport stoppet: ${job.succeeded} flows gemt i "${exportDir}"`
-      : `Eksport alle afsluttet for ${customer.name}: ${job.succeeded}/${job.total} flows ok`,
+      ? `Export stopped: ${job.succeeded} flows saved to "${exportDir}"`
+      : `Export all completed for ${customer.name}: ${job.succeeded}/${job.total} flows ok`,
     customer.name, 'EXPORT');
 
   // Clean up job after 5 minutes
@@ -666,13 +666,13 @@ app.post('/api/export-all', async (req, res) => {
 
 app.get('/api/export-all/progress/:jobId', (req, res) => {
   const job = exportJobs[req.params.jobId];
-  if (!job) return res.status(404).json({ error: 'Job ikke fundet' });
+  if (!job) return res.status(404).json({ error: 'Job not found' });
   res.json(job);
 });
 
 app.post('/api/export-all/cancel/:jobId', (req, res) => {
   const job = exportJobs[req.params.jobId];
-  if (!job) return res.status(404).json({ error: 'Job ikke fundet' });
+  if (!job) return res.status(404).json({ error: 'Job not found' });
   if (job.done) return res.json({ ok: true, alreadyDone: true });
   job.cancelled = true;
   res.json({ ok: true });
@@ -693,7 +693,7 @@ app.post('/api/import', async (req, res) => {
   fs.writeFileSync(filePath, yamlContent, 'utf8');
 
   const cmd = action || 'create';
-  addLog('INFO', `Importerer "${fileName}" til ${customer.name} (handling: ${cmd})`, customer.name, 'IMPORT');
+  addLog('INFO', `Importing "${fileName}" to ${customer.name} (action: ${cmd})`, customer.name, 'IMPORT');
 
   try {
     const out = await runArchy(`${cmd} --file "${filePath}"`, customer);
@@ -701,7 +701,7 @@ app.post('/api/import', async (req, res) => {
     res.json({ ok: true, output: out });
   } catch (e) {
     const msg = e.message || '';
-    addLog('ERROR', `Import fejlede for "${fileName}" til ${customer.name}: ${msg}`, customer.name, 'IMPORT');
+    addLog('ERROR', `Import failed for "${fileName}" to ${customer.name}: ${msg}`, customer.name, 'IMPORT');
     // Archy exit 108 — flow already exists with 'create' action
     if (msg.toLowerCase().includes('already exists')) {
       return res.status(409).json({ error: 'already_exists', message: msg });
@@ -721,11 +721,11 @@ app.post('/api/migrate', async (req, res) => {
   const exportDir = path.join(FLOWS_DIR, sanitizeName(source.name));
   if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir, { recursive: true });
 
-  addLog('INFO', `Migrering startet: "${flowName}" fra ${source.name} → ${target.name}`, source.name, 'MIGRATE');
+  addLog('INFO', `Migration started: "${flowName}" from ${source.name} → ${target.name}`, source.name, 'MIGRATE');
 
   try {
     // Step 1: export
-    addLog('INFO', `Eksporterer "${flowName}" fra ${source.name}`, source.name, 'MIGRATE');
+    addLog('INFO', `Exporting "${flowName}" from ${source.name}`, source.name, 'MIGRATE');
     await runArchy(
       `export --flowName "${flowName}" --flowType ${flowType.toLowerCase()} --exportType yaml --force --outputDir "${exportDir}"`,
       source
@@ -738,14 +738,14 @@ app.post('/api/migrate', async (req, res) => {
 
     // Step 2: import
     const cmd = action || 'create';
-    addLog('INFO', `Importerer "${yamlFile}" til ${target.name} (handling: ${cmd})`, target.name, 'MIGRATE');
+    addLog('INFO', `Importing "${yamlFile}" to ${target.name} (action: ${cmd})`, target.name, 'MIGRATE');
     const out = await runArchy(`${cmd} --file "${filePath}"`, target);
-    addLog('SUCCESS', `Migrering fuldført: "${flowName}" er nu i ${target.name}`, target.name, 'MIGRATE');
+    addLog('SUCCESS', `Migration complete: "${flowName}" is now in ${target.name}`, target.name, 'MIGRATE');
 
     const content = fs.readFileSync(filePath, 'utf8');
     res.json({ ok: true, fileName: yamlFile, output: out, yaml: content });
   } catch (e) {
-    addLog('ERROR', `Migrering fejlede for "${flowName}": ${e.message}`, source.name, 'MIGRATE');
+    addLog('ERROR', `Migration failed for "${flowName}": ${e.message}`, source.name, 'MIGRATE');
     res.status(500).json({ error: e.message });
   }
 });
@@ -775,7 +775,7 @@ app.get('/api/logs/stats', (req, res) => {
 
 app.post('/api/logs/clear', (req, res) => {
   logStore.length = 0;
-  addLog('INFO', 'Log ryddet af bruger', null, 'SYSTEM');
+  addLog('INFO', 'Log cleared by user', null, 'SYSTEM');
   res.json({ ok: true });
 });
 
@@ -820,7 +820,7 @@ app.get('/api/files/content', (req, res) => {
 
 app.get('/api/readme', (req, res) => {
   const readmePath = path.join(__dirname, 'README.md');
-  if (!fs.existsSync(readmePath)) return res.status(404).json({ error: 'README.md ikke fundet' });
+  if (!fs.existsSync(readmePath)) return res.status(404).json({ error: 'README.md not found' });
   res.json({ content: fs.readFileSync(readmePath, 'utf8') });
 });
 
@@ -829,5 +829,5 @@ app.get('/api/readme', (req, res) => {
 const PORT = process.env.PORT || 3737;
 app.listen(PORT, () => {
   console.log(`Archy GUI running on http://localhost:${PORT}`);
-  addLog('INFO', `Archy GUI startet på port ${PORT}`, null, 'SYSTEM');
+  addLog('INFO', `Archy GUI started on port ${PORT}`, null, 'SYSTEM');
 });

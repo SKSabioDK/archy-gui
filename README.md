@@ -1,10 +1,19 @@
-# Archy GUI — Flow Manager · v1.3.4
+# Archy GUI — Flow Manager · v1.3.5
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.3.5
+---
+**🇩🇰 Dansk**
+- **Systemlog på engelsk** — Alle serverlog-beskeder (`addLog`) er oversat til engelsk, så systemloggen altid er læsbar uanset valgt sprog.
+
+---
+**🇬🇧 English**
+- **System log in English** — All server-side log messages (`addLog`) are now in English so the system log is always readable regardless of the selected language.
 
 ### v1.3.4
 ---
