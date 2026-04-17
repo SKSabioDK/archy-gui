@@ -1,10 +1,17 @@
-# Archy GUI — Flow Manager · v1.3.0
+# Archy GUI — Flow Manager · v1.3.3
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.3.3
+- **Spansk sprogunderstøttelse** — 🇪🇸 Español tilføjet som femte sprog i sprogselectoren.
+- **Engelsk changelog** — Alle changelog-poster oversat til engelsk.
+
+---
+**🇩🇰 Dansk**
 
 ### v1.3.2
 - **Stop-knap til Export Alle Flows** — ny ⏹ Stop-knap stopper eksporten efter det igangværende flow. Allerede eksporterede filer bevares. Server sætter `job.cancelled = true`; loop checker flaget før hvert flow.
@@ -25,6 +32,30 @@
 - Data Table søgning og nøgle-kolonne hint
 - Transfer til Flow med type-filter
 - Farvel-TTS valgfri checkbox
+- `startUpTaskVariables:` support for inqueueCall
+
+---
+**🇬🇧 English**
+
+### v1.3.2
+- **Stop button for Export All Flows** — new ⏹ Stop button halts the export after the current flow finishes. Already-exported files are preserved. The server sets `job.cancelled = true`; the loop checks the flag before each flow.
+
+### v1.3.1
+- **Connection test fixed for Client Credentials** — was calling `/users/me` (requires a user token); switched to `/organizations/me` which works with all token types. PKCE still uses `/users/me`.
+
+### v1.3.0
+- **Flow Builder: JSON table checkbox** — each data-table card now has an explicit "JSON table" checkbox (default: checked). The user can always override the automatic detection regardless of what the server returns.
+- **Data table search fixed** — each table card now has its own unique datalist ID (`wiz-dt-datalist-${i}`); search is filtered client-side, just like data actions.
+- **Data Action schema fixed** — switched from the non-working `/schemas/input|output` endpoints to `GET /integrations/actions/{id}?expand=contract`, which always returns the input/output schema.
+- **`isJsonTable` detection improved** — the server now detects JSON tables via the `Value` column (not just column count), and returns `columns: []` for JSON tables to prevent incorrect auto-population.
+- **Import: "already exists" error** — Archy exit code 108 is detected and shows a button: "🔄 Switch to Update and try again".
+- **Flow Builder: badges and hints** — table cards show a "JSON table" / "Multi-column" badge in the header and a guiding help text in the field section.
+
+### v1.2.0
+- Data Actions wizard section (input/output schema, auto-generated variable names)
+- Data Table search and key-column hint
+- Transfer to Flow with type filter
+- Goodbye TTS optional checkbox
 - `startUpTaskVariables:` support for inqueueCall
 
 ---
@@ -190,7 +221,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, and OAuth PKCE login.
 
-> Current version: **v1.3.0** — see [Changelog](#changelog) above.
+> Current version: **v1.3.3** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**

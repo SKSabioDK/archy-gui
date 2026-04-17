@@ -285,11 +285,12 @@
     <div class="status-bar">
       <span id="archyStatus" class="dot"></span>
       <span id="archyStatusTxt">checking archy…</span>
-      <select id="langSelect" class="lang-select" onchange="setLang(this.value)" title="Language / Sprog / Langue / Taal">
+      <select id="langSelect" class="lang-select" onchange="setLang(this.value)" title="Language / Sprog / Langue / Taal / Idioma">
         <option value="da">🇩🇰 Dansk</option>
         <option value="en">🇬🇧 English</option>
         <option value="fr">🇫🇷 Français</option>
         <option value="nl">🇳🇱 Nederlands</option>
+        <option value="es">🇪🇸 Español</option>
       </select>
       <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Skift tema">
         <span id="themeIcon">☀️</span>
@@ -331,7 +332,7 @@
     <div id="sidebarCustomers"></div>
 
     <div class="spacer"></div>
-    <div class="version">v1.3.2 · Archy GUI</div>
+    <div class="version">v1.3.3 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -945,6 +946,60 @@ const LANGS = {
     btn_login:'🔑 Inloggen', auth_status_connected:'Verbonden',
     err_fields_required:'Alle velden zijn verplicht', msg_customer_added:'Klant toegevoegd:',
     nav_readme:'README', page_readme_sub:'Documentatie & hulp', loading_readme:'README laden…',
+    btn_yaml_builder:'📝 Flow Builder',
+  },
+  es: {
+    nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
+    nav_export:'Exportar YAML', nav_import:'Importar YAML', nav_files:'Archivos YAML',
+    nav_syslog:'Registro del sistema', nav_section_customers:'CLIENTES',
+    page_customers_title:'Perfiles de clientes', page_customers_sub:'Gestionar conexiones de Genesys Cloud',
+    add_customer_card:'AÑADIR CLIENTE', label_customername:'Nombre del cliente *', label_region:'Región *',
+    label_clientid:'Client ID *', label_clientsecret:'Client Secret *', btn_add_customer:'+ Añadir cliente',
+    page_flows_sub:'Ver todos los flows de una organización', label_select_customer:'Seleccionar cliente',
+    btn_reload:'🔄 Recargar', col_name:'Nombre', col_type:'Tipo', col_status:'Estado',
+    col_version:'Versión', col_action:'Acción', badge_published:'Publicado', badge_draft:'Borrador',
+    btn_export_flow:'📤 Exportar',
+    page_migrate_sub:'Exportar desde una org e importar directamente a otra',
+    step1:'1 · Seleccionar clientes', step2:'2 · Seleccionar flow', step3:'3 · Ejecutar migración',
+    card_source_target:'ORIGEN → DESTINO', label_source:'Origen (exportar de)', label_target:'Destino (importar a)',
+    card_select_flows:'SELECCIONAR FLOWS PARA MIGRACIÓN', label_import_action:'Acción de importación:',
+    btn_run_migration:'🚀 Ejecutar migración', card_log:'REGISTRO',
+    page_export_sub:'Seleccionar cliente → flow — tipo establecido automáticamente',
+    label_customer:'Cliente', label_search_flow:'Buscar y seleccionar flow',
+    placeholder_filter:'🔍  Escribe para filtrar…', label_flow_type:'Tipo de flow',
+    btn_export:'📤 Exportar', btn_export_all:'📦 Exportar todos los flows',
+    card_export_all_progress:'EXPORTAR TODO — PROGRESO', loading_flows:'Cargando flows…',
+    btn_download:'⬇ Descargar', page_import_sub:'Crear o actualizar un flow mediante archivo YAML',
+    label_target_customer:'Cliente destino', label_filename:'Nombre del archivo', label_upload:'Subir archivo YAML:',
+    label_yaml_content:'Contenido YAML', placeholder_yaml:'Pega el YAML aquí o sube un archivo…',
+    btn_import:'📥 Importar / Crear flow', page_files_title:'Archivos YAML locales',
+    page_files_sub:'Archivos guardados localmente durante la importación/exportación',
+    page_syslog_title:'Registro del sistema', page_syslog_sub:'Acciones, conexiones y errores',
+    btn_auto_refresh_off:'⏱ Auto-actualizar: No', btn_auto_refresh_on:'⏱ Auto-actualizar: Sí (5s)',
+    btn_clear_log:'🗑 Borrar registro', btn_update:'↺ Actualizar',
+    label_from:'Desde', label_to:'Hasta', label_quick:'Selección rápida',
+    lbl_hour:'hora', btn_today:'Hoy', btn_clear:'Borrar',
+    label_level:'Nivel', opt_all_levels:'Todos los niveles',
+    label_action:'Acción', opt_all_actions:'Todas las acciones',
+    label_customer_filter:'Cliente', opt_all_customers:'Todos los clientes',
+    label_search_msg:'Buscar en mensaje', placeholder_search:'🔍 Búsqueda libre…',
+    label_max:'Máx. entradas', btn_search:'Buscar',
+    th_timestamp:'FECHA/HORA', th_level:'NIVEL', th_action:'ACCIÓN',
+    th_customer:'CLIENTE', th_message:'MENSAJE', no_log_entries:'No se encontraron entradas de registro',
+    archy_ready:'Listo', btn_test:'🔌 Probar', btn_flows_card:'📋 Flows',
+    import_action_create:'create (nuevo)', import_action_update:'update (actualizar)',
+    import_action_publish:'publish (crear + publicar)',
+    migrate_action_create:'create (nuevo)', migrate_action_update:'update (actualizar)',
+    migrate_action_publish:'publish (crear + publicar)',
+    view_file:'👁 Ver', copy_to_import:'→ Importar',
+    export_file:'📤 Exportar', syslog_showing:'{n} entradas (más recientes primero)',
+    syslog_auto_on:'⏱ Auto-actualizar: Sí (5s)',
+    label_auth_type:'Tipo de auth', btn_auth_credentials:'🔑 Client Credentials', btn_auth_oauth:'🌐 OAuth (PKCE)',
+    hint_auth_credentials:'Client ID + Secret guardados localmente. Para scripts/automatización.',
+    hint_auth_oauth:'No se guarda ningún secret — acceso mediante login de navegador Genesys Cloud (PKCE).',
+    btn_login:'🔑 Iniciar sesión', auth_status_connected:'Conectado',
+    err_fields_required:'Todos los campos son obligatorios', msg_customer_added:'Cliente añadido:',
+    nav_readme:'README', page_readme_sub:'Documentación y ayuda', loading_readme:'Cargando README…',
     btn_yaml_builder:'📝 Flow Builder',
   }
 };
@@ -1898,7 +1953,7 @@ let _wizFlowOptions  = [];  // [{id,name}]
 let _wizDaOptions  = [];  // [{id,name,category,integrationName}]
 
 function openYamlWizard() {
-  const langMap = { da:'da-dk', en:'en-us', fr:'fr-fr', nl:'nl-nl' };
+  const langMap = { da:'da-dk', en:'en-us', fr:'fr-fr', nl:'nl-nl', es:'es-es' };
   // Pre-select customer from import page if set
   const preselect = document.getElementById('im-customer')?.value || '';
   wiz = {
