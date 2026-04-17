@@ -555,9 +555,11 @@
             <label data-i18n="label_filename">Filnavn</label>
             <input id="im-filename" placeholder="MitFlow_v1-0.yaml" />
           </div>
-          <div style="display:flex;align-items:flex-end;gap:8px">
+          <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
             <label style="margin:0" data-i18n="label_upload">Upload YAML fil:</label>
-            <input type="file" id="im-file" accept=".yaml,.yml" style="width:auto;border:none;padding:0;background:transparent;color:var(--muted)" onchange="onFileUpload(this)" />
+            <input type="file" id="im-file" accept=".yaml,.yml" style="display:none" onchange="onFileUpload(this)" />
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('im-file').click()" id="im-file-btn" data-i18n="btn_choose_file">📂 Vælg fil</button>
+            <span id="im-file-name" style="font-size:12px;color:var(--muted)"></span>
           </div>
         </div>
         <div style="margin-bottom:12px">
@@ -832,6 +834,21 @@ const LANGS = {
     wiz_s4_desc:'Gennemse YAML — klik ✓ Brug YAML for at sende til Import-siden.',
     wiz_copy:'📋 Kopiér', wiz_copied:'✓ Kopieret!',
     wiz_use_yaml_success:'✓ YAML fra Flow Builder indsat:',
+    no_customers_yet:'Ingen kunder endnu. Tilføj din første kunde ovenfor.',
+    select_org_ph:'— Vælg org —',
+    err_select_source_target:'Vælg både kilde og mål',
+    err_same_org:'Kilde og mål må ikke være den samme org',
+    migrating_msg:'Migrerer:', migration_done:'── Migration afsluttet ──',
+    exporting_msg:'Eksporterer via Archy…', exported_ok:'Eksporteret:',
+    stopping_msg:'⏳ Stopper…', loading_flowlist:'Henter flowliste…',
+    already_exists_err:'Flowet eksisterer allerede (create fejlede).',
+    switch_to_update:'Skift til Update og prøv igen',
+    import_ok:'✓ Flow importeret!', importing_msg:'Importerer…',
+    no_yaml_files:'Ingen lokale YAML-filer endnu.',
+    confirm_delete_customer:'Slet denne kunde?',
+    err_label:'Fejl', confirm_clear_log:'Ryd hele loggen i hukommelsen?',
+    key_column_hint:'Nøgle-kolonne:', key_label:'🔑 Nøgle:',
+    btn_choose_file:'📂 Vælg fil', no_file_chosen:'Ingen fil valgt',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -933,6 +950,21 @@ const LANGS = {
     wiz_s4_desc:'Review YAML — click ✓ Use YAML to send to the Import page.',
     wiz_copy:'📋 Copy', wiz_copied:'✓ Copied!',
     wiz_use_yaml_success:'✓ YAML from Flow Builder inserted:',
+    no_customers_yet:'No customers yet. Add your first customer above.',
+    select_org_ph:'— Select org —',
+    err_select_source_target:'Select both source and target',
+    err_same_org:'Source and target must not be the same org',
+    migrating_msg:'Migrating:', migration_done:'── Migration complete ──',
+    exporting_msg:'Exporting via Archy…', exported_ok:'Exported:',
+    stopping_msg:'⏳ Stopping…', loading_flowlist:'Loading flow list…',
+    already_exists_err:'The flow already exists (create failed).',
+    switch_to_update:'Switch to Update and try again',
+    import_ok:'✓ Flow imported!', importing_msg:'Importing…',
+    no_yaml_files:'No local YAML files yet.',
+    confirm_delete_customer:'Delete this customer?',
+    err_label:'Error', confirm_clear_log:'Clear the entire log from memory?',
+    key_column_hint:'Key column:', key_label:'🔑 Key:',
+    btn_choose_file:'📂 Choose file', no_file_chosen:'No file chosen',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -1034,6 +1066,21 @@ const LANGS = {
     wiz_s4_desc:'Vérifiez le YAML — cliquez sur ✓ Utiliser YAML pour envoyer à la page Import.',
     wiz_copy:'📋 Copier', wiz_copied:'✓ Copié !',
     wiz_use_yaml_success:'✓ YAML du Flow Builder inséré :',
+    no_customers_yet:'Aucun client pour le moment. Ajoutez votre premier client ci-dessus.',
+    select_org_ph:'— Sélectionner une org —',
+    err_select_source_target:'Sélectionnez la source et la cible',
+    err_same_org:'La source et la cible ne peuvent pas être la même org',
+    migrating_msg:'Migration :', migration_done:'── Migration terminée ──',
+    exporting_msg:'Exportation via Archy…', exported_ok:'Exporté :',
+    stopping_msg:'⏳ Arrêt…', loading_flowlist:'Chargement de la liste des flows…',
+    already_exists_err:'Le flow existe déjà (create a échoué).',
+    switch_to_update:'Passer à Update et réessayer',
+    import_ok:'✓ Flow importé !', importing_msg:'Importation…',
+    no_yaml_files:'Aucun fichier YAML local pour le moment.',
+    confirm_delete_customer:'Supprimer ce client ?',
+    err_label:'Erreur', confirm_clear_log:'Vider tout le journal de la mémoire ?',
+    key_column_hint:'Colonne clé :', key_label:'🔑 Clé :',
+    btn_choose_file:'📂 Choisir un fichier', no_file_chosen:'Aucun fichier sélectionné',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -1135,6 +1182,21 @@ const LANGS = {
     wiz_s4_desc:'Bekijk YAML — klik op ✓ YAML gebruiken om naar de importpagina te sturen.',
     wiz_copy:'📋 Kopiëren', wiz_copied:'✓ Gekopieerd!',
     wiz_use_yaml_success:'✓ YAML van Flow Builder ingevoegd:',
+    no_customers_yet:'Nog geen klanten. Voeg uw eerste klant hierboven toe.',
+    select_org_ph:'— Org selecteren —',
+    err_select_source_target:'Selecteer zowel bron als doel',
+    err_same_org:'Bron en doel mogen niet dezelfde org zijn',
+    migrating_msg:'Migreren:', migration_done:'── Migratie voltooid ──',
+    exporting_msg:'Exporteren via Archy…', exported_ok:'Geëxporteerd:',
+    stopping_msg:'⏳ Stoppen…', loading_flowlist:'Flowlijst laden…',
+    already_exists_err:'De flow bestaat al (create mislukt).',
+    switch_to_update:'Overschakelen naar Update en opnieuw proberen',
+    import_ok:'✓ Flow geïmporteerd!', importing_msg:'Importeren…',
+    no_yaml_files:'Nog geen lokale YAML-bestanden.',
+    confirm_delete_customer:'Deze klant verwijderen?',
+    err_label:'Fout', confirm_clear_log:'Wilt u het volledige logboek uit het geheugen wissen?',
+    key_column_hint:'Sleutelkolom:', key_label:'🔑 Sleutel:',
+    btn_choose_file:'📂 Bestand kiezen', no_file_chosen:'Geen bestand gekozen',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -1236,6 +1298,21 @@ const LANGS = {
     wiz_s4_desc:'Revisa el YAML — haz clic en ✓ Usar YAML para enviarlo a la página de importación.',
     wiz_copy:'📋 Copiar', wiz_copied:'✓ ¡Copiado!',
     wiz_use_yaml_success:'✓ YAML de Flow Builder insertado:',
+    no_customers_yet:'Aún no hay clientes. Añade tu primer cliente arriba.',
+    select_org_ph:'— Seleccionar org —',
+    err_select_source_target:'Selecciona origen y destino',
+    err_same_org:'El origen y el destino no pueden ser la misma org',
+    migrating_msg:'Migrando:', migration_done:'── Migración completada ──',
+    exporting_msg:'Exportando mediante Archy…', exported_ok:'Exportado:',
+    stopping_msg:'⏳ Deteniendo…', loading_flowlist:'Cargando lista de flows…',
+    already_exists_err:'El flow ya existe (create falló).',
+    switch_to_update:'Cambiar a Update e intentar de nuevo',
+    import_ok:'✓ ¡Flow importado!', importing_msg:'Importando…',
+    no_yaml_files:'Aún no hay archivos YAML locales.',
+    confirm_delete_customer:'¿Eliminar este cliente?',
+    err_label:'Error', confirm_clear_log:'¿Borrar todo el registro de la memoria?',
+    key_column_hint:'Columna clave:', key_label:'🔑 Clave:',
+    btn_choose_file:'📂 Elegir archivo', no_file_chosen:'Ningún archivo seleccionado',
   }
 };
 
@@ -1251,6 +1328,15 @@ function applyLang() {
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
     el.placeholder = t(el.dataset.i18nPlaceholder);
   });
+  // Reset file picker span if no file is selected
+  const fileInput = document.getElementById('im-file');
+  const fileNameSpan = document.getElementById('im-file-name');
+  if (fileNameSpan && !(fileInput?.files?.length)) {
+    fileNameSpan.textContent = t('no_file_chosen');
+  }
+  // Re-populate customer dropdowns so placeholder text is also translated
+  populateCustomerSelects();
+  populateMigrateSelects();
 }
 
 function setLang(lang) {
@@ -1362,7 +1448,7 @@ function renderSidebarCustomers() {
 function renderCustomerGrid() {
   const grid = document.getElementById('customerGrid');
   if (!customers.length) {
-    grid.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px">Ingen kunder endnu. Tilføj din første kunde ovenfor.</div>';
+    grid.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:20px">${t('no_customers_yet')}</div>`;
     return;
   }
   grid.innerHTML = customers.map(c => {
@@ -1463,7 +1549,7 @@ async function oauthLogin(id) {
 }
 
 async function deleteCustomer(id) {
-  if (!confirm('Slet denne kunde?')) return;
+  if (!confirm(t('confirm_delete_customer'))) return;
   await fetch('/api/customers/' + id, {method:'DELETE'});
   await refreshCustomers();
 }
@@ -1481,7 +1567,7 @@ async function testCustomer(id) {
     document.getElementById('chip-' + id)?.classList.add('online');
   } else {
     dot.style.background = 'var(--red)';
-    txt.textContent = 'Fejl';
+    txt.textContent = t('err_label');
   }
 }
 
@@ -1501,7 +1587,7 @@ function populateCustomerSelects(ids) {
 async function loadFlows() {
   const id = document.getElementById('fb-customer').value;
   if (!id) return;
-  showAlert('flowAlert', '<span class="spin"></span> Henter flows…', 'info');
+  showAlert('flowAlert', `<span class="spin"></span> ${t('loading_flows')}`, 'info');
   document.getElementById('flowTableCard').style.display = 'none';
   const res = await fetch('/api/customers/' + id + '/flows');
   const data = await res.json();
@@ -1564,7 +1650,7 @@ function populateMigrateSelects() {
     const el = document.getElementById(id);
     if (!el) return;
     const cur = el.value;
-    el.innerHTML = '<option value="">— Vælg org —</option>' +
+    el.innerHTML = `<option value="">${t('select_org_ph')}</option>` +
       customers.map(c => `<option value="${c.id}">${c.name} (${c.region})</option>`).join('');
     if (cur) el.value = cur;
   });
@@ -1577,7 +1663,7 @@ async function onMigrateSourceChange() {
   updateMigrateBtn();
   if (!id) return;
   document.getElementById('m-flowCard').style.display = 'block';
-  document.getElementById('m-flowList').innerHTML = '<div style="color:var(--muted);font-size:12px"><span class="spin"></span> Henter flows…</div>';
+  document.getElementById('m-flowList').innerHTML = `<div style="color:var(--muted);font-size:12px"><span class="spin"></span> ${t('loading_flows')}</div>`;
   const res = await fetch('/api/customers/' + id + '/flows');
   const data = await res.json();
   if (data.error) {
@@ -1625,8 +1711,8 @@ async function runMigration() {
   const sourceId = document.getElementById('m-source').value;
   const targetId = document.getElementById('m-target').value;
   const action = document.getElementById('m-action').value;
-  if (!sourceId || !targetId) return alert('Vælg både kilde og mål');
-  if (sourceId === targetId) return alert('Kilde og mål må ikke være den samme org');
+  if (!sourceId || !targetId) return alert(t('err_select_source_target'));
+  if (sourceId === targetId) return alert(t('err_same_org'));
 
   document.getElementById('m-log').style.display = 'block';
   const logBox = document.getElementById('m-logBox');
@@ -1635,7 +1721,7 @@ async function runMigration() {
 
   for (const key of selectedMigrateFlows) {
     const [id, name, type] = key.split('|');
-    log(logBox, `\n⟶ Migrerer: ${name} (${type})`, 'info');
+    log(logBox, `\n⟶ ${t('migrating_msg')} ${name} (${type})`, 'info');
     try {
       const res = await fetch('/api/migrate', {
         method: 'POST', headers: {'Content-Type':'application/json'},
@@ -1648,7 +1734,7 @@ async function runMigration() {
       log(logBox, `  ✗ ${e.message}`, 'err');
     }
   }
-  log(logBox, '\n── Migration afsluttet ──', 'info');
+  log(logBox, `\n${t('migration_done')}`, 'info');
 }
 
 // ── Export ────────────────────────────────────────────────────────────────────
@@ -1714,7 +1800,7 @@ async function doExport() {
   const flowType = document.getElementById('ex-type').value;
   showAlert('ex-alert', '');
   if (!customerId || !flowName) return showAlert('ex-alert', t('err_select_customer_flow'), 'err');
-  showAlert('ex-alert', '<span class="spin"></span> Eksporterer via Archy…', 'info');
+  showAlert('ex-alert', `<span class="spin"></span> ${t('exporting_msg')}`, 'info');
   document.getElementById('ex-result').style.display = 'none';
 
   const res = await fetch('/api/export', {
@@ -1726,7 +1812,7 @@ async function doExport() {
 
   exportedYaml = data.content;
   exportedFileName = data.fileName;
-  showAlert('ex-alert', `✓ Eksporteret: ${data.fileName}`, 'ok');
+  showAlert('ex-alert', `✓ ${t('exported_ok')} ${data.fileName}`, 'ok');
   document.getElementById('ex-filename').textContent = data.fileName;
   document.getElementById('ex-yaml').textContent = data.content;
   document.getElementById('ex-result').style.display = 'block';
@@ -1746,7 +1832,7 @@ async function cancelExportAll() {
   if (!_exportAllJobId) return;
   const btn = document.getElementById('ex-all-stop-btn');
   btn.disabled = true;
-  btn.textContent = '⏳ Stopper…';
+  btn.textContent = t('stopping_msg');
   try {
     await fetch(`/api/export-all/cancel/${_exportAllJobId}`, { method: 'POST' });
   } catch (_) {}
@@ -1763,7 +1849,7 @@ async function doExportAll() {
   const stopBtn     = document.getElementById('ex-all-stop-btn');
 
   progressBox.style.display = 'block';
-  logBox.innerHTML = '<span style="color:var(--muted)"><span class="spin"></span> Henter flowliste…</span>';
+  logBox.innerHTML = `<span style="color:var(--muted)"><span class="spin"></span> ${t('loading_flowlist')}</span>`;
   counter.textContent = '';
   bar.style.width = '0%';
   stopBtn.style.display = 'none';
@@ -1857,6 +1943,7 @@ function onFileUpload(input) {
   const file = input.files[0];
   if (!file) return;
   document.getElementById('im-filename').value = file.name;
+  document.getElementById('im-file-name').textContent = file.name;
   const reader = new FileReader();
   reader.onload = e => document.getElementById('im-yaml').value = e.target.result;
   reader.readAsText(file);
@@ -1869,7 +1956,7 @@ async function doImport() {
   const action = document.getElementById('im-action').value;
   showAlert('im-alert', '');
   if (!customerId || !yamlContent) return showAlert('im-alert', t('err_select_customer_yaml'), 'err');
-  showAlert('im-alert', '<span class="spin"></span> Importerer…', 'info');
+  showAlert('im-alert', `<span class="spin"></span> ${t('importing_msg')}`, 'info');
 
   const res = await fetch('/api/import', {
     method: 'POST', headers: {'Content-Type':'application/json'},
@@ -1880,16 +1967,16 @@ async function doImport() {
   logEl.style.display = 'block';
   if (data.error === 'already_exists') {
     showAlert('im-alert',
-      '✗ Flowet eksisterer allerede (create fejlede). ' +
-      '<button class="btn btn-primary btn-sm" style="margin-left:8px" ' +
-      'onclick="document.getElementById(\'im-action\').value=\'update\';doImport()">🔄 Skift til Update og prøv igen</button>',
+      `✗ ${t('already_exists_err')} ` +
+      `<button class="btn btn-primary btn-sm" style="margin-left:8px" ` +
+      `onclick="document.getElementById('im-action').value='update';doImport()">🔄 ${t('switch_to_update')}</button>`,
       'err');
     logEl.innerHTML = `<span class="log-warn">${data.message || 'Flow already exists'}</span>`;
   } else if (data.error) {
     showAlert('im-alert', '✗ ' + data.error, 'err');
     logEl.innerHTML = `<span class="log-err">${data.error}</span>`;
   } else {
-    showAlert('im-alert', '✓ Flow importeret!', 'ok');
+    showAlert('im-alert', t('import_ok'), 'ok');
     logEl.innerHTML = `<span class="log-ok">${data.output || 'OK'}</span>`;
   }
 }
@@ -1900,7 +1987,7 @@ async function loadFiles() {
   const files = await res.json();
   const el = document.getElementById('files-list');
   if (!files.length) {
-    el.innerHTML = '<div style="color:var(--muted);font-size:13px">Ingen lokale YAML-filer endnu.</div>';
+    el.innerHTML = `<div style="color:var(--muted);font-size:13px">${t('no_yaml_files')}</div>`;
     return;
   }
   el.innerHTML = files.map(f => `
@@ -2068,7 +2155,7 @@ function toggleAutoRefresh() {
 }
 
 async function clearLog() {
-  if (!confirm('Ryd hele loggen i hukommelsen?')) return;
+  if (!confirm(t('confirm_clear_log'))) return;
   await fetch('/api/logs/clear', { method: 'POST' });
   loadLog();
   loadLogStats();
@@ -2461,7 +2548,7 @@ async function wizFetchTableKey(dtIdx, tableName) {
     const data = await fetch(`/api/customers/${id}/datatables/${tableInfo.id}`).then(r => r.json());
     if (data.keyTitle) {
       const lbl = document.getElementById(`wdt-key-hint-${dtIdx}`);
-      if (lbl) lbl.textContent = `Nøgle-kolonne: ${data.keyTitle}`;
+      if (lbl) lbl.textContent = `${t('key_column_hint')} ${data.keyTitle}`;
       const lv = document.getElementById(`wdt-lv-${dtIdx}`);
       if (lv && !lv.value) lv.placeholder = data.keyTitle;
       // Store schema info
@@ -2683,7 +2770,7 @@ function _wizS2(body) {
               list="wiz-dt-datalist-${i}" autocomplete="off"
               oninput="wizSearchTables(${i}, this.value)"/>
             <div id="wdt-key-hint-${i}" style="font-size:11px;color:var(--muted);margin-top:3px">
-              ${dt.tableKeyTitle ? 'Nøgle-kolonne: '+dt.tableKeyTitle : ''}
+              ${dt.tableKeyTitle ? t('key_column_hint')+' '+dt.tableKeyTitle : ''}
             </div>
           </div>
           <div>
@@ -2711,7 +2798,7 @@ function _wizS2(body) {
             ${t('wiz_dt_json_cb')}
           </label>
           <span style="font-size:11px;color:var(--muted);margin-left:auto">
-            ${dt.tableKeyTitle ? '🔑 Nøgle: '+dt.tableKeyTitle : ''}
+            ${dt.tableKeyTitle ? t('key_label')+' '+dt.tableKeyTitle : ''}
           </span>
         </div>
         <div style="display:${dt.isJsonTable===false?'none':'flex'};align-items:center;gap:12px;padding:9px 14px;background:var(--hover);
