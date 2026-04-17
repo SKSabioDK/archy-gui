@@ -3187,7 +3187,8 @@ function _genYaml() {
     if (wiz.hasInitialAudio && (iaType==='tts' ? wiz.initialAudioTts : wiz.initialAudioPrompt)) {
       p(1,'initialAudio:');
       if (iaType === 'prompt' && wiz.initialAudioPrompt) {
-        p(2,`prompt: "${wiz.initialAudioPrompt}"`);
+        const iaPfx = /^Prompt\.|^PromptSystem\./i.test(wiz.initialAudioPrompt) ? '' : 'Prompt.';
+        p(2,`prompt: "${iaPfx}${wiz.initialAudioPrompt}"`);
       } else {
         p(2,`tts: "${wiz.initialAudioTts}"`);
       }
@@ -3325,7 +3326,8 @@ function _genYaml() {
         p(a,`- playAudio:`); p(a+2,`name: Goodbye`);
         p(a+2,`audio:`);
         if (daType === 'prompt' && wiz.disconnectPrompt) {
-          p(a+3,`prompt: "${wiz.disconnectPrompt}"`);
+          const daPfx = /^Prompt\.|^PromptSystem\./i.test(wiz.disconnectPrompt) ? '' : 'Prompt.';
+          p(a+3,`prompt: "${daPfx}${wiz.disconnectPrompt}"`);
         } else {
           p(a+3,`tts: "${wiz.disconnectTts}"`);
         }
