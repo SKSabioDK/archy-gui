@@ -31,38 +31,37 @@ function base64url(buf) {
 
 let versionInfo = { current: CURRENT_VERSION, latest: null, updateAvailable: false, checkedAt: null };
 
-async function checkForUpdate() {
-  const token = process.env.GITHUB_TOKEN;
-  const headers = { 'User-Agent': 'archy-gui' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-
-  try {
-    // GitHub Contents API works for both public and private repos (with token)
-    const r = await axios.get(
-      'https://api.github.com/repos/skndkprivat/ArchyGUI/contents/package.json',
-      { headers, timeout: 7000 }
-    );
-    // Response body contains base64-encoded file content
-    const content = Buffer.from(r.data.content, 'base64').toString('utf8');
-    const latest = JSON.parse(content).version;
-    const updateAvailable = latest !== CURRENT_VERSION;
-    versionInfo = { current: CURRENT_VERSION, latest, updateAvailable, checkedAt: new Date().toISOString() };
-    if (updateAvailable) {
-      addLog('WARN', `Update available: v${latest} (running v${CURRENT_VERSION})`, null, 'SYSTEM');
-    } else {
-      addLog('INFO', `Version check: up to date (v${CURRENT_VERSION})`, null, 'SYSTEM');
+function checkForUpdate() {
+  // Use git directly — no token needed, git is already authenticated on this machine.
+  // Step 1: fetch latest remote state (no checkout, no working-tree changes).
+  exec('git fetch origin main --quiet', { cwd: __dirname, shell: 'cmd.exe', timeout: 20000 }, (fetchErr) => {
+    if (fetchErr) {
+      versionInfo = { current: CURRENT_VERSION, latest: null, updateAvailable: false, checkedAt: new Date().toISOString() };
+      addLog('WARN', `Version check: git fetch failed — ${fetchErr.message.split('\n')[0]}`, null, 'SYSTEM');
+      return;
     }
-  } catch (e) {
-    const status = e.response?.status;
-    versionInfo = { current: CURRENT_VERSION, latest: null, updateAvailable: false, checkedAt: new Date().toISOString(), error: e.message };
-    if (status === 401 || status === 403) {
-      addLog('WARN', 'Version check: access denied — set GITHUB_TOKEN env var (needs repo: read scope)', null, 'SYSTEM');
-    } else if (status === 404) {
-      addLog('WARN', 'Version check: repo not found — set GITHUB_TOKEN env var for private repos', null, 'SYSTEM');
-    } else {
-      addLog('WARN', `Version check failed: ${e.message}`, null, 'SYSTEM');
-    }
-  }
+    // Step 2: read package.json from the remote ref — no disk write.
+    exec('git show origin/main:package.json', { cwd: __dirname, shell: 'cmd.exe', timeout: 5000 }, (showErr, stdout) => {
+      if (showErr) {
+        versionInfo = { current: CURRENT_VERSION, latest: null, updateAvailable: false, checkedAt: new Date().toISOString() };
+        addLog('WARN', `Version check: could not read remote package.json — ${showErr.message.split('\n')[0]}`, null, 'SYSTEM');
+        return;
+      }
+      try {
+        const latest = JSON.parse(stdout).version;
+        const updateAvailable = latest !== CURRENT_VERSION;
+        versionInfo = { current: CURRENT_VERSION, latest, updateAvailable, checkedAt: new Date().toISOString() };
+        if (updateAvailable) {
+          addLog('WARN', `Update available: v${latest} (running v${CURRENT_VERSION})`, null, 'SYSTEM');
+        } else {
+          addLog('INFO', `Version check: up to date (v${CURRENT_VERSION})`, null, 'SYSTEM');
+        }
+      } catch (e) {
+        versionInfo = { current: CURRENT_VERSION, latest: null, updateAvailable: false, checkedAt: new Date().toISOString() };
+        addLog('WARN', `Version check: could not parse remote package.json — ${e.message}`, null, 'SYSTEM');
+      }
+    });
+  });
 }
 
 app.get('/api/version', (req, res) => res.json(versionInfo));

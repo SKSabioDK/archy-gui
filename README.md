@@ -125,25 +125,9 @@ Alternativt manuelt:
 node server.js
 ```
 
-### Versionstjek (GITHUB_TOKEN)
+### Versionstjek
 
-Archy GUI tjekker automatisk om der er en nyere version på GitHub. Da repositoriet er **privat**, kræves et GitHub Personal Access Token (PAT).
-
-**Opret token:**
-1. Gå til [github.com → Settings → Developer settings → Personal access tokens → Fine-grained tokens](https://github.com/settings/tokens?type=beta)
-2. Klik **Generate new token**
-3. Giv den et navn, f.eks. `archy-gui-version-check`
-4. Under **Repository access** → vælg **Only select repositories** → vælg `ArchyGUI`
-5. Under **Permissions** → **Repository permissions** → **Contents** → sæt til `Read-only`
-6. Klik **Generate token** og kopiér token-værdien
-
-**Sæt miljøvariabel (Windows — persistent):**
-```cmd
-setx GITHUB_TOKEN "github_pat_xxxxxxxxxxxx"
-```
-*(Genstart derefter serveren — `setx` kræver ny process for at træde i kraft)*
-
-Tokenet bruges **kun** til at hente `package.json`-filen og gemmes aldrig på disk.
+Archy GUI tjekker automatisk om der er en nyere version tilgængelig. Checket bruger `git fetch` + `git show` direkte, så ingen token eller GitHub API-adgang er nødvendig — git er allerede autentificeret på maskinen via den normale git-opsætning.
 
 ---
 
@@ -303,25 +287,9 @@ Alternatively, run manually:
 node server.js
 ```
 
-### Version check (GITHUB_TOKEN)
+### Version check
 
-Archy GUI automatically checks whether a newer version is available on GitHub. Because the repository is **private**, a GitHub Personal Access Token (PAT) is required.
-
-**Create a token:**
-1. Go to [github.com → Settings → Developer settings → Personal access tokens → Fine-grained tokens](https://github.com/settings/tokens?type=beta)
-2. Click **Generate new token**
-3. Give it a name, e.g. `archy-gui-version-check`
-4. Under **Repository access** → select **Only select repositories** → choose `ArchyGUI`
-5. Under **Permissions** → **Repository permissions** → **Contents** → set to `Read-only`
-6. Click **Generate token** and copy the token value
-
-**Set the environment variable (Windows — persistent):**
-```cmd
-setx GITHUB_TOKEN "github_pat_xxxxxxxxxxxx"
-```
-*(Restart the server after running this — `setx` requires a new process to take effect)*
-
-The token is used **only** to read the `package.json` file and is never stored on disk.
+Archy GUI automatically checks whether a newer version is available. The check uses `git fetch` + `git show` directly — no token or GitHub API access needed. Git is already authenticated on the machine via the normal git setup.
 
 ---
 
