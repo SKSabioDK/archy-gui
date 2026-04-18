@@ -32,12 +32,19 @@ function base64url(buf) {
 let versionInfo = { current: CURRENT_VERSION, latest: null, updateAvailable: false, checkedAt: null };
 
 async function checkForUpdate() {
+  const token = process.env.GITHUB_TOKEN;
+  const headers = { 'User-Agent': 'archy-gui' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   try {
+    // GitHub Contents API works for both public and private repos (with token)
     const r = await axios.get(
-      'https://raw.githubusercontent.com/skndkprivat/ArchyGUI/main/package.json',
-      { timeout: 7000 }
+      'https://api.github.com/repos/skndkprivat/ArchyGUI/contents/package.json',
+      { headers, timeout: 7000 }
     );
-    const latest = r.data.version;
+    // Response body contains base64-encoded file content
+    const content = Buffer.from(r.data.content, 'base64').toString('utf8');
+    const latest = JSON.parse(content).version;
     const updateAvailable = latest !== CURRENT_VERSION;
     versionInfo = { current: CURRENT_VERSION, latest, updateAvailable, checkedAt: new Date().toISOString() };
     if (updateAvailable) {
@@ -46,8 +53,15 @@ async function checkForUpdate() {
       addLog('INFO', `Version check: up to date (v${CURRENT_VERSION})`, null, 'SYSTEM');
     }
   } catch (e) {
+    const status = e.response?.status;
     versionInfo = { current: CURRENT_VERSION, latest: null, updateAvailable: false, checkedAt: new Date().toISOString(), error: e.message };
-    addLog('WARN', `Version check failed: ${e.message}`, null, 'SYSTEM');
+    if (status === 401 || status === 403) {
+      addLog('WARN', 'Version check: access denied — set GITHUB_TOKEN env var (needs repo: read scope)', null, 'SYSTEM');
+    } else if (status === 404) {
+      addLog('WARN', 'Version check: repo not found — set GITHUB_TOKEN env var for private repos', null, 'SYSTEM');
+    } else {
+      addLog('WARN', `Version check failed: ${e.message}`, null, 'SYSTEM');
+    }
   }
 }
 
