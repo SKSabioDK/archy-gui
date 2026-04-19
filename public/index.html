@@ -1367,6 +1367,7 @@ function applyLang() {
   // Re-populate customer dropdowns so placeholder text is also translated
   populateCustomerSelects();
   populateMigrateSelects();
+  populateSyslogCustomers();
 }
 
 function setLang(lang) {
@@ -1380,9 +1381,12 @@ function setLang(lang) {
     if (tbody && allFlows.length) renderFlowTable(allFlows);
   }
   document.getElementById('archyStatusTxt').textContent = t('archy_ready');
-  // Refresh syslog count if visible
-  const cnt = document.getElementById('syslog-count');
-  if (cnt && cnt.textContent) loadLog();
+  // Refresh syslog if the page is currently active
+  if (document.getElementById('page-syslog').classList.contains('active')) {
+    populateSyslogCustomers();
+    loadLog();
+    loadLogStats();
+  }
   // Re-translate update banner if it is visible
   const banner = document.getElementById('update-banner');
   if (banner && banner.style.display !== 'none') {
@@ -2100,7 +2104,7 @@ const ACTION_BADGE = {
 function populateSyslogCustomers() {
   const sel = document.getElementById('sl-customer');
   const cur = sel.value;
-  sel.innerHTML = '<option value="">Alle kunder</option>';
+  sel.innerHTML = `<option value="">${t('opt_all_customers')}</option>`;
   customers.forEach(c => {
     const o = document.createElement('option');
     o.value = c.name; o.textContent = c.name;
