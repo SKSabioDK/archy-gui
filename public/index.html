@@ -349,7 +349,7 @@
     <div id="sidebarCustomers"></div>
 
     <div class="spacer"></div>
-    <div class="version">v1.3.7 · Archy GUI</div>
+    <div class="version">v1.3.8 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -470,9 +470,32 @@
       </div>
 
       <div class="card" id="m-flowCard" style="display:none">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div class="card-title" style="margin:0" data-i18n="card_select_flows">VÆLG FLOWS TIL MIGRATION</div>
-          <input style="width:200px" placeholder="🔍  Søg…" oninput="filterMigrateFlows(this.value)"/>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px">
+          <div>
+            <div class="card-title" style="margin:0 0 4px" data-i18n="card_select_flows">VÆLG FLOWS TIL MIGRATION</div>
+            <div style="font-size:11px;font-family:var(--mono);color:var(--muted)">
+              <span id="m-sel-count" style="color:var(--accent);font-weight:700">0</span>
+              <span id="m-sel-label" data-i18n="migrate_selected"> valgt</span>
+              &nbsp;·&nbsp;
+              <a href="#" onclick="selectAllMigrateFlows();return false" style="color:var(--accent);text-decoration:none" data-i18n="migrate_select_all">Vælg alle</a>
+              &nbsp;·&nbsp;
+              <a href="#" onclick="clearMigrateSelection();return false" style="color:var(--muted);text-decoration:none" data-i18n="migrate_clear_sel">Nulstil valg</a>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <select id="m-type-filter" style="width:150px" onchange="applyMigrateFilter()">
+              <option value="" data-i18n="opt_all_types">Alle typer</option>
+              <option value="inboundcall">InboundCall</option>
+              <option value="outboundcall">OutboundCall</option>
+              <option value="inboundshortmessage">InboundSMS</option>
+              <option value="inboundemail">InboundEmail</option>
+              <option value="workflow">Workflow</option>
+              <option value="digitalbot">DigitalBot</option>
+              <option value="bot">Bot</option>
+            </select>
+            <input id="m-search" style="width:200px" data-i18n-placeholder="placeholder_filter"
+              placeholder="🔍  Skriv for at filtrere…" oninput="applyMigrateFilter()"/>
+          </div>
         </div>
         <div id="m-flowList"></div>
         <div style="margin-top:12px;display:flex;align-items:center;gap:12px">
@@ -886,6 +909,8 @@ const LANGS = {
     btn_check_update:'🔍 Tjek for opdatering',
     btn_checking_update:'⏳ Tjekker…',
     btn_up_to_date:'✓ Seneste version',
+    migrate_selected:'valgt', migrate_select_all:'Vælg alle', migrate_clear_sel:'Nulstil valg',
+    opt_all_types:'Alle typer',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1009,6 +1034,8 @@ const LANGS = {
     btn_check_update:'🔍 Check for updates',
     btn_checking_update:'⏳ Checking…',
     btn_up_to_date:'✓ Up to date',
+    migrate_selected:'selected', migrate_select_all:'Select all', migrate_clear_sel:'Clear selection',
+    opt_all_types:'All types',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -1132,6 +1159,8 @@ const LANGS = {
     btn_check_update:'🔍 Vérifier les mises à jour',
     btn_checking_update:'⏳ Vérification…',
     btn_up_to_date:'✓ Version à jour',
+    migrate_selected:'sélectionné(s)', migrate_select_all:'Tout sélectionner', migrate_clear_sel:'Effacer la sélection',
+    opt_all_types:'Tous les types',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -1255,6 +1284,8 @@ const LANGS = {
     btn_check_update:'🔍 Controleer op updates',
     btn_checking_update:'⏳ Controleren…',
     btn_up_to_date:'✓ Nieuwste versie',
+    migrate_selected:'geselecteerd', migrate_select_all:'Alles selecteren', migrate_clear_sel:'Selectie wissen',
+    opt_all_types:'Alle typen',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -1378,6 +1409,8 @@ const LANGS = {
     btn_check_update:'🔍 Buscar actualizaciones',
     btn_checking_update:'⏳ Comprobando…',
     btn_up_to_date:'✓ Versión más reciente',
+    migrate_selected:'seleccionado(s)', migrate_select_all:'Seleccionar todo', migrate_clear_sel:'Borrar selección',
+    opt_all_types:'Todos los tipos',
   }
 };
 
@@ -1809,34 +1842,75 @@ async function onMigrateSourceChange() {
 
 function renderMigrateFlows(flows) {
   const el = document.getElementById('m-flowList');
-  el.innerHTML = flows.map(f => `
-    <div class="migrate-flow-item ${selectedMigrateFlows.has(f.id) ? 'selected':''}" onclick="toggleMigrateFlow('${f.id}','${f.name}','${f.type}')">
-      <div>
-        <div style="font-size:13px;font-weight:600">${f.name}</div>
-        <div style="font-size:11px;color:var(--muted);font-family:var(--mono)">${f.type} · v${f.publishedVersion || f.savedVersion || '?'}</div>
+  if (!flows.length) {
+    el.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:10px 0">${t('no_log_entries')}</div>`;
+    return;
+  }
+  el.innerHTML = flows.map(f => {
+    const key = f.id + '|' + f.name + '|' + f.type;
+    const sel = selectedMigrateFlows.has(key);
+    const versions = [
+      f.publishedVersion ? `<span style="color:var(--green)">Pub v${f.publishedVersion}</span>` : '',
+      f.savedVersion     ? `<span style="color:var(--muted)">Draft v${f.savedVersion}</span>`    : ''
+    ].filter(Boolean).join('<span style="color:var(--border2)"> · </span>');
+    return `
+    <div class="migrate-flow-item ${sel ? 'selected' : ''}" onclick="toggleMigrateFlow('${f.id}','${encodeURIComponent(f.name)}','${f.type}')">
+      <div style="min-width:0">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.name}</div>
+        <div style="font-size:11px;font-family:var(--mono);margin-top:2px">${f.type}&nbsp;&nbsp;${versions}</div>
       </div>
-      <div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
         ${f.active ? '<span class="badge badge-green">Pub</span>' : '<span class="badge badge-gray">Draft</span>'}
-        ${selectedMigrateFlows.has(f.id) ? '<span style="color:var(--accent);margin-left:8px">✓</span>' : ''}
+        <span style="color:var(--accent);font-size:16px;width:18px;text-align:center">${sel ? '✓' : ''}</span>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
-function toggleMigrateFlow(id, name, type) {
+function toggleMigrateFlow(id, nameEnc, type) {
+  const name = decodeURIComponent(nameEnc);
   const key = id + '|' + name + '|' + type;
   if (selectedMigrateFlows.has(key)) selectedMigrateFlows.delete(key);
   else selectedMigrateFlows.add(key);
-  renderMigrateFlows(migrateFlows);
+  applyMigrateFilter();   // re-render respecting active filter
   updateMigrateBtn();
 }
 
-function filterMigrateFlows(q) {
-  const filtered = migrateFlows.filter(f => f.name.toLowerCase().includes(q.toLowerCase()));
+function applyMigrateFilter() {
+  const q    = (document.getElementById('m-search')?.value || '').toLowerCase();
+  const type = (document.getElementById('m-type-filter')?.value || '').toLowerCase();
+  const filtered = migrateFlows.filter(f =>
+    (!q    || f.name.toLowerCase().includes(q)) &&
+    (!type || f.type.toLowerCase() === type)
+  );
   renderMigrateFlows(filtered);
 }
 
+// Keep old name as alias so existing callers still work
+function filterMigrateFlows(q) { applyMigrateFilter(); }
+
+function selectAllMigrateFlows() {
+  // Select only flows currently visible (respects active filter)
+  const q    = (document.getElementById('m-search')?.value || '').toLowerCase();
+  const type = (document.getElementById('m-type-filter')?.value || '').toLowerCase();
+  migrateFlows
+    .filter(f => (!q || f.name.toLowerCase().includes(q)) && (!type || f.type.toLowerCase() === type))
+    .forEach(f => selectedMigrateFlows.add(f.id + '|' + f.name + '|' + f.type));
+  applyMigrateFilter();
+  updateMigrateBtn();
+}
+
+function clearMigrateSelection() {
+  selectedMigrateFlows.clear();
+  applyMigrateFilter();
+  updateMigrateBtn();
+}
+
 function updateMigrateBtn() {
-  document.getElementById('m-runBtn').disabled = selectedMigrateFlows.size === 0;
+  const n = selectedMigrateFlows.size;
+  document.getElementById('m-runBtn').disabled = n === 0;
+  const cntEl = document.getElementById('m-sel-count');
+  if (cntEl) cntEl.textContent = n;
 }
 
 // ── Migrate auth status ───────────────────────────────────────────────────────

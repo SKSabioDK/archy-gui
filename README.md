@@ -1,10 +1,19 @@
-# Archy GUI — Flow Manager · v1.3.7
+# Archy GUI — Flow Manager · v1.3.8
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.3.8
+---
+**🇩🇰 Dansk**
+- **Migrate flow-valg forbedret** — Rettet bug hvor valgte flows ikke viste sig markerede (forkert nøgle i Set). Pub-version og Draft-version vises nu tydeligt adskilt. Nyt type-filter dropdown. Tæller viser antal valgte flows. "Vælg alle" og "Nulstil valg"-links.
+
+---
+**🇬🇧 English**
+- **Migrate flow selection improved** — Fixed bug where selected flows didn't appear highlighted (wrong key in Set). Published and Draft versions now shown distinctly. New type filter dropdown. Counter shows number of selected flows. "Select all" and "Clear selection" links.
 
 ### v1.3.7
 ---
@@ -267,7 +276,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, and OAuth PKCE login.
 
-> Current version: **v1.3.7** — see [Changelog](#changelog) above.
+> Current version: **v1.3.8** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
