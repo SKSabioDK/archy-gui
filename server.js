@@ -309,8 +309,21 @@ app.post('/api/customers/:id/test', async (req, res) => {
       const org = await axios.get(`${apiBase}/api/v2/organizations/me`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      addLog('SUCCESS', `Connected to ${customer.name} — org: ${org.data.name || '?'} (Client Credentials)`, customer.name, 'TEST');
-      res.json({ ok: true, name: `(Client Credentials)`, org: org.data.name });
+      // Also verify oauth:client:view permission — Archy requires this for Client Credentials.
+      // A 403 here means Archy export/import will fail with exit code 99.
+      let archyReady = true;
+      try {
+        await axios.get(`${apiBase}/api/v2/oauth/clients/${customer.clientId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } catch (e) {
+        if (e.response?.status === 403) {
+          archyReady = false;
+          addLog('WARN', `${customer.name}: missing oauth:client:view permission — Archy will fail (exit 99)`, customer.name, 'TEST');
+        }
+      }
+      addLog('SUCCESS', `Connected to ${customer.name} — org: ${org.data.name || '?'} (Client Credentials)${archyReady ? '' : ' ⚠ missing oauth:client:view'}`, customer.name, 'TEST');
+      res.json({ ok: true, name: `(Client Credentials)`, org: org.data.name, archyReady });
     }
   } catch (e) {
     const errMsg = e.response?.data?.message || e.message;

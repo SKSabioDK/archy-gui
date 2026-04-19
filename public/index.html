@@ -349,7 +349,7 @@
     <div id="sidebarCustomers"></div>
 
     <div class="spacer"></div>
-    <div class="version">v1.3.8 · Archy GUI</div>
+    <div class="version">v1.3.9 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -911,6 +911,7 @@ const LANGS = {
     btn_up_to_date:'✓ Seneste version',
     migrate_selected:'valgt', migrate_select_all:'Vælg alle', migrate_clear_sel:'Nulstil valg',
     opt_all_types:'Alle typer',
+    warn_missing_oauth_view:'⚠ Mangler \'oauth:client:view\' — Archy vil fejle med afslutningskode 99. Tilføj tilladelsen i Genesys Cloud Admin → OAuth.',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1036,6 +1037,7 @@ const LANGS = {
     btn_up_to_date:'✓ Up to date',
     migrate_selected:'selected', migrate_select_all:'Select all', migrate_clear_sel:'Clear selection',
     opt_all_types:'All types',
+    warn_missing_oauth_view:'⚠ Missing \'oauth:client:view\' — Archy will fail with exit code 99. Add the permission in Genesys Cloud Admin → OAuth.',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -1161,6 +1163,7 @@ const LANGS = {
     btn_up_to_date:'✓ Version à jour',
     migrate_selected:'sélectionné(s)', migrate_select_all:'Tout sélectionner', migrate_clear_sel:'Effacer la sélection',
     opt_all_types:'Tous les types',
+    warn_missing_oauth_view:'⚠ Permission \'oauth:client:view\' manquante — Archy échouera avec le code de sortie 99. Ajoutez la permission dans Genesys Cloud Admin → OAuth.',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -1286,6 +1289,7 @@ const LANGS = {
     btn_up_to_date:'✓ Nieuwste versie',
     migrate_selected:'geselecteerd', migrate_select_all:'Alles selecteren', migrate_clear_sel:'Selectie wissen',
     opt_all_types:'Alle typen',
+    warn_missing_oauth_view:'⚠ Ontbrekende \'oauth:client:view\' — Archy mislukt met exitcode 99. Voeg de rechten toe in Genesys Cloud Admin → OAuth.',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -1411,6 +1415,7 @@ const LANGS = {
     btn_up_to_date:'✓ Versión más reciente',
     migrate_selected:'seleccionado(s)', migrate_select_all:'Seleccionar todo', migrate_clear_sel:'Borrar selección',
     opt_all_types:'Todos los tipos',
+    warn_missing_oauth_view:'⚠ Falta \'oauth:client:view\' — Archy fallará con el código de salida 99. Añade el permiso en Genesys Cloud Admin → OAuth.',
   }
 };
 
@@ -1628,6 +1633,7 @@ function renderCustomerGrid() {
       <div class="cc-status"><div class="dot" id="card-dot-${c.id}"></div><span id="card-status-${c.id}">–</span></div>
       <div class="cc-name">${c.name}</div>
       <div class="cc-region" style="display:flex;align-items:center;gap:8px">${c.region} ${authBadge}</div>
+      <div id="card-archy-warn-${c.id}" style="display:none;margin-top:8px;padding:6px 10px;background:rgba(241,196,15,.1);border:1px solid rgba(241,196,15,.3);border-radius:5px;font-size:11px;color:var(--yellow);font-family:var(--mono)"></div>
       <div class="cc-actions" style="margin-top:14px">
         ${loginBtn}
         <button class="btn btn-secondary btn-sm" onclick="testCustomer('${c.id}')">${t('btn_test')}</button>
@@ -1719,19 +1725,30 @@ async function deleteCustomer(id) {
 }
 
 async function testCustomer(id) {
-  const dot = document.getElementById('card-dot-' + id);
-  const txt = document.getElementById('card-status-' + id);
+  const dot    = document.getElementById('card-dot-' + id);
+  const txt    = document.getElementById('card-status-' + id);
+  const warnEl = document.getElementById('card-archy-warn-' + id);
   dot.className = 'dot';
   txt.textContent = '…';
-  const res = await fetch('/api/customers/' + id + '/test', {method:'POST'});
+  if (warnEl) warnEl.style.display = 'none';
+  const res  = await fetch('/api/customers/' + id + '/test', {method:'POST'});
   const data = await res.json();
   if (data.ok) {
     dot.classList.add('ok');
     txt.textContent = data.name;
     document.getElementById('chip-' + id)?.classList.add('online');
+    if (warnEl) {
+      if (data.archyReady === false) {
+        warnEl.textContent = t('warn_missing_oauth_view');
+        warnEl.style.display = 'block';
+      } else {
+        warnEl.style.display = 'none';
+      }
+    }
   } else {
     dot.style.background = 'var(--red)';
     txt.textContent = t('err_label');
+    if (warnEl) warnEl.style.display = 'none';
   }
 }
 

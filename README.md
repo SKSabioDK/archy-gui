@@ -1,10 +1,19 @@
-# Archy GUI — Flow Manager · v1.3.8
+# Archy GUI — Flow Manager · v1.3.9
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.3.9
+---
+**🇩🇰 Dansk**
+- **Rettighedstjek ved forbindelsestest** — Testkontappen tjekker nu om OAuth-klienten har tilladelsen `oauth:client:view`. Hvis den mangler, vises en gul advarsel direkte på kundekortet, da Archy ellers fejler med exit-kode 99.
+
+---
+**🇬🇧 English**
+- **Permission check on connection test** — The test endpoint now verifies the OAuth client has the `oauth:client:view` permission. If missing, a yellow warning is shown on the customer card — without this permission Archy fails with exit code 99.
 
 ### v1.3.8
 ---
@@ -276,7 +285,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, and OAuth PKCE login.
 
-> Current version: **v1.3.8** — see [Changelog](#changelog) above.
+> Current version: **v1.3.9** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
