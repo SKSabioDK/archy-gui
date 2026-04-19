@@ -349,7 +349,7 @@
     <div id="sidebarCustomers"></div>
 
     <div class="spacer"></div>
-    <div class="version">v1.3.6 · Archy GUI</div>
+    <div class="version">v1.3.7 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -715,7 +715,10 @@
           <div class="page-title" data-i18n="nav_readme">README</div>
           <div class="page-sub" data-i18n="page_readme_sub">Dokumentation & hjælp</div>
         </div>
-        <button class="btn btn-secondary btn-sm" onclick="loadReadme()" data-i18n="btn_reload">🔄 Genindlæs</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-secondary btn-sm" onclick="loadReadme()" data-i18n="btn_reload">🔄 Genindlæs</button>
+          <button class="btn btn-secondary btn-sm" id="btn-check-update" onclick="manualCheckUpdate()" data-i18n="btn_check_update">🔍 Tjek for opdatering</button>
+        </div>
       </div>
       <div class="md-lang-tabs">
         <button class="md-lang-tab active" id="readme-tab-da" onclick="switchReadmeLang('da')">🇩🇰 Dansk</button>
@@ -880,6 +883,9 @@ const LANGS = {
     auth_ready_cc:'Klar (Client Credentials)',
     auth_not_logged_in:'Ikke logget ind — brug Login-knappen på kundekortet',
     auth_expired:'Session udløbet — log ind igen',
+    btn_check_update:'🔍 Tjek for opdatering',
+    btn_checking_update:'⏳ Tjekker…',
+    btn_up_to_date:'✓ Seneste version',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1000,6 +1006,9 @@ const LANGS = {
     auth_ready_cc:'Ready (Client Credentials)',
     auth_not_logged_in:'Not logged in — use Login button on customer card',
     auth_expired:'Session expired — log in again',
+    btn_check_update:'🔍 Check for updates',
+    btn_checking_update:'⏳ Checking…',
+    btn_up_to_date:'✓ Up to date',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -1120,6 +1129,9 @@ const LANGS = {
     auth_ready_cc:'Prêt (Client Credentials)',
     auth_not_logged_in:'Non connecté — utilisez le bouton Login sur la fiche client',
     auth_expired:'Session expirée — reconnectez-vous',
+    btn_check_update:'🔍 Vérifier les mises à jour',
+    btn_checking_update:'⏳ Vérification…',
+    btn_up_to_date:'✓ Version à jour',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -1240,6 +1252,9 @@ const LANGS = {
     auth_ready_cc:'Gereed (Client Credentials)',
     auth_not_logged_in:'Niet ingelogd — gebruik de Login-knop op de klantkaart',
     auth_expired:'Sessie verlopen — log opnieuw in',
+    btn_check_update:'🔍 Controleer op updates',
+    btn_checking_update:'⏳ Controleren…',
+    btn_up_to_date:'✓ Nieuwste versie',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -1360,6 +1375,9 @@ const LANGS = {
     auth_ready_cc:'Listo (Client Credentials)',
     auth_not_logged_in:'No conectado — usa el botón Login en la ficha del cliente',
     auth_expired:'Sesión expirada — vuelve a iniciar sesión',
+    btn_check_update:'🔍 Buscar actualizaciones',
+    btn_checking_update:'⏳ Comprobando…',
+    btn_up_to_date:'✓ Versión más reciente',
   }
 };
 
@@ -1456,19 +1474,51 @@ async function checkArchy() {
   document.getElementById('archyStatus').classList.add('ok');
 }
 
-async function checkVersion() {
-  try {
-    const data = await fetch('/api/version').then(r => r.json());
-    if (!data.updateAvailable) return;
-    const banner  = document.getElementById('update-banner');
-    const txtEl   = document.getElementById('update-banner-txt');
-    const linkEl  = document.getElementById('update-banner-link');
+function _applyVersionData(data) {
+  // Update the sticky banner based on version data
+  const banner = document.getElementById('update-banner');
+  const txtEl  = document.getElementById('update-banner-txt');
+  const linkEl = document.getElementById('update-banner-link');
+  if (data.updateAvailable) {
     banner.dataset.latest  = data.latest;
     banner.dataset.current = data.current;
     txtEl.textContent  = `${t('update_available')} v${data.latest} (v${data.current})  —  `;
     linkEl.textContent = t('update_see_gh');
     banner.style.display = 'flex';
+  }
+}
+
+async function checkVersion() {
+  try {
+    const data = await fetch('/api/version').then(r => r.json());
+    _applyVersionData(data);
   } catch (_) { /* silently ignore — version check is optional */ }
+}
+
+async function manualCheckUpdate() {
+  const btn = document.getElementById('btn-check-update');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.textContent = t('btn_checking_update');
+  try {
+    const data = await fetch('/api/version/check', { method: 'POST' }).then(r => r.json());
+    _applyVersionData(data);
+    if (data.updateAvailable) {
+      // Banner now visible — reset button so user can check again later
+      btn.textContent = t('btn_check_update');
+    } else {
+      btn.textContent = t('btn_up_to_date');
+      // Reset back to normal label after 4 seconds
+      setTimeout(() => {
+        btn.textContent = t('btn_check_update');
+        btn.disabled = false;
+      }, 4000);
+      return; // keep disabled during the timeout, then re-enable
+    }
+  } catch (_) {
+    btn.textContent = t('btn_check_update');
+  }
+  btn.disabled = false;
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────

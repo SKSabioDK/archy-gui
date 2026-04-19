@@ -1,10 +1,21 @@
-# Archy GUI — Flow Manager · v1.3.6
+# Archy GUI — Flow Manager · v1.3.7
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.3.7
+---
+**🇩🇰 Dansk**
+- **Manuel opdateringstjek** — Ny "🔍 Tjek for opdatering"-knap på README-siden ved siden af Genindlæs-knappen. Kalder serveren direkte og viser resultatet øjeblikkeligt — man behøver ikke vente op til 24 timer på det automatiske tjek.
+- **Auth-status på Migrate-siden** — Kilde og mål viser nu om org'en er klar (grøn dot = forbundet/Client Credentials, gul = session udløbet, rød = ikke logget ind). Inkluderer ↺-knap til at re-checke efter PKCE-login.
+
+---
+**🇬🇧 English**
+- **Manual update check** — New "🔍 Check for updates" button on the README page next to the Reload button. Triggers a server-side check immediately — no need to wait up to 24 hours for the automatic check.
+- **Auth status on Migrate page** — Source and target now show whether the org is ready (green dot = connected/Client Credentials, yellow = session expired, red = not logged in). Includes ↺ button to re-check after PKCE login.
 
 ### v1.3.6
 ---
@@ -256,7 +267,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, and OAuth PKCE login.
 
-> Current version: **v1.3.6** — see [Changelog](#changelog) above.
+> Current version: **v1.3.7** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
