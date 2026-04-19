@@ -459,10 +459,12 @@
           <div>
             <label data-i18n="label_source">Kilde (export fra)</label>
             <select id="m-source" onchange="onMigrateSourceChange()"></select>
+            <div id="m-source-auth" style="margin-top:6px;min-height:18px"></div>
           </div>
           <div>
             <label data-i18n="label_target">Mål (importer til)</label>
-            <select id="m-target"></select>
+            <select id="m-target" onchange="updateMigrateAuthStatus()"></select>
+            <div id="m-target-auth" style="margin-top:6px;min-height:18px"></div>
           </div>
         </div>
       </div>
@@ -875,6 +877,9 @@ const LANGS = {
     key_column_hint:'Nøgle-kolonne:', key_label:'🔑 Nøgle:',
     btn_choose_file:'📂 Vælg fil', no_file_chosen:'Ingen fil valgt',
     update_available:'Ny version tilgængelig:', update_see_gh:'Se på GitHub',
+    auth_ready_cc:'Klar (Client Credentials)',
+    auth_not_logged_in:'Ikke logget ind — brug Login-knappen på kundekortet',
+    auth_expired:'Session udløbet — log ind igen',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -992,6 +997,9 @@ const LANGS = {
     key_column_hint:'Key column:', key_label:'🔑 Key:',
     btn_choose_file:'📂 Choose file', no_file_chosen:'No file chosen',
     update_available:'New version available:', update_see_gh:'View on GitHub',
+    auth_ready_cc:'Ready (Client Credentials)',
+    auth_not_logged_in:'Not logged in — use Login button on customer card',
+    auth_expired:'Session expired — log in again',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -1109,6 +1117,9 @@ const LANGS = {
     key_column_hint:'Colonne clé :', key_label:'🔑 Clé :',
     btn_choose_file:'📂 Choisir un fichier', no_file_chosen:'Aucun fichier sélectionné',
     update_available:'Nouvelle version disponible :', update_see_gh:'Voir sur GitHub',
+    auth_ready_cc:'Prêt (Client Credentials)',
+    auth_not_logged_in:'Non connecté — utilisez le bouton Login sur la fiche client',
+    auth_expired:'Session expirée — reconnectez-vous',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -1226,6 +1237,9 @@ const LANGS = {
     key_column_hint:'Sleutelkolom:', key_label:'🔑 Sleutel:',
     btn_choose_file:'📂 Bestand kiezen', no_file_chosen:'Geen bestand gekozen',
     update_available:'Nieuwe versie beschikbaar:', update_see_gh:'Bekijk op GitHub',
+    auth_ready_cc:'Gereed (Client Credentials)',
+    auth_not_logged_in:'Niet ingelogd — gebruik de Login-knop op de klantkaart',
+    auth_expired:'Sessie verlopen — log opnieuw in',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -1343,6 +1357,9 @@ const LANGS = {
     key_column_hint:'Columna clave:', key_label:'🔑 Clave:',
     btn_choose_file:'📂 Elegir archivo', no_file_chosen:'Ningún archivo seleccionado',
     update_available:'Nueva versión disponible:', update_see_gh:'Ver en GitHub',
+    auth_ready_cc:'Listo (Client Credentials)',
+    auth_not_logged_in:'No conectado — usa el botón Login en la ficha del cliente',
+    auth_expired:'Sesión expirada — vuelve a iniciar sesión',
   }
 };
 
@@ -1386,6 +1403,10 @@ function setLang(lang) {
     populateSyslogCustomers();
     loadLog();
     loadLogStats();
+  }
+  // Refresh migrate auth status labels if migrate page is active
+  if (document.getElementById('page-migrate').classList.contains('active')) {
+    updateMigrateAuthStatus();
   }
   // Re-translate update banner if it is visible
   const banner = document.getElementById('update-banner');
@@ -1458,7 +1479,7 @@ function nav(el) {
   const page = el.dataset.page;
   document.getElementById('page-' + page).classList.add('active');
   if (page === 'flows') populateCustomerSelects();
-  if (page === 'migrate') populateMigrateSelects();
+  if (page === 'migrate') { populateMigrateSelects(); updateMigrateAuthStatus(); }
   if (page === 'export') populateCustomerSelects(['ex-customer']);
   if (page === 'import') populateCustomerSelects(['im-customer']);
   if (page === 'files') loadFiles();
@@ -1721,6 +1742,7 @@ async function onMigrateSourceChange() {
   document.getElementById('m-flowCard').style.display = 'none';
   selectedMigrateFlows.clear();
   updateMigrateBtn();
+  updateMigrateAuthStatus();
   if (!id) return;
   document.getElementById('m-flowCard').style.display = 'block';
   document.getElementById('m-flowList').innerHTML = `<div style="color:var(--muted);font-size:12px"><span class="spin"></span> ${t('loading_flows')}</div>`;
@@ -1765,6 +1787,47 @@ function filterMigrateFlows(q) {
 
 function updateMigrateBtn() {
   document.getElementById('m-runBtn').disabled = selectedMigrateFlows.size === 0;
+}
+
+// ── Migrate auth status ───────────────────────────────────────────────────────
+
+async function _checkMigrateAuth(elId, customerId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  if (!customerId) { el.innerHTML = ''; return; }
+  const customer = customers.find(c => c.id === customerId);
+  if (!customer) { el.innerHTML = ''; return; }
+
+  const refreshBtn = `<button onclick="_checkMigrateAuth('${elId}','${customerId}')"
+    style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:11px;padding:0 0 0 5px;vertical-align:middle"
+    title="${t('btn_reload')}">↺</button>`;
+
+  // Client Credentials — always ready, no token needed
+  if (customer.authType !== 'oauth') {
+    el.innerHTML = `<span style="color:var(--green);font-size:11px;font-family:var(--mono)">● ${t('auth_ready_cc')}</span>`;
+    return;
+  }
+
+  // OAuth (PKCE) — check token via server
+  el.innerHTML = `<span style="color:var(--muted);font-size:11px;font-family:var(--mono)"><span class="spin"></span></span>`;
+  try {
+    const data = await fetch('/api/auth/status/' + customerId).then(r => r.json());
+    if (data.authenticated) {
+      const mins = Math.floor(data.expiresIn / 60);
+      el.innerHTML = `<span style="color:var(--green);font-size:11px;font-family:var(--mono)">● ${t('auth_status_connected')} — ${mins} min${refreshBtn}</span>`;
+    } else if (data.expired) {
+      el.innerHTML = `<span style="color:var(--yellow);font-size:11px;font-family:var(--mono)">● ${t('auth_expired')}${refreshBtn}</span>`;
+    } else {
+      el.innerHTML = `<span style="color:var(--red);font-size:11px;font-family:var(--mono)">● ${t('auth_not_logged_in')}${refreshBtn}</span>`;
+    }
+  } catch (_) {
+    el.innerHTML = '';
+  }
+}
+
+function updateMigrateAuthStatus() {
+  _checkMigrateAuth('m-source-auth', document.getElementById('m-source').value);
+  _checkMigrateAuth('m-target-auth', document.getElementById('m-target').value);
 }
 
 async function runMigration() {
