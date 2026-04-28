@@ -1,10 +1,19 @@
-# Archy GUI — Flow Manager · v1.3.9
+# Archy GUI — Flow Manager · v1.4.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.4.0
+---
+**🇩🇰 Dansk**
+- **Drag-and-drop på Import-siden** — YAML-filer kan nu slippes direkte på siden (ikke kun via "Vælg fil"-knappen). Drop en fil hvor som helst på siden — den læses korrekt med `FileReader` og indholdet indsættes i YAML-feltet. Browseren skiftede tidligere til Import-siden og HTML-enkodede indholdet, hvilket brød YAML-parseren (`&lt;br&gt;`-fejl).
+
+---
+**🇬🇧 English**
+- **Drag-and-drop on Import page** — YAML files can now be dropped directly onto the page (not only via the "Choose file" button). Drop a file anywhere on the page — it is read correctly via `FileReader` and inserted into the YAML field. Previously the browser would HTML-encode the content on drop, breaking the YAML parser (`&lt;br&gt;` error).
 
 ### v1.3.9
 ---

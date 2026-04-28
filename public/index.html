@@ -206,6 +206,10 @@
   .log-box .log-err  { color: var(--red); }
   .log-box .log-info { color: var(--blue); }
 
+  /* Import drop zone */
+  .im-dropzone { border: 2px dashed var(--border2); border-radius: 6px; padding: 10px 12px; transition: border-color .15s, background .15s; }
+  .im-dropzone.drag-over { border-color: var(--accent); background: rgba(255,107,53,.06); }
+
   /* Progress steps */
   .steps { display: flex; gap: 0; margin-bottom: 24px; }
   .step { flex: 1; padding: 12px 16px; font-size: 12px; font-weight: 600; text-align: center; border-bottom: 2px solid var(--border); color: var(--muted); cursor: pointer; transition: all .15s; }
@@ -605,11 +609,14 @@
             <label data-i18n="label_filename">Filnavn</label>
             <input id="im-filename" placeholder="MitFlow_v1-0.yaml" />
           </div>
-          <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
-            <label style="margin:0" data-i18n="label_upload">Upload YAML fil:</label>
-            <input type="file" id="im-file" accept=".yaml,.yml" style="display:none" onchange="onFileUpload(this)" />
-            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('im-file').click()" id="im-file-btn" data-i18n="btn_choose_file">📂 Vælg fil</button>
-            <span id="im-file-name" style="font-size:12px;color:var(--muted)"></span>
+          <div id="im-dropzone" class="im-dropzone">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <label style="margin:0" data-i18n="label_upload">Upload YAML fil:</label>
+              <input type="file" id="im-file" accept=".yaml,.yml" style="display:none" onchange="onFileUpload(this)" />
+              <button class="btn btn-secondary btn-sm" onclick="document.getElementById('im-file').click()" id="im-file-btn" data-i18n="btn_choose_file">📂 Vælg fil</button>
+              <span id="im-file-name" style="font-size:12px;color:var(--muted)"></span>
+              <span style="font-size:11px;color:var(--muted)" data-i18n="label_or_drop">— eller slip fil her</span>
+            </div>
           </div>
         </div>
         <div style="margin-bottom:12px">
@@ -901,7 +908,7 @@ const LANGS = {
     confirm_delete_customer:'Slet denne kunde?',
     err_label:'Fejl', confirm_clear_log:'Ryd hele loggen i hukommelsen?',
     key_column_hint:'Nøgle-kolonne:', key_label:'🔑 Nøgle:',
-    btn_choose_file:'📂 Vælg fil', no_file_chosen:'Ingen fil valgt',
+    btn_choose_file:'📂 Vælg fil', no_file_chosen:'Ingen fil valgt', label_or_drop:'— eller slip fil her',
     update_available:'Ny version tilgængelig:', update_see_gh:'Se på GitHub',
     auth_ready_cc:'Klar (Client Credentials)',
     auth_not_logged_in:'Ikke logget ind — brug Login-knappen på kundekortet',
@@ -1027,7 +1034,7 @@ const LANGS = {
     confirm_delete_customer:'Delete this customer?',
     err_label:'Error', confirm_clear_log:'Clear the entire log from memory?',
     key_column_hint:'Key column:', key_label:'🔑 Key:',
-    btn_choose_file:'📂 Choose file', no_file_chosen:'No file chosen',
+    btn_choose_file:'📂 Choose file', no_file_chosen:'No file chosen', label_or_drop:'— or drop file here',
     update_available:'New version available:', update_see_gh:'View on GitHub',
     auth_ready_cc:'Ready (Client Credentials)',
     auth_not_logged_in:'Not logged in — use Login button on customer card',
@@ -1153,7 +1160,7 @@ const LANGS = {
     confirm_delete_customer:'Supprimer ce client ?',
     err_label:'Erreur', confirm_clear_log:'Vider tout le journal de la mémoire ?',
     key_column_hint:'Colonne clé :', key_label:'🔑 Clé :',
-    btn_choose_file:'📂 Choisir un fichier', no_file_chosen:'Aucun fichier sélectionné',
+    btn_choose_file:'📂 Choisir un fichier', no_file_chosen:'Aucun fichier sélectionné', label_or_drop:'— ou déposer le fichier ici',
     update_available:'Nouvelle version disponible :', update_see_gh:'Voir sur GitHub',
     auth_ready_cc:'Prêt (Client Credentials)',
     auth_not_logged_in:'Non connecté — utilisez le bouton Login sur la fiche client',
@@ -1279,7 +1286,7 @@ const LANGS = {
     confirm_delete_customer:'Deze klant verwijderen?',
     err_label:'Fout', confirm_clear_log:'Wilt u het volledige logboek uit het geheugen wissen?',
     key_column_hint:'Sleutelkolom:', key_label:'🔑 Sleutel:',
-    btn_choose_file:'📂 Bestand kiezen', no_file_chosen:'Geen bestand gekozen',
+    btn_choose_file:'📂 Bestand kiezen', no_file_chosen:'Geen bestand gekozen', label_or_drop:'— of sleep bestand hier',
     update_available:'Nieuwe versie beschikbaar:', update_see_gh:'Bekijk op GitHub',
     auth_ready_cc:'Gereed (Client Credentials)',
     auth_not_logged_in:'Niet ingelogd — gebruik de Login-knop op de klantkaart',
@@ -1405,7 +1412,7 @@ const LANGS = {
     confirm_delete_customer:'¿Eliminar este cliente?',
     err_label:'Error', confirm_clear_log:'¿Borrar todo el registro de la memoria?',
     key_column_hint:'Columna clave:', key_label:'🔑 Clave:',
-    btn_choose_file:'📂 Elegir archivo', no_file_chosen:'Ningún archivo seleccionado',
+    btn_choose_file:'📂 Elegir archivo', no_file_chosen:'Ningún archivo seleccionado', label_or_drop:'— o suelta el archivo aquí',
     update_available:'Nueva versión disponible:', update_see_gh:'Ver en GitHub',
     auth_ready_cc:'Listo (Client Credentials)',
     auth_not_logged_in:'No conectado — usa el botón Login en la ficha del cliente',
@@ -2212,6 +2219,46 @@ function onFileUpload(input) {
   reader.onload = e => document.getElementById('im-yaml').value = e.target.result;
   reader.readAsText(file);
 }
+
+function loadDroppedFile(file) {
+  if (!file) return;
+  document.getElementById('im-filename').value = file.name;
+  document.getElementById('im-file-name').textContent = file.name;
+  const reader = new FileReader();
+  reader.onload = e => document.getElementById('im-yaml').value = e.target.result;
+  reader.readAsText(file);
+}
+
+// Prevent browser from navigating to dropped files anywhere on the page
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  const file = e.dataTransfer?.files?.[0];
+  if (!file) return;
+  // Route the file to the import form regardless of where it was dropped
+  loadDroppedFile(file);
+  // Switch to import page if not already there
+  if (!document.getElementById('page-import').classList.contains('active')) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelector('[data-page=import]').classList.add('active');
+    document.getElementById('page-import').classList.add('active');
+    populateCustomerSelects(['im-customer']);
+  }
+});
+
+// Drop zone visual feedback
+document.addEventListener('DOMContentLoaded', () => {
+  const zone = document.getElementById('im-dropzone');
+  if (!zone) return;
+  document.addEventListener('dragenter', e => {
+    if (e.dataTransfer?.types?.includes('Files')) zone.classList.add('drag-over');
+  });
+  document.addEventListener('dragleave', e => {
+    if (!e.relatedTarget || e.relatedTarget === document.documentElement) zone.classList.remove('drag-over');
+  });
+  document.addEventListener('drop', () => zone.classList.remove('drag-over'));
+});
 
 async function doImport() {
   const customerId = document.getElementById('im-customer').value;
