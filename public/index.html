@@ -353,7 +353,7 @@
     <div id="sidebarCustomers"></div>
 
     <div class="spacer"></div>
-    <div class="version">v1.3.9 · Archy GUI</div>
+    <div class="version">v1.4.1 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -891,6 +891,9 @@ const LANGS = {
     wiz_s3_same_type:'Søger kun {type}-flows (samme type som dette flow)',
     wiz_s3_no_config:'Ingen ekstra konfiguration for',
     wiz_s3_click_next:'Klik Næste for at se det genererede YAML.',
+    wiz_s3_extra_yaml_title:'YAML-BIBLIOTEK (ekstra blokke)',
+    wiz_s3_extra_yaml_hint:'Indsæt rå YAML-blokke fra dit bibliotek (f.eks. IVR-menuer, Schedule-grupper, reusable tasks). Tilføjes direkte efter det genererede YAML.',
+    wiz_s3_extra_yaml_ph:'# Indsæt YAML-kode her…\n# Eksempel:\n# scheduleGroup:\n#   name: "Åbningstider"\n#   ...',
     wiz_s4_desc:'Gennemse YAML — klik ✓ Brug YAML for at sende til Import-siden.',
     wiz_copy:'📋 Kopiér', wiz_copied:'✓ Kopieret!',
     wiz_use_yaml_success:'✓ YAML fra Flow Builder indsat:',
@@ -1017,6 +1020,9 @@ const LANGS = {
     wiz_s3_same_type:'Searching only {type} flows (same type as this flow)',
     wiz_s3_no_config:'No extra configuration for',
     wiz_s3_click_next:'Click Next to see the generated YAML.',
+    wiz_s3_extra_yaml_title:'YAML LIBRARY (extra blocks)',
+    wiz_s3_extra_yaml_hint:'Paste raw YAML blocks from your library (e.g. IVR menus, Schedule groups, reusable tasks). Appended directly after the generated YAML.',
+    wiz_s3_extra_yaml_ph:'# Paste YAML code here…\n# Example:\n# scheduleGroup:\n#   name: "Opening Hours"\n#   ...',
     wiz_s4_desc:'Review YAML — click ✓ Use YAML to send to the Import page.',
     wiz_copy:'📋 Copy', wiz_copied:'✓ Copied!',
     wiz_use_yaml_success:'✓ YAML from Flow Builder inserted:',
@@ -1143,6 +1149,9 @@ const LANGS = {
     wiz_s3_same_type:'Recherche uniquement les flows de type {type}',
     wiz_s3_no_config:'Aucune configuration supplémentaire pour',
     wiz_s3_click_next:'Cliquez sur Suivant pour voir le YAML.',
+    wiz_s3_extra_yaml_title:'BIBLIOTHÈQUE YAML (blocs supplémentaires)',
+    wiz_s3_extra_yaml_hint:'Collez des blocs YAML bruts depuis votre bibliothèque (ex. menus IVR, groupes de planification). Ajoutés directement après le YAML généré.',
+    wiz_s3_extra_yaml_ph:'# Collez le code YAML ici…',
     wiz_s4_desc:'Vérifiez le YAML — cliquez sur ✓ Utiliser YAML pour envoyer à la page Import.',
     wiz_copy:'📋 Copier', wiz_copied:'✓ Copié !',
     wiz_use_yaml_success:'✓ YAML du Flow Builder inséré :',
@@ -1269,6 +1278,9 @@ const LANGS = {
     wiz_s3_same_type:'Zoekt alleen {type}-flows (zelfde type als dit flow)',
     wiz_s3_no_config:'Geen extra configuratie voor',
     wiz_s3_click_next:'Klik op Volgende om de gegenereerde YAML te zien.',
+    wiz_s3_extra_yaml_title:'YAML-BIBLIOTHEEK (extra blokken)',
+    wiz_s3_extra_yaml_hint:'Plak ruwe YAML-blokken uit uw bibliotheek (bijv. IVR-menu\'s, planningsgroepen). Toegevoegd direct na de gegenereerde YAML.',
+    wiz_s3_extra_yaml_ph:'# Plak YAML-code hier…',
     wiz_s4_desc:'Bekijk YAML — klik op ✓ YAML gebruiken om naar de importpagina te sturen.',
     wiz_copy:'📋 Kopiëren', wiz_copied:'✓ Gekopieerd!',
     wiz_use_yaml_success:'✓ YAML van Flow Builder ingevoegd:',
@@ -1395,6 +1407,9 @@ const LANGS = {
     wiz_s3_same_type:'Buscando solo flows de tipo {type}',
     wiz_s3_no_config:'Sin configuración adicional para',
     wiz_s3_click_next:'Haz clic en Siguiente para ver el YAML generado.',
+    wiz_s3_extra_yaml_title:'BIBLIOTECA YAML (bloques extra)',
+    wiz_s3_extra_yaml_hint:'Pega bloques YAML sin procesar de tu biblioteca (p. ej. menús IVR, grupos de planificación). Se añaden directamente después del YAML generado.',
+    wiz_s3_extra_yaml_ph:'# Pega el código YAML aquí…',
     wiz_s4_desc:'Revisa el YAML — haz clic en ✓ Usar YAML para enviarlo a la página de importación.',
     wiz_copy:'📋 Copiar', wiz_copied:'✓ ¡Copiado!',
     wiz_use_yaml_success:'✓ YAML de Flow Builder insertado:',
@@ -2609,6 +2624,7 @@ function openYamlWizard() {
     transferQueue: '',
     transferValue: '',
     dataActions: [],
+    extraYaml: '',
   };
   document.getElementById('yaml-wiz-overlay').style.display = 'flex';
   _wizRender();
@@ -2939,6 +2955,7 @@ function _wizCollect() {
     wiz.transferType    = g('wiz-tt')?.value  || 'disconnect';
     wiz.transferQueue   = g('wiz-tq')?.value.trim() || '';
     wiz.transferValue   = g('wiz-tv')?.value.trim() || '';
+    wiz.extraYaml       = g('wiz-extra-yaml')?.value || wiz.extraYaml || '';
     // Keep transferType consistent for email flows
     const isEmailFlow = ['inboundEmail','inqueueEmail','inqueueShortMessage'].includes(wiz.flowType);
     if (isEmailFlow && !wiz.transferType) wiz.transferType = 'acd';
@@ -3303,7 +3320,7 @@ function _wizS3(body) {
 
   if (!hasTransfer && !isEmail) {
     body.innerHTML = `
-      <div style="text-align:center;padding:48px 20px;color:var(--muted);font-size:13px">
+      <div style="text-align:center;padding:24px 20px 16px;color:var(--muted);font-size:13px">
         <div style="font-size:36px;margin-bottom:12px">⚙️</div>
         <div>${t('wiz_s3_no_config')}
           <strong>${WIZ_FLOW_TYPES.find(x=>x.v===wiz.flowType)?.l||wiz.flowType}</strong>.
@@ -3311,6 +3328,12 @@ function _wizS3(body) {
         <div style="font-size:11px;margin-top:8px;color:var(--border2)">
           ${t('wiz_s3_click_next')}
         </div>
+      </div>
+      <div class="card" style="padding:16px 20px;margin-bottom:4px">
+        <div class="card-title">${t('wiz_s3_extra_yaml_title')}</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">${t('wiz_s3_extra_yaml_hint')}</div>
+        <textarea id="wiz-extra-yaml" style="height:140px;font-size:11px;font-family:var(--mono)"
+          placeholder="${t('wiz_s3_extra_yaml_ph')}">${(wiz.extraYaml||'').replace(/</g,'&lt;')}</textarea>
       </div>`;
     return;
   }
@@ -3433,6 +3456,12 @@ function _wizS3(body) {
           `}
         </div>
       </div>` : ''}
+    </div>
+    <div class="card" style="padding:16px 20px;margin-bottom:4px">
+      <div class="card-title">${t('wiz_s3_extra_yaml_title')}</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">${t('wiz_s3_extra_yaml_hint')}</div>
+      <textarea id="wiz-extra-yaml" style="height:140px;font-size:11px;font-family:var(--mono)"
+        placeholder="${t('wiz_s3_extra_yaml_ph')}">${(wiz.extraYaml||'').replace(/</g,'&lt;')}</textarea>
     </div>`;
 
   _wizUpdateDatalists();
@@ -3463,6 +3492,11 @@ function wizUseYaml() {
   document.querySelector('[data-page=import]').classList.add('active');
   document.getElementById('page-import').classList.add('active');
   populateCustomerSelects(['im-customer']);
+  // Pre-select the customer chosen in the wizard
+  if (wiz.customerId) {
+    const imCust = document.getElementById('im-customer');
+    if (imCust) imCust.value = wiz.customerId;
+  }
   document.getElementById('im-yaml').value = yaml;
   document.getElementById('im-filename').value =
     (wiz.flowName.replace(/[^a-zA-Z0-9_\-æøåÆØÅ]/g,'_') || 'flow') + '_v1-0.yaml';
@@ -3818,7 +3852,12 @@ function _genYaml() {
     emitActions(5);
   }
 
-  return lines.join('\n');
+  let yaml = lines.join('\n');
+  if (wiz.extraYaml && wiz.extraYaml.trim()) {
+    yaml += '\n\n# ── Extra (from library) ──────────────────────────────────────────────────────\n';
+    yaml += wiz.extraYaml.trim();
+  }
+  return yaml;
 }
 </script>
 </body>
