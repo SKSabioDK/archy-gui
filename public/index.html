@@ -2299,11 +2299,11 @@ async function doImport() {
       'err');
     logEl.innerHTML = `<span class="log-warn">${data.message || 'Flow already exists'}</span>`;
   } else if (data.error) {
-    showAlert('im-alert', '✗ ' + data.error, 'err');
-    logEl.innerHTML = `<span class="log-err">${data.error}</span>`;
+    showAlert('im-alert', '✗ ' + archyShortMsg(data.error), 'err');
+    logEl.innerHTML = `<span class="log-err">${data.error.replace(/</g,'&lt;')}</span>`;
   } else {
     showAlert('im-alert', t('import_ok'), 'ok');
-    logEl.innerHTML = `<span class="log-ok">${data.output || 'OK'}</span>`;
+    logEl.innerHTML = `<span class="log-ok">${(data.output || 'OK').replace(/</g,'&lt;')}</span>`;
   }
 }
 
@@ -2540,6 +2540,16 @@ function showAlert(id, msg, type='info') {
   if (!msg) { el.innerHTML = ''; return; }
   const cls = type === 'ok' ? 'alert-ok' : type === 'err' ? 'alert-err' : 'alert-info';
   el.innerHTML = `<div class="alert ${cls}">${msg}</div>`;
+}
+
+// Extract the first meaningful error line from a (possibly multi-line) Archy error message.
+// Skips boilerplate lines (Command:, Input YAML File:, Error(s) encountered., "  - ...").
+function archyShortMsg(msg) {
+  if (!msg) return msg;
+  const skip = /^(Command:|Input YAML File:|Error\(s\) encountered\.|  - )/;
+  const first = msg.split('\n').map(l => l.trim()).filter(l => l && !skip.test(l))[0]
+    || msg.split('\n')[0];
+  return first.length > 160 ? first.slice(0, 157) + '…' : first;
 }
 
 function log(el, msg, type) {
