@@ -2303,7 +2303,7 @@ async function doImport() {
     logEl.innerHTML = `<span class="log-err">${data.error.replace(/</g,'&lt;')}</span>`;
   } else {
     showAlert('im-alert', t('import_ok'), 'ok');
-    logEl.innerHTML = `<span class="log-ok">${(data.output || 'OK').replace(/</g,'&lt;')}</span>`;
+    logEl.style.display = 'none';
   }
 }
 
