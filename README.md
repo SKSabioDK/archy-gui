@@ -1,10 +1,19 @@
-# Archy GUI — Flow Manager · v1.4.1
+# Archy GUI — Flow Manager · v1.4.2
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.4.2
+---
+**🇩🇰 Dansk**
+- **Renere fejllog fra Archy** — Archy-fejlmeddelelser i systemloggen viser nu kun den relevante fejltekst (Command, fejlbeskrivelse, YAML-fil, fejltype). Al dekorativ output fjernes: banner-linjer, DateTime, Summary-header, Log-sti, versionsopdateringsrammen, "execution complete." og "exit code:".
+
+---
+**🇬🇧 English**
+- **Cleaner Archy error log** — Archy error messages in the system log now show only the relevant error text (Command, error description, YAML file, error type). All decorative output is stripped: banner lines, DateTime, Summary header, Log path, version update box, "execution complete." and "exit code:".
 
 ### v1.4.1
 ---
@@ -307,7 +316,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, and OAuth PKCE login.
 
-> Current version: **v1.3.9** — see [Changelog](#changelog) above.
+> Current version: **v1.4.2** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**

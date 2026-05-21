@@ -603,12 +603,43 @@ function archyCredFlags(customer) {
   return `--clientId ${q(customer.clientId)} --clientSecret ${q(customer.clientSecret)} --location ${q(customer.region)}`;
 }
 
+function parseArchyOutput(raw) {
+  if (!raw) return raw;
+  const cleaned = raw
+    .replace(/\x1B\[[0-9;]*m/g, '')
+    .replace(/\[0m/g, '');
+  const filtered = cleaned.split(/\r?\n/).filter(line => {
+    const t = line.trim();
+    if (/^\*{5,}/.test(t)) return false;
+    if (/Archy - Architect Yaml Flow Processor/.test(t)) return false;
+    if (/^DateTime:/.test(t)) return false;
+    if (t === 'Summary') return false;
+    if (/^Log:\s/.test(t)) return false;
+    if (/^[┌┐└┘]/.test(t)) return false;
+    if (/Archy (patch|minor|major) version update available/.test(t)) return false;
+    if (/Changelog:.*genesys/.test(t)) return false;
+    if (/Run archy version.*to upgrade/.test(t)) return false;
+    if (t === 'execution complete.') return false;
+    if (/^exit code:/.test(t)) return false;
+    return true;
+  });
+  const result = [];
+  let prevBlank = false;
+  for (const line of filtered) {
+    const isBlank = line.trim() === '';
+    if (isBlank && prevBlank) continue;
+    result.push(line);
+    prevBlank = isBlank;
+  }
+  return result.join('\n').trim();
+}
+
 function runArchy(args, customer) {
   return new Promise((resolve, reject) => {
     if (!ARCHY_DIR) return reject(new Error('archy not found in PATH'));
     const cmd = `archy ${args} ${archyCredFlags(customer)}`;
     exec(cmd, { cwd: ARCHY_DIR, shell: 'cmd.exe', timeout: 120000 }, (err, stdout, stderr) => {
-      if (err) reject(new Error(stderr || stdout || err.message));
+      if (err) reject(new Error(parseArchyOutput(stderr || stdout) || err.message));
       else resolve(stdout);
     });
   });
