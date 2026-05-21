@@ -640,7 +640,7 @@ function runArchy(args, customer) {
     const cmd = `archy ${args} ${archyCredFlags(customer)}`;
     exec(cmd, { cwd: ARCHY_DIR, shell: 'cmd.exe', timeout: 120000 }, (err, stdout, stderr) => {
       if (err) reject(new Error(parseArchyOutput(stderr || stdout) || err.message));
-      else resolve(stdout);
+      else resolve(parseArchyOutput(stdout) || 'OK');
     });
   });
 }
