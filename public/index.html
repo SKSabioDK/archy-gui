@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -623,10 +624,14 @@
           <label data-i18n="label_yaml_content">YAML Indhold</label>
           <textarea id="im-yaml" style="height:220px;font-size:11px" data-i18n-placeholder="placeholder_yaml" placeholder="Indsæt YAML her eller upload fil…"></textarea>
         </div>
-        <button class="btn btn-green" onclick="doImport()" data-i18n="btn_import">📥 Import / Opret Flow</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-green" onclick="doImport()" data-i18n="btn_import">📥 Import / Opret Flow</button>
+          <button class="btn btn-secondary" onclick="validateYaml()">🔍 Valider YAML</button>
+        </div>
       </div>
-      <div id="im-alert"></div>
-      <div class="log-box" id="im-log" style="display:none;margin-top:16px"></div>
+      <div id="im-validate" style="display:none;margin-top:14px;border:1px solid var(--border);border-radius:6px;padding:12px 16px;font-size:12px;font-family:var(--mono)"></div>
+      <div id="im-alert" style="margin-top:10px"></div>
+      <div class="log-box" id="im-log" style="display:none;margin-top:10px"></div>
     </div>
 
     <!-- FILES PAGE -->
@@ -2275,11 +2280,116 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('drop', () => zone.classList.remove('drag-over'));
 });
 
+// ── YAML Validator (client-side, ingen kundeforbindelse nødvendig) ─────────────
+const _ARCHY_TYPES = new Set([
+  'workflow','inboundCall','outboundCall','inboundEmail','inboundShortMessage','inboundChat',
+  'botFlow','digitalBot','voiceSurvey','commonModule','secureCall','voicemail',
+  'inqueueCall','inqueueEmail','inqueueShortMessage','surveyInvite'
+]);
+// Flow-typer der kræver startUpRef (hasRef: true i FLOW_META)
+const _TYPES_WITH_REF = new Set([
+  'workflow','inboundCall','outboundCall','inboundEmail','inboundShortMessage','inboundChat',
+  'botFlow','digitalBot','voiceSurvey','secureCall','voicemail','surveyInvite'
+]);
+
+function validateYaml() {
+  const yaml  = document.getElementById('im-yaml').value.trim();
+  const el    = document.getElementById('im-validate');
+  el.style.display = 'block';
+  showAlert('im-alert', '');
+  document.getElementById('im-log').style.display = 'none';
+
+  const vRow = (type, text) => {
+    const color = type==='ok' ? 'var(--green)' : type==='err' ? 'var(--red)' : 'var(--yellow)';
+    const icon  = type==='ok' ? '✅' : type==='err' ? '❌' : '⚠️';
+    return `<div style="display:flex;gap:8px;margin-bottom:5px;color:${color}">
+      <span style="flex-shrink:0">${icon}</span>
+      <span style="white-space:pre-wrap;word-break:break-all">${text.replace(/</g,'&lt;')}</span>
+    </div>`;
+  };
+
+  if (!yaml) { el.innerHTML = vRow('err','Ingen YAML i feltet'); return; }
+
+  if (typeof jsyaml === 'undefined') {
+    el.innerHTML = vRow('err','js-yaml biblioteket er ikke tilgængeligt (kræver internetforbindelse til CDN)');
+    return;
+  }
+
+  const rows = [];
+  let parsed;
+
+  // 1. YAML syntaks
+  try {
+    parsed = jsyaml.load(yaml);
+    rows.push(vRow('ok','YAML syntaks OK'));
+  } catch (e) {
+    const loc = e.mark ? `linje ${e.mark.line+1}, kolonne ${e.mark.column+1}` : '';
+    rows.push(vRow('err', `YAML syntaksfejl${loc?' ved '+loc:''}: ${e.reason||e.message}`));
+    el.innerHTML = rows.join('');
+    return;
+  }
+
+  // 2. Rod-nøgle er en gyldig Archy flow-type
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    rows.push(vRow('err','Forventet et YAML-objekt — fandt ' + (Array.isArray(parsed)?'en liste':typeof parsed)));
+    el.innerHTML = rows.join('');
+    return;
+  }
+  const rootKeys  = Object.keys(parsed);
+  const flowType  = rootKeys.find(k => _ARCHY_TYPES.has(k));
+  if (!flowType) {
+    const found = rootKeys[0] || '(ingen nøgle)';
+    rows.push(vRow('err', `Rod-nøgle "${found}" er ikke en gyldig Archy flow-type.\nGyldige typer: ${[..._ARCHY_TYPES].join(', ')}`));
+    el.innerHTML = rows.join('');
+    return;
+  }
+  rows.push(vRow('ok', `Flow-type: ${flowType}`));
+
+  // 3. Felter under flow-typen
+  const flow = parsed[flowType];
+  if (!flow || typeof flow !== 'object') {
+    rows.push(vRow('err', `Indhold under "${flowType}:" er tomt eller ugyldigt`));
+    el.innerHTML = rows.join('');
+    return;
+  }
+
+  const nm = flow.name || flow.flowName;
+  if (nm) rows.push(vRow('ok',  `Navn: "${nm}"`));
+  else     rows.push(vRow('err','Mangler "name:" (flow-navn)'));
+
+  if (_TYPES_WITH_REF.has(flowType)) {
+    if (flow.startUpRef) rows.push(vRow('ok',  `startUpRef: ${flow.startUpRef}`));
+    else                 rows.push(vRow('warn','Mangler "startUpRef:"'));
+  }
+
+  if (flow.defaultLanguage) rows.push(vRow('ok',  `defaultLanguage: ${flow.defaultLanguage}`));
+  else                      rows.push(vRow('warn','Mangler "defaultLanguage:"'));
+
+  if (flow.supportedLanguages) {
+    const langs = Object.keys(flow.supportedLanguages);
+    rows.push(vRow('ok', `supportedLanguages: ${langs.join(', ')}`));
+  } else {
+    rows.push(vRow('warn','Mangler "supportedLanguages:"'));
+  }
+
+  // 4. Opsummering øverst
+  const hasErr  = rows.some(r => r.includes('var(--red)'));
+  const hasWarn = rows.some(r => r.includes('var(--yellow)'));
+  const summary = hasErr  ? vRow('err', 'Fejl fundet — ret YAML inden import')
+                : hasWarn ? vRow('warn','Advarsler — import kan muligvis fejle')
+                :           vRow('ok',  'Alt ser korrekt ud — klar til import ✓');
+  el.innerHTML = `<div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">🔍 YAML Validering</div>`
+               + summary
+               + `<hr style="border:none;border-top:1px solid var(--border);margin:8px 0">`
+               + rows.join('');
+}
+
 async function doImport() {
   const customerId = document.getElementById('im-customer').value;
   const yamlContent = document.getElementById('im-yaml').value.trim();
   const fileName = document.getElementById('im-filename').value.trim() || 'flow.yaml';
   const action = document.getElementById('im-action').value;
+  document.getElementById('im-validate').style.display = 'none';
   showAlert('im-alert', '');
   if (!customerId || !yamlContent) return showAlert('im-alert', t('err_select_customer_yaml'), 'err');
   showAlert('im-alert', `<span class="spin"></span> ${t('importing_msg')}`, 'info');
