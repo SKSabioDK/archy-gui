@@ -299,19 +299,21 @@ app.post('/api/customers/:id/test', async (req, res) => {
     const { token, apiBase } = await getToken(customer);
     // /users/me requires a user-context token (PKCE). For Client Credentials we
     // use /organizations/me instead, which works with any token type.
+    let name, orgName, archyReady = true, archyFlowReady = true;
+
     if (customer.authType === 'oauth') {
       const me = await axios.get(`${apiBase}/api/v2/users/me`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      addLog('SUCCESS', `Connected to ${customer.name} — user: ${me.data.name}, org: ${me.data.organization?.name || '?'}`, customer.name, 'TEST');
-      res.json({ ok: true, name: me.data.name, org: me.data.organization?.name });
+      name    = me.data.name;
+      orgName = me.data.organization?.name || '?';
     } else {
       const org = await axios.get(`${apiBase}/api/v2/organizations/me`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // Also verify oauth:client:view permission — Archy requires this for Client Credentials.
-      // A 403 here means Archy export/import will fail with exit code 99.
-      let archyReady = true;
+      orgName = org.data.name || '?';
+      name    = '(Client Credentials)';
+      // Verify oauth:client:view — Archy requires this for Client Credentials (exit 99 without it).
       try {
         await axios.get(`${apiBase}/api/v2/oauth/clients/${customer.clientId}`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -322,9 +324,31 @@ app.post('/api/customers/:id/test', async (req, res) => {
           addLog('WARN', `${customer.name}: missing oauth:client:view permission — Archy will fail (exit 99)`, customer.name, 'TEST');
         }
       }
-      addLog('SUCCESS', `Connected to ${customer.name} — org: ${org.data.name || '?'} (Client Credentials)${archyReady ? '' : ' ⚠ missing oauth:client:view'}`, customer.name, 'TEST');
-      res.json({ ok: true, name: `(Client Credentials)`, org: org.data.name, archyReady });
     }
+
+    // Verify architect:flow:view for ALL auth types — required for import/export.
+    try {
+      await axios.get(`${apiBase}/api/v2/architect/flows`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { pageSize: 1, pageNumber: 1 }
+      });
+    } catch (e) {
+      if (e.response?.status === 403) {
+        archyFlowReady = false;
+        addLog('WARN', `${customer.name}: missing architect:flow:view permission — import/export will fail with access denied`, customer.name, 'TEST');
+      }
+    }
+
+    const warns = [
+      ...(archyReady     ? [] : ['missing oauth:client:view']),
+      ...(archyFlowReady ? [] : ['missing architect:flow:view']),
+    ];
+    addLog(
+      warns.length ? 'WARN' : 'SUCCESS',
+      `Connected to ${customer.name} — ${customer.authType === 'oauth' ? `user: ${name}, ` : ''}org: ${orgName}${warns.length ? ' ⚠ ' + warns.join(', ') : ''}`,
+      customer.name, 'TEST'
+    );
+    res.json({ ok: true, name, org: orgName, archyReady, archyFlowReady });
   } catch (e) {
     const errMsg = e.response?.data?.message || e.message;
     addLog('ERROR', `Connection error for ${customer.name}: ${errMsg}`, customer.name, 'TEST');
@@ -800,6 +824,10 @@ app.post('/api/import', async (req, res) => {
     // Archy exit 108 — flow already exists with 'create' action
     if (msg.toLowerCase().includes('already exists')) {
       return res.status(409).json({ error: 'already_exists', message: msg });
+    }
+    // 403 / Access Denied — missing architect:flow:edit permission
+    if (/403|access.?denied|forbidden|not.*authoriz|do not have.*access|insufficient.*perm/i.test(msg)) {
+      return res.status(403).json({ error: 'access_denied', message: msg });
     }
     res.status(500).json({ error: msg });
   }

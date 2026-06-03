@@ -927,6 +927,8 @@ const LANGS = {
     migrate_selected:'valgt', migrate_select_all:'Vælg alle', migrate_clear_sel:'Nulstil valg',
     opt_all_types:'Alle typer',
     warn_missing_oauth_view:'⚠ Mangler \'oauth:client:view\' — Archy vil fejle med afslutningskode 99. Tilføj tilladelsen i Genesys Cloud Admin → OAuth.',
+    warn_missing_architect_perm:'⚠ Mangler \'architect:flow:view/edit\' — import/export vil fejle med adgang nægtet. Tildel en rolle med Architect-tilladelser under Admin → OAuth → din klient → Roles.',
+    err_access_denied:'Adgang nægtet (403) — OAuth-klienten mangler \'architect:flow:edit\' tilladelse. Gå til Genesys Admin → OAuth → din klient → Roles og tildel en rolle med Architect-tilladelser.',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1056,6 +1058,8 @@ const LANGS = {
     migrate_selected:'selected', migrate_select_all:'Select all', migrate_clear_sel:'Clear selection',
     opt_all_types:'All types',
     warn_missing_oauth_view:'⚠ Missing \'oauth:client:view\' — Archy will fail with exit code 99. Add the permission in Genesys Cloud Admin → OAuth.',
+    warn_missing_architect_perm:'⚠ Missing \'architect:flow:view/edit\' — import/export will fail with access denied. Assign a role with Architect permissions under Admin → OAuth → your client → Roles.',
+    err_access_denied:'Access denied (403) — the OAuth client is missing the \'architect:flow:edit\' permission. Go to Genesys Admin → OAuth → your client → Roles and assign a role with Architect permissions.',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -1185,6 +1189,8 @@ const LANGS = {
     migrate_selected:'sélectionné(s)', migrate_select_all:'Tout sélectionner', migrate_clear_sel:'Effacer la sélection',
     opt_all_types:'Tous les types',
     warn_missing_oauth_view:'⚠ Permission \'oauth:client:view\' manquante — Archy échouera avec le code de sortie 99. Ajoutez la permission dans Genesys Cloud Admin → OAuth.',
+    warn_missing_architect_perm:'⚠ Permission \'architect:flow:view/edit\' manquante — import/export échouera avec accès refusé. Attribuez un rôle avec les permissions Architect sous Admin → OAuth → votre client → Roles.',
+    err_access_denied:'Accès refusé (403) — le client OAuth n\'a pas la permission \'architect:flow:edit\'. Allez dans Genesys Admin → OAuth → votre client → Roles et attribuez un rôle avec les permissions Architect.',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -1314,6 +1320,8 @@ const LANGS = {
     migrate_selected:'geselecteerd', migrate_select_all:'Alles selecteren', migrate_clear_sel:'Selectie wissen',
     opt_all_types:'Alle typen',
     warn_missing_oauth_view:'⚠ Ontbrekende \'oauth:client:view\' — Archy mislukt met exitcode 99. Voeg de rechten toe in Genesys Cloud Admin → OAuth.',
+    warn_missing_architect_perm:'⚠ Ontbrekende \'architect:flow:view/edit\' — import/export mislukt met toegang geweigerd. Ken een rol toe met Architect-rechten via Admin → OAuth → uw client → Roles.',
+    err_access_denied:'Toegang geweigerd (403) — de OAuth-client mist de \'architect:flow:edit\' rechten. Ga naar Genesys Admin → OAuth → uw client → Roles en wijs een rol toe met Architect-rechten.',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -1443,6 +1451,8 @@ const LANGS = {
     migrate_selected:'seleccionado(s)', migrate_select_all:'Seleccionar todo', migrate_clear_sel:'Borrar selección',
     opt_all_types:'Todos los tipos',
     warn_missing_oauth_view:'⚠ Falta \'oauth:client:view\' — Archy fallará con el código de salida 99. Añade el permiso en Genesys Cloud Admin → OAuth.',
+    warn_missing_architect_perm:'⚠ Falta \'architect:flow:view/edit\' — import/export fallará con acceso denegado. Asigna un rol con permisos de Architect en Admin → OAuth → tu cliente → Roles.',
+    err_access_denied:'Acceso denegado (403) — el cliente OAuth no tiene el permiso \'architect:flow:edit\'. Ve a Genesys Admin → OAuth → tu cliente → Roles y asigna un rol con permisos de Architect.',
   }
 };
 
@@ -1765,8 +1775,11 @@ async function testCustomer(id) {
     txt.textContent = data.name;
     document.getElementById('chip-' + id)?.classList.add('online');
     if (warnEl) {
-      if (data.archyReady === false) {
-        warnEl.textContent = t('warn_missing_oauth_view');
+      const warns = [];
+      if (data.archyReady     === false) warns.push(t('warn_missing_oauth_view'));
+      if (data.archyFlowReady === false) warns.push(t('warn_missing_architect_perm'));
+      if (warns.length) {
+        warnEl.innerHTML = warns.join('<br>');
         warnEl.style.display = 'block';
       } else {
         warnEl.style.display = 'none';
@@ -2401,7 +2414,11 @@ async function doImport() {
   const data = await res.json();
   const logEl = document.getElementById('im-log');
   logEl.style.display = 'block';
-  if (data.error === 'already_exists') {
+  if (data.error === 'access_denied') {
+    showAlert('im-alert', '⛔ ' + t('err_access_denied'), 'err');
+    logEl.style.display = 'block';
+    logEl.innerHTML = `<span class="log-err">${(data.message||'').replace(/</g,'&lt;')}</span>`;
+  } else if (data.error === 'already_exists') {
     showAlert('im-alert',
       `✗ ${t('already_exists_err')} ` +
       `<button class="btn btn-primary btn-sm" style="margin-left:8px" ` +
