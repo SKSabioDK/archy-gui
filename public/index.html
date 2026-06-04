@@ -338,6 +338,9 @@
       <div class="nav-item" data-page="import" onclick="nav(this)">
         <span class="nav-icon">📥</span> <span data-i18n="nav_import">Import YAML</span>
       </div>
+      <div class="nav-item" data-page="dataactions" onclick="nav(this)">
+        <span class="nav-icon">⚡</span> <span>Data Actions</span>
+      </div>
       <div class="nav-divider"></div>
       <div class="nav-item" data-page="files" onclick="nav(this)">
         <span class="nav-icon">🗂</span> <span data-i18n="nav_files">YAML Filer</span>
@@ -627,11 +630,62 @@
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <button class="btn btn-green" onclick="doImport()" data-i18n="btn_import">📥 Import / Opret Flow</button>
           <button class="btn btn-secondary" onclick="validateYaml()">🔍 Valider YAML</button>
+          <button class="btn btn-blue" onclick="validateYamlVsOrg()" id="im-org-validate-btn">🌐 Tjek mod org</button>
         </div>
       </div>
       <div id="im-validate" style="display:none;margin-top:14px;border:1px solid var(--border);border-radius:6px;padding:12px 16px;font-size:12px;font-family:var(--mono)"></div>
       <div id="im-alert" style="margin-top:10px"></div>
       <div class="log-box" id="im-log" style="display:none;margin-top:10px"></div>
+    </div>
+
+    <!-- DATA ACTIONS PAGE -->
+    <div class="page" id="page-dataactions">
+      <div class="page-title">Data Actions</div>
+      <div class="page-sub">Migrér Data Actions mellem Genesys Cloud orgs</div>
+
+      <div class="card">
+        <div class="card-title">KILDE → MÅL</div>
+        <div class="grid-2">
+          <div>
+            <label>Kilde (hent fra)</label>
+            <select id="da-source" onchange="daLoadActions()"></select>
+          </div>
+          <div>
+            <label>Mål (kopier til)</label>
+            <select id="da-target" onchange="daLoadTargetIntegrations()"></select>
+          </div>
+        </div>
+        <div id="da-target-int-wrap" style="margin-top:12px;display:none">
+          <label>Mål-integration (Genesys Cloud Data Actions integration i mål-org)</label>
+          <select id="da-target-int"></select>
+        </div>
+      </div>
+
+      <div class="card" id="da-action-card" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="card-title" style="margin:0">ACTIONS (<span id="da-count">0</span>)</div>
+          <div style="display:flex;gap:8px">
+            <input id="da-search" style="width:220px" placeholder="🔍 Søg actions…" oninput="daFilter(this.value)"/>
+            <select id="da-cat-filter" style="width:160px" onchange="daFilter()">
+              <option value="">Alle kategorier</option>
+            </select>
+            <button class="btn btn-primary btn-sm" id="da-migrate-btn" onclick="daMigrateSelected()" disabled>⚡ Migrér valgte</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:10px">
+          <span id="da-sel-count" style="color:var(--accent);font-weight:700">0</span> valgt
+          &nbsp;·&nbsp;
+          <a href="#" onclick="daSelectAll();return false" style="color:var(--accent);text-decoration:none">Vælg alle</a>
+          &nbsp;·&nbsp;
+          <a href="#" onclick="daClearSel();return false" style="color:var(--muted);text-decoration:none">Nulstil</a>
+        </div>
+        <div id="da-list"></div>
+      </div>
+
+      <div id="da-log" class="card" style="display:none">
+        <div class="card-title">MIGRERINGS LOG</div>
+        <div class="log-box" id="da-logbox"></div>
+      </div>
     </div>
 
     <!-- FILES PAGE -->
@@ -1608,6 +1662,7 @@ function nav(el) {
   if (page === 'export') populateCustomerSelects(['ex-customer']);
   if (page === 'import') populateCustomerSelects(['im-customer']);
   if (page === 'files') loadFiles();
+  if (page === 'dataactions') daInit();
   if (page === 'syslog') { populateSyslogCustomers(); loadLog(); loadLogStats(); }
   if (page === 'readme') loadReadme();
 }
@@ -2395,6 +2450,73 @@ function validateYaml() {
                + summary
                + `<hr style="border:none;border-top:1px solid var(--border);margin:8px 0">`
                + rows.join('');
+}
+
+async function validateYamlVsOrg() {
+  const customerId = document.getElementById('im-customer').value;
+  const yamlContent = document.getElementById('im-yaml').value.trim();
+  const btn = document.getElementById('im-org-validate-btn');
+  const el  = document.getElementById('im-validate');
+
+  if (!customerId || !yamlContent) {
+    showAlert('im-alert', t('err_select_customer_yaml'), 'err');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '\u23f3 Tjekker...';
+  el.style.display = 'none';
+  showAlert('im-alert', '');
+
+  try {
+    const res = await fetch('/api/validate-yaml', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customerId, yamlContent })
+    });
+    const data = await res.json();
+
+    if (data.error) {
+      showAlert('im-alert', '\u2717 ' + data.error, 'err');
+      return;
+    }
+
+    const vRow = (ok, type, name, msg) => {
+      const icon  = ok === true ? '\u2705' : ok === false ? '\u274c' : '\u26a0\ufe0f';
+      const color = ok === true ? 'var(--green)' : ok === false ? 'var(--red)' : 'var(--yellow)';
+      const badge = `<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:var(--hover);color:var(--muted);margin-right:6px">${type}</span>`;
+      return `<div style="display:flex;gap:8px;margin-bottom:5px;color:${color}">
+        <span style="flex-shrink:0">${icon}</span>
+        <span>${badge}${msg.replace(/</g,'&lt;')}</span>
+      </div>`;
+    };
+
+    const checks = data.checks || [];
+    const rows = checks.map(c => vRow(c.ok, c.type, c.name, c.message));
+
+    const missing = checks.filter(c => c.ok === false);
+    const unknown = checks.filter(c => c.ok === null);
+
+    let summary;
+    if (checks.length === 0) {
+      summary = vRow(null, '', '', 'Ingen ressourcer fundet i YAML at tjekke (division, k\u00f8er, datatables, actions, prompts)');
+    } else if (missing.length > 0) {
+      summary = vRow(false, '', '', `${missing.length} ressource(r) mangler i m\u00e5l-org \u2014 import vil fejle!`);
+    } else {
+      summary = vRow(true, '', '', `Alle ${checks.length} ressourcer fundet i m\u00e5l-org \u2014 klar til import`);
+    }
+
+    el.style.display = 'block';
+    el.innerHTML = `<div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">\ud83c\udf10 VALIDERING MOD ORG: ${(customers.find(c=>c.id===customerId)||{}).name||''}</div>`
+      + summary
+      + (rows.length ? `<hr style="border:none;border-top:1px solid var(--border);margin:8px 0">` + rows.join('') : '');
+
+  } catch (e) {
+    showAlert('im-alert', '\u2717 ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '\ud83c\udf10 Tjek mod org';
+  }
 }
 
 async function doImport() {
@@ -3995,6 +4117,181 @@ function _genYaml() {
     yaml += wiz.extraYaml.trim();
   }
   return yaml;
+}
+
+// ── Data Actions page ────────────────────────────────────────────────────────────────
+
+let daAllActions   = [];
+let daSelectedIds  = new Set();
+let daTargetInts   = [];
+
+function daInit() {
+  ['da-source','da-target'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const cur = el.value;
+    el.innerHTML = '<option value="">— Vælg org —</option>' +
+      customers.map(c => `<option value="${c.id}">${c.name} (${c.region})</option>`).join('');
+    if (cur) el.value = cur;
+  });
+}
+
+async function daLoadActions() {
+  const id = document.getElementById('da-source').value;
+  document.getElementById('da-action-card').style.display = 'none';
+  daAllActions = [];
+  daSelectedIds.clear();
+  if (!id) return;
+
+  document.getElementById('da-list').innerHTML =
+    '<div style="color:var(--muted);font-size:12px"><span class="spin"></span> Henter actions…</div>';
+  document.getElementById('da-action-card').style.display = 'block';
+
+  const res  = await fetch(`/api/customers/${id}/actions`);
+  const data = await res.json();
+  if (data.error) {
+    document.getElementById('da-list').innerHTML =
+      `<div style="color:var(--red);font-size:12px">${data.error}</div>`;
+    return;
+  }
+
+  daAllActions = data;
+
+  // Populate category filter
+  const cats = [...new Set(data.map(a => a.category).filter(Boolean))].sort();
+  const sel = document.getElementById('da-cat-filter');
+  sel.innerHTML = '<option value="">Alle kategorier</option>' +
+    cats.map(c => `<option value="${c}">${c}</option>`).join('');
+
+  document.getElementById('da-count').textContent = data.length;
+  daRender(data);
+}
+
+async function daLoadTargetIntegrations() {
+  const id = document.getElementById('da-target').value;
+  const wrap = document.getElementById('da-target-int-wrap');
+  const sel  = document.getElementById('da-target-int');
+  wrap.style.display = 'none';
+  daTargetInts = [];
+  if (!id) return;
+
+  try {
+    const res  = await fetch(`/api/customers/${id}/integrations`);
+    const data = await res.json();
+    // Filter to Data Actions integrations
+    const daInts = (data || []).filter(i =>
+      i.integrationType.includes('purecloud-data-actions') ||
+      i.name.toLowerCase().includes('data action') ||
+      i.name.toLowerCase().includes('genesys')
+    );
+    daTargetInts = daInts.length ? daInts : data;
+    sel.innerHTML = daTargetInts.map(i =>
+      `<option value="${i.id}">${i.name}</option>`
+    ).join('');
+    wrap.style.display = 'block';
+  } catch (_) {}
+}
+
+function daRender(actions) {
+  const el = document.getElementById('da-list');
+  if (!actions.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px 0">Ingen actions fundet.</div>';
+    return;
+  }
+  el.innerHTML = actions.map(a => {
+    const sel = daSelectedIds.has(a.id);
+    return `
+    <div class="migrate-flow-item ${sel ? 'selected' : ''}" onclick="daToggle('${a.id}')">
+      <div style="min-width:0">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.name}</div>
+        <div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-top:2px">${a.category || ''}</div>
+      </div>
+      <span style="color:var(--accent);font-size:16px;width:18px;text-align:center;flex-shrink:0">${sel ? '✓' : ''}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('da-sel-count').textContent = daSelectedIds.size;
+  document.getElementById('da-migrate-btn').disabled = daSelectedIds.size === 0;
+}
+
+function daToggle(id) {
+  if (daSelectedIds.has(id)) daSelectedIds.delete(id);
+  else daSelectedIds.add(id);
+  daFilter();
+}
+
+function daSelectAll() {
+  const q    = (document.getElementById('da-search')?.value || '').toLowerCase();
+  const cat  = document.getElementById('da-cat-filter')?.value || '';
+  daAllActions
+    .filter(a => (!q || a.name.toLowerCase().includes(q)) && (!cat || a.category === cat))
+    .forEach(a => daSelectedIds.add(a.id));
+  daFilter();
+}
+
+function daClearSel() {
+  daSelectedIds.clear();
+  daFilter();
+}
+
+function daFilter() {
+  const q    = (document.getElementById('da-search')?.value || '').toLowerCase();
+  const cat  = document.getElementById('da-cat-filter')?.value || '';
+  const filtered = daAllActions.filter(a =>
+    (!q   || a.name.toLowerCase().includes(q)) &&
+    (!cat || a.category === cat)
+  );
+  document.getElementById('da-count').textContent = filtered.length;
+  daRender(filtered);
+}
+
+async function daMigrateSelected() {
+  const sourceId = document.getElementById('da-source').value;
+  const targetId = document.getElementById('da-target').value;
+  const targetIntegrationId = document.getElementById('da-target-int')?.value || '';
+
+  if (!sourceId || !targetId) return alert('Vælg både kilde og mål');
+  if (sourceId === targetId) return alert('Kilde og mål må ikke være den samme org');
+  if (!daSelectedIds.size) return;
+
+  const logCard = document.getElementById('da-log');
+  const logBox  = document.getElementById('da-logbox');
+  logCard.style.display = 'block';
+  logBox.innerHTML = '';
+
+  const btn = document.getElementById('da-migrate-btn');
+  btn.disabled = true;
+
+  for (const actionId of daSelectedIds) {
+    const action = daAllActions.find(a => a.id === actionId);
+    const name = action?.name || actionId;
+    log(logBox, `\n⟶ Migrérer: ${name}`, 'info');
+
+    try {
+      const res = await fetch('/api/actions/migrate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceId, targetId, actionId, targetIntegrationId })
+      });
+      const data = await res.json();
+
+      if (data.error === 'already_exists') {
+        log(logBox, `  ⚠ Eksisterer allerede i mål-org — springer over`, 'info');
+      } else if (data.needsIntegration) {
+        log(logBox, `  ✗ ${data.error}`, 'err');
+      } else if (data.error) {
+        log(logBox, `  ✗ ${data.error}`, 'err');
+      } else if (data.partial) {
+        log(logBox, `  \u26a0 Oprettet (ID: ${data.newActionId}) \u2014 request template mangler: ${data.warning}`, 'info');
+      } else {
+        log(logBox, `  \u2713 Oprettet og publiceret (ID: ${data.newActionId})`, 'ok');
+      }
+    } catch (e) {
+      log(logBox, `  ✗ ${e.message}`, 'err');
+    }
+  }
+
+  log(logBox, `\n── Færdig ──`, 'info');
+  btn.disabled = daSelectedIds.size === 0;
 }
 </script>
 </body>

@@ -589,6 +589,190 @@ app.get('/api/customers/:id/actions/:actionId/schema', async (req, res) => {
   }
 });
 
+// ── Data Action migration ─────────────────────────────────────────────────────
+// Export full action definition (config + contract) from a source org.
+// Expand=both gives us the config template and the contract in one call.
+
+app.get('/api/customers/:id/actions/:actionId/full', async (req, res) => {
+  const customer = loadCustomers().find(c => c.id === req.params.id);
+  if (!customer) return res.status(404).json({ error: 'Not found' });
+  try {
+    const { token, apiBase } = await getToken(customer);
+    const r = await axios.get(
+      `${apiBase}/api/v2/integrations/actions/${req.params.actionId}`,
+      { headers: { Authorization: `Bearer ${token}` }, params: { expand: 'contract' } }
+    );
+    res.json(r.data);
+  } catch (e) {
+    res.status(500).json({ error: e.response?.data?.message || e.message });
+  }
+});
+
+// List integrations in an org (to find the correct integration to attach to)
+app.get('/api/customers/:id/integrations', async (req, res) => {
+  const customer = loadCustomers().find(c => c.id === req.params.id);
+  if (!customer) return res.status(404).json({ error: 'Not found' });
+  try {
+    const { token, apiBase } = await getToken(customer);
+    let all = [], page = 1;
+    while (true) {
+      const r = await axios.get(`${apiBase}/api/v2/integrations`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { pageSize: 100, pageNumber: page }
+      });
+      const entities = r.data.entities || [];
+      all = all.concat(entities.map(i => ({
+        id: i.id,
+        name: i.name,
+        integrationType: i.integrationType?.id || ''
+      })));
+      if (entities.length < 100) break;
+      page++;
+    }
+    res.json(all);
+  } catch (e) {
+    res.status(500).json({ error: e.response?.data?.message || e.message });
+  }
+});
+
+// Migrate a Data Action from source org to target org
+app.post('/api/actions/migrate', async (req, res) => {
+  const { sourceId, targetId, actionId, targetIntegrationId } = req.body;
+  const source = loadCustomers().find(c => c.id === sourceId);
+  const target = loadCustomers().find(c => c.id === targetId);
+  if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
+
+  try {
+    const { token: srcToken, apiBase: srcBase } = await getToken(source);
+
+    // 1. Fetch published action (contract + metadata)
+    const publishedRes = await axios.get(
+      `${srcBase}/api/v2/integrations/actions/${actionId}`,
+      { headers: { Authorization: `Bearer ${srcToken}` }, params: { expand: 'contract' } }
+    );
+    const published = publishedRes.data;
+
+    // 2. Fetch draft — contains requestUrlTemplate, requestTemplate, successTemplate etc.
+    let draft = null;
+    try {
+      const draftRes = await axios.get(
+        `${srcBase}/api/v2/integrations/actions/${actionId}/draft`,
+        { headers: { Authorization: `Bearer ${srcToken}` }, params: { expand: 'contract' } }
+      );
+      draft = draftRes.data;
+    } catch (e) {
+      addLog('WARN', `Draft not available for "${published.name}": ${e.response?.status}`, source.name, 'MIGRATE');
+    }
+
+    // Use draft if available (more complete), fallback to published
+    const source_data = draft || published;
+
+    const { token: tgtToken, apiBase: tgtBase } = await getToken(target);
+
+    // 3. Resolve integration in target org
+    let integrationId = targetIntegrationId;
+    if (!integrationId) {
+      const srcIntName = published.integration?.name || '';
+      const intRes = await axios.get(`${tgtBase}/api/v2/integrations`, {
+        headers: { Authorization: `Bearer ${tgtToken}` },
+        params: { pageSize: 200 }
+      });
+      const match = (intRes.data.entities || []).find(i =>
+        i.name === srcIntName ||
+        (i.integrationType?.id || '').includes('purecloud-data-actions')
+      );
+      if (!match) {
+        return res.status(400).json({
+          error: `Ingen passende integration fundet i ${target.name}. Vælg mål-integration manuelt.`,
+          needsIntegration: true
+        });
+      }
+      integrationId = match.id;
+    }
+
+    // 4. Create new action shell in target
+    const contract = source_data.contract || published.contract || {};
+    const createRes = await axios.post(
+      `${tgtBase}/api/v2/integrations/actions`,
+      {
+        name:         published.name,
+        category:     published.category,
+        integrationId,
+        contract: {
+          input:  contract.input  || { inputSchema:  { type: 'object', properties: {} } },
+          output: contract.output || { successSchema: { type: 'object', properties: {} } }
+        }
+      },
+      { headers: { Authorization: `Bearer ${tgtToken}`, 'Content-Type': 'application/json' } }
+    );
+    const newAction = createRes.data;
+    addLog('INFO', `Created action shell "${newAction.name}" (${newAction.id}) in ${target.name}`, source.name, 'MIGRATE');
+
+    // 5. Push full draft config including request template
+    // Build draft body from all available fields
+    const draftBody = {
+      name:         published.name,
+      category:     published.category,
+      integrationId,
+      contract
+    };
+    // Copy request config fields from source draft if available
+    const reqFields = ['requestUrlTemplate','requestTemplate','requestType',
+                       'successTemplate','errorTemplate','requestHeaders',
+                       'requestTemplateUri','config'];
+    for (const field of reqFields) {
+      if (source_data[field] !== undefined) draftBody[field] = source_data[field];
+    }
+    // Also copy nested config if present
+    if (source_data.config) draftBody.config = source_data.config;
+
+    try {
+      await axios.put(
+        `${tgtBase}/api/v2/integrations/actions/${newAction.id}/draft`,
+        draftBody,
+        { headers: { Authorization: `Bearer ${tgtToken}`, 'Content-Type': 'application/json' } }
+      );
+      addLog('INFO', `Draft updated for "${newAction.name}"`, source.name, 'MIGRATE');
+    } catch (e) {
+      const draftErr = e.response?.data?.message || e.message;
+      addLog('WARN', `Draft update failed for "${newAction.name}": ${draftErr}`, source.name, 'MIGRATE');
+      // Return partial success so UI knows action was created but draft failed
+      return res.json({
+        ok: true,
+        partial: true,
+        newActionId: newAction.id,
+        name: newAction.name,
+        warning: `Action oprettet, men request template kunne ikke kopieres: ${draftErr}`
+      });
+    }
+
+    // 6. Publish if source was published
+    if (published.version) {
+      try {
+        await axios.post(
+          `${tgtBase}/api/v2/integrations/actions/${newAction.id}/draft/publish`,
+          {},
+          { headers: { Authorization: `Bearer ${tgtToken}`, 'Content-Type': 'application/json' } }
+        );
+        addLog('SUCCESS', `Published "${newAction.name}" in ${target.name}`, source.name, 'MIGRATE');
+      } catch (e) {
+        addLog('WARN', `Publish failed for "${newAction.name}": ${e.response?.data?.message || e.message}`, source.name, 'MIGRATE');
+      }
+    }
+
+    addLog('SUCCESS', `Data Action "${published.name}" migreret til ${target.name}`, source.name, 'MIGRATE');
+    res.json({ ok: true, newActionId: newAction.id, name: published.name });
+
+  } catch (e) {
+    const msg = e.response?.data?.message || e.message;
+    addLog('ERROR', `Data Action migration failed: ${msg}`, source.name, 'MIGRATE');
+    if (e.response?.status === 409 || msg.toLowerCase().includes('already exist')) {
+      return res.status(409).json({ error: 'already_exists', message: msg });
+    }
+    res.status(500).json({ error: msg });
+  }
+});
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function sanitizeName(name) {
@@ -658,13 +842,41 @@ function parseArchyOutput(raw) {
   return result.join('\n').trim();
 }
 
+const ARCHY_LOG_TAIL = 30; // Max lines shown from Archy error output
+
+function truncateArchyError(raw) {
+  if (!raw) return raw;
+  const lines = raw.split(/\r?\n/);
+  if (lines.length <= ARCHY_LOG_TAIL) return raw;
+  const tail = lines.slice(-ARCHY_LOG_TAIL);
+  return `[... ${lines.length - ARCHY_LOG_TAIL} linjer skjult — viser de sidste ${ARCHY_LOG_TAIL} ...]\n` + tail.join('\n');
+}
+
 function runArchy(args, customer) {
   return new Promise((resolve, reject) => {
     if (!ARCHY_DIR) return reject(new Error('archy not found in PATH'));
     const cmd = `archy ${args} ${archyCredFlags(customer)}`;
     exec(cmd, { cwd: ARCHY_DIR, shell: 'cmd.exe', timeout: 120000 }, (err, stdout, stderr) => {
-      if (err) reject(new Error(parseArchyOutput(stderr || stdout) || err.message));
-      else resolve(parseArchyOutput(stdout) || 'OK');
+      const combined = stdout + '\n' + stderr;
+      const parsed   = parseArchyOutput(combined) || '';
+
+      // Archy sometimes exits non-zero even on success (warnings, debug output).
+      // Treat as success if output contains known success indicators.
+      const successPatterns = [
+        /flow.*(?:created|updated|published|imported)/i,
+        /successfully/i,
+        /export.*complete/i,
+        /import.*complete/i,
+        /publish.*complete/i,
+        /execution complete/i,
+      ];
+      const looksLikeSuccess = successPatterns.some(p => p.test(combined));
+
+      if (!err || looksLikeSuccess) {
+        resolve(parsed || 'OK');
+      } else {
+        reject(new Error(truncateArchyError(parsed || err.message)));
+      }
     });
   });
 }
@@ -704,6 +916,9 @@ app.post('/api/export', async (req, res) => {
 
 // In-memory job store for export-all progress tracking
 const exportJobs = {};
+
+// Note: /api/validate-yaml endpoint is defined below (before /api/import)
+// See the Cross-org YAML resource validation section
 
 app.post('/api/export-all', async (req, res) => {
   const { customerId } = req.body;
@@ -798,6 +1013,151 @@ app.post('/api/export-all/cancel/:jobId', (req, res) => {
 });
 
 // ── Import Flow ──────────────────────────────────────────────────────────────
+
+app.post('/api/validate-yaml', async (req, res) => {
+  const { customerId, yamlContent } = req.body;
+  if (!customerId || !yamlContent)
+    return res.status(400).json({ error: 'customerId og yamlContent er påkrævet' });
+
+  const customer = loadCustomers().find(c => c.id === customerId);
+  if (!customer) return res.status(404).json({ error: 'Kunde ikke fundet' });
+
+  const checks = [];
+
+  try {
+    const { token, apiBase } = await getToken(customer);
+    const headers = { Authorization: `Bearer ${token}` };
+
+    // 1. Division check
+    const divRe = /^\s*division:\s*["']?([^'"\n]+)["']?/gm;
+    const divNames = [];
+    let dm;
+    while ((dm = divRe.exec(yamlContent)) !== null) {
+      const v = dm[1].trim();
+      if (v) divNames.push(v);
+    }
+    for (const div of [...new Set(divNames)]) {
+      try {
+        const r = await axios.get(`${apiBase}/api/v2/authorization/divisions`, {
+          headers, params: { pageSize: 50, name: div }
+        });
+        const found = (r.data.entities || []).some(d => d.name === div);
+        checks.push({ type: 'division', name: div, ok: found,
+          message: found ? `Division "${div}" fundet` : `\u26a0 Division "${div}" ikke fundet i m\u00e5l-org` });
+      } catch (e) {
+        checks.push({ type: 'division', name: div, ok: null, message: `Kunne ikke tjekke division "${div}"` });
+      }
+    }
+
+    // 2. Queue checks
+    const tqRe = /targetQueue:[\s\S]{0,60}?name:\s*["']?([^'"\n]+)["']?/gm;
+    const targetQueues = [];
+    let tqm;
+    while ((tqm = tqRe.exec(yamlContent)) !== null) targetQueues.push(tqm[1].trim());
+    for (const qName of [...new Set(targetQueues)]) {
+      try {
+        const r = await axios.get(`${apiBase}/api/v2/routing/queues`, {
+          headers, params: { pageSize: 25, name: qName }
+        });
+        const found = (r.data.entities || []).some(q => q.name === qName);
+        checks.push({ type: 'queue', name: qName, ok: found,
+          message: found ? `K\u00f8 "${qName}" fundet` : `\u26a0 K\u00f8 "${qName}" ikke fundet i m\u00e5l-org` });
+      } catch (e) {
+        checks.push({ type: 'queue', name: qName, ok: null, message: `Kunne ikke tjekke k\u00f8 "${qName}"` });
+      }
+    }
+
+    // 3. DataTable checks
+    const dtRe = /dataTable:\s*\n\s+([\w][\w _\-]+):/gm;
+    const dtNames = [];
+    let dtm;
+    while ((dtm = dtRe.exec(yamlContent)) !== null) {
+      const n = dtm[1].trim();
+      if (n && !['foundOutputs','failureOutputs','outputs'].includes(n)) dtNames.push(n);
+    }
+    const uniqueDts = [...new Set(dtNames)];
+    if (uniqueDts.length) {
+      try {
+        let allDts = [], page = 1;
+        while (true) {
+          const r = await axios.get(`${apiBase}/api/v2/flows/datatables`, {
+            headers, params: { pageSize: 200, pageNumber: page }
+          });
+          allDts = allDts.concat(r.data.entities || []);
+          if (allDts.length >= (r.data.total || 0) || !(r.data.entities || []).length) break;
+          page++;
+        }
+        const dtSet = new Set(allDts.map(t => t.name));
+        for (const n of uniqueDts)
+          checks.push({ type: 'datatable', name: n, ok: dtSet.has(n),
+            message: dtSet.has(n) ? `DataTable "${n}" fundet` : `\u26a0 DataTable "${n}" ikke fundet i m\u00e5l-org` });
+      } catch (e) {
+        checks.push({ type: 'datatable', name: '(alle)', ok: null, message: 'Kunne ikke hente datatables: ' + e.message });
+      }
+    }
+
+    // 4. Data Action checks
+    const daRe = /dataAction:\s*\n\s+([\w][\w _\-()]+):/gm;
+    const daNames = [];
+    let dam;
+    while ((dam = daRe.exec(yamlContent)) !== null) {
+      const n = dam[1].trim();
+      if (n) daNames.push(n);
+    }
+    const uniqueDas = [...new Set(daNames)];
+    if (uniqueDas.length) {
+      try {
+        let allDas = [], daPage = 1;
+        while (true) {
+          const r = await axios.get(`${apiBase}/api/v2/integrations/actions`, {
+            headers, params: { pageSize: 100, pageNumber: daPage }
+          });
+          allDas = allDas.concat(r.data.entities || []);
+          if ((r.data.entities || []).length < 100) break;
+          daPage++;
+        }
+        const daSet = new Set(allDas.map(a => a.name));
+        for (const n of uniqueDas)
+          checks.push({ type: 'dataaction', name: n, ok: daSet.has(n),
+            message: daSet.has(n) ? `Data Action "${n}" fundet` : `\u26a0 Data Action "${n}" ikke fundet i m\u00e5l-org` });
+      } catch (e) {
+        checks.push({ type: 'dataaction', name: '(alle)', ok: null, message: 'Kunne ikke hente Data Actions: ' + e.message });
+      }
+    }
+
+    // 5. Prompt checks
+    const promptRe = /prompt:\s*["']?(?:Prompt\.)?([\w_\-. ]+)["']?/gm;
+    const promptNames = [];
+    let pm;
+    while ((pm = promptRe.exec(yamlContent)) !== null) {
+      const n = pm[1].trim();
+      if (n && !['true','false','noValue'].includes(n)) promptNames.push(n);
+    }
+    for (const pName of [...new Set(promptNames)]) {
+      try {
+        const r = await axios.get(`${apiBase}/api/v2/architect/prompts`, {
+          headers, params: { pageSize: 25, name: pName }
+        });
+        const found = (r.data.entities || []).some(p => p.name === pName);
+        checks.push({ type: 'prompt', name: pName, ok: found,
+          message: found ? `Prompt "${pName}" fundet` : `\u26a0 Prompt "${pName}" ikke fundet i m\u00e5l-org` });
+      } catch (e) {
+        checks.push({ type: 'prompt', name: pName, ok: null, message: `Kunne ikke tjekke prompt "${pName}"` });
+      }
+    }
+
+    const missing = checks.filter(c => c.ok === false).length;
+    addLog(
+      missing > 0 ? 'WARN' : 'SUCCESS',
+      `YAML validering mod ${customer.name}: ${checks.length} ressourcer tjekket${missing > 0 ? ', ' + missing + ' mangler' : ' \u2014 alt fundet'}`,
+      customer.name, 'IMPORT'
+    );
+    res.json({ ok: missing === 0, checks });
+
+  } catch (e) {
+    res.status(500).json({ error: e.response?.data?.message || e.message });
+  }
+});
 
 app.post('/api/import', async (req, res) => {
   const { customerId, yamlContent, fileName, action } = req.body;
