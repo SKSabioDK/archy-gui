@@ -168,6 +168,7 @@ Ny side til at migrere Data Actions mellem orgs:
 2. Vælg **mål-org** → tilgængelige Genesys Cloud Data Actions integrationer vises
 3. Markér de actions du vil kopiere → klik **⚡ Migrér valgte**
 4. Loggen viser: ✓ Oprettet og publiceret / ⚠ Allerede eksisterer / ✗ Fejl
+<img width="1436" height="634" alt="image" src="https://github.com/user-attachments/assets/e40b45d0-1322-430e-9d5e-28d0adda83e5" />
 
 > **Bemærk:** Kategori-navne skal matche mellem orgs. Hvis kilden bruger `Genesys Cloud Data Actions - QM` men målet kun har `Genesys Cloud Data Actions`, skal du enten omdøbe integrationen i mål-org'en eller justere YAML'en før import.
 
@@ -179,6 +180,7 @@ Se og preview lokalt gemte YAML-filer. Send direkte til Import-siden.
 
 #### 📋 Systemlog
 Alle handlinger logges i realtid. Filtrer på niveau, handling, kunde og fritekst.
+<img width="1439" height="547" alt="image" src="https://github.com/user-attachments/assets/4d994a59-70b6-4886-be82-54876ff61193" />
 
 ---
 
