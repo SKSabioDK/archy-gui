@@ -555,18 +555,44 @@ app.get('/api/customers/:id/actions', async (req, res) => {
   if (!customer) return res.status(404).json({ error: 'Not found' });
   try {
     const { token, apiBase } = await getToken(customer);
+    const H = { headers: { Authorization: `Bearer ${token}` } };
+
+    // Slå integrationerne op først, så hver action kan få sin RIGTIGE
+    // integration med. En org kan have flere data-action-integrationer af
+    // samme type (fx fire OAuth'er der grupperer belastningen), og de kan
+    // ikke skelnes på kategori alene.
+    const ints = {};
+    let ip = 1;
+    while (true) {
+      const r = await axios.get(`${apiBase}/api/v2/integrations`, {
+        ...H, params: { pageSize: 100, pageNumber: ip }
+      });
+      const entities = r.data.entities || [];
+      for (const i of entities) ints[i.id] = { name: i.name, type: i.integrationType?.id || '' };
+      if (entities.length < 100) break;
+      ip++;
+    }
+
     // Paginate to load all actions (most orgs have <500)
     let all = [], page = 1;
     while (true) {
       const r = await axios.get(`${apiBase}/api/v2/integrations/actions`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { pageSize: 100, pageNumber: page, sortBy: 'name', sortOrder: 'ASC' }
+        ...H, params: { pageSize: 100, pageNumber: page, sortBy: 'name', sortOrder: 'ASC' }
       });
       const entities = r.data.entities || [];
-      all = all.concat(entities.map(a => ({
-        id: a.id, name: a.name, category: a.category,
-        integrationName: a.integration?.name || a.category || ''
-      })));
+      all = all.concat(entities.map(a => {
+        // integrationId ligger FLADT på action-objektet — ikke under .integration.
+        // Den tidligere a.integration?.name ramte derfor aldrig og faldt altid
+        // tilbage til kategorien, så to integrationer med samme kategorinavn
+        // var umulige at skelne.
+        const i = ints[a.integrationId] || {};
+        return {
+          id: a.id, name: a.name, category: a.category,
+          integrationId:   a.integrationId || '',
+          integrationName: i.name || a.category || '',
+          integrationType: i.type || ''
+        };
+      }));
       if (entities.length < 100) break;
       page++;
     }

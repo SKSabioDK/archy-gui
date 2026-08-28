@@ -447,7 +447,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.6.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.7.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -745,10 +745,17 @@
             <select id="da-target" onchange="daLoadTargetIntegrations()"></select>
           </div>
         </div>
-        <div id="da-target-int-wrap" style="margin-top:12px;display:none">
-          <label data-i18n="da_label_targetint">Mål-integration (Genesys Cloud Data Actions integration i mål-org)</label>
-          <select id="da-target-int"></select>
+        <div class="grid-2" style="margin-top:12px">
+          <div id="da-source-int-wrap" style="display:none">
+            <label data-i18n="da_label_sourceint">Kilde-integration (kun actions herfra vises)</label>
+            <select id="da-source-int" onchange="daSourceIntChanged()"></select>
+          </div>
+          <div id="da-target-int-wrap" style="display:none">
+            <label data-i18n="da_label_targetint">Mål-integration (actions oprettes her)</label>
+            <select id="da-target-int" onchange="daUpdateReady()"></select>
+          </div>
         </div>
+        <div id="da-int-note" style="display:none;margin-top:10px;font-size:11px;font-family:var(--mono);padding:8px 12px;border-radius:5px"></div>
       </div>
 
       <div class="card" id="da-action-card" style="display:none">
@@ -1080,7 +1087,7 @@ const LANGS = {
     da_card_srctgt:'KILDE → MÅL',
     da_label_source:'Kilde (hent fra)',
     da_label_target:'Mål (kopier til)',
-    da_label_targetint:'Mål-integration (Genesys Cloud Data Actions integration i mål-org)',
+    da_label_targetint:'Mål-integration (actions oprettes her)',
     da_actions:'ACTIONS',
     da_search_ph:'🔍 Søg actions…',
     da_all_categories:'Alle kategorier',
@@ -1118,6 +1125,18 @@ const LANGS = {
     export_saved_to:'gemt i',
     ph_search_flow:'🔍  Søg flow…',
     ph_choose_flow:'— vælg flow —',
+    da_label_sourceint:'Kilde-integration (kun actions herfra vises)',
+    da_choose_int:'— Vælg integration —',
+    da_pick_int_first:'Vælg en kilde-integration for at se dens actions.',
+    da_int_matched:'Mål-integration matchet på navn',
+    da_int_no_name_match:'Ingen mål-integration hedder',
+    da_int_using:'bruger i stedet',
+    da_int_missing:'Mål-org har ingen tilsvarende integration til',
+    da_err_no_target_int:'Vælg en mål-integration',
+    da_warn_type_mismatch:'Kilde og mål har forskellig integrationstype',
+    da_sum_ok:'oprettet',
+    da_sum_skipped:'sprunget over',
+    da_sum_failed:'fejlet',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1256,7 +1275,7 @@ const LANGS = {
     da_card_srctgt:'SOURCE → TARGET',
     da_label_source:'Source (copy from)',
     da_label_target:'Target (copy to)',
-    da_label_targetint:'Target integration (Genesys Cloud Data Actions integration in the target org)',
+    da_label_targetint:'Target integration (actions are created here)',
     da_actions:'ACTIONS',
     da_search_ph:'🔍 Search actions…',
     da_all_categories:'All categories',
@@ -1294,6 +1313,18 @@ const LANGS = {
     export_saved_to:'saved in',
     ph_search_flow:'🔍  Search flow…',
     ph_choose_flow:'— select flow —',
+    da_label_sourceint:'Source integration (only its actions are shown)',
+    da_choose_int:'— Select integration —',
+    da_pick_int_first:'Select a source integration to see its actions.',
+    da_int_matched:'Target integration matched by name',
+    da_int_no_name_match:'No target integration is named',
+    da_int_using:'using instead',
+    da_int_missing:'The target org has no matching integration for',
+    da_err_no_target_int:'Select a target integration',
+    da_warn_type_mismatch:'Source and target have different integration types',
+    da_sum_ok:'created',
+    da_sum_skipped:'skipped',
+    da_sum_failed:'failed',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -1432,7 +1463,7 @@ const LANGS = {
     da_card_srctgt:'SOURCE → CIBLE',
     da_label_source:'Source (copier depuis)',
     da_label_target:'Cible (copier vers)',
-    da_label_targetint:'Intégration cible (intégration Genesys Cloud Data Actions dans l\'org cible)',
+    da_label_targetint:'Intégration cible (les actions y sont créées)',
     da_actions:'ACTIONS',
     da_search_ph:'🔍 Rechercher des actions…',
     da_all_categories:'Toutes les catégories',
@@ -1470,6 +1501,18 @@ const LANGS = {
     export_saved_to:'enregistré dans',
     ph_search_flow:'🔍  Rechercher un flow…',
     ph_choose_flow:'— choisir un flow —',
+    da_label_sourceint:'Intégration source (seules ses actions sont affichées)',
+    da_choose_int:'— Choisir une intégration —',
+    da_pick_int_first:'Sélectionnez une intégration source pour voir ses actions.',
+    da_int_matched:'Intégration cible trouvée par nom',
+    da_int_no_name_match:'Aucune intégration cible ne s\'appelle',
+    da_int_using:'utilisation de',
+    da_int_missing:'L\'org cible n\'a aucune intégration correspondante pour',
+    da_err_no_target_int:'Sélectionnez une intégration cible',
+    da_warn_type_mismatch:'La source et la cible n\'ont pas le même type d\'intégration',
+    da_sum_ok:'créées',
+    da_sum_skipped:'ignorées',
+    da_sum_failed:'échouées',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -1608,7 +1651,7 @@ const LANGS = {
     da_card_srctgt:'BRON → DOEL',
     da_label_source:'Bron (kopiëren van)',
     da_label_target:'Doel (kopiëren naar)',
-    da_label_targetint:'Doelintegratie (Genesys Cloud Data Actions-integratie in de doel-org)',
+    da_label_targetint:'Doelintegratie (actions worden hier aangemaakt)',
     da_actions:'ACTIES',
     da_search_ph:'🔍 Zoek actions…',
     da_all_categories:'Alle categorieën',
@@ -1646,6 +1689,18 @@ const LANGS = {
     export_saved_to:'opgeslagen in',
     ph_search_flow:'🔍  Zoek flow…',
     ph_choose_flow:'— kies flow —',
+    da_label_sourceint:'Bronintegratie (alleen de bijbehorende actions worden getoond)',
+    da_choose_int:'— Kies integratie —',
+    da_pick_int_first:'Kies een bronintegratie om de bijbehorende actions te zien.',
+    da_int_matched:'Doelintegratie gematcht op naam',
+    da_int_no_name_match:'Geen doelintegratie heet',
+    da_int_using:'in plaats daarvan',
+    da_int_missing:'De doel-org heeft geen overeenkomstige integratie voor',
+    da_err_no_target_int:'Kies een doelintegratie',
+    da_warn_type_mismatch:'Bron en doel hebben verschillende integratietypes',
+    da_sum_ok:'aangemaakt',
+    da_sum_skipped:'overgeslagen',
+    da_sum_failed:'mislukt',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -1784,7 +1839,7 @@ const LANGS = {
     da_card_srctgt:'ORIGEN → DESTINO',
     da_label_source:'Origen (copiar de)',
     da_label_target:'Destino (copiar a)',
-    da_label_targetint:'Integración de destino (integración Genesys Cloud Data Actions en la org de destino)',
+    da_label_targetint:'Integración de destino (las actions se crean aquí)',
     da_actions:'ACCIONES',
     da_search_ph:'🔍 Buscar actions…',
     da_all_categories:'Todas las categorías',
@@ -1822,6 +1877,18 @@ const LANGS = {
     export_saved_to:'guardado en',
     ph_search_flow:'🔍  Buscar flow…',
     ph_choose_flow:'— elegir flow —',
+    da_label_sourceint:'Integración de origen (solo se muestran sus actions)',
+    da_choose_int:'— Elegir integración —',
+    da_pick_int_first:'Selecciona una integración de origen para ver sus actions.',
+    da_int_matched:'Integración de destino encontrada por nombre',
+    da_int_no_name_match:'Ninguna integración de destino se llama',
+    da_int_using:'se usará',
+    da_int_missing:'La org de destino no tiene una integración equivalente para',
+    da_err_no_target_int:'Selecciona una integración de destino',
+    da_warn_type_mismatch:'El origen y el destino tienen tipos de integración distintos',
+    da_sum_ok:'creadas',
+    da_sum_skipped:'omitidas',
+    da_sum_failed:'fallidas',
   }
 };
 
@@ -2421,7 +2488,7 @@ async function runMigration() {
       if (data.error) { log(logBox, `  ✗ ${data.error}`, 'err'); }
       else { log(logBox, `  ✓ ${data.fileName} → ${action} OK`, 'ok'); }
     } catch(e) {
-      log(logBox, `  ✗ ${e.message}`, 'err');
+      log(logBox, `  ✗ ${e.message}`, 'err'); failed++;
     }
   }
   log(logBox, `\n${t('migration_done')}`, 'info');
@@ -4454,6 +4521,7 @@ function _genYaml() {
 
 let daAllActions   = [];
 let daSelectedIds  = new Set();
+let daSourceInts   = [];
 let daTargetInts   = [];
 
 function daInit() {
@@ -4488,15 +4556,41 @@ async function daLoadActions() {
 
   daAllActions = data;
 
-  // Populate category filter
-  const cats = [...new Set(data.map(a => a.category).filter(Boolean))].sort();
-  const sel = document.getElementById('da-cat-filter');
-  // data-i18n på option'en, så et senere sprogskift også rammer den
-  sel.innerHTML = `<option value="" data-i18n="da_all_categories">${t('da_all_categories')}</option>` +
+  // Kilde-integrationer: kun dem der faktisk har actions, med antal.
+  // En org kan have flere af samme type (fx fire OAuth'er der grupperer
+  // belastningen), så der vælges på integration — ikke på kategori.
+  const counts = {};
+  for (const a of data) {
+    const k = a.integrationId || '';
+    if (!counts[k]) counts[k] = { id: k, name: a.integrationName || '?', type: a.integrationType || '', n: 0 };
+    counts[k].n++;
+  }
+  daSourceInts = Object.values(counts).sort((x, y) => y.n - x.n);
+
+  const si = document.getElementById('da-source-int');
+  si.innerHTML = `<option value="">${t('da_choose_int')}</option>` +
+    daSourceInts.map(i => `<option value="${i.id}">${i.name} (${i.n})</option>`).join('');
+  document.getElementById('da-source-int-wrap').style.display = 'block';
+
+  daSourceIntChanged();
+}
+
+// Kaldes når kilde-integrationen skifter. Rydder markeringen, så actions fra
+// en tidligere valgt integration ikke følger med over i næste migrering.
+function daSourceIntChanged() {
+  daSelectedIds.clear();
+
+  const intId = document.getElementById('da-source-int').value;
+  const scoped = intId ? daAllActions.filter(a => a.integrationId === intId) : [];
+
+  // Kategorifilteret skal kun vise kategorier der findes i den valgte integration
+  const cats = [...new Set(scoped.map(a => a.category).filter(Boolean))].sort();
+  const cf = document.getElementById('da-cat-filter');
+  cf.innerHTML = `<option value="" data-i18n="da_all_categories">${t('da_all_categories')}</option>` +
     cats.map(c => `<option value="${c}">${c}</option>`).join('');
 
-  document.getElementById('da-count').textContent = data.length;
-  daRender(data);
+  daMatchTargetInt();
+  daFilter();
 }
 
 async function daLoadTargetIntegrations() {
@@ -4505,23 +4599,64 @@ async function daLoadTargetIntegrations() {
   const sel  = document.getElementById('da-target-int');
   wrap.style.display = 'none';
   daTargetInts = [];
-  if (!id) return;
+  if (!id) { daUpdateReady(); return; }
 
   try {
     const res  = await fetch(`/api/customers/${id}/integrations`);
     const data = await res.json();
-    // Filter to Data Actions integrations
-    const daInts = (data || []).filter(i =>
-      i.integrationType.includes('purecloud-data-actions') ||
-      i.name.toLowerCase().includes('data action') ||
-      i.name.toLowerCase().includes('genesys')
-    );
-    daTargetInts = daInts.length ? daInts : data;
-    sel.innerHTML = daTargetInts.map(i =>
-      `<option value="${i.id}">${i.name}</option>`
-    ).join('');
+    // Alle data-action-typer, ikke kun purecloud: en org kan også have
+    // custom-rest-actions (Web Services) og function-data-actions.
+    const daInts = (data || []).filter(i => /data-actions|rest-actions/.test(i.integrationType || ''));
+    daTargetInts = daInts.length ? daInts : (data || []);
+    sel.innerHTML = `<option value="">${t('da_choose_int')}</option>` +
+      daTargetInts.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
     wrap.style.display = 'block';
-  } catch (_) {}
+    daMatchTargetInt();
+  } catch (_) { daUpdateReady(); }
+}
+
+// Foreslår mål-integrationen der svarer til den valgte kilde-integration:
+// samme navn først, ellers samme type. Rammer vi ikke, står valget tomt og
+// brugeren må selv pege — vi gætter ikke på tværs af typer.
+function daMatchTargetInt() {
+  const sel  = document.getElementById('da-target-int');
+  const note = document.getElementById('da-int-note');
+  const srcId = document.getElementById('da-source-int')?.value || '';
+  const src   = daSourceInts.find(i => i.id === srcId);
+  if (!sel || !daTargetInts.length || !src) { note.style.display = 'none'; daUpdateReady(); return; }
+
+  const sameName = daTargetInts.find(i => i.name === src.name);
+  const sameType = daTargetInts.filter(i => i.integrationType === src.type);
+
+  let msg = '', ok = true;
+  if (sameName) {
+    sel.value = sameName.id;
+    msg = `✓ ${t('da_int_matched')}: "${src.name}"`;
+  } else if (sameType.length === 1) {
+    sel.value = sameType[0].id;
+    msg = `⚠ ${t('da_int_no_name_match')} "${src.name}" — ${t('da_int_using')} "${sameType[0].name}"`;
+    ok = false;
+  } else {
+    sel.value = '';
+    msg = `⚠ ${t('da_int_missing')} "${src.name}" (${src.type})`;
+    ok = false;
+  }
+
+  note.textContent = msg;
+  note.style.background = ok ? 'rgba(46,204,113,.12)' : 'rgba(241,196,15,.12)';
+  note.style.color = ok ? 'var(--green)' : 'var(--yellow)';
+  note.style.display = 'block';
+  daUpdateReady();
+}
+
+// Migrering kræver både en valgt kilde-integration, en mål-integration og
+// mindst én markeret action.
+function daUpdateReady() {
+  const btn = document.getElementById('da-migrate-btn');
+  if (!btn) return;
+  const srcInt = document.getElementById('da-source-int')?.value || '';
+  const tgtInt = document.getElementById('da-target-int')?.value || '';
+  btn.disabled = !(srcInt && tgtInt && daSelectedIds.size);
 }
 
 function daRender(actions) {
@@ -4542,7 +4677,7 @@ function daRender(actions) {
     </div>`;
   }).join('');
   document.getElementById('da-sel-count').textContent = daSelectedIds.size;
-  document.getElementById('da-migrate-btn').disabled = daSelectedIds.size === 0;
+  daUpdateReady();
 }
 
 function daToggle(id) {
@@ -4551,12 +4686,22 @@ function daToggle(id) {
   daFilter();
 }
 
+// Fælles filter: uden en valgt kilde-integration vises ingenting, så man
+// aldrig kan markere actions på tværs af integrationer ved et uheld.
+function daVisibleActions() {
+  const q      = (document.getElementById('da-search')?.value || '').toLowerCase();
+  const cat    = document.getElementById('da-cat-filter')?.value || '';
+  const intId  = document.getElementById('da-source-int')?.value || '';
+  if (!intId) return [];
+  return daAllActions.filter(a =>
+    a.integrationId === intId &&
+    (!q   || a.name.toLowerCase().includes(q)) &&
+    (!cat || a.category === cat)
+  );
+}
+
 function daSelectAll() {
-  const q    = (document.getElementById('da-search')?.value || '').toLowerCase();
-  const cat  = document.getElementById('da-cat-filter')?.value || '';
-  daAllActions
-    .filter(a => (!q || a.name.toLowerCase().includes(q)) && (!cat || a.category === cat))
-    .forEach(a => daSelectedIds.add(a.id));
+  daVisibleActions().forEach(a => daSelectedIds.add(a.id));
   daFilter();
 }
 
@@ -4566,13 +4711,15 @@ function daClearSel() {
 }
 
 function daFilter() {
-  const q    = (document.getElementById('da-search')?.value || '').toLowerCase();
-  const cat  = document.getElementById('da-cat-filter')?.value || '';
-  const filtered = daAllActions.filter(a =>
-    (!q   || a.name.toLowerCase().includes(q)) &&
-    (!cat || a.category === cat)
-  );
+  const filtered = daVisibleActions();
   document.getElementById('da-count').textContent = filtered.length;
+  if (!document.getElementById('da-source-int')?.value) {
+    document.getElementById('da-list').innerHTML =
+      `<div style="color:var(--muted);font-size:12px;padding:8px 0">${t('da_pick_int_first')}</div>`;
+    document.getElementById('da-sel-count').textContent = 0;
+    daUpdateReady();
+    return;
+  }
   daRender(filtered);
 }
 
@@ -4583,6 +4730,7 @@ async function daMigrateSelected() {
 
   if (!sourceId || !targetId) return alert(t('da_err_select'));
   if (sourceId === targetId) return alert(t('da_err_same'));
+  if (!targetIntegrationId) return alert(t('da_err_no_target_int'));
   if (!daSelectedIds.size) return;
 
   const logCard = document.getElementById('da-log');
@@ -4590,8 +4738,17 @@ async function daMigrateSelected() {
   logCard.style.display = 'block';
   logBox.innerHTML = '';
 
+  const srcInt = daSourceInts.find(i => i.id === document.getElementById('da-source-int').value);
+  const tgtInt = daTargetInts.find(i => i.id === targetIntegrationId);
+  log(logBox, `${srcInt?.name || '?'}  ⟶  ${tgtInt?.name || '?'}`, 'info');
+  if (srcInt && tgtInt && srcInt.type && tgtInt.integrationType && srcInt.type !== tgtInt.integrationType) {
+    log(logBox, `⚠ ${t('da_warn_type_mismatch')}: ${srcInt.type} → ${tgtInt.integrationType}`, 'info');
+  }
+
   const btn = document.getElementById('da-migrate-btn');
   btn.disabled = true;
+
+  let ok = 0, skipped = 0, failed = 0;
 
   for (const actionId of daSelectedIds) {
     const action = daAllActions.find(a => a.id === actionId);
@@ -4607,21 +4764,24 @@ async function daMigrateSelected() {
       const data = await res.json();
 
       if (data.error === 'already_exists') {
-        log(logBox, `  ⚠ ${t('da_exists')}`, 'info');
+        log(logBox, `  ⚠ ${t('da_exists')}`, 'info'); skipped++;
       } else if (data.needsIntegration) {
-        log(logBox, `  ✗ ${data.error}`, 'err');
+        log(logBox, `  ✗ ${data.error}`, 'err'); failed++;
       } else if (data.error) {
-        log(logBox, `  ✗ ${data.error}`, 'err');
+        log(logBox, `  ✗ ${data.error}`, 'err'); failed++;
       } else {
-        log(logBox, `  \u2713 ${t('da_created')} (ID: ${data.newActionId})`, 'ok');
+        log(logBox, `  \u2713 ${t('da_created')} (ID: ${data.newActionId})`, 'ok'); ok++;
       }
     } catch (e) {
       log(logBox, `  ✗ ${e.message}`, 'err');
     }
   }
 
-  log(logBox, `\n── ${t('da_done')} ──`, 'info');
-  btn.disabled = daSelectedIds.size === 0;
+  // Opsummering, så man ikke skal scrolle loggen igennem for at se hvad der
+  // faktisk kom med — særligt ved mange actions ad gangen.
+  log(logBox, `\n── ${t('da_done')} ── ${ok} ${t('da_sum_ok')} · ${skipped} ${t('da_sum_skipped')} · ${failed} ${t('da_sum_failed')}`,
+      failed ? 'err' : 'info');
+  daUpdateReady();
 }
 </script>
 </body>

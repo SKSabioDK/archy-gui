@@ -1,10 +1,27 @@
-# Archy GUI — Flow Manager · v1.6.0
+# Archy GUI — Flow Manager · v1.7.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.7.0
+---
+**🇩🇰 Dansk**
+- **Valg af integration ved Data Action-migrering** — Data Actions hører til en *integration*, og en org kan have flere af samme type — fx fire OAuth-integrationer der grupperer actions og spreder belastningen. Før viste siden alle actions i én bunke og havde ét mål-dropdown, så en migrering på tværs kollapsede grupperingen. Nu vælges én kilde-integration ad gangen, listen viser kun dens actions, og markeringen ryddes automatisk når du skifter integration, så actions fra en tidligere gruppe ikke følger med.
+- **Automatisk match af mål-integration** — Mål-integrationen foreslås ud fra kilden: samme navn først, ellers samme integrationstype hvis der kun findes én. Findes der flere kandidater af samme type, står valget tomt, og migreringen kan ikke startes før du selv har peget. En farvet note over listen fortæller hvilken vej matchet gik.
+- **Alle data-action-typer i mål-dropdownen** — Tidligere filtrerede den på navnet "genesys" eller "data action", så `custom-rest-actions` (Web Services) og `function-data-actions` kunne falde ud. Nu vises alle data-action-typer, og der advares hvis kildens og målets type er forskellig.
+- **Opsummering efter migrering** — Loggen slutter med antal oprettet / sprunget over / fejlet, så man ikke skal scrolle igennem ved mange actions.
+- **Rettet: integrationen blev aldrig læst korrekt** — Serveren læste `a.integration?.name`, men API'et returnerer `integrationId` som et *fladt* felt. Feltet ramte derfor aldrig og faldt altid tilbage til kategorien, så to integrationer med samme kategorinavn var umulige at skelne. Actions får nu deres rigtige integration og type med.
+
+---
+**🇬🇧 English**
+- **Integration selection for Data Action migration** — Data Actions belong to an *integration*, and an org can have several of the same type — for example four OAuth integrations that group actions and spread the load. The page previously showed every action in one list with a single target dropdown, so migrating across integrations collapsed the grouping. You now pick one source integration at a time, the list shows only its actions, and the selection is cleared when you switch integration so actions from a previous group cannot come along.
+- **Automatic target matching** — The target integration is suggested from the source: same name first, otherwise same integration type when only one candidate exists. If several candidates share the type, the choice is left empty and migration is blocked until you pick. A coloured note above the list says which way the match went.
+- **All data action types in the target dropdown** — It previously filtered on the words "genesys" or "data action" in the name, so `custom-rest-actions` (Web Services) and `function-data-actions` could drop out. All data action types are now listed, and a warning is shown when source and target types differ.
+- **Summary after migration** — The log ends with counts of created / skipped / failed, so you do not have to scroll through it when migrating many actions.
+- **Fixed: the integration was never read correctly** — The server read `a.integration?.name`, but the API returns `integrationId` as a *flat* field. That field therefore never matched and always fell back to the category, making two integrations with the same category name impossible to tell apart. Actions now carry their real integration and type.
 
 ### v1.6.0
 ---
@@ -184,11 +201,16 @@ Eksporter ét flow eller hele org'en med live fremgangsindikator.
 - **🌐 Tjek mod org** — tjekker om alle ressourcer (division, køer, DataTables, Data Actions, Prompts) eksisterer i mål-org'en *inden* import
 
 #### ⚡ Data Actions
-Ny side til at migrere Data Actions mellem orgs:
-1. Vælg **kilde-org** → alle Data Actions listes med kategori-filter og søgning
-2. Vælg **mål-org** → tilgængelige Genesys Cloud Data Actions integrationer vises
-3. Markér de actions du vil kopiere → klik **⚡ Migrér valgte**
-4. Loggen viser: ✓ Oprettet og publiceret / ⚠ Allerede eksisterer / ✗ Fejl
+Side til at migrere Data Actions mellem orgs:
+1. Vælg **kilde-org** og **mål-org**
+2. Vælg **kilde-integration** → kun actions fra netop den integration vises
+3. **Mål-integrationen** foreslås automatisk — tjek noten over listen
+4. Markér de actions du vil kopiere → klik **⚡ Migrér valgte**
+5. Loggen viser pr. action: ✓ Oprettet og publiceret / ⚠ Allerede eksisterer / ✗ Fejl, og slutter med en opsummering
+
+> **Hvorfor vælges der integration?** Data Actions hører til en integration, og en org kan have flere af samme type — fx flere OAuth-integrationer der grupperer actions og spreder belastningen. Ved at vælge én ad gangen bevares grupperingen i mål-org'en. Markeringen ryddes automatisk når du skifter integration, så du ikke kommer til at migrere på tværs af grupper.
+>
+> Mål-integrationen matches på navn, ellers på integrationstype hvis der kun er én kandidat. Er der flere mulige, skal du selv vælge — og migreringen kan ikke startes før du har gjort det.
 
 Der kopieres navn, kategori, input/output-schema, request-config (URL, metode, headers) samt request- og success-templates. Templates hentes fra kilden og indsættes direkte i den nye action, så den ikke refererer tilbage til kilde-orgen.
 <img width="1436" height="634" alt="image" src="https://github.com/user-attachments/assets/e40b45d0-1322-430e-9d5e-28d0adda83e5" />
@@ -265,7 +287,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.6.0** — see [Changelog](#changelog) above.
+> Current version: **v1.7.0** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
@@ -305,11 +327,16 @@ Export a single flow or an entire org with live progress indicator.
 - **🌐 Check against org** — verifies that all resources referenced in the YAML (division, queues, DataTables, Data Actions, Prompts) exist in the target org *before* importing
 
 #### ⚡ Data Actions
-New page to migrate Data Actions between orgs:
-1. Select **source org** → all Data Actions listed with category filter and search
-2. Select **target org** → available Genesys Cloud Data Actions integrations shown
-3. Select the actions to copy → click **⚡ Migrate selected**
-4. Log shows: ✓ Created and published / ⚠ Already exists / ✗ Error
+Page to migrate Data Actions between orgs:
+1. Select **source org** and **target org**
+2. Select the **source integration** → only its actions are listed
+3. The **target integration** is suggested automatically — check the note above the list
+4. Select the actions to copy → click **⚡ Migrate selected**
+5. The log shows per action: ✓ Created and published / ⚠ Already exists / ✗ Error, and ends with a summary
+
+> **Why pick an integration?** Data Actions belong to an integration, and an org can have several of the same type — for example multiple OAuth integrations that group actions and spread the load. Picking one at a time preserves that grouping in the target org. The selection is cleared when you switch integration, so you cannot accidentally migrate across groups.
+>
+> The target integration is matched by name, or by integration type when only one candidate exists. If several are possible you must choose yourself — and migration is blocked until you do.
 
 Name, category, input/output schema, request config (URL, method, headers) and the request/success templates are copied. Templates are fetched from the source and inlined into the new action, so it never references the source org.
 
