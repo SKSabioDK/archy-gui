@@ -428,7 +428,7 @@
         <span class="nav-icon">📥</span> <span data-i18n="nav_import">Import YAML</span>
       </div>
       <div class="nav-item" data-page="dataactions" onclick="nav(this)">
-        <span class="nav-icon">⚡</span> <span>Data Actions</span>
+        <span class="nav-icon">⚡</span> <span data-i18n="nav_dataactions">Data Actions</span>
       </div>
       <div class="nav-divider"></div>
       <div class="nav-item" data-page="files" onclick="nav(this)">
@@ -447,7 +447,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.5.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.6.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -529,7 +529,7 @@
       <div class="card" id="flowTableCard" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <div class="card-title" style="margin:0">FLOWS (<span id="flowCount">0</span>)</div>
-          <input style="width:220px" placeholder="🔍  Søg flow…" oninput="filterFlows(this.value)" />
+          <input style="width:220px" data-i18n-placeholder="ph_search_flow" placeholder="🔍  Søg flow…" oninput="filterFlows(this.value)" />
         </div>
         <table class="flow-table">
           <thead><tr>
@@ -630,7 +630,7 @@
             </div>
             <div style="min-width:160px">
               <label data-i18n="label_flow_type">Flow Type <span style="color:var(--green);font-size:10px">(auto)</span></label>
-              <input id="ex-type-display" readonly style="color:var(--muted);cursor:default" placeholder="— vælg flow —"/>
+              <input id="ex-type-display" readonly style="color:var(--muted);cursor:default" data-i18n-placeholder="ph_choose_flow" placeholder="— vælg flow —"/>
               <input type="hidden" id="ex-type"/>
               <input type="hidden" id="ex-name"/>
             </div>
@@ -656,7 +656,7 @@
           <div style="display:flex;align-items:center;gap:12px">
             <div id="ex-all-counter" style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)"></div>
             <button id="ex-all-stop-btn" class="btn btn-danger btn-sm" style="display:none"
-              onclick="cancelExportAll()">⏹ Stop</button>
+              onclick="cancelExportAll()" data-i18n="export_stop">⏹ Stop</button>
           </div>
         </div>
         <div style="background:var(--border);border-radius:4px;height:6px;margin-bottom:14px;overflow:hidden">
@@ -719,8 +719,8 @@
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <button class="btn btn-green" onclick="doImport()" data-i18n="btn_import">📥 Import / Opret Flow</button>
-          <button class="btn btn-secondary" onclick="validateYaml()">🔍 Valider YAML</button>
-          <button class="btn btn-blue" onclick="validateYamlVsOrg()" id="im-org-validate-btn">🌐 Tjek mod org</button>
+          <button class="btn btn-secondary" onclick="validateYaml()" data-i18n="btn_validate_yaml">🔍 Valider YAML</button>
+          <button class="btn btn-blue" onclick="validateYamlVsOrg()" id="im-org-validate-btn" data-i18n="btn_check_org">🌐 Tjek mod org</button>
         </div>
       </div>
       <div id="im-validate" style="display:none;margin-top:14px;border:1px solid var(--border);border-radius:6px;padding:12px 16px;font-size:12px;font-family:var(--mono)"></div>
@@ -730,50 +730,50 @@
 
     <!-- DATA ACTIONS PAGE -->
     <div class="page" id="page-dataactions">
-      <div class="page-title">Data Actions</div>
-      <div class="page-sub">Migrér Data Actions mellem Genesys Cloud orgs</div>
+      <div class="page-title" data-i18n="da_title">Data Actions</div>
+      <div class="page-sub" data-i18n="da_sub">Migrér Data Actions mellem Genesys Cloud orgs</div>
 
       <div class="card">
-        <div class="card-title">KILDE → MÅL</div>
+        <div class="card-title" data-i18n="da_card_srctgt">KILDE → MÅL</div>
         <div class="grid-2">
           <div>
-            <label>Kilde (hent fra)</label>
+            <label data-i18n="da_label_source">Kilde (hent fra)</label>
             <select id="da-source" onchange="daLoadActions()"></select>
           </div>
           <div>
-            <label>Mål (kopier til)</label>
+            <label data-i18n="da_label_target">Mål (kopier til)</label>
             <select id="da-target" onchange="daLoadTargetIntegrations()"></select>
           </div>
         </div>
         <div id="da-target-int-wrap" style="margin-top:12px;display:none">
-          <label>Mål-integration (Genesys Cloud Data Actions integration i mål-org)</label>
+          <label data-i18n="da_label_targetint">Mål-integration (Genesys Cloud Data Actions integration i mål-org)</label>
           <select id="da-target-int"></select>
         </div>
       </div>
 
       <div class="card" id="da-action-card" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div class="card-title" style="margin:0">ACTIONS (<span id="da-count">0</span>)</div>
+          <div class="card-title" style="margin:0"><span data-i18n="da_actions">ACTIONS</span> (<span id="da-count">0</span>)</div>
           <div style="display:flex;gap:8px">
-            <input id="da-search" style="width:220px" placeholder="🔍 Søg actions…" oninput="daFilter(this.value)"/>
+            <input id="da-search" style="width:220px" data-i18n-placeholder="da_search_ph" placeholder="🔍 Søg actions…" oninput="daFilter(this.value)"/>
             <select id="da-cat-filter" style="width:160px" onchange="daFilter()">
-              <option value="">Alle kategorier</option>
+              <option value="" data-i18n="da_all_categories">Alle kategorier</option>
             </select>
-            <button class="btn btn-primary btn-sm" id="da-migrate-btn" onclick="daMigrateSelected()" disabled>⚡ Migrér valgte</button>
+            <button class="btn btn-primary btn-sm" id="da-migrate-btn" onclick="daMigrateSelected()" data-i18n="da_migrate_btn" disabled>⚡ Migrér valgte</button>
           </div>
         </div>
         <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:10px">
-          <span id="da-sel-count" style="color:var(--accent);font-weight:700">0</span> valgt
+          <span id="da-sel-count" style="color:var(--accent);font-weight:700">0</span> <span data-i18n="da_selected">valgt</span>
           &nbsp;·&nbsp;
-          <a href="#" onclick="daSelectAll();return false" style="color:var(--accent);text-decoration:none">Vælg alle</a>
+          <a href="#" onclick="daSelectAll();return false" style="color:var(--accent);text-decoration:none" data-i18n="da_select_all">Vælg alle</a>
           &nbsp;·&nbsp;
-          <a href="#" onclick="daClearSel();return false" style="color:var(--muted);text-decoration:none">Nulstil</a>
+          <a href="#" onclick="daClearSel();return false" style="color:var(--muted);text-decoration:none" data-i18n="da_reset">Nulstil</a>
         </div>
         <div id="da-list"></div>
       </div>
 
       <div id="da-log" class="card" style="display:none">
-        <div class="card-title">MIGRERINGS LOG</div>
+        <div class="card-title" data-i18n="da_log_title">MIGRERINGS LOG</div>
         <div class="log-box" id="da-logbox"></div>
       </div>
     </div>
@@ -1073,6 +1073,51 @@ const LANGS = {
     warn_missing_oauth_view:'⚠ Mangler \'oauth:client:view\' — Archy vil fejle med afslutningskode 99. Tilføj tilladelsen i Genesys Cloud Admin → OAuth.',
     warn_missing_architect_perm:'⚠ Mangler \'architect:flow:view/edit\' — import/export vil fejle med adgang nægtet. Tildel en rolle med Architect-tilladelser under Admin → OAuth → din klient → Roles.',
     err_access_denied:'Adgang nægtet (403) — OAuth-klienten mangler \'architect:flow:edit\' tilladelse. Gå til Genesys Admin → OAuth → din klient → Roles og tildel en rolle med Architect-tilladelser.',
+    // ── tilføjet i v1.6.0 ──
+    nav_dataactions:'Data Actions',
+    da_title:'Data Actions',
+    da_sub:'Migrér Data Actions mellem Genesys Cloud orgs',
+    da_card_srctgt:'KILDE → MÅL',
+    da_label_source:'Kilde (hent fra)',
+    da_label_target:'Mål (kopier til)',
+    da_label_targetint:'Mål-integration (Genesys Cloud Data Actions integration i mål-org)',
+    da_actions:'ACTIONS',
+    da_search_ph:'🔍 Søg actions…',
+    da_all_categories:'Alle kategorier',
+    da_migrate_btn:'⚡ Migrér valgte',
+    da_selected:'valgt',
+    da_select_all:'Vælg alle',
+    da_reset:'Nulstil',
+    da_log_title:'MIGRERINGS LOG',
+    da_choose_org:'— Vælg org —',
+    da_loading:'Henter actions…',
+    da_none:'Ingen actions fundet.',
+    da_err_select:'Vælg både kilde og mål',
+    da_err_same:'Kilde og mål må ikke være den samme org',
+    da_migrating:'Migrérer',
+    da_exists:'Eksisterer allerede i mål-org — springer over',
+    da_created:'Oprettet og publiceret',
+    da_done:'Færdig',
+    da_schema_err:'Kunne ikke hente schema — tjek forbindelsen',
+    da_schema_err_prefix:'Fejl',
+    card_badge_creds:'🔑 Creds',
+    btn_validate_yaml:'🔍 Valider YAML',
+    btn_check_org:'🌐 Tjek mod org',
+    btn_checking:'⏳ Tjekker…',
+    val_title:'🔍 YAML VALIDERING',
+    val_no_yaml:'Ingen YAML i feltet',
+    val_syntax_err:'YAML syntaksfejl',
+    val_at:'ved',
+    val_errors_found:'Fejl fundet — ret YAML inden import',
+    val_warnings:'Advarsler — import kan muligvis fejle',
+    val_no_resources:'Ingen ressourcer fundet i YAML at tjekke (division, køer, datatables, actions, prompts)',
+    val_missing_res:'ressource(r) mangler i mål-org — import vil fejle!',
+    export_stop:'⏹ Stop',
+    export_saved_in:'Gemt i',
+    export_errors:'fejl',
+    export_saved_to:'gemt i',
+    ph_search_flow:'🔍  Søg flow…',
+    ph_choose_flow:'— vælg flow —',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1204,6 +1249,51 @@ const LANGS = {
     warn_missing_oauth_view:'⚠ Missing \'oauth:client:view\' — Archy will fail with exit code 99. Add the permission in Genesys Cloud Admin → OAuth.',
     warn_missing_architect_perm:'⚠ Missing \'architect:flow:view/edit\' — import/export will fail with access denied. Assign a role with Architect permissions under Admin → OAuth → your client → Roles.',
     err_access_denied:'Access denied (403) — the OAuth client is missing the \'architect:flow:edit\' permission. Go to Genesys Admin → OAuth → your client → Roles and assign a role with Architect permissions.',
+    // ── tilføjet i v1.6.0 ──
+    nav_dataactions:'Data Actions',
+    da_title:'Data Actions',
+    da_sub:'Migrate Data Actions between Genesys Cloud orgs',
+    da_card_srctgt:'SOURCE → TARGET',
+    da_label_source:'Source (copy from)',
+    da_label_target:'Target (copy to)',
+    da_label_targetint:'Target integration (Genesys Cloud Data Actions integration in the target org)',
+    da_actions:'ACTIONS',
+    da_search_ph:'🔍 Search actions…',
+    da_all_categories:'All categories',
+    da_migrate_btn:'⚡ Migrate selected',
+    da_selected:'selected',
+    da_select_all:'Select all',
+    da_reset:'Reset',
+    da_log_title:'MIGRATION LOG',
+    da_choose_org:'— Select org —',
+    da_loading:'Loading actions…',
+    da_none:'No actions found.',
+    da_err_select:'Select both source and target',
+    da_err_same:'Source and target must not be the same org',
+    da_migrating:'Migrating',
+    da_exists:'Already exists in target org — skipping',
+    da_created:'Created and published',
+    da_done:'Done',
+    da_schema_err:'Could not load schema — check the connection',
+    da_schema_err_prefix:'Error',
+    card_badge_creds:'🔑 Creds',
+    btn_validate_yaml:'🔍 Validate YAML',
+    btn_check_org:'🌐 Check against org',
+    btn_checking:'⏳ Checking…',
+    val_title:'🔍 YAML VALIDATION',
+    val_no_yaml:'No YAML in the field',
+    val_syntax_err:'YAML syntax error',
+    val_at:'at',
+    val_errors_found:'Errors found — fix the YAML before importing',
+    val_warnings:'Warnings — the import may fail',
+    val_no_resources:'No resources found in the YAML to check (division, queues, datatables, actions, prompts)',
+    val_missing_res:'resource(s) missing in the target org — the import will fail!',
+    export_stop:'⏹ Stop',
+    export_saved_in:'Saved in',
+    export_errors:'errors',
+    export_saved_to:'saved in',
+    ph_search_flow:'🔍  Search flow…',
+    ph_choose_flow:'— select flow —',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -1335,6 +1425,51 @@ const LANGS = {
     warn_missing_oauth_view:'⚠ Permission \'oauth:client:view\' manquante — Archy échouera avec le code de sortie 99. Ajoutez la permission dans Genesys Cloud Admin → OAuth.',
     warn_missing_architect_perm:'⚠ Permission \'architect:flow:view/edit\' manquante — import/export échouera avec accès refusé. Attribuez un rôle avec les permissions Architect sous Admin → OAuth → votre client → Roles.',
     err_access_denied:'Accès refusé (403) — le client OAuth n\'a pas la permission \'architect:flow:edit\'. Allez dans Genesys Admin → OAuth → votre client → Roles et attribuez un rôle avec les permissions Architect.',
+    // ── tilføjet i v1.6.0 ──
+    nav_dataactions:'Data Actions',
+    da_title:'Data Actions',
+    da_sub:'Migrer des Data Actions entre orgs Genesys Cloud',
+    da_card_srctgt:'SOURCE → CIBLE',
+    da_label_source:'Source (copier depuis)',
+    da_label_target:'Cible (copier vers)',
+    da_label_targetint:'Intégration cible (intégration Genesys Cloud Data Actions dans l\'org cible)',
+    da_actions:'ACTIONS',
+    da_search_ph:'🔍 Rechercher des actions…',
+    da_all_categories:'Toutes les catégories',
+    da_migrate_btn:'⚡ Migrer la sélection',
+    da_selected:'sélectionné(s)',
+    da_select_all:'Tout sélectionner',
+    da_reset:'Réinitialiser',
+    da_log_title:'JOURNAL DE MIGRATION',
+    da_choose_org:'— Choisir une org —',
+    da_loading:'Chargement des actions…',
+    da_none:'Aucune action trouvée.',
+    da_err_select:'Sélectionnez la source et la cible',
+    da_err_same:'La source et la cible ne peuvent pas être la même org',
+    da_migrating:'Migration',
+    da_exists:'Existe déjà dans l\'org cible — ignoré',
+    da_created:'Créée et publiée',
+    da_done:'Terminé',
+    da_schema_err:'Impossible de charger le schéma — vérifiez la connexion',
+    da_schema_err_prefix:'Erreur',
+    card_badge_creds:'🔑 Creds',
+    btn_validate_yaml:'🔍 Valider le YAML',
+    btn_check_org:'🌐 Vérifier avec l\'org',
+    btn_checking:'⏳ Vérification…',
+    val_title:'🔍 VALIDATION YAML',
+    val_no_yaml:'Aucun YAML dans le champ',
+    val_syntax_err:'Erreur de syntaxe YAML',
+    val_at:'à',
+    val_errors_found:'Erreurs détectées — corrigez le YAML avant l\'import',
+    val_warnings:'Avertissements — l\'import peut échouer',
+    val_no_resources:'Aucune ressource à vérifier dans le YAML (division, files, datatables, actions, prompts)',
+    val_missing_res:'ressource(s) manquante(s) dans l\'org cible — l\'import échouera !',
+    export_stop:'⏹ Arrêter',
+    export_saved_in:'Enregistré dans',
+    export_errors:'erreurs',
+    export_saved_to:'enregistré dans',
+    ph_search_flow:'🔍  Rechercher un flow…',
+    ph_choose_flow:'— choisir un flow —',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -1466,6 +1601,51 @@ const LANGS = {
     warn_missing_oauth_view:'⚠ Ontbrekende \'oauth:client:view\' — Archy mislukt met exitcode 99. Voeg de rechten toe in Genesys Cloud Admin → OAuth.',
     warn_missing_architect_perm:'⚠ Ontbrekende \'architect:flow:view/edit\' — import/export mislukt met toegang geweigerd. Ken een rol toe met Architect-rechten via Admin → OAuth → uw client → Roles.',
     err_access_denied:'Toegang geweigerd (403) — de OAuth-client mist de \'architect:flow:edit\' rechten. Ga naar Genesys Admin → OAuth → uw client → Roles en wijs een rol toe met Architect-rechten.',
+    // ── tilføjet i v1.6.0 ──
+    nav_dataactions:'Data Actions',
+    da_title:'Data Actions',
+    da_sub:'Data Actions migreren tussen Genesys Cloud-orgs',
+    da_card_srctgt:'BRON → DOEL',
+    da_label_source:'Bron (kopiëren van)',
+    da_label_target:'Doel (kopiëren naar)',
+    da_label_targetint:'Doelintegratie (Genesys Cloud Data Actions-integratie in de doel-org)',
+    da_actions:'ACTIES',
+    da_search_ph:'🔍 Zoek actions…',
+    da_all_categories:'Alle categorieën',
+    da_migrate_btn:'⚡ Migreer selectie',
+    da_selected:'geselecteerd',
+    da_select_all:'Alles selecteren',
+    da_reset:'Wissen',
+    da_log_title:'MIGRATIELOG',
+    da_choose_org:'— Kies org —',
+    da_loading:'Actions laden…',
+    da_none:'Geen actions gevonden.',
+    da_err_select:'Kies zowel bron als doel',
+    da_err_same:'Bron en doel mogen niet dezelfde org zijn',
+    da_migrating:'Migreren',
+    da_exists:'Bestaat al in doel-org — overgeslagen',
+    da_created:'Aangemaakt en gepubliceerd',
+    da_done:'Klaar',
+    da_schema_err:'Kon schema niet laden — controleer de verbinding',
+    da_schema_err_prefix:'Fout',
+    card_badge_creds:'🔑 Creds',
+    btn_validate_yaml:'🔍 Valideer YAML',
+    btn_check_org:'🌐 Controleer tegen org',
+    btn_checking:'⏳ Controleren…',
+    val_title:'🔍 YAML-VALIDATIE',
+    val_no_yaml:'Geen YAML in het veld',
+    val_syntax_err:'YAML-syntaxfout',
+    val_at:'bij',
+    val_errors_found:'Fouten gevonden — corrigeer de YAML vóór import',
+    val_warnings:'Waarschuwingen — de import kan mislukken',
+    val_no_resources:'Geen resources in de YAML om te controleren (division, queues, datatables, actions, prompts)',
+    val_missing_res:'resource(s) ontbreken in de doel-org — de import zal mislukken!',
+    export_stop:'⏹ Stoppen',
+    export_saved_in:'Opgeslagen in',
+    export_errors:'fouten',
+    export_saved_to:'opgeslagen in',
+    ph_search_flow:'🔍  Zoek flow…',
+    ph_choose_flow:'— kies flow —',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -1597,6 +1777,51 @@ const LANGS = {
     warn_missing_oauth_view:'⚠ Falta \'oauth:client:view\' — Archy fallará con el código de salida 99. Añade el permiso en Genesys Cloud Admin → OAuth.',
     warn_missing_architect_perm:'⚠ Falta \'architect:flow:view/edit\' — import/export fallará con acceso denegado. Asigna un rol con permisos de Architect en Admin → OAuth → tu cliente → Roles.',
     err_access_denied:'Acceso denegado (403) — el cliente OAuth no tiene el permiso \'architect:flow:edit\'. Ve a Genesys Admin → OAuth → tu cliente → Roles y asigna un rol con permisos de Architect.',
+    // ── tilføjet i v1.6.0 ──
+    nav_dataactions:'Data Actions',
+    da_title:'Data Actions',
+    da_sub:'Migrar Data Actions entre orgs de Genesys Cloud',
+    da_card_srctgt:'ORIGEN → DESTINO',
+    da_label_source:'Origen (copiar de)',
+    da_label_target:'Destino (copiar a)',
+    da_label_targetint:'Integración de destino (integración Genesys Cloud Data Actions en la org de destino)',
+    da_actions:'ACCIONES',
+    da_search_ph:'🔍 Buscar actions…',
+    da_all_categories:'Todas las categorías',
+    da_migrate_btn:'⚡ Migrar seleccionados',
+    da_selected:'seleccionados',
+    da_select_all:'Seleccionar todo',
+    da_reset:'Restablecer',
+    da_log_title:'REGISTRO DE MIGRACIÓN',
+    da_choose_org:'— Elegir org —',
+    da_loading:'Cargando actions…',
+    da_none:'No se encontraron actions.',
+    da_err_select:'Selecciona origen y destino',
+    da_err_same:'El origen y el destino no pueden ser la misma org',
+    da_migrating:'Migrando',
+    da_exists:'Ya existe en la org de destino — omitido',
+    da_created:'Creada y publicada',
+    da_done:'Finalizado',
+    da_schema_err:'No se pudo cargar el esquema — comprueba la conexión',
+    da_schema_err_prefix:'Error',
+    card_badge_creds:'🔑 Creds',
+    btn_validate_yaml:'🔍 Validar YAML',
+    btn_check_org:'🌐 Comprobar contra org',
+    btn_checking:'⏳ Comprobando…',
+    val_title:'🔍 VALIDACIÓN YAML',
+    val_no_yaml:'No hay YAML en el campo',
+    val_syntax_err:'Error de sintaxis YAML',
+    val_at:'en',
+    val_errors_found:'Errores encontrados — corrige el YAML antes de importar',
+    val_warnings:'Advertencias — la importación puede fallar',
+    val_no_resources:'No hay recursos que comprobar en el YAML (division, colas, datatables, actions, prompts)',
+    val_missing_res:'recurso(s) faltan en la org de destino — ¡la importación fallará!',
+    export_stop:'⏹ Detener',
+    export_saved_in:'Guardado en',
+    export_errors:'errores',
+    export_saved_to:'guardado en',
+    ph_search_flow:'🔍  Buscar flow…',
+    ph_choose_flow:'— elegir flow —',
   }
 };
 
@@ -1628,8 +1853,11 @@ function setLang(lang) {
   currentLang = lang;
   localStorage.setItem('lang', lang);
   applyLang();
-  // Re-render dynamic content that uses t()
-  renderCustomers();
+  // Re-render dynamic content that uses t(). Hed tidligere renderCustomers(),
+  // som ikke findes — kaldet kastede, så alt herunder blev sprunget over og
+  // sprogskiftet kun delvist gennemført.
+  renderSidebarCustomers();
+  renderCustomerGrid();
   if (document.getElementById('page-flows').classList.contains('active')) {
     const tbody = document.getElementById('flowTableBody');
     if (tbody && allFlows.length) renderFlowTable(allFlows);
@@ -1822,7 +2050,7 @@ function renderCustomerGrid() {
       : '';
     const authBadge = isOAuth
       ? `<span id="oauth-badge-${c.id}" style="font-size:10px;font-family:var(--mono);color:var(--muted)" title="OAuth PKCE">🌐 OAuth</span>`
-      : `<span style="font-size:10px;font-family:var(--mono);color:var(--muted)">🔑 Creds</span>`;
+      : `<span style="font-size:10px;font-family:var(--mono);color:var(--muted)">${t('card_badge_creds')}</span>`;
     return `
     <div class="customer-card">
       <div class="cc-status"><div class="dot" id="card-dot-${c.id}"></div><span id="card-status-${c.id}">–</span></div>
@@ -2382,7 +2610,7 @@ async function doExportAll() {
         stopBtn.style.display = 'none';
         _exportAllJobId = null;
         const folderName = job.savedTo.split(/[\\/]/).pop();
-        logBox.innerHTML += `<br><strong>Gemt i: <span style="color:var(--accent)">${job.savedTo}</span></strong>`;
+        logBox.innerHTML += `<br><strong>${t('export_saved_in')}: <span style="color:var(--accent)">${job.savedTo}</span></strong>`;
         if (job.status === 'cancelled') {
           showAlert('ex-alert',
             `⏹ Stoppet — ${job.succeeded} flows gemt i "${folderName}"`,
@@ -2391,7 +2619,7 @@ async function doExportAll() {
           showAlert('ex-alert',
             job.failed === 0
               ? `✓ Alle ${job.succeeded} flows eksporteret til "${folderName}"`
-              : `⚠ ${job.succeeded} ok / ${job.failed} fejl — gemt i "${folderName}"`,
+              : `⚠ ${job.succeeded} ok / ${job.failed} ${t('export_errors')} — ${t('export_saved_to')} "${folderName}"`,
             job.failed === 0 ? 'ok' : 'info');
         }
         document.getElementById('ex-all-btn').disabled = false;
@@ -2479,7 +2707,7 @@ function validateYaml() {
     </div>`;
   };
 
-  if (!yaml) { el.innerHTML = vRow('err','Ingen YAML i feltet'); return; }
+  if (!yaml) { el.innerHTML = vRow('err', t('val_no_yaml')); return; }
 
   if (typeof jsyaml === 'undefined') {
     el.innerHTML = vRow('err','js-yaml biblioteket er ikke tilgængeligt (kræver internetforbindelse til CDN)');
@@ -2495,7 +2723,7 @@ function validateYaml() {
     rows.push(vRow('ok','YAML syntaks OK'));
   } catch (e) {
     const loc = e.mark ? `linje ${e.mark.line+1}, kolonne ${e.mark.column+1}` : '';
-    rows.push(vRow('err', `YAML syntaksfejl${loc?' ved '+loc:''}: ${e.reason||e.message}`));
+    rows.push(vRow('err', `${t('val_syntax_err')}${loc?' '+t('val_at')+' '+loc:''}: ${e.reason||e.message}`));
     el.innerHTML = rows.join('');
     return;
   }
@@ -2546,10 +2774,10 @@ function validateYaml() {
   // 4. Opsummering øverst
   const hasErr  = rows.some(r => r.includes('var(--red)'));
   const hasWarn = rows.some(r => r.includes('var(--yellow)'));
-  const summary = hasErr  ? vRow('err', 'Fejl fundet — ret YAML inden import')
-                : hasWarn ? vRow('warn','Advarsler — import kan muligvis fejle')
+  const summary = hasErr  ? vRow('err', t('val_errors_found'))
+                : hasWarn ? vRow('warn', t('val_warnings'))
                 :           vRow('ok',  'Alt ser korrekt ud — klar til import ✓');
-  el.innerHTML = `<div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">🔍 YAML Validering</div>`
+  el.innerHTML = `<div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">${t('val_title')}</div>`
                + summary
                + `<hr style="border:none;border-top:1px solid var(--border);margin:8px 0">`
                + rows.join('');
@@ -2567,7 +2795,7 @@ async function validateYamlVsOrg() {
   }
 
   btn.disabled = true;
-  btn.textContent = '\u23f3 Tjekker...';
+  btn.textContent = t('btn_checking');
   el.style.display = 'none';
   showAlert('im-alert', '');
 
@@ -2602,9 +2830,9 @@ async function validateYamlVsOrg() {
 
     let summary;
     if (checks.length === 0) {
-      summary = vRow(null, '', '', 'Ingen ressourcer fundet i YAML at tjekke (division, k\u00f8er, datatables, actions, prompts)');
+      summary = vRow(null, '', '', t('val_no_resources'));
     } else if (missing.length > 0) {
-      summary = vRow(false, '', '', `${missing.length} ressource(r) mangler i m\u00e5l-org \u2014 import vil fejle!`);
+      summary = vRow(false, '', '', `${missing.length} ${t('val_missing_res')}`);
     } else {
       summary = vRow(true, '', '', `Alle ${checks.length} ressourcer fundet i m\u00e5l-org \u2014 klar til import`);
     }
@@ -2618,7 +2846,7 @@ async function validateYamlVsOrg() {
     showAlert('im-alert', '\u2717 ' + e.message, 'err');
   } finally {
     btn.disabled = false;
-    btn.textContent = '\ud83c\udf10 Tjek mod org';
+    btn.textContent = t('btn_check_org');
   }
 }
 
@@ -3195,7 +3423,7 @@ async function wizFetchActionSchema(i, actionId) {
   try {
     const data = await fetch(`/api/customers/${id}/actions/${actionId}/schema`).then(r => r.json());
     if (data.error) {
-      da.schemaError = `Fejl: ${data.error}`;
+      da.schemaError = `${t('da_schema_err_prefix')}: ${data.error}`;
       _wizRender(); return;
     }
     const inputs  = Array.isArray(data.inputs)  ? data.inputs  : [];
@@ -3223,7 +3451,7 @@ async function wizFetchActionSchema(i, actionId) {
     da.schemaError    = '';
     _wizRender();
   } catch (e) {
-    da.schemaError = 'Kunne ikke hente schema — tjek forbindelsen';
+    da.schemaError = t('da_schema_err');
     _wizRender();
   }
 }
@@ -4233,7 +4461,7 @@ function daInit() {
     const el = document.getElementById(id);
     if (!el) return;
     const cur = el.value;
-    el.innerHTML = '<option value="">— Vælg org —</option>' +
+    el.innerHTML = `<option value="">${t('da_choose_org')}</option>` +
       customers.map(c => `<option value="${c.id}">${c.name} (${c.region})</option>`).join('');
     if (cur) el.value = cur;
   });
@@ -4247,7 +4475,7 @@ async function daLoadActions() {
   if (!id) return;
 
   document.getElementById('da-list').innerHTML =
-    '<div style="color:var(--muted);font-size:12px"><span class="spin"></span> Henter actions…</div>';
+    `<div style="color:var(--muted);font-size:12px"><span class="spin"></span> ${t('da_loading')}</div>`;
   document.getElementById('da-action-card').style.display = 'block';
 
   const res  = await fetch(`/api/customers/${id}/actions`);
@@ -4263,7 +4491,8 @@ async function daLoadActions() {
   // Populate category filter
   const cats = [...new Set(data.map(a => a.category).filter(Boolean))].sort();
   const sel = document.getElementById('da-cat-filter');
-  sel.innerHTML = '<option value="">Alle kategorier</option>' +
+  // data-i18n på option'en, så et senere sprogskift også rammer den
+  sel.innerHTML = `<option value="" data-i18n="da_all_categories">${t('da_all_categories')}</option>` +
     cats.map(c => `<option value="${c}">${c}</option>`).join('');
 
   document.getElementById('da-count').textContent = data.length;
@@ -4298,7 +4527,7 @@ async function daLoadTargetIntegrations() {
 function daRender(actions) {
   const el = document.getElementById('da-list');
   if (!actions.length) {
-    el.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px 0">Ingen actions fundet.</div>';
+    el.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:8px 0">${t('da_none')}</div>`;
     return;
   }
   el.innerHTML = actions.map(a => {
@@ -4352,8 +4581,8 @@ async function daMigrateSelected() {
   const targetId = document.getElementById('da-target').value;
   const targetIntegrationId = document.getElementById('da-target-int')?.value || '';
 
-  if (!sourceId || !targetId) return alert('Vælg både kilde og mål');
-  if (sourceId === targetId) return alert('Kilde og mål må ikke være den samme org');
+  if (!sourceId || !targetId) return alert(t('da_err_select'));
+  if (sourceId === targetId) return alert(t('da_err_same'));
   if (!daSelectedIds.size) return;
 
   const logCard = document.getElementById('da-log');
@@ -4367,7 +4596,7 @@ async function daMigrateSelected() {
   for (const actionId of daSelectedIds) {
     const action = daAllActions.find(a => a.id === actionId);
     const name = action?.name || actionId;
-    log(logBox, `\n⟶ Migrérer: ${name}`, 'info');
+    log(logBox, `\n⟶ ${t('da_migrating')}: ${name}`, 'info');
 
     try {
       const res = await fetch('/api/actions/migrate', {
@@ -4378,22 +4607,20 @@ async function daMigrateSelected() {
       const data = await res.json();
 
       if (data.error === 'already_exists') {
-        log(logBox, `  ⚠ Eksisterer allerede i mål-org — springer over`, 'info');
+        log(logBox, `  ⚠ ${t('da_exists')}`, 'info');
       } else if (data.needsIntegration) {
         log(logBox, `  ✗ ${data.error}`, 'err');
       } else if (data.error) {
         log(logBox, `  ✗ ${data.error}`, 'err');
-      } else if (data.partial) {
-        log(logBox, `  \u26a0 Oprettet (ID: ${data.newActionId}) \u2014 request template mangler: ${data.warning}`, 'info');
       } else {
-        log(logBox, `  \u2713 Oprettet og publiceret (ID: ${data.newActionId})`, 'ok');
+        log(logBox, `  \u2713 ${t('da_created')} (ID: ${data.newActionId})`, 'ok');
       }
     } catch (e) {
       log(logBox, `  ✗ ${e.message}`, 'err');
     }
   }
 
-  log(logBox, `\n── Færdig ──`, 'info');
+  log(logBox, `\n── ${t('da_done')} ──`, 'info');
   btn.disabled = daSelectedIds.size === 0;
 }
 </script>

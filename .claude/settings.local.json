@@ -58,7 +58,21 @@
       "Bash(env)",
       "Bash(node --use-system-ca -e \"require\\('https'\\).get\\('https://api.mypurecloud.de/api/v2/', r=>console.log\\('OK status', r.statusCode\\)\\).on\\('error', e=>console.log\\('ERR', e.message\\)\\)\")",
       "Bash(node -e \"require\\('https'\\).get\\('https://api.mypurecloud.de/api/v2/', r=>console.log\\('OK status', r.statusCode\\)\\).on\\('error', e=>console.log\\('ERR', e.message\\)\\)\")",
-      "Bash(git commit -q -m '@ *)"
+      "Bash(git commit -q -m '@ *)",
+      "Bash(git commit *)",
+      "Bash(git fetch *)",
+      "Bash(git rebase *)",
+      "Bash(git stash *)",
+      "Bash(node -e ' *)",
+      "Bash(netstat -aon)",
+      "Bash(awk 'NR>1600' public/index.html)",
+      "Bash(grep -nE \"\\(alert|log\\\\\\(logBox|confirm\\)\\\\\\(|['\\\\\\\\\\\\`][^'\\\\\\\\\\\\`]*\\(Vælg|vælg|Kilde|Mål|valgt|Ingen|Fejl|fejl|Kunne ikke|Henter|Gemt|Slet|slettet|Oprettet|Eksisterer|springer|Færdig|Søg|Migrer|Migrér|kunde|Kunde|Tjek|Valider\\)[^'\\\\\\\\\\\\`]*['\\\\\\\\\\\\`]\")",
+      "Bash(node \"C:/Users/skn_d/AppData/Local/Temp/claude/C--Tools-Archy-gui/f2fa231f-d080-40df-882d-6d8abd9ea67e/scratchpad/i18njs.js\")",
+      "Bash(node \"C:/Users/skn_d/AppData/Local/Temp/claude/C--Tools-Archy-gui/f2fa231f-d080-40df-882d-6d8abd9ea67e/scratchpad/addkey2.js\")",
+      "Bash(node \"C:/Users/skn_d/AppData/Local/Temp/claude/C--Tools-Archy-gui/f2fa231f-d080-40df-882d-6d8abd9ea67e/scratchpad/final-i18n.js\")",
+      "Bash(sed -n '/data.error\\) {/,/^      }/p' public/index.html)",
+      "Bash(node \"C:/Users/skn_d/AppData/Local/Temp/claude/C--Tools-Archy-gui/f2fa231f-d080-40df-882d-6d8abd9ea67e/scratchpad/fix-crlf.js\")",
+      "Bash(curl -s http://localhost:3738/)"
     ]
   }
 }

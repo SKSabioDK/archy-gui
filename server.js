@@ -31,6 +31,17 @@ function base64url(buf) {
 
 let versionInfo = { current: CURRENT_VERSION, latest: null, updateAvailable: false, checkedAt: null };
 
+// Returnerer >0 hvis a er nyere end b, <0 hvis ældre, 0 hvis ens.
+// Sammenligner kun MAJOR.MINOR.PATCH — pre-release-suffiks ignoreres.
+function compareVersions(a, b) {
+  const parse = v => String(v || '0').split('-')[0].split('.').map(n => parseInt(n, 10) || 0);
+  const [x, y] = [parse(a), parse(b)];
+  for (let i = 0; i < 3; i++) {
+    if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0);
+  }
+  return 0;
+}
+
 function checkForUpdate() {
   // Returns a Promise so callers can await the result.
   // Uses git directly — no token needed, git is already authenticated.
@@ -51,10 +62,15 @@ function checkForUpdate() {
         }
         try {
           const latest = JSON.parse(stdout).version;
-          const updateAvailable = latest !== CURRENT_VERSION;
+          // Sammenlign som semver, ikke med !==. Ellers meldes "opdatering
+          // tilgængelig" også når man er FORAN remote (fx lige efter et bump,
+          // før man har pushet).
+          const updateAvailable = compareVersions(latest, CURRENT_VERSION) > 0;
           versionInfo = { current: CURRENT_VERSION, latest, updateAvailable, checkedAt: new Date().toISOString() };
           if (updateAvailable) {
             addLog('WARN', `Update available: v${latest} (running v${CURRENT_VERSION})`, null, 'SYSTEM');
+          } else if (compareVersions(CURRENT_VERSION, latest) > 0) {
+            addLog('INFO', `Version check: local v${CURRENT_VERSION} is ahead of origin v${latest}`, null, 'SYSTEM');
           } else {
             addLog('INFO', `Version check: up to date (v${CURRENT_VERSION})`, null, 'SYSTEM');
           }
@@ -600,7 +616,8 @@ app.get('/api/customers/:id/actions/:actionId/full', async (req, res) => {
     const { token, apiBase } = await getToken(customer);
     const r = await axios.get(
       `${apiBase}/api/v2/integrations/actions/${req.params.actionId}`,
-      { headers: { Authorization: `Bearer ${token}` }, params: { expand: 'contract' } }
+      { headers: { Authorization: `Bearer ${token}` },
+        params: { expand: 'contract', includeConfig: true } }
     );
     res.json(r.data);
   } catch (e) {
@@ -645,23 +662,29 @@ app.post('/api/actions/migrate', async (req, res) => {
   try {
     const { token: srcToken, apiBase: srcBase } = await getToken(source);
 
-    // 1. Fetch published action (contract + metadata)
+    // 1. Fetch published action. includeConfig=true er påkrævet for at få
+    // 'config' med — den følger IKKE med via expand, uanset værdi.
     const publishedRes = await axios.get(
       `${srcBase}/api/v2/integrations/actions/${actionId}`,
-      { headers: { Authorization: `Bearer ${srcToken}` }, params: { expand: 'contract' } }
+      { headers: { Authorization: `Bearer ${srcToken}` },
+        params: { expand: 'contract', includeConfig: true } }
     );
     const published = publishedRes.data;
 
-    // 2. Fetch draft — contains requestUrlTemplate, requestTemplate, successTemplate etc.
+    // 2. Fetch draft hvis der er en — en action uden ventende ændringer har
+    // ingen draft og svarer 404. Det er normalt, ikke en fejl.
     let draft = null;
     try {
       const draftRes = await axios.get(
         `${srcBase}/api/v2/integrations/actions/${actionId}/draft`,
-        { headers: { Authorization: `Bearer ${srcToken}` }, params: { expand: 'contract' } }
+        { headers: { Authorization: `Bearer ${srcToken}` },
+          params: { expand: 'contract', includeConfig: true } }
       );
       draft = draftRes.data;
     } catch (e) {
-      addLog('WARN', `Draft not available for "${published.name}": ${e.response?.status}`, source.name, 'MIGRATE');
+      if (e.response?.status !== 404) {
+        addLog('WARN', `Draft not available for "${published.name}": ${describeApiError(e)}`, source.name, 'MIGRATE');
+      }
     }
 
     // Use draft if available (more complete), fallback to published
@@ -677,94 +700,77 @@ app.post('/api/actions/migrate', async (req, res) => {
         headers: { Authorization: `Bearer ${tgtToken}` },
         params: { pageSize: 200 }
       });
-      const match = (intRes.data.entities || []).find(i =>
-        i.name === srcIntName ||
-        (i.integrationType?.id || '').includes('purecloud-data-actions')
-      );
+      const entities = intRes.data.entities || [];
+      const srcType  = published.integration?.integrationType?.id || '';
+
+      // Navnematch skal have forrang. Én .find() med OR ville vælge den første
+      // data-actions-integration i listen, også selv om der længere nede lå en
+      // med præcis samme navn som kildens.
+      const match = entities.find(i => i.name === srcIntName)
+                 || (srcType && entities.find(i => i.integrationType?.id === srcType))
+                 || entities.find(i => (i.integrationType?.id || '').includes('data-actions'));
+
       if (!match) {
         return res.status(400).json({
           error: `Ingen passende integration fundet i ${target.name}. Vælg mål-integration manuelt.`,
           needsIntegration: true
         });
       }
+
+      // Gør det synligt i loggen når vi ikke ramte kildens integration præcist
+      if (match.name !== srcIntName) {
+        addLog('WARN',
+          `Ingen integration ved navn "${srcIntName}" i ${target.name}; bruger "${match.name}". ` +
+          `Vælg mål-integration manuelt hvis migreringen fejler.`,
+          source.name, 'MIGRATE');
+      }
       integrationId = match.id;
     }
 
     // 4. Create new action shell in target
-    const contract = source_data.contract || published.contract || {};
+    const srcContract = source_data.contract || published.contract || {};
+    const contract = {
+      input:  stripSchemaUris(srcContract.input)  || { inputSchema:   { type: 'object', properties: {} } },
+      output: stripSchemaUris(srcContract.output) || { successSchema: { type: 'object', properties: {} } }
+    };
+
+    // POST /integrations/actions kræver 'config' — uden den svarer Genesys
+    // 400 "Missing element 'config'".
+    const srcConfig = source_data.config || published.config || {};
+    const { config, warnings: tplWarnings } =
+      await inlineActionTemplates(srcConfig, srcBase, srcToken);
+    for (const w of tplWarnings) addLog('WARN', `"${published.name}": ${w}`, source.name, 'MIGRATE');
+
+    // requestType og requestUrlTemplate er påkrævede af API'et
+    if (!config.request.requestType)        config.request.requestType        = 'GET';
+    if (!config.request.requestUrlTemplate) config.request.requestUrlTemplate = '';
+
     const createRes = await axios.post(
       `${tgtBase}/api/v2/integrations/actions`,
       {
         name:         published.name,
         category:     published.category,
         integrationId,
-        contract: {
-          input:  contract.input  || { inputSchema:  { type: 'object', properties: {} } },
-          output: contract.output || { successSchema: { type: 'object', properties: {} } }
-        }
+        contract,
+        config
       },
       { headers: { Authorization: `Bearer ${tgtToken}`, 'Content-Type': 'application/json' } }
     );
     const newAction = createRes.data;
-    addLog('INFO', `Created action shell "${newAction.name}" (${newAction.id}) in ${target.name}`, source.name, 'MIGRATE');
+    addLog('INFO', `Created "${newAction.name}" (${newAction.id}) in ${target.name} — version ${newAction.version}`, source.name, 'MIGRATE');
 
-    // 5. Push full draft config including request template
-    // Build draft body from all available fields
-    const draftBody = {
-      name:         published.name,
-      category:     published.category,
-      integrationId,
-      contract
-    };
-    // Copy request config fields from source draft if available
-    const reqFields = ['requestUrlTemplate','requestTemplate','requestType',
-                       'successTemplate','errorTemplate','requestHeaders',
-                       'requestTemplateUri','config'];
-    for (const field of reqFields) {
-      if (source_data[field] !== undefined) draftBody[field] = source_data[field];
-    }
-    // Also copy nested config if present
-    if (source_data.config) draftBody.config = source_data.config;
-
-    try {
-      await axios.put(
-        `${tgtBase}/api/v2/integrations/actions/${newAction.id}/draft`,
-        draftBody,
-        { headers: { Authorization: `Bearer ${tgtToken}`, 'Content-Type': 'application/json' } }
-      );
-      addLog('INFO', `Draft updated for "${newAction.name}"`, source.name, 'MIGRATE');
-    } catch (e) {
-      const draftErr = e.response?.data?.message || e.message;
-      addLog('WARN', `Draft update failed for "${newAction.name}": ${draftErr}`, source.name, 'MIGRATE');
-      // Return partial success so UI knows action was created but draft failed
-      return res.json({
-        ok: true,
-        partial: true,
-        newActionId: newAction.id,
-        name: newAction.name,
-        warning: `Action oprettet, men request template kunne ikke kopieres: ${draftErr}`
-      });
-    }
-
-    // 6. Publish if source was published
-    if (published.version) {
-      try {
-        await axios.post(
-          `${tgtBase}/api/v2/integrations/actions/${newAction.id}/draft/publish`,
-          {},
-          { headers: { Authorization: `Bearer ${tgtToken}`, 'Content-Type': 'application/json' } }
-        );
-        addLog('SUCCESS', `Published "${newAction.name}" in ${target.name}`, source.name, 'MIGRATE');
-      } catch (e) {
-        addLog('WARN', `Publish failed for "${newAction.name}": ${e.response?.data?.message || e.message}`, source.name, 'MIGRATE');
-      }
-    }
+    // POST /integrations/actions opretter actionen komplet og publiceret
+    // (version 1) med contract, config og templates. Der er derfor hverken en
+    // draft at opdatere eller noget at publicere bagefter — tidligere forsøgte
+    // vi PUT .../draft (som API'et slet ikke understøtter → 405) og
+    // POST .../draft/publish (404, da der ingen draft er), hvilket fik en
+    // fuldt lykkedes migrering til at fremstå som en fejl.
 
     addLog('SUCCESS', `Data Action "${published.name}" migreret til ${target.name}`, source.name, 'MIGRATE');
     res.json({ ok: true, newActionId: newAction.id, name: published.name });
 
   } catch (e) {
-    const msg = e.response?.data?.message || e.message;
+    const msg = describeApiError(e);
     addLog('ERROR', `Data Action migration failed: ${msg}`, source.name, 'MIGRATE');
     if (e.response?.status === 409 || msg.toLowerCase().includes('already exist')) {
       return res.status(409).json({ error: 'already_exists', message: msg });
@@ -774,6 +780,93 @@ app.post('/api/actions/migrate', async (req, res) => {
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+// Genesys svarer typisk 400 med en intetsigende "Bad Request" i .message, mens
+// den egentlige årsag ligger i .code, .details[] og .errors[]. Vi plukkede kun
+// .message ud, så loggen sagde reelt ingenting. Denne samler hele svaret til én
+// linje — inkl. hvilket kald der fejlede og contextId til Genesys support.
+function describeApiError(e) {
+  const d = e.response?.data;
+  if (!d) return e.message;
+
+  const parts = [];
+  const base = d.message || d.error || e.message;
+  if (base) parts.push(base);
+  if (d.code && d.code !== base) parts.push(`[${d.code}]`);
+
+  // Feltspecifikke valideringsfejl — det er her årsagen som regel står
+  const bits = [];
+  for (const det of d.details || []) {
+    const bit = [det.fieldName, det.entityName, det.errorCode].filter(Boolean).join(' ');
+    if (bit) bits.push(bit);
+  }
+  for (const err of d.errors || []) {
+    const bit = err.message || err.code;
+    if (bit) bits.push(bit);
+  }
+  if (bits.length) parts.push('— ' + bits.join('; '));
+
+  // Fandt vi intet brugbart, så vis de felter vi ikke allerede har vist,
+  // frem for at tabe dem på gulvet
+  if (!bits.length && (!base || /^bad request$/i.test(base))) {
+    const shown = ['message', 'error', 'code', 'status', 'contextId', 'details', 'errors', 'messageParams'];
+    const rest = Object.fromEntries(Object.entries(d).filter(([k, v]) => !shown.includes(k) && v != null));
+    if (Object.keys(rest).length) parts.push('— ' + JSON.stringify(rest).slice(0, 400));
+  }
+
+  if (!parts.length) parts.push(e.message || 'Ukendt fejl');
+
+  if (e.response.status) parts.push(`(HTTP ${e.response.status}`);
+  else parts.push('(');
+  if (e.config?.url) {
+    const p = e.config.url.replace(/^https?:\/\/[^/]+/, '');
+    parts[parts.length - 1] += ` ${(e.config.method || 'get').toUpperCase()} ${p}`;
+  }
+  parts[parts.length - 1] += ')';
+
+  if (d.contextId) parts.push(`contextId=${d.contextId}`);
+
+  return parts.join(' ');
+}
+
+// En Data Actions config peger på template-FILER hos kilden via
+// requestTemplateUri / successTemplateUri, og de URI'er indeholder kildens
+// action-id. Kopieres de råt til en anden org, peger de på en action der ikke
+// findes der. Vi henter derfor indholdet og sender det som inline templates.
+async function inlineActionTemplates(cfg, apiBase, token) {
+  const out = {
+    request:  { ...(cfg.request  || {}) },
+    response: { ...(cfg.response || {}) }
+  };
+  const warnings = [];
+  const jobs = [
+    ['request',  'requestTemplateUri', 'requestTemplate'],
+    ['response', 'successTemplateUri', 'successTemplate']
+  ];
+  for (const [section, uriKey, tplKey] of jobs) {
+    const uri = out[section][uriKey];
+    if (!uri) continue;
+    if (out[section][tplKey]) { delete out[section][uriKey]; continue; }
+    try {
+      const r = await axios.get(`${apiBase}${uri}`, { headers: { Authorization: `Bearer ${token}` } });
+      out[section][tplKey] = typeof r.data === 'string' ? r.data : JSON.stringify(r.data);
+      delete out[section][uriKey];
+    } catch (e) {
+      // Behold URI'en ikke — den ville pege på kildens org
+      delete out[section][uriKey];
+      warnings.push(`Kunne ikke hente ${tplKey}: ${describeApiError(e)}`);
+    }
+  }
+  return { config: out, warnings };
+}
+
+// Kontrakten indeholder både inline-skemaer og *SchemaUri-pegepinde, og
+// pegepindene bærer kildens action-id. De ville referere en action der ikke
+// findes i målorganisationen, så vi sender kun de inline skemaer.
+function stripSchemaUris(section) {
+  if (!section || typeof section !== 'object') return section;
+  return Object.fromEntries(Object.entries(section).filter(([k]) => !/Uri$/.test(k)));
+}
 
 function sanitizeName(name) {
   // Remove Windows-invalid path chars, keep rest as-is
