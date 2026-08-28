@@ -1,10 +1,29 @@
-# Archy GUI — Flow Manager · v1.8.0
+# Archy GUI — Flow Manager · v1.9.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.9.0
+---
+**🇩🇰 Dansk**
+- **🔗 Afhængighedstjek før flow-migrering** — Migreringen er delt i to faser. Først eksporteres flowet og mål-org'en undersøges — **der skrives intet endnu**. Mangler der noget, vises en dialog med to sektioner: det der kan migreres med det samme (DataTables og Data Actions) med afkrydsning, og det der skal oprettes manuelt. Du vælger så: *Migrér valgte og fortsæt*, *Fortsæt uden*, eller *Spring flowet over*. Først derefter importeres flowet.
+- **Function Data Actions blokeres bevidst** — Deres `requestUrlTemplate` er ikke en URL men et ID på en function i kilde-org'en, og der er intet API til at oprette den i målet. De listes derfor under "skal oprettes manuelt" i stedet for at fejle halvvejs.
+- **Flere afhængighedstyper** — Ud over division, køer, DataTables, Data Actions og prompts tjekkes nu også **wrap-up-koder, scripts og skills**. Alt hvad der mangler skrives til systemloggen med hvilken org det mangler i, så det kan findes igen bagefter.
+- **Dynamiske skills siges højt** — Bruger flowet `FindSkill(Task.Skills)`, slås skillet op på kørselstidspunktet og kan ikke tjekkes på forhånd. Dialogen fortæller det i stedet for at lade som om alt er kontrolleret.
+- **Rettet: forkert flow kunne blive migreret** — Efter eksporten fandt koden filen ved at matche flownavnet mod filnavnet, og faldt ellers tilbage på *sidste fil i mappen* — altså et vilkårligt gammelt eksport. Et flow som "Set warp-up code" ramte ingen fil og migrerede i stedet et helt andet flow. Filen findes nu på hvad eksporten faktisk skrev.
+- **Rettet: migreringsløkken stoppede ved første fejl** — `failed++` talte på en variabel der aldrig var erklæret, så fejlhåndteringen selv kastede og afbrød resten af batchen.
+
+---
+**🇬🇧 English**
+- **🔗 Dependency check before flow migration** — Migration is now two phases. The flow is exported and the target org inspected first — **nothing is written yet**. If anything is missing, a dialog shows two sections: what can be migrated right away (DataTables and Data Actions) with checkboxes, and what has to be created by hand. You then choose: *Migrate selected and continue*, *Continue anyway*, or *Skip this flow*. Only then is the flow imported.
+- **Function Data Actions are deliberately blocked** — Their `requestUrlTemplate` is not a URL but the id of a function in the source org, and there is no API to create it in the target. They are listed under "must be created manually" instead of failing halfway through.
+- **More dependency types** — Beyond division, queues, DataTables, Data Actions and prompts, the check now also covers **wrap-up codes, scripts and skills**. Everything missing is written to the system log along with which org it is missing from, so it can be found again afterwards.
+- **Dynamic skills are called out** — When a flow uses `FindSkill(Task.Skills)` the skill is resolved at runtime and cannot be checked in advance. The dialog says so rather than implying everything was verified.
+- **Fixed: the wrong flow could be migrated** — After exporting, the code located the file by matching the flow name against the filename, and otherwise fell back to *the last file in the directory* — an arbitrary old export. A flow like "Set warp-up code" matched nothing and migrated a completely different flow instead. The file is now identified by what the export actually wrote.
+- **Fixed: the migration loop stopped at the first failure** — `failed++` incremented a variable that was never declared, so the error handler itself threw and aborted the rest of the batch.
 
 ### v1.8.0
 ---
@@ -205,7 +224,23 @@ Tilføj Genesys Cloud orgs med to auth-typer:
 Hent, søg og filtrer flows. Klik **Export** direkte fra listen.
 
 #### 🔄 Migrer Flow
-Fuldt automatisk flow-migration: vælg kilde, mål og flows → Archy eksporterer og importerer automatisk.
+Vælg kilde, mål og flows. Migreringen kører i to faser:
+
+1. **Tjek** — flowet eksporteres fra kilden, og mål-org'en undersøges for alt flowet refererer til. Der skrives intet til mål-org'en i denne fase.
+2. **Import** — først efter dit valg importeres flowet.
+
+Mangler der noget, åbnes en dialog med to sektioner:
+
+| Sektion | Indhold | Handling |
+|---|---|---|
+| Kan migreres nu | DataTables, Data Actions | Afkrydsning — migreres inden flowet |
+| Skal oprettes manuelt | Køer, skills, wrap-up-koder, scripts, prompts, divisioner, Function Data Actions | Oprettes i mål-org'en først |
+
+Du kan vælge **Migrér valgte og fortsæt**, **Fortsæt uden** (flowet importeres selvom noget mangler — det fejler typisk i Architect bagefter) eller **Spring flowet over**.
+
+> **Skills der slås op dynamisk kan ikke tjekkes.** Bruger flowet `FindSkill(Task.Skills)`, afgøres skillet først når flowet kører. Dialogen siger det, men du må selv kontrollere at skillene findes i mål-org'en.
+
+Alt hvad der mangler skrives også til **Systemloggen**, så du kan finde det igen bagefter.
 
 #### 📤 Export YAML
 Eksporter ét flow eller hele org'en med live fremgangsindikator.
@@ -306,7 +341,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.8.0** — see [Changelog](#changelog) above.
+> Current version: **v1.9.0** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
@@ -335,7 +370,23 @@ Add Genesys Cloud orgs with Client Credentials or OAuth PKCE.
 Fetch, search and filter flows. Click **Export** directly from the list.
 
 #### 🔄 Migrate Flow
-Fully automated flow migration: select source, target and flows → Archy exports and imports automatically.
+Select source, target and flows. Migration runs in two phases:
+
+1. **Check** — the flow is exported from the source and the target org is inspected for everything the flow references. Nothing is written to the target in this phase.
+2. **Import** — the flow is imported only after your decision.
+
+If anything is missing, a dialog opens with two sections:
+
+| Section | Contents | Action |
+|---|---|---|
+| Can be migrated now | DataTables, Data Actions | Checkboxes — migrated before the flow |
+| Must be created manually | Queues, skills, wrap-up codes, scripts, prompts, divisions, Function Data Actions | Create them in the target org first |
+
+You can choose **Migrate selected and continue**, **Continue anyway** (the flow is imported even though something is missing — it will usually fail in Architect afterwards) or **Skip this flow**.
+
+> **Dynamically resolved skills cannot be checked.** When a flow uses `FindSkill(Task.Skills)` the skill is decided at runtime. The dialog says so, but you have to verify yourself that the skills exist in the target org.
+
+Everything missing is also written to the **System Log**, so you can find it again afterwards.
 
 #### 📤 Export YAML
 Export a single flow or an entire org with live progress indicator.

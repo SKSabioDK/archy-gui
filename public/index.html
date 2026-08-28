@@ -454,7 +454,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.8.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.9.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -950,6 +950,20 @@
 </div><!-- /layout -->
 
 <!-- ── YAML Wizard Modal ─────────────────────────────────────────────────────── -->
+<div class="wiz-overlay" id="dep-overlay">
+  <div class="wiz-modal" style="width:640px">
+    <div style="padding:20px 24px 0">
+      <div style="font-size:16px;font-weight:700" data-i18n="dep_title">Afhængigheder mangler i mål-org</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px" id="dep-flowname"></div>
+    </div>
+    <div style="padding:16px 24px;overflow-y:auto;flex:1" id="dep-body"></div>
+    <div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-secondary btn-sm" onclick="depResolve('cancel')" data-i18n="dep_btn_cancel">Spring flowet over</button>
+      <button class="btn btn-secondary btn-sm" onclick="depResolve('skip')" data-i18n="dep_btn_continue">Fortsæt uden</button>
+      <button class="btn btn-primary btn-sm" id="dep-btn-migrate" onclick="depResolve('migrate')" data-i18n="dep_btn_migrate">Migrér valgte og fortsæt</button>
+    </div>
+  </div>
+</div>
 <div class="wiz-overlay" id="yaml-wiz-overlay">
   <div class="wiz-modal">
     <div class="wiz-header">
@@ -1179,6 +1193,22 @@ const LANGS = {
     dt_created:'Tabel oprettet',
     dt_exists:'Findes allerede i mål-org — springer over',
     dt_structure_note:'Kun strukturen migreres — rækker kopieres ikke.',
+    dep_title:'Afhængigheder mangler i mål-org',
+    dep_btn_cancel:'Spring flowet over',
+    dep_btn_continue:'Fortsæt uden',
+    dep_btn_migrate:'Migrér valgte og fortsæt',
+    dep_can_migrate:'KAN MIGRERES NU',
+    dep_manual:'SKAL OPRETTES MANUELT',
+    dep_reason_function:'Function Data Action — intet API',
+    dep_reason_notinsource:'findes heller ikke i kilde-org',
+    dep_reason_manual:'opret i mål-org først',
+    dep_dynamic_skills:'Flowet slår skills op på kørselstidspunktet med FindSkill(). De kan ikke tjekkes på forhånd — kontrollér selv at de findes i mål-org\'en.',
+    dep_checking:'Tjekker afhængigheder…',
+    dep_missing_count:'afhængigheder mangler',
+    dep_all_present:'Alle afhængigheder findes i mål-org',
+    dep_migrating:'Migrerer afhængigheder…',
+    dep_failed_count:'afhængigheder fejlede',
+    dep_skipped_flow:'Flowet sprunget over',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1378,6 +1408,22 @@ const LANGS = {
     dt_created:'Table created',
     dt_exists:'Already exists in target org — skipping',
     dt_structure_note:'Only the structure is migrated — rows are not copied.',
+    dep_title:'Dependencies missing in target org',
+    dep_btn_cancel:'Skip this flow',
+    dep_btn_continue:'Continue anyway',
+    dep_btn_migrate:'Migrate selected and continue',
+    dep_can_migrate:'CAN BE MIGRATED NOW',
+    dep_manual:'MUST BE CREATED MANUALLY',
+    dep_reason_function:'Function Data Action — no API',
+    dep_reason_notinsource:'not in the source org either',
+    dep_reason_manual:'create in the target org first',
+    dep_dynamic_skills:'This flow resolves skills at runtime with FindSkill(). They cannot be checked in advance — verify yourself that they exist in the target org.',
+    dep_checking:'Checking dependencies…',
+    dep_missing_count:'dependencies missing',
+    dep_all_present:'All dependencies exist in the target org',
+    dep_migrating:'Migrating dependencies…',
+    dep_failed_count:'dependencies failed',
+    dep_skipped_flow:'Flow skipped',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -1577,6 +1623,22 @@ const LANGS = {
     dt_created:'Table créée',
     dt_exists:'Existe déjà dans l\'org cible — ignorée',
     dt_structure_note:'Seule la structure est migrée — les lignes ne sont pas copiées.',
+    dep_title:'Dépendances manquantes dans l\'org cible',
+    dep_btn_cancel:'Ignorer ce flow',
+    dep_btn_continue:'Continuer quand même',
+    dep_btn_migrate:'Migrer la sélection et continuer',
+    dep_can_migrate:'PEUT ÊTRE MIGRÉ MAINTENANT',
+    dep_manual:'À CRÉER MANUELLEMENT',
+    dep_reason_function:'Function Data Action — pas d\'API',
+    dep_reason_notinsource:'absent aussi de l\'org source',
+    dep_reason_manual:'à créer d\'abord dans l\'org cible',
+    dep_dynamic_skills:'Ce flow résout les compétences à l\'exécution via FindSkill(). Impossible de les vérifier à l\'avance — vérifiez vous-même leur présence dans l\'org cible.',
+    dep_checking:'Vérification des dépendances…',
+    dep_missing_count:'dépendances manquantes',
+    dep_all_present:'Toutes les dépendances existent dans l\'org cible',
+    dep_migrating:'Migration des dépendances…',
+    dep_failed_count:'dépendances en échec',
+    dep_skipped_flow:'Flow ignoré',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -1776,6 +1838,22 @@ const LANGS = {
     dt_created:'Tabel aangemaakt',
     dt_exists:'Bestaat al in doel-org — overgeslagen',
     dt_structure_note:'Alleen de structuur wordt gemigreerd — rijen worden niet gekopieerd.',
+    dep_title:'Afhankelijkheden ontbreken in doel-org',
+    dep_btn_cancel:'Sla dit flow over',
+    dep_btn_continue:'Toch doorgaan',
+    dep_btn_migrate:'Migreer selectie en ga door',
+    dep_can_migrate:'KAN NU GEMIGREERD WORDEN',
+    dep_manual:'MOET HANDMATIG WORDEN AANGEMAAKT',
+    dep_reason_function:'Function Data Action — geen API',
+    dep_reason_notinsource:'ook niet in de bron-org',
+    dep_reason_manual:'maak eerst aan in de doel-org',
+    dep_dynamic_skills:'Dit flow zoekt skills tijdens runtime op met FindSkill(). Ze kunnen niet vooraf worden gecontroleerd — controleer zelf of ze in de doel-org bestaan.',
+    dep_checking:'Afhankelijkheden controleren…',
+    dep_missing_count:'afhankelijkheden ontbreken',
+    dep_all_present:'Alle afhankelijkheden bestaan in de doel-org',
+    dep_migrating:'Afhankelijkheden migreren…',
+    dep_failed_count:'afhankelijkheden mislukt',
+    dep_skipped_flow:'Flow overgeslagen',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -1975,6 +2053,22 @@ const LANGS = {
     dt_created:'Tabla creada',
     dt_exists:'Ya existe en la org de destino — omitida',
     dt_structure_note:'Solo se migra la estructura — las filas no se copian.',
+    dep_title:'Faltan dependencias en la org de destino',
+    dep_btn_cancel:'Omitir este flow',
+    dep_btn_continue:'Continuar de todos modos',
+    dep_btn_migrate:'Migrar seleccionados y continuar',
+    dep_can_migrate:'SE PUEDE MIGRAR AHORA',
+    dep_manual:'DEBE CREARSE MANUALMENTE',
+    dep_reason_function:'Function Data Action — sin API',
+    dep_reason_notinsource:'tampoco está en la org de origen',
+    dep_reason_manual:'créalo primero en la org de destino',
+    dep_dynamic_skills:'Este flow resuelve las skills en tiempo de ejecución con FindSkill(). No se pueden comprobar de antemano — verifica tú mismo que existen en la org de destino.',
+    dep_checking:'Comprobando dependencias…',
+    dep_missing_count:'dependencias faltan',
+    dep_all_present:'Todas las dependencias existen en la org de destino',
+    dep_migrating:'Migrando dependencias…',
+    dep_failed_count:'dependencias fallaron',
+    dep_skipped_flow:'Flow omitido',
   }
 };
 
@@ -2562,22 +2656,48 @@ async function runMigration() {
   logBox.innerHTML = '';
   document.querySelector('#mstep-3').classList.add('active');
 
+  let ok = 0, skipped = 0, failed = 0;
+
   for (const key of selectedMigrateFlows) {
     const [id, name, type] = key.split('|');
     log(logBox, `\n⟶ ${t('migrating_msg')} ${name} (${type})`, 'info');
     try {
-      const res = await fetch('/api/migrate', {
+      // Fase 1: eksportér og undersøg mål-org'en. Intet skrives endnu.
+      log(logBox, `  ${t('dep_checking')}`, 'info');
+      const prep = await fetch('/api/migrate/prepare', {
         method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ sourceId, targetId, flowName: name, flowType: type, action })
-      });
-      const data = await res.json();
-      if (data.error) { log(logBox, `  ✗ ${data.error}`, 'err'); }
-      else { log(logBox, `  ✓ ${data.fileName} → ${action} OK`, 'ok'); }
+        body: JSON.stringify({ sourceId, targetId, flowName: name, flowType: type })
+      }).then(r => r.json());
+      if (prep.error) { log(logBox, `  ✗ ${prep.error}`, 'err'); failed++; continue; }
+
+      const missing = (prep.deps || []).filter(d => !d.ok);
+      if (missing.length) {
+        log(logBox, `  ⚠ ${missing.length} ${t('dep_missing_count')}`, 'info');
+        const { choice, picked } = await showDepModal(name, missing, prep.dynamicSkills);
+        if (choice === 'cancel') { log(logBox, `  ⊘ ${t('dep_skipped_flow')}`, 'info'); skipped++; continue; }
+        if (choice === 'migrate' && picked.length) {
+          log(logBox, `  ${t('dep_migrating')}`, 'info');
+          let depFail = 0;
+          for (const d of picked) if (!await migrateOneDep(d, sourceId, targetId, logBox)) depFail++;
+          if (depFail) log(logBox, `  ⚠ ${depFail} ${t('dep_failed_count')}`, 'info');
+        }
+      } else {
+        log(logBox, `  ✓ ${t('dep_all_present')}`, 'ok');
+      }
+
+      // Fase 2: importér flowet
+      const data = await fetch('/api/migrate/commit', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ sourceId, targetId, flowName: name, filePath: prep.filePath, action })
+      }).then(r => r.json());
+      if (data.error) { log(logBox, `  ✗ ${data.error}`, 'err'); failed++; }
+      else { log(logBox, `  ✓ ${data.fileName} → ${action} OK`, 'ok'); ok++; }
     } catch(e) {
       log(logBox, `  ✗ ${e.message}`, 'err'); failed++;
     }
   }
-  log(logBox, `\n${t('migration_done')}`, 'info');
+  log(logBox, `\n${t('migration_done')} — ${ok} ${t('da_sum_ok')} · ${skipped} ${t('da_sum_skipped')} · ${failed} ${t('da_sum_failed')}`,
+      failed ? 'err' : 'info');
 }
 
 // ── Export ────────────────────────────────────────────────────────────────────
@@ -4869,6 +4989,77 @@ async function daMigrateSelected() {
   log(logBox, `\n── ${t('da_done')} ── ${ok} ${t('da_sum_ok')} · ${skipped} ${t('da_sum_skipped')} · ${failed} ${t('da_sum_failed')}`,
       failed ? 'err' : 'info');
   daUpdateReady();
+}
+
+
+// ── Afhængighedstjek før flow-migrering ───────────────────────────────────────
+let depResolver = null;
+
+function depResolve(choice) {
+  const picked = [...document.querySelectorAll('#dep-body input[type=checkbox]:checked')]
+    .map(cb => JSON.parse(cb.dataset.dep));
+  document.getElementById('dep-overlay').style.display = 'none';
+  if (depResolver) { depResolver({ choice, picked }); depResolver = null; }
+}
+
+// Viser rapporten og venter på brugerens valg. Mål-org'en er urørt indtil her.
+function showDepModal(flowName, missing, dynamicSkills) {
+  const auto   = missing.filter(d => d.canMigrate);
+  const manual = missing.filter(d => !d.canMigrate);
+  document.getElementById('dep-flowname').textContent = flowName;
+
+  const reason = d =>
+    d.manualReason === 'function'      ? t('dep_reason_function') :
+    d.manualReason === 'not_in_source' ? t('dep_reason_notinsource') :
+                                         t('dep_reason_manual');
+
+  let html = '';
+  if (auto.length) {
+    html += `<div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--green);margin-bottom:8px">${t('dep_can_migrate')}</div>`;
+    html += auto.map(d => `
+      <label style="display:flex;align-items:center;gap:10px;padding:7px 0;cursor:pointer;font-size:13px">
+        <input type="checkbox" checked style="width:auto" data-dep='${JSON.stringify(d).replace(/'/g, "&apos;")}'/>
+        <span style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:78px">${d.kind}</span>
+        <span>${d.name}</span>
+      </label>`).join('');
+  }
+  if (manual.length) {
+    html += `<div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--yellow);margin:${auto.length ? '18px' : '0'} 0 8px">${t('dep_manual')}</div>`;
+    html += manual.map(d => `
+      <div style="display:flex;align-items:baseline;gap:10px;padding:7px 0;font-size:13px">
+        <span style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:78px">${d.kind}</span>
+        <span>${d.name}</span>
+        <span style="font-size:11px;color:var(--yellow);margin-left:auto">${reason(d)}</span>
+      </div>`).join('');
+  }
+  if (dynamicSkills) {
+    html += `<div style="margin-top:16px;font-size:11px;color:var(--muted);border-top:1px solid var(--border);padding-top:12px">${t('dep_dynamic_skills')}</div>`;
+  }
+  document.getElementById('dep-body').innerHTML = html;
+  document.getElementById('dep-btn-migrate').disabled = !auto.length;
+  document.getElementById('dep-overlay').style.display = 'flex';
+  return new Promise(resolve => { depResolver = resolve; });
+}
+
+// Migrerer én afhængighed. DataTables og Data Actions genbruger de endpoints
+// Tabeller/Actions-siderne allerede bruger.
+async function migrateOneDep(dep, sourceId, targetId, logBox) {
+  const url  = dep.kind === 'datatable' ? '/api/datatables/migrate' : '/api/actions/migrate';
+  const body = dep.kind === 'datatable'
+    ? { sourceId, targetId, tableId: dep.sourceRefId }
+    : { sourceId, targetId, actionId: dep.sourceRefId, targetIntegrationId: '' };
+  try {
+    const data = await fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    }).then(r => r.json());
+    if (data.error === 'already_exists') { log(logBox, `    \u26a0 ${dep.name}: ${t('da_exists')}`, 'info'); return true; }
+    if (data.error) { log(logBox, `    \u2717 ${dep.name}: ${data.error}`, 'err'); return false; }
+    log(logBox, `    \u2713 ${dep.name}`, 'ok');
+    return true;
+  } catch (e) {
+    log(logBox, `    \u2717 ${dep.name}: ${e.message}`, 'err');
+    return false;
+  }
 }
 
 // ── Data Tabeller ─────────────────────────────────────────────────────────────

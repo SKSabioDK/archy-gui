@@ -890,6 +890,75 @@ app.post('/api/datatables/migrate', async (req, res) => {
   }
 });
 
+// ── Afhængigheder i et flow ───────────────────────────────────────────────────
+
+// Finder de ressourcer et flow-YAML refererer til. Regexerne er skrevet mod
+// den form Archy faktisk eksporterer — se README for eksempler.
+function scanYamlDependencies(yaml) {
+  const uniq = a => [...new Set(a.map(s => (s || '').trim()).filter(Boolean))];
+  const grab = (re) => { const out = []; let m; while ((m = re.exec(yaml)) !== null) out.push(m[1]); return uniq(out); };
+
+  return {
+    division:   grab(/^\s*division:\s*["']?([^'"\n]+)["']?/gm),
+    queue:      grab(/targetQueue:[\s\S]{0,60}?name:\s*["']?([^'"\n]+)["']?/gm),
+    datatable:  grab(/dataTable:\s*\n\s+([\w][\w _\-]+):/gm)
+                  .filter(n => !['foundOutputs', 'failureOutputs', 'outputs'].includes(n)),
+    dataaction: grab(/dataAction:\s*\n\s+([\w][\w _\-()]+):/gm),
+    prompt:     grab(/prompt:\s*["']?(?:Prompt\.)?([\w_\-. ]+)["']?/gm),
+    // wrapupCode: \n lit: \n name: X
+    wrapupcode: grab(/wrapupCode:\s*\n\s*lit:\s*\n\s*name:\s*["']?([^'"\n]+)["']?/gmi),
+    // screenPopScript: \n <ScriptNavn>:
+    script:     grab(/screenPopScript:\s*\n\s+([\w][\w _\-]+):/gm),
+    // Kun statiske skill-navne. FindSkill(Task.Skills) slås op på kørselstidspunktet
+    // og kan ikke tjekkes her — det siges eksplicit i rapporten.
+    skill:      grab(/FindSkill\(\s*["']([^"']+)["']\s*\)/gm)
+  };
+}
+
+// Hvilke af 'names' findes allerede i org'en? Store lister (758 køer, 350 skills)
+// slås op pr. navn; små lister hentes i ét hug.
+async function lookupExisting(kind, names, token, apiBase) {
+  const found = new Set();
+  if (!names.length) return found;
+  const H = { headers: { Authorization: `Bearer ${token}` } };
+
+  const bulk = {
+    datatable:  { url: '/api/v2/flows/datatables',     size: 200 },
+    dataaction: { url: '/api/v2/integrations/actions', size: 100 },
+    script:     { url: '/api/v2/scripts',              size: 100 }
+  };
+  if (bulk[kind]) {
+    let page = 1;
+    while (true) {
+      const r = await axios.get(`${apiBase}${bulk[kind].url}`, {
+        ...H, params: { pageSize: bulk[kind].size, pageNumber: page }
+      });
+      const e = r.data.entities || [];
+      for (const x of e) if (names.includes(x.name)) found.add(x.name);
+      if (e.length < bulk[kind].size) break;
+      page++;
+    }
+    return found;
+  }
+
+  const byName = {
+    division:   '/api/v2/authorization/divisions',
+    queue:      '/api/v2/routing/queues',
+    prompt:     '/api/v2/architect/prompts',
+    wrapupcode: '/api/v2/routing/wrapupcodes',
+    skill:      '/api/v2/routing/skills'
+  };
+  const url = byName[kind];
+  if (!url) return found;
+  for (const n of names) {
+    try {
+      const r = await axios.get(`${apiBase}${url}`, { ...H, params: { pageSize: 50, name: n } });
+      if ((r.data.entities || []).some(x => x.name === n)) found.add(n);
+    } catch (_) { /* uafklaret — tælles som manglende og markeres i rapporten */ }
+  }
+  return found;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 // Genesys svarer typisk 400 med en intetsigende "Bad Request" i .message, mens
@@ -1399,8 +1468,11 @@ app.post('/api/import', async (req, res) => {
 
 // ── Migrate (export + import in one go) ─────────────────────────────────────
 
-app.post('/api/migrate', async (req, res) => {
-  const { sourceId, targetId, flowName, flowType, action } = req.body;
+// Fase 1 af en flow-migrering: eksportér fra kilden og undersøg om alt flowet
+// bruger findes i mål-org'en. Der importeres IKKE her — mål-org'en røres ikke
+// før brugeren har set rapporten og bekræftet.
+app.post('/api/migrate/prepare', async (req, res) => {
+  const { sourceId, targetId, flowName, flowType } = req.body;
   const source = loadCustomers().find(c => c.id === sourceId);
   const target = loadCustomers().find(c => c.id === targetId);
   if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
@@ -1408,31 +1480,139 @@ app.post('/api/migrate', async (req, res) => {
   const exportDir = path.join(FLOWS_DIR, sanitizeName(source.name));
   if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir, { recursive: true });
 
-  addLog('INFO', `Migration started: "${flowName}" from ${source.name} → ${target.name}`, source.name, 'MIGRATE');
+  addLog('INFO', `Migration prepared: "${flowName}" from ${source.name} → ${target.name}`, source.name, 'MIGRATE');
 
   try {
-    // Step 1: export
-    addLog('INFO', `Exporting "${flowName}" from ${source.name}`, source.name, 'MIGRATE');
+    // Find den eksporterede fil på hvad eksporten faktisk rørte — ikke på
+    // navnelighed. Den gamle heuristik matchede flownavnet mod filnavnet og
+    // faldt ellers tilbage på "sidste fil i mappen", hvilket kunne udpege et
+    // vilkårligt gammelt eksport og dermed migrere et helt andet flow.
+    const mtimes = f => { try { return fs.statSync(path.join(exportDir, f)).mtimeMs; } catch (_) { return 0; } };
+    const before = new Map(fs.readdirSync(exportDir).filter(f => f.endsWith('.yaml')).map(f => [f, mtimes(f)]));
+
     await runArchy(
       `export --flowName "${flowName}" --flowType ${flowType.toLowerCase()} --exportType yaml --force --outputDir "${exportDir}"`,
       source
     );
-    const files = fs.readdirSync(exportDir).filter(f => f.endsWith('.yaml'));
-    const match = files.find(f => f.toLowerCase().includes(flowName.toLowerCase().replace(/\s+/g, '')));
-    const yamlFile = match || files[files.length - 1];
+
+    const touched = fs.readdirSync(exportDir)
+      .filter(f => f.endsWith('.yaml'))
+      .filter(f => !before.has(f) || mtimes(f) > before.get(f))
+      .sort((a, b) => mtimes(b) - mtimes(a));
+    if (!touched.length) throw new Error(`Eksporten skrev ingen YAML-fil for "${flowName}"`);
+    const yamlFile = touched[0];
     const filePath = path.join(exportDir, yamlFile);
+    const yaml = fs.readFileSync(filePath, 'utf8');
     addLog('SUCCESS', `Eksport ok: ${yamlFile}`, source.name, 'MIGRATE');
 
-    // Step 2: import
-    const cmd = action || 'create';
-    addLog('INFO', `Importing "${yamlFile}" to ${target.name} (action: ${cmd})`, target.name, 'MIGRATE');
-    const out = await runArchy(`${cmd} --file "${filePath}"`, target);
-    addLog('SUCCESS', `Migration complete: "${flowName}" is now in ${target.name}`, target.name, 'MIGRATE');
+    const deps = scanYamlDependencies(yaml);
+    const { token: tgtToken, apiBase: tgtBase } = await getToken(target);
 
-    const content = fs.readFileSync(filePath, 'utf8');
-    res.json({ ok: true, fileName: yamlFile, output: out, yaml: content });
+    // Kilde-opslag bruges kun til at finde id'er på det der kan auto-migreres
+    let srcTables = [], srcActions = [], srcInts = {};
+    const needSource = [];
+    const results = [];
+
+    for (const kind of Object.keys(deps)) {
+      const names = deps[kind];
+      if (!names.length) continue;
+      let existing;
+      try {
+        existing = await lookupExisting(kind, names, tgtToken, tgtBase);
+      } catch (e) {
+        addLog('WARN', `Kunne ikke tjekke ${kind}: ${describeApiError(e)}`, target.name, 'MIGRATE');
+        existing = new Set();
+      }
+      for (const name of names) {
+        const ok = existing.has(name);
+        results.push({ kind, name, ok });
+        if (!ok && (kind === 'datatable' || kind === 'dataaction')) needSource.push(kind);
+      }
+    }
+
+    // Slå kun kilden op hvis der faktisk mangler noget vi kan migrere
+    if (needSource.includes('datatable') || needSource.includes('dataaction')) {
+      const { token: srcToken, apiBase: srcBase } = await getToken(source);
+      const SH = { headers: { Authorization: `Bearer ${srcToken}` } };
+      if (needSource.includes('datatable')) {
+        const r = await axios.get(`${srcBase}/api/v2/flows/datatables`, { ...SH, params: { pageSize: 200 } });
+        srcTables = r.data.entities || [];
+      }
+      if (needSource.includes('dataaction')) {
+        let page = 1;
+        while (true) {
+          const r = await axios.get(`${srcBase}/api/v2/integrations/actions`, { ...SH, params: { pageSize: 100, pageNumber: page } });
+          const e = r.data.entities || [];
+          srcActions = srcActions.concat(e);
+          if (e.length < 100) break;
+          page++;
+        }
+        const ri = await axios.get(`${srcBase}/api/v2/integrations`, { ...SH, params: { pageSize: 200 } });
+        for (const i of ri.data.entities || []) srcInts[i.id] = i.integrationType?.id || '';
+      }
+    }
+
+    // Marker hvad der kan migreres automatisk og hvad der kræver håndarbejde
+    for (const r of results) {
+      if (r.ok) continue;
+      if (r.kind === 'datatable') {
+        const hit = srcTables.find(t => t.name === r.name);
+        if (hit) { r.canMigrate = true; r.sourceRefId = hit.id; }
+        else r.manualReason = 'not_in_source';
+      } else if (r.kind === 'dataaction') {
+        const hit = srcActions.find(a => a.name === r.name);
+        if (!hit) r.manualReason = 'not_in_source';
+        else if (srcInts[hit.integrationId] === 'function-data-actions') {
+          r.manualReason = 'function';   // functionen kan ikke oprettes via API
+          r.integrationType = 'function-data-actions';
+        } else { r.canMigrate = true; r.sourceRefId = hit.id; r.integrationType = srcInts[hit.integrationId] || ''; }
+      } else {
+        r.manualReason = 'manual_only';  // køer, skills, wrapup, scripts, prompts, divisioner
+      }
+    }
+
+    // Alt der mangler skal kunne findes igen i systemloggen
+    const missing = results.filter(r => !r.ok);
+    for (const m of missing) {
+      addLog('WARN',
+        `Mangler i ${target.name}: ${m.kind} "${m.name}"` +
+        (m.canMigrate ? ' — kan migreres herfra' :
+         m.manualReason === 'function' ? ' — Function Data Action, skal oprettes manuelt (intet API)' :
+         m.manualReason === 'not_in_source' ? ' — findes heller ikke i kilde-org' :
+         ' — skal oprettes manuelt'),
+        target.name, 'MIGRATE');
+    }
+    if (!missing.length) addLog('SUCCESS', `Alle afhængigheder for "${flowName}" findes i ${target.name}`, target.name, 'MIGRATE');
+
+    res.json({ ok: true, fileName: yamlFile, filePath, yaml, deps: results, dynamicSkills: /FindSkill\(\s*[A-Za-z]/.test(yaml) });
+
   } catch (e) {
-    addLog('ERROR', `Migration failed for "${flowName}": ${e.message}`, source.name, 'MIGRATE');
+    addLog('ERROR', `Migration prepare failed for "${flowName}": ${e.message}`, source.name, 'MIGRATE');
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Fase 2: importér den allerede eksporterede fil til mål-org'en.
+app.post('/api/migrate/commit', async (req, res) => {
+  const { sourceId, targetId, flowName, filePath, action } = req.body;
+  const source = loadCustomers().find(c => c.id === sourceId);
+  const target = loadCustomers().find(c => c.id === targetId);
+  if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
+
+  // filePath kommer fra klienten — hold den inden for FLOWS_DIR
+  const resolved = path.resolve(filePath || '');
+  if (!resolved.startsWith(path.resolve(FLOWS_DIR) + path.sep) || !fs.existsSync(resolved)) {
+    return res.status(400).json({ error: 'Ugyldig filsti' });
+  }
+
+  try {
+    const cmd = action || 'create';
+    addLog('INFO', `Importing "${path.basename(resolved)}" to ${target.name} (action: ${cmd})`, target.name, 'MIGRATE');
+    const out = await runArchy(`${cmd} --file "${resolved}"`, target);
+    addLog('SUCCESS', `Migration complete: "${flowName}" is now in ${target.name}`, target.name, 'MIGRATE');
+    res.json({ ok: true, fileName: path.basename(resolved), output: out, yaml: fs.readFileSync(resolved, 'utf8') });
+  } catch (e) {
+    addLog('ERROR', `Migration failed for "${flowName}": ${e.message}`, target.name, 'MIGRATE');
     res.status(500).json({ error: e.message });
   }
 });
