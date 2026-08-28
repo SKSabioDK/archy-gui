@@ -113,6 +113,13 @@
   body.sabio .page-title, body.sabio-light .page-title { letter-spacing: -.4px; }
   body.sabio .nav-item.active, body.sabio-light .nav-item.active { border-left-width: 3px; }
 
+  /* Faner på Data Actions-siden */
+  .da-tabs { display:flex; gap:2px; border-bottom:1px solid var(--border); margin-bottom:20px; }
+  .da-tab { padding:9px 18px; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer;
+            border-bottom:2px solid transparent; margin-bottom:-1px; transition:all .15s; }
+  .da-tab:hover { color:var(--text); }
+  .da-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+
   /* Sabio ordmærke (maske → følger --logo-color) */
   .logo-sabio { display: none; }
   body.sabio .logo-archy, body.sabio-light .logo-archy { display: none; }
@@ -447,7 +454,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.7.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.8.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -733,19 +740,24 @@
       <div class="page-title" data-i18n="da_title">Data Actions</div>
       <div class="page-sub" data-i18n="da_sub">Migrér Data Actions mellem Genesys Cloud orgs</div>
 
+      <div class="da-tabs">
+        <div class="da-tab active" id="da-tab-actions" onclick="daSetTab('actions')" data-i18n="da_tab_actions">Data Actions</div>
+        <div class="da-tab" id="da-tab-tables" onclick="daSetTab('tables')" data-i18n="da_tab_tables">Data Tabeller</div>
+      </div>
+
       <div class="card">
         <div class="card-title" data-i18n="da_card_srctgt">KILDE → MÅL</div>
         <div class="grid-2">
           <div>
             <label data-i18n="da_label_source">Kilde (hent fra)</label>
-            <select id="da-source" onchange="daLoadActions()"></select>
+            <select id="da-source" onchange="daSourceChanged()"></select>
           </div>
           <div>
             <label data-i18n="da_label_target">Mål (kopier til)</label>
-            <select id="da-target" onchange="daLoadTargetIntegrations()"></select>
+            <select id="da-target" onchange="daLoadTargetIntegrations(); dtUpdateReady()"></select>
           </div>
         </div>
-        <div class="grid-2" style="margin-top:12px">
+        <div class="grid-2" id="da-actions-only" style="margin-top:12px">
           <div id="da-source-int-wrap" style="display:none">
             <label data-i18n="da_label_sourceint">Kilde-integration (kun actions herfra vises)</label>
             <select id="da-source-int" onchange="daSourceIntChanged()"></select>
@@ -758,7 +770,7 @@
         <div id="da-int-note" style="display:none;margin-top:10px;font-size:11px;font-family:var(--mono);padding:8px 12px;border-radius:5px"></div>
       </div>
 
-      <div class="card" id="da-action-card" style="display:none">
+      <div class="card" id="da-action-card" style="display:none;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <div class="card-title" style="margin:0"><span data-i18n="da_actions">ACTIONS</span> (<span id="da-count">0</span>)</div>
           <div style="display:flex;gap:8px">
@@ -777,6 +789,25 @@
           <a href="#" onclick="daClearSel();return false" style="color:var(--muted);text-decoration:none" data-i18n="da_reset">Nulstil</a>
         </div>
         <div id="da-list"></div>
+      </div>
+
+      <div class="card" id="da-table-card" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="card-title" style="margin:0"><span data-i18n="dt_tables">TABELLER</span> (<span id="dt-count">0</span>)</div>
+          <div style="display:flex;gap:8px">
+            <input id="dt-search" style="width:220px" data-i18n-placeholder="dt_search_ph" placeholder="🔍 Søg tabeller…" oninput="dtFilter()"/>
+            <button class="btn btn-primary btn-sm" id="dt-migrate-btn" onclick="dtMigrateSelected()" data-i18n="dt_migrate_btn" disabled>⚡ Migrér valgte</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:10px">
+          <span id="dt-sel-count" style="color:var(--accent);font-weight:700">0</span> <span data-i18n="da_selected">valgt</span>
+          &nbsp;·&nbsp;
+          <a href="#" onclick="dtSelectAll();return false" style="color:var(--accent);text-decoration:none" data-i18n="da_select_all">Vælg alle</a>
+          &nbsp;·&nbsp;
+          <a href="#" onclick="dtClearSel();return false" style="color:var(--muted);text-decoration:none" data-i18n="da_reset">Nulstil</a>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px" data-i18n="dt_structure_note">Kun strukturen migreres — rækker kopieres ikke.</div>
+        <div id="dt-list"></div>
       </div>
 
       <div id="da-log" class="card" style="display:none">
@@ -1082,8 +1113,8 @@ const LANGS = {
     err_access_denied:'Adgang nægtet (403) — OAuth-klienten mangler \'architect:flow:edit\' tilladelse. Gå til Genesys Admin → OAuth → din klient → Roles og tildel en rolle med Architect-tilladelser.',
     // ── tilføjet i v1.6.0 ──
     nav_dataactions:'Data Actions',
-    da_title:'Data Actions',
-    da_sub:'Migrér Data Actions mellem Genesys Cloud orgs',
+    da_title:'Data Actions & Tabeller',
+    da_sub:'Migrér Data Actions og DataTable-strukturer mellem Genesys Cloud orgs',
     da_card_srctgt:'KILDE → MÅL',
     da_label_source:'Kilde (hent fra)',
     da_label_target:'Mål (kopier til)',
@@ -1137,6 +1168,17 @@ const LANGS = {
     da_sum_ok:'oprettet',
     da_sum_skipped:'sprunget over',
     da_sum_failed:'fejlet',
+    da_tab_actions:'Data Actions',
+    da_tab_tables:'Data Tabeller',
+    dt_tables:'TABELLER',
+    dt_search_ph:'🔍 Søg tabeller…',
+    dt_migrate_btn:'⚡ Migrér valgte',
+    dt_loading:'Henter tabeller…',
+    dt_none:'Ingen tabeller fundet.',
+    dt_columns:'kolonner',
+    dt_created:'Tabel oprettet',
+    dt_exists:'Findes allerede i mål-org — springer over',
+    dt_structure_note:'Kun strukturen migreres — rækker kopieres ikke.',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1270,8 +1312,8 @@ const LANGS = {
     err_access_denied:'Access denied (403) — the OAuth client is missing the \'architect:flow:edit\' permission. Go to Genesys Admin → OAuth → your client → Roles and assign a role with Architect permissions.',
     // ── tilføjet i v1.6.0 ──
     nav_dataactions:'Data Actions',
-    da_title:'Data Actions',
-    da_sub:'Migrate Data Actions between Genesys Cloud orgs',
+    da_title:'Data Actions & Tables',
+    da_sub:'Migrate Data Actions and DataTable structures between Genesys Cloud orgs',
     da_card_srctgt:'SOURCE → TARGET',
     da_label_source:'Source (copy from)',
     da_label_target:'Target (copy to)',
@@ -1325,6 +1367,17 @@ const LANGS = {
     da_sum_ok:'created',
     da_sum_skipped:'skipped',
     da_sum_failed:'failed',
+    da_tab_actions:'Data Actions',
+    da_tab_tables:'Data Tables',
+    dt_tables:'TABLES',
+    dt_search_ph:'🔍 Search tables…',
+    dt_migrate_btn:'⚡ Migrate selected',
+    dt_loading:'Loading tables…',
+    dt_none:'No tables found.',
+    dt_columns:'columns',
+    dt_created:'Table created',
+    dt_exists:'Already exists in target org — skipping',
+    dt_structure_note:'Only the structure is migrated — rows are not copied.',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -1458,8 +1511,8 @@ const LANGS = {
     err_access_denied:'Accès refusé (403) — le client OAuth n\'a pas la permission \'architect:flow:edit\'. Allez dans Genesys Admin → OAuth → votre client → Roles et attribuez un rôle avec les permissions Architect.',
     // ── tilføjet i v1.6.0 ──
     nav_dataactions:'Data Actions',
-    da_title:'Data Actions',
-    da_sub:'Migrer des Data Actions entre orgs Genesys Cloud',
+    da_title:'Data Actions & Tables',
+    da_sub:'Migrer des Data Actions et des structures DataTable entre orgs Genesys Cloud',
     da_card_srctgt:'SOURCE → CIBLE',
     da_label_source:'Source (copier depuis)',
     da_label_target:'Cible (copier vers)',
@@ -1513,6 +1566,17 @@ const LANGS = {
     da_sum_ok:'créées',
     da_sum_skipped:'ignorées',
     da_sum_failed:'échouées',
+    da_tab_actions:'Data Actions',
+    da_tab_tables:'Data Tables',
+    dt_tables:'TABLES',
+    dt_search_ph:'🔍 Rechercher des tables…',
+    dt_migrate_btn:'⚡ Migrer la sélection',
+    dt_loading:'Chargement des tables…',
+    dt_none:'Aucune table trouvée.',
+    dt_columns:'colonnes',
+    dt_created:'Table créée',
+    dt_exists:'Existe déjà dans l\'org cible — ignorée',
+    dt_structure_note:'Seule la structure est migrée — les lignes ne sont pas copiées.',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -1646,8 +1710,8 @@ const LANGS = {
     err_access_denied:'Toegang geweigerd (403) — de OAuth-client mist de \'architect:flow:edit\' rechten. Ga naar Genesys Admin → OAuth → uw client → Roles en wijs een rol toe met Architect-rechten.',
     // ── tilføjet i v1.6.0 ──
     nav_dataactions:'Data Actions',
-    da_title:'Data Actions',
-    da_sub:'Data Actions migreren tussen Genesys Cloud-orgs',
+    da_title:'Data Actions & Tabellen',
+    da_sub:'Data Actions en DataTable-structuren migreren tussen Genesys Cloud-orgs',
     da_card_srctgt:'BRON → DOEL',
     da_label_source:'Bron (kopiëren van)',
     da_label_target:'Doel (kopiëren naar)',
@@ -1701,6 +1765,17 @@ const LANGS = {
     da_sum_ok:'aangemaakt',
     da_sum_skipped:'overgeslagen',
     da_sum_failed:'mislukt',
+    da_tab_actions:'Data Actions',
+    da_tab_tables:'Data Tables',
+    dt_tables:'TABELLEN',
+    dt_search_ph:'🔍 Zoek tabellen…',
+    dt_migrate_btn:'⚡ Migreer selectie',
+    dt_loading:'Tabellen laden…',
+    dt_none:'Geen tabellen gevonden.',
+    dt_columns:'kolommen',
+    dt_created:'Tabel aangemaakt',
+    dt_exists:'Bestaat al in doel-org — overgeslagen',
+    dt_structure_note:'Alleen de structuur wordt gemigreerd — rijen worden niet gekopieerd.',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -1834,8 +1909,8 @@ const LANGS = {
     err_access_denied:'Acceso denegado (403) — el cliente OAuth no tiene el permiso \'architect:flow:edit\'. Ve a Genesys Admin → OAuth → tu cliente → Roles y asigna un rol con permisos de Architect.',
     // ── tilføjet i v1.6.0 ──
     nav_dataactions:'Data Actions',
-    da_title:'Data Actions',
-    da_sub:'Migrar Data Actions entre orgs de Genesys Cloud',
+    da_title:'Data Actions y Tablas',
+    da_sub:'Migrar Data Actions y estructuras de DataTable entre orgs de Genesys Cloud',
     da_card_srctgt:'ORIGEN → DESTINO',
     da_label_source:'Origen (copiar de)',
     da_label_target:'Destino (copiar a)',
@@ -1889,6 +1964,17 @@ const LANGS = {
     da_sum_ok:'creadas',
     da_sum_skipped:'omitidas',
     da_sum_failed:'fallidas',
+    da_tab_actions:'Data Actions',
+    da_tab_tables:'Data Tables',
+    dt_tables:'TABLAS',
+    dt_search_ph:'🔍 Buscar tablas…',
+    dt_migrate_btn:'⚡ Migrar seleccionadas',
+    dt_loading:'Cargando tablas…',
+    dt_none:'No se encontraron tablas.',
+    dt_columns:'columnas',
+    dt_created:'Tabla creada',
+    dt_exists:'Ya existe en la org de destino — omitida',
+    dt_structure_note:'Solo se migra la estructura — las filas no se copian.',
   }
 };
 
@@ -4544,7 +4630,8 @@ async function daLoadActions() {
 
   document.getElementById('da-list').innerHTML =
     `<div style="color:var(--muted);font-size:12px"><span class="spin"></span> ${t('da_loading')}</div>`;
-  document.getElementById('da-action-card').style.display = 'block';
+  // Kun hvis Actions-fanen faktisk er den aktive
+  if (daTab === 'actions') document.getElementById('da-action-card').style.display = 'block';
 
   const res  = await fetch(`/api/customers/${id}/actions`);
   const data = await res.json();
@@ -4782,6 +4869,152 @@ async function daMigrateSelected() {
   log(logBox, `\n── ${t('da_done')} ── ${ok} ${t('da_sum_ok')} · ${skipped} ${t('da_sum_skipped')} · ${failed} ${t('da_sum_failed')}`,
       failed ? 'err' : 'info');
   daUpdateReady();
+}
+
+// ── Data Tabeller ─────────────────────────────────────────────────────────────
+let dtAll         = [];
+let dtSelectedIds = new Set();
+let daTab         = 'actions';
+
+function daSetTab(tab) {
+  daTab = tab;
+  document.getElementById('da-tab-actions').classList.toggle('active', tab === 'actions');
+  document.getElementById('da-tab-tables').classList.toggle('active',  tab === 'tables');
+  // Integrationsvælgerne giver kun mening for actions
+  const io = document.getElementById('da-actions-only');
+  if (io) io.style.display = tab === 'actions' ? '' : 'none';
+  const note = document.getElementById('da-int-note');
+  if (note && tab !== 'actions') note.style.display = 'none';
+  else if (note && tab === 'actions' && note.textContent) note.style.display = 'block';
+
+  const srcPicked = !!document.getElementById('da-source').value;
+  document.getElementById('da-action-card').style.display = (tab === 'actions' && srcPicked) ? 'block' : 'none';
+  document.getElementById('da-table-card').style.display  = (tab === 'tables'  && srcPicked) ? 'block' : 'none';
+}
+
+function daSourceChanged() {
+  daLoadActions();
+  dtLoadTables();
+}
+
+async function dtLoadTables() {
+  const id = document.getElementById('da-source').value;
+  dtAll = [];
+  dtSelectedIds.clear();
+  const card = document.getElementById('da-table-card');
+  if (!id) { card.style.display = 'none'; return; }
+  if (daTab === 'tables') card.style.display = 'block';
+
+  document.getElementById('dt-list').innerHTML =
+    `<div style="color:var(--muted);font-size:12px"><span class="spin"></span> ${t('dt_loading')}</div>`;
+
+  try {
+    const data = await fetch(`/api/customers/${id}/datatables`).then(r => r.json());
+    if (data.error) {
+      document.getElementById('dt-list').innerHTML = `<div style="color:var(--red);font-size:12px">${data.error}</div>`;
+      return;
+    }
+    dtAll = data;
+    dtFilter();
+  } catch (e) {
+    document.getElementById('dt-list').innerHTML = `<div style="color:var(--red);font-size:12px">${e.message}</div>`;
+  }
+}
+
+function dtVisible() {
+  const q = (document.getElementById('dt-search')?.value || '').toLowerCase();
+  return dtAll.filter(x => !q || x.name.toLowerCase().includes(q));
+}
+
+function dtFilter() {
+  const list = dtVisible();
+  document.getElementById('dt-count').textContent = list.length;
+  dtRender(list);
+}
+
+function dtRender(tables) {
+  const el = document.getElementById('dt-list');
+  if (!tables.length) {
+    el.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:8px 0">${t('dt_none')}</div>`;
+  } else {
+    el.innerHTML = tables.map(x => {
+      const sel = dtSelectedIds.has(x.id);
+      const cols = (x.columns || []).length;
+      const div  = x.division ? ` · ${x.division}` : '';
+      return `
+      <div class="migrate-flow-item ${sel ? 'selected' : ''}" onclick="dtToggle('${x.id}')">
+        <div style="min-width:0">
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${x.name}</div>
+          <div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-top:2px">${cols} ${t('dt_columns')}${div}</div>
+        </div>
+        <span style="color:var(--accent);font-size:16px;width:18px;text-align:center;flex-shrink:0">${sel ? '\u2713' : ''}</span>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('dt-sel-count').textContent = dtSelectedIds.size;
+  dtUpdateReady();
+}
+
+function dtToggle(id) {
+  if (dtSelectedIds.has(id)) dtSelectedIds.delete(id); else dtSelectedIds.add(id);
+  dtFilter();
+}
+
+function dtSelectAll() { dtVisible().forEach(x => dtSelectedIds.add(x.id)); dtFilter(); }
+function dtClearSel()  { dtSelectedIds.clear(); dtFilter(); }
+
+function dtUpdateReady() {
+  const btn = document.getElementById('dt-migrate-btn');
+  if (!btn) return;
+  const src = document.getElementById('da-source')?.value || '';
+  const tgt = document.getElementById('da-target')?.value || '';
+  btn.disabled = !(src && tgt && src !== tgt && dtSelectedIds.size);
+}
+
+async function dtMigrateSelected() {
+  const sourceId = document.getElementById('da-source').value;
+  const targetId = document.getElementById('da-target').value;
+  if (!sourceId || !targetId) return alert(t('da_err_select'));
+  if (sourceId === targetId) return alert(t('da_err_same'));
+  if (!dtSelectedIds.size) return;
+
+  const logCard = document.getElementById('da-log');
+  const logBox  = document.getElementById('da-logbox');
+  logCard.style.display = 'block';
+  logBox.innerHTML = '';
+  log(logBox, t('dt_structure_note'), 'info');
+
+  const btn = document.getElementById('dt-migrate-btn');
+  btn.disabled = true;
+  let ok = 0, skipped = 0, failed = 0;
+
+  for (const tableId of dtSelectedIds) {
+    const tbl  = dtAll.find(x => x.id === tableId);
+    const name = tbl?.name || tableId;
+    log(logBox, `\n\u27f6 ${t('da_migrating')}: ${name}`, 'info');
+    try {
+      const data = await fetch('/api/datatables/migrate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceId, targetId, tableId })
+      }).then(r => r.json());
+
+      if (data.error === 'already_exists') {
+        log(logBox, `  \u26a0 ${t('dt_exists')}`, 'info'); skipped++;
+      } else if (data.error) {
+        log(logBox, `  \u2717 ${data.error}`, 'err'); failed++;
+      } else {
+        if (data.divisionNote) log(logBox, `  \u26a0 ${data.divisionNote}`, 'info');
+        log(logBox, `  \u2713 ${t('dt_created')} (ID: ${data.newTableId})`, 'ok'); ok++;
+      }
+    } catch (e) {
+      log(logBox, `  \u2717 ${e.message}`, 'err'); failed++;
+    }
+  }
+
+  log(logBox, `\n\u2500\u2500 ${t('da_done')} \u2500\u2500 ${ok} ${t('da_sum_ok')} \u00b7 ${skipped} ${t('da_sum_skipped')} \u00b7 ${failed} ${t('da_sum_failed')}`,
+      failed ? 'err' : 'info');
+  dtUpdateReady();
 }
 </script>
 </body>

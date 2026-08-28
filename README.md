@@ -1,10 +1,25 @@
-# Archy GUI — Flow Manager · v1.7.0
+# Archy GUI — Flow Manager · v1.8.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.8.0
+---
+**🇩🇰 Dansk**
+- **📊 Migrering af DataTable-strukturer** — Data Actions-siden hedder nu *Data Actions & Tabeller* og har to faner. På den nye Tabeller-fane listes kildens DataTables med kolonneantal og division, og du kan migrere strukturen til mål-org'en. **Kun strukturen — rækker kopieres ikke.** Kilde- og mål-org deles med Actions-fanen, så du ikke skal vælge org to gange.
+- **Division håndteres** — Tabeller ligger i en division. Findes samme division i mål-org'en, oprettes tabellen der; ellers oprettes den i standarddivisionen, og det siges eksplicit i loggen frem for at ske i stilhed.
+- **Rettet: schema blev aldrig hentet** — Opslaget af en enkelt DataTable hentede uden `expand=schema`, men læste `r.data.schema` bagefter. Feltet følger ikke med uden det parameter, så schemaet var altid tomt — det ramte Flow Builderens kolonneopslag. Listen henter nu også schema, så kolonner kan vises uden et kald pr. tabel.
+- **`datatableId` strippes** — Schemaet indeholder `datatableId`, der peger på kildens tabel. Kopieres den med, bærer den nye tabel en reference til en anden org. Samme fælde som `requestTemplateUri` ved Data Actions.
+
+---
+**🇬🇧 English**
+- **📊 DataTable structure migration** — The Data Actions page is now *Data Actions & Tables* with two tabs. The new Tables tab lists the source org's DataTables with column count and division, and lets you migrate the structure to the target org. **Structure only — rows are not copied.** Source and target org are shared with the Actions tab, so you do not pick the org twice.
+- **Divisions are handled** — Tables live in a division. If the same division exists in the target org the table is created there; otherwise it goes to the default division and the log says so explicitly rather than letting it happen silently.
+- **Fixed: the schema was never fetched** — Fetching a single DataTable omitted `expand=schema` but then read `r.data.schema`. The field is not returned without that parameter, so the schema was always empty — which broke the Flow Builder's column lookup. The list endpoint now requests the schema too, so columns can be shown without one call per table.
+- **`datatableId` is stripped** — The schema carries a `datatableId` pointing at the source table. Copied verbatim, the new table would reference another org — the same trap as `requestTemplateUri` on Data Actions.
 
 ### v1.7.0
 ---
@@ -212,6 +227,10 @@ Side til at migrere Data Actions mellem orgs:
 >
 > Mål-integrationen matches på navn, ellers på integrationstype hvis der kun er én kandidat. Er der flere mulige, skal du selv vælge — og migreringen kan ikke startes før du har gjort det.
 
+**Fanen Data Tabeller** migrerer DataTable-*strukturer* mellem orgs: vælg kilde- og mål-org, markér tabellerne, klik **⚡ Migrér valgte**. Kun kolonnedefinitionen kopieres — **rækkerne følger ikke med**. Findes kildens division i mål-org'en, oprettes tabellen der; ellers havner den i standarddivisionen, og loggen siger det.
+
+> **Function Data Actions kan ikke migreres.** Deres `requestUrlTemplate` er ikke en URL, men et ID på en function der ligger i kilde-org'en. Der er ikke noget API til at oprette functionen i mål-org'en, så den skal oprettes manuelt først.
+
 Der kopieres navn, kategori, input/output-schema, request-config (URL, metode, headers) samt request- og success-templates. Templates hentes fra kilden og indsættes direkte i den nye action, så den ikke refererer tilbage til kilde-orgen.
 <img width="1436" height="634" alt="image" src="https://github.com/user-attachments/assets/e40b45d0-1322-430e-9d5e-28d0adda83e5" />
 
@@ -287,7 +306,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.7.0** — see [Changelog](#changelog) above.
+> Current version: **v1.8.0** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
@@ -337,6 +356,10 @@ Page to migrate Data Actions between orgs:
 > **Why pick an integration?** Data Actions belong to an integration, and an org can have several of the same type — for example multiple OAuth integrations that group actions and spread the load. Picking one at a time preserves that grouping in the target org. The selection is cleared when you switch integration, so you cannot accidentally migrate across groups.
 >
 > The target integration is matched by name, or by integration type when only one candidate exists. If several are possible you must choose yourself — and migration is blocked until you do.
+
+**The Data Tables tab** migrates DataTable *structures* between orgs: pick source and target org, select the tables, click **⚡ Migrate selected**. Only the column definition is copied — **rows do not come along**. If the source division exists in the target org the table is created there; otherwise it lands in the default division and the log says so.
+
+> **Function Data Actions cannot be migrated.** Their `requestUrlTemplate` is not a URL but the id of a function living in the source org. There is no API to create that function in the target org, so it has to be created manually first.
 
 Name, category, input/output schema, request config (URL, method, headers) and the request/success templates are copied. Templates are fetched from the source and inlined into the new action, so it never references the source org.
 

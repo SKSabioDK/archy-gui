@@ -383,13 +383,20 @@ app.get('/api/customers/:id/datatables', async (req, res) => {
     while (true) {
       const r = await axios.get(`${apiBase}/api/v2/flows/datatables`, {
         headers: { Authorization: `Bearer ${token}` },
-        params: { pageSize: 200, pageNumber: page, sortBy: 'name', sortOrder: 'ASC' }
+        // expand=schema virker også på listen, så kolonnerne kan vises uden
+        // et opslag pr. tabel
+        params: { pageSize: 200, pageNumber: page, sortBy: 'name', sortOrder: 'ASC', expand: 'schema' }
       });
       all = all.concat(r.data.entities || []);
       if (all.length >= (r.data.total || 0) || !(r.data.entities || []).length) break;
       page++;
     }
-    res.json(all.map(t => ({ id: t.id, name: t.name })));
+    res.json(all.map(t => ({
+      id: t.id,
+      name: t.name,
+      division: t.division?.name || '',
+      columns: Object.keys(t.schema?.properties || {})
+    })));
   } catch (e) {
     res.status(500).json({ error: e.response?.data?.message || e.message });
   }
@@ -524,8 +531,11 @@ app.get('/api/customers/:id/datatables/:tableId', async (req, res) => {
   if (!customer) return res.status(404).json({ error: 'Not found' });
   try {
     const { token, apiBase } = await getToken(customer);
+    // expand=schema er påkrævet — uden den følger 'schema' slet ikke med,
+    // og alt herunder faldt tilbage til et tomt objekt.
     const r = await axios.get(`${apiBase}/api/v2/flows/datatables/${req.params.tableId}`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
+      params: { expand: 'schema' }
     });
     const schema = r.data.schema || {};
     const props = schema.properties || {};
@@ -799,6 +809,81 @@ app.post('/api/actions/migrate', async (req, res) => {
     const msg = describeApiError(e);
     addLog('ERROR', `Data Action migration failed: ${msg}`, source.name, 'MIGRATE');
     if (e.response?.status === 409 || msg.toLowerCase().includes('already exist')) {
+      return res.status(409).json({ error: 'already_exists', message: msg });
+    }
+    res.status(500).json({ error: msg });
+  }
+});
+
+// Migrate a DataTable's STRUCTURE (schema) from source org to target org.
+// Rækkerne migreres bevidst ikke — kun tabeldefinitionen.
+app.post('/api/datatables/migrate', async (req, res) => {
+  const { sourceId, targetId, tableId } = req.body;
+  const source = loadCustomers().find(c => c.id === sourceId);
+  const target = loadCustomers().find(c => c.id === targetId);
+  if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
+
+  try {
+    const { token: srcToken, apiBase: srcBase } = await getToken(source);
+
+    // 1. Hent tabellen med schema — uden expand følger schemaet ikke med
+    const srcRes = await axios.get(`${srcBase}/api/v2/flows/datatables/${tableId}`, {
+      headers: { Authorization: `Bearer ${srcToken}` },
+      params: { expand: 'schema' }
+    });
+    const src = srcRes.data;
+    if (!src.schema) return res.status(400).json({ error: `Kunne ikke hente schema for "${src.name}"` });
+
+    const { token: tgtToken, apiBase: tgtBase } = await getToken(target);
+    const tgtHeaders = { Authorization: `Bearer ${tgtToken}`, 'Content-Type': 'application/json' };
+
+    // 2. Findes tabellen allerede i målet? Navnet er unikt pr. org.
+    const existing = await axios.get(`${tgtBase}/api/v2/flows/datatables`, {
+      headers: { Authorization: `Bearer ${tgtToken}` },
+      params: { pageSize: 200, pageNumber: 1 }
+    });
+    if ((existing.data.entities || []).some(t => t.name === src.name)) {
+      return res.status(409).json({ error: 'already_exists', message: `DataTable "${src.name}" findes allerede` });
+    }
+
+    // 3. Match division på navn. Findes den ikke, oprettes tabellen i orgens
+    // standarddivision — det er bedre end at fejle, men skal siges højt.
+    let divisionId = null, divisionNote = null;
+    if (src.division?.name) {
+      try {
+        const dv = await axios.get(`${tgtBase}/api/v2/authorization/divisions`, {
+          headers: { Authorization: `Bearer ${tgtToken}` },
+          params: { pageSize: 200 }
+        });
+        const match = (dv.data.entities || []).find(d => d.name === src.division.name);
+        if (match) divisionId = match.id;
+        else divisionNote = `Division "${src.division.name}" findes ikke i ${target.name} — tabellen oprettes i standarddivisionen`;
+      } catch (e) {
+        divisionNote = `Kunne ikke slå divisioner op: ${describeApiError(e)}`;
+      }
+    }
+
+    // 4. Byg schemaet. datatableId peger på KILDENS tabel og skal væk —
+    // ellers bærer den nye tabel en reference til en anden org.
+    const schema = { ...src.schema };
+    delete schema.datatableId;
+    schema.title = src.name;
+
+    const body = { name: src.name, schema };
+    if (src.description) body.description = src.description;
+    if (divisionId) body.division = { id: divisionId };
+
+    const created = await axios.post(`${tgtBase}/api/v2/flows/datatables`, body, { headers: tgtHeaders });
+
+    if (divisionNote) addLog('WARN', `"${src.name}": ${divisionNote}`, source.name, 'MIGRATE');
+    addLog('SUCCESS', `DataTable "${src.name}" migreret til ${target.name} (${Object.keys(schema.properties || {}).length} kolonner)`, source.name, 'MIGRATE');
+
+    res.json({ ok: true, newTableId: created.data.id, name: src.name, divisionNote });
+
+  } catch (e) {
+    const msg = describeApiError(e);
+    addLog('ERROR', `DataTable migration failed: ${msg}`, source.name, 'MIGRATE');
+    if (e.response?.status === 409 || /already exist/i.test(msg)) {
       return res.status(409).json({ error: 'already_exists', message: msg });
     }
     res.status(500).json({ error: msg });
