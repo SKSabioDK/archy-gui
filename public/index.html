@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Archy GUI — Flow Migration</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
 <style>
@@ -28,6 +28,11 @@
     --hover:     #1c2132;
     --mono:      'JetBrains Mono', monospace;
     --sans:      'Syne', sans-serif;
+    /* Afledte accent-tokens (så temaer kan overstyre alt ét sted) */
+    --accent-soft: rgba(255,107,53,.08);   /* svag accent-baggrund   */
+    --accent-ink:  #ffffff;                /* tekst oven på accent   */
+    --accent-hi:   #ff8150;                /* accent hover           */
+    --logo-color:  var(--accent);          /* farve på Sabio-mærket  */
   }
 
   /* ── Light mode ── */
@@ -46,6 +51,76 @@
     --muted:     #7a82a0;
     --card:      #ffffff;
     --hover:     #eef0f5;
+    --accent-soft: rgba(232,82,26,.08);
+    --accent-ink:  #ffffff;
+    --accent-hi:   #d1470f;
+  }
+
+  /* ── Sabio Dark — brand-navy #0F096B + brand-gul #F7D501 ── */
+  body.sabio {
+    --bg:        #08052e;
+    --panel:     #0f096b;
+    --border:    #241c7a;
+    --border2:   #3a2fa8;
+    --accent:    #f7d501;
+    --accent2:   #96cafb;
+    --blue:      #96cafb;
+    --green:     #35d68a;
+    --red:       #ff6b6b;
+    --yellow:    #ffb020;
+    --text:      #ffffff;
+    --muted:     #9c93d8;
+    --card:      #130c57;
+    --hover:     #1b1480;
+    --accent-soft: rgba(247,213,1,.10);
+    --accent-ink:  #0f096b;
+    --accent-hi:   #ffe44d;
+    --btn-border:  #0f096b;   /* navy kant om den gule knap — som på sabiogroup.com */
+    --logo-color:  #ffffff;
+  }
+
+  /* ── Sabio Light — brand-lilla #6518BB på off-white ── */
+  body.sabio-light {
+    --bg:        #f8f7f4;
+    --panel:     #ffffff;
+    --border:    #e2dff5;
+    --border2:   #c9c3ec;
+    --accent:    #6518bb;
+    --accent2:   #0f096b;
+    --blue:      #0f096b;
+    --green:     #1e9e57;
+    --red:       #c0392b;
+    --yellow:    #a8820a;
+    --text:      #0f096b;
+    --muted:     #6b6795;
+    --card:      #ffffff;
+    --hover:     #f0eefb;
+    --accent-soft: rgba(101,24,187,.07);
+    --accent-ink:  #ffffff;
+    --accent-hi:   #7a2ad6;
+    --btn-border:  #6518bb;
+    --logo-color:  #0f096b;
+  }
+
+  /* ── Sabio layout: skarpe hjørner, kraftigere primærknap ── */
+  body.sabio, body.sabio-light { --sans: 'Archivo', 'Syne', sans-serif; }
+  body.sabio *, body.sabio-light * { border-radius: 0 !important; }
+  body.sabio .dot, body.sabio .chip-dot,
+  body.sabio-light .dot, body.sabio-light .chip-dot { border-radius: 50% !important; }
+  body.sabio .btn-primary, body.sabio-light .btn-primary {
+    border: 2px solid var(--btn-border); padding: 7px 16px;
+  }
+  body.sabio .page-title, body.sabio-light .page-title { letter-spacing: -.4px; }
+  body.sabio .nav-item.active, body.sabio-light .nav-item.active { border-left-width: 3px; }
+
+  /* Sabio ordmærke (maske → følger --logo-color) */
+  .logo-sabio { display: none; }
+  body.sabio .logo-archy, body.sabio-light .logo-archy { display: none; }
+  body.sabio .logo-sabio, body.sabio-light .logo-sabio {
+    display: inline-block; vertical-align: middle;
+    width: 96px; height: 30px; background-color: var(--logo-color);
+    -webkit-mask: url('/sabio-logo.svg') no-repeat center / contain;
+            mask: url('/sabio-logo.svg') no-repeat center / contain;
   }
 
   /* Language selector */
@@ -90,8 +165,8 @@
   .main { overflow-y: auto; }
 
   /* Topbar */
-  .logo { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
-  .logo span { color: var(--accent); }
+  .logo { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; display: flex; align-items: center; }
+  .logo b { color: var(--accent); font-weight: 800; }
   .logo sub { font-size: 10px; color: var(--muted); font-weight: 400; letter-spacing: 1px; vertical-align: baseline; margin-left: 4px; }
   .status-bar { margin-left: auto; display: flex; align-items: center; gap: 12px; font-family: var(--mono); font-size: 11px; color: var(--muted); }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
@@ -101,7 +176,7 @@
   .nav { display: flex; flex-direction: column; padding: 12px 0; }
   .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; cursor: pointer; font-size: 13px; color: var(--muted); transition: all .15s; border-left: 2px solid transparent; }
   .nav-item:hover { color: var(--text); background: var(--hover); }
-  .nav-item.active { color: var(--accent); background: rgba(255,107,53,.07); border-left-color: var(--accent); }
+  .nav-item.active { color: var(--accent); background: var(--accent-soft); border-left-color: var(--accent); }
   .nav-icon { font-size: 16px; width: 20px; text-align: center; }
   .nav-divider { height: 1px; background: var(--border); margin: 8px 16px; }
 
@@ -155,8 +230,8 @@
 
   /* Buttons */
   .btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; border-radius: 5px; font-family: var(--sans); font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all .15s; }
-  .btn-primary { background: var(--accent); color: #fff; }
-  .btn-primary:hover { background: #ff8150; }
+  .btn-primary { background: var(--accent); color: var(--accent-ink); }
+  .btn-primary:hover { background: var(--accent-hi); }
   .btn-secondary { background: transparent; border: 1px solid var(--border2); color: var(--text); }
   .btn-secondary:hover { border-color: var(--muted); background: var(--hover); }
   .btn-blue { background: var(--blue); color: #fff; }
@@ -180,7 +255,7 @@
   .badge-green { background: rgba(46,204,113,.15); color: var(--green); }
   .badge-gray  { background: rgba(107,115,148,.15); color: var(--muted); }
   .badge-blue  { background: rgba(75,142,241,.15); color: var(--blue); }
-  .badge-orange{ background: rgba(255,107,53,.15); color: var(--accent); }
+  .badge-orange{ background: var(--accent-soft); color: var(--accent); }
   .badge-red   { background: rgba(231,76,60,.15);  color: var(--red); }
   .badge-yellow{ background: rgba(241,196,15,.15); color: var(--yellow); }
 
@@ -209,7 +284,7 @@
 
   /* Import drop zone */
   .im-dropzone { border: 2px dashed var(--border2); border-radius: 6px; padding: 10px 12px; transition: border-color .15s, background .15s; }
-  .im-dropzone.drag-over { border-color: var(--accent); background: rgba(255,107,53,.06); }
+  .im-dropzone.drag-over { border-color: var(--accent); background: var(--accent-soft); }
 
   /* Progress steps */
   .steps { display: flex; gap: 0; margin-bottom: 24px; }
@@ -220,7 +295,7 @@
   /* Migrate flow selector */
   .migrate-flow-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border: 1px solid var(--border); border-radius: 5px; margin-bottom: 6px; cursor: pointer; transition: all .15s; }
   .migrate-flow-item:hover { border-color: var(--border2); background: var(--hover); }
-  .migrate-flow-item.selected { border-color: var(--accent); background: rgba(255,107,53,.05); }
+  .migrate-flow-item.selected { border-color: var(--accent); background: var(--accent-soft); }
 
   /* Alert */
   .alert { padding: 12px 16px; border-radius: 5px; font-size: 12px; margin-bottom: 16px; }
@@ -285,7 +360,7 @@
   .md-body code { font-family: var(--mono); font-size: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px; color: var(--accent2); }
   .md-body pre  { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; overflow-x: auto; margin: 0 0 16px; }
   .md-body pre code { background: none; border: none; padding: 0; color: var(--text); font-size: 12px; }
-  .md-body blockquote { border-left: 3px solid var(--accent); margin: 0 0 12px; padding: 8px 16px; background: rgba(255,107,53,.06); border-radius: 0 5px 5px 0; color: var(--muted); }
+  .md-body blockquote { border-left: 3px solid var(--accent); margin: 0 0 12px; padding: 8px 16px; background: var(--accent-soft); border-radius: 0 5px 5px 0; color: var(--muted); }
   .md-body blockquote p { margin: 0; color: var(--muted); }
   .md-body table { border-collapse: collapse; width: 100%; margin: 0 0 16px; font-family: var(--mono); font-size: 12px; }
   .md-body th { text-align: left; padding: 8px 12px; background: var(--hover); border: 1px solid var(--border); color: var(--muted); font-size: 10px; letter-spacing: 1px; }
@@ -295,15 +370,26 @@
   /* Language anchor badges */
   .md-lang-tabs { display: flex; gap: 10px; margin-bottom: 24px; }
   .md-lang-tab  { padding: 6px 18px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid var(--border2); color: var(--muted); background: transparent; font-family: var(--sans); transition: all .15s; }
-  .md-lang-tab:hover, .md-lang-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .md-lang-tab:hover, .md-lang-tab.active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 </style>
 </head>
 <body>
+<script>
+  /* Sæt tema før første paint, så der ikke blinker et forkert tema */
+  try {
+    var t = localStorage.getItem('theme');
+    if (t === 'light' || t === 'sabio' || t === 'sabio-light') document.body.classList.add(t);
+  } catch (e) {}
+</script>
 <div class="layout">
 
   <!-- Topbar -->
   <div class="topbar">
-    <div class="logo">Archy<span>GUI</span><sub>flow manager</sub></div>
+    <div class="logo">
+      <span class="logo-archy">Archy<b>GUI</b></span>
+      <span class="logo-sabio" role="img" aria-label="Sabio"></span>
+      <sub>flow manager</sub>
+    </div>
     <div class="status-bar">
       <span id="archyStatus" class="dot"></span>
       <span id="archyStatusTxt">checking archy…</span>
@@ -314,9 +400,12 @@
         <option value="nl">🇳🇱 Nederlands</option>
         <option value="es">🇪🇸 Español</option>
       </select>
-      <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Skift tema">
-        <span id="themeIcon">☀️</span>
-      </button>
+      <select id="themeSelect" class="lang-select" onchange="setTheme(this.value)" title="Tema">
+        <option value="dark">🌙 Archy Dark</option>
+        <option value="light">☀️ Archy Light</option>
+        <option value="sabio">🔷 Sabio Dark</option>
+        <option value="sabio-light">🔹 Sabio Light</option>
+      </select>
     </div>
   </div>
 
@@ -357,7 +446,8 @@
     <div id="sidebarCustomers"></div>
 
     <div class="spacer"></div>
-    <div class="version">v1.4.1 · Archy GUI</div>
+    <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
+    <div class="version" id="app-version">v1.5.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -546,7 +636,7 @@
             </div>
           </div>
           <div id="ex-flowdropdown" style="display:none;background:var(--bg);border:1px solid var(--border2);border-radius:5px;max-height:240px;overflow-y:auto;margin-bottom:12px"></div>
-          <div id="ex-selected-flow" style="display:none;padding:10px 14px;background:rgba(255,107,53,.07);border:1px solid rgba(255,107,53,.3);border-radius:5px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
+          <div id="ex-selected-flow" style="display:none;padding:10px 14px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:5px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
             <div>
               <div style="font-size:13px;font-weight:700" id="ex-sel-name">—</div>
               <div style="font-size:11px;color:var(--muted);font-family:var(--mono)" id="ex-sel-meta">—</div>
@@ -1575,17 +1665,26 @@ function applyStoredLang() {
 }
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
+const THEMES = ['dark', 'light', 'sabio', 'sabio-light'];
+
+function setTheme(theme) {
+  if (!THEMES.includes(theme)) theme = 'dark';
+  document.body.classList.remove('light', 'sabio', 'sabio-light');
+  if (theme !== 'dark') document.body.classList.add(theme);
+  localStorage.setItem('theme', theme);
+  const sel = document.getElementById('themeSelect');
+  if (sel) sel.value = theme;
+}
+
+// Bevaret for ældre kald: skifter mellem dark/light i den aktive brand-familie
 function toggleTheme() {
-  const isLight = document.body.classList.toggle('light');
-  document.getElementById('themeIcon').textContent = isLight ? '🌙' : '☀️';
-  localStorage.setItem('theme', isLight ? 'light' : 'dark');
+  const cur = localStorage.getItem('theme') || 'dark';
+  const pairs = { dark: 'light', light: 'dark', sabio: 'sabio-light', 'sabio-light': 'sabio' };
+  setTheme(pairs[cur] || 'light');
 }
 
 function applyStoredTheme() {
-  if (localStorage.getItem('theme') === 'light') {
-    document.body.classList.add('light');
-    document.getElementById('themeIcon').textContent = '🌙';
-  }
+  setTheme(localStorage.getItem('theme') || 'dark');
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
@@ -1604,6 +1703,10 @@ async function checkArchy() {
 }
 
 function _applyVersionData(data) {
+  // Hold versionsnummeret i sidebaren synkront med package.json
+  const verEl = document.getElementById('app-version');
+  if (verEl && data.current) verEl.textContent = `v${data.current} · Archy GUI`;
+
   // Update the sticky banner based on version data
   const banner = document.getElementById('update-banner');
   const txtEl  = document.getElementById('update-banner-txt');

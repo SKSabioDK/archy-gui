@@ -43,7 +43,22 @@
       "Bash(grep '\"description\"\\\\|\"type\"\\\\|\"\\\\$ref\"')",
       "Bash(awk '/^        \"ArchyStateActionCallData\": \\\\{/,/^        \\\\},$/ {print NR\": \"$0}' /c/Tools/Archy/archyHome/schemas/definitions/DefArchyWorkflow.schema.json)",
       "Bash(node --check /c/Tools/Archy-gui/server.js)",
-      "Bash(node -e \"require\\('./server.js'\\)\")"
+      "Bash(node -e \"require\\('./server.js'\\)\")",
+      "Bash(cmd /c \"if exist \\\\\"C:\\\\anana\\\\ArchyGUI\\\\server.log\\\\\" \\(type \\\\\"C:\\\\anana\\\\ArchyGUI\\\\server.log\\\\\"\\) else \\(echo server.log not found\\)\")",
+      "Bash(cmd /c \"dir \\\\\"C:\\\\anana\\\\ArchyGUI\\\\\" 2>&1\")",
+      "Bash(cmd /c \"archy version 2>&1\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git remote *)",
+      "Bash(node -e \"console.log\\(require\\('./package.json'\\).version\\)\")",
+      "Bash(archy validate *)",
+      "Bash(powershell -Command \"archy validate --help 2>&1 | Select-Object -First 40\")",
+      "Bash(gh pr *)",
+      "Bash(env)",
+      "Bash(node --use-system-ca -e \"require\\('https'\\).get\\('https://api.mypurecloud.de/api/v2/', r=>console.log\\('OK status', r.statusCode\\)\\).on\\('error', e=>console.log\\('ERR', e.message\\)\\)\")",
+      "Bash(node -e \"require\\('https'\\).get\\('https://api.mypurecloud.de/api/v2/', r=>console.log\\('OK status', r.statusCode\\)\\).on\\('error', e=>console.log\\('ERR', e.message\\)\\)\")",
+      "Bash(git commit -q -m '@ *)"
     ]
   }
 }
