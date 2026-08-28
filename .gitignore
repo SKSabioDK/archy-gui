@@ -4,3 +4,6 @@ customers.json
 *.log
 .DS_Store
 Thumbs.db
+
+# Per-maskine Claude Code permissions — hoerer ikke i repoet
+.claude/settings.local.json
