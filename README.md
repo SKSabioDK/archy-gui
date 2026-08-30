@@ -1,10 +1,25 @@
-# Archy GUI — Flow Manager · v1.9.4
+# Archy GUI — Flow Manager · v1.9.5
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.9.5
+---
+**🇩🇰 Dansk**
+- **Systematisk gennemgang af alle 162 eksporterede flows** — I stedet for at opdage manglende afhængighedstyper én ad gangen når en migrering fejler, er samtlige YAML-filer scannet for konstruktioner der ligner en navnereference. Otte typer manglede: **common modules** (21 unikke — den største), **bot flows**, **flow-referencer** (`targetFlow`), **schedules**, **schedule groups**, **knowledge bases**, **speech-to-text engines** og **grupper**.
+- **Common modules var det største hul** — 21 unikke moduler på tværs af flows. Et flow der kalder et common module som ikke findes i mål-org'en fejler ved import, og det blev ikke fanget før.
+- **Rettet: scanneren fandt afhængigheder der ikke fandtes** — Flere udtryk brugte `\s*` mellem nøgle og værdi, og da `\s` også dækker linjeskift, fangede de indholdet af den *næste* linje. `division` rapporterede fx `exp: Task.division` og `prompt` rapporterede `name` som afhængigheder. Det ville have vist spøgelser i dialogen som "manglende". Udtrykkene kræver nu at værdien står på samme linje.
+- **Systemprompts udelades** — `PromptSystem.*` er Genesys' indbyggede prompts. De ligger ikke i orgens promptliste og blev derfor altid rapporteret som manglende.
+
+---
+**🇬🇧 English**
+- **Systematic sweep of all 162 exported flows** — Rather than discovering missing dependency types one at a time when a migration fails, every YAML file was scanned for constructs that look like a name reference. Eight types were missing: **common modules** (21 unique — the largest gap), **bot flows**, **flow references** (`targetFlow`), **schedules**, **schedule groups**, **knowledge bases**, **speech-to-text engines** and **groups**.
+- **Common modules were the biggest gap** — 21 unique modules across the flows. A flow calling a common module that does not exist in the target org fails on import, and that was not being caught.
+- **Fixed: the scanner reported dependencies that did not exist** — Several patterns used `\s*` between key and value, and since `\s` also matches newlines they captured the content of the *next* line. `division` reported `exp: Task.division` and `prompt` reported `name` as dependencies, which would have shown phantoms in the dialog as "missing". The patterns now require the value on the same line.
+- **System prompts are excluded** — `PromptSystem.*` are Genesys built-ins. They are not in the org's prompt list and were therefore always reported as missing.
 
 ### v1.9.4
 ---
@@ -389,7 +404,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.9.4** — see [Changelog](#changelog) above.
+> Current version: **v1.9.5** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**

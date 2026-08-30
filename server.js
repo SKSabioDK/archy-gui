@@ -899,22 +899,47 @@ function scanYamlDependencies(yaml) {
   const grab = (re) => { const out = []; let m; while ((m = re.exec(yaml)) !== null) out.push(m[1]); return uniq(out); };
 
   return {
-    division:   grab(/^\s*division:\s*["']?([^'"\n]+)["']?/gm),
-    queue:      grab(/targetQueue:[\s\S]{0,60}?name:\s*["']?([^'"\n]+)["']?/gm),
+    division:   grab(/^[ \t]*division:[ \t]*["']?([^'"\n]+)["']?/gm),
+    queue:      grab(/targetQueue:[\s\S]{0,60}?name:[ \t]*["']?([^'"\n]+)["']?/gm),
     datatable:  grab(/dataTable:\s*\n\s+([\w][\w _\-]+):/gm)
                   .filter(n => !['foundOutputs', 'failureOutputs', 'outputs'].includes(n)),
     dataaction: grab(/dataAction:\s*\n\s+([\w][\w _\-()]+):/gm),
-    prompt:     grab(/prompt:\s*["']?(?:Prompt\.)?([\w_\-. ]+)["']?/gm),
+    // PromptSystem.* er Genesys' indbyggede systemprompts. De ligger ikke i
+    // orgens promptliste og ville derfor altid fremstå som manglende.
+    prompt:     grab(/prompt:[ \t]+["']?(?:Prompt\.)?([\w_\-. ]+)["']?/gm)
+                  .filter(n => !/^PromptSystem\./i.test(n)),
     // wrapupCode: \n lit: \n name: X
-    wrapupcode: grab(/wrapupCode:\s*\n\s*lit:\s*\n\s*name:\s*["']?([^'"\n]+)["']?/gmi),
+    wrapupcode: grab(/wrapupCode:\s*\n\s*lit:\s*\n\s*name:[ \t]*["']?([^'"\n]+)["']?/gmi),
     // screenPopScript: \n <ScriptNavn>:
     script:     grab(/screenPopScript:\s*\n\s+([\w][\w _\-]+):/gm),
     // Kun statiske skill-navne. FindSkill(Task.Skills) slås op på kørselstidspunktet
     // og kan ikke tjekkes her — det siges eksplicit i rapporten.
     skill:      grab(/FindSkill\(\s*["']([^"']+)["']\s*\)/gm),
     // VOICESURVEY-flows peger på en survey form ved navn
-    surveyform: grab(/surveyForm:\s*\n\s*name:\s*["']?([^'"\n]+)["']?/gm)
+    surveyform: grab(/surveyForm:\s*\n\s*name:[ \t]*["']?([^'"\n]+)["']?/gm),
+
+    // ── Referencer til ANDRE flows ────────────────────────────────────────
+    // Bemærk kravet om indrykning (^\s+): på indrykning 0 er 'commonModule:'
+    // og 'botFlow:' flowets EGEN type, ikke en reference til et andet flow.
+    commonmodule: grab(/^\s+commonModule:\s*\n\s+([\w][\w .\-()]*):/gm).filter(notMeta),
+    botflow:      grab(/^\s+botFlow:\s*\n\s+([\w][\w .\-()]*):/gm).filter(notMeta),
+    targetflow:   grab(/targetFlow:\s*\n\s*(?:lit:\s*\n\s*)?name:\s*["']?([^'"\n]+)["']?/gm),
+
+    // ── Åbningstider ──────────────────────────────────────────────────────
+    schedule:      grab(/schedule:\s*\n\s*selectedSchedule:\s*\n\s*(?:lit:\s*\n\s*)?name:\s*["']?([^'"\n]+)["']?/gm),
+    schedulegroup: grab(/scheduleGroup:\s*\n\s*lit:\s*\n\s*name:\s*["']?([^'"\n]+)["']?/gm),
+
+    // ── Øvrige org-ressourcer ─────────────────────────────────────────────
+    knowledgebase: grab(/knowledgeBase:\s*\n\s*name:\s*["']?([^'"\n]+)["']?/gm),
+    sttengine:     grab(/speechToText:\s*\n\s*engine:\s*\n\s*name:\s*["']?([^'"\n]+)["']?/gm),
+    group:         grab(/targetGroup:\s*\n\s*lit:\s*\n\s*name:\s*["']?([^'"\n]+)["']?/gm)
   };
+}
+
+// Strukturelle nøgler der aldrig er ressourcenavne
+function notMeta(n) {
+  return !['name', 'lit', 'exp', 'noValue', 'division', 'description',
+           'ver_latestPublished', 'inputs', 'outputs', 'supportedLanguages'].includes(n);
 }
 
 // Hvilke af 'names' findes allerede i org'en? Store lister (758 køer, 350 skills)
@@ -925,10 +950,17 @@ async function lookupExisting(kind, names, token, apiBase) {
   const H = { headers: { Authorization: `Bearer ${token}` } };
 
   const bulk = {
-    datatable:  { url: '/api/v2/flows/datatables',     size: 200 },
-    dataaction: { url: '/api/v2/integrations/actions', size: 100 },
-    script:     { url: '/api/v2/scripts',              size: 100 },
-    surveyform: { url: '/api/v2/quality/forms/surveys', size: 100 }
+    datatable:  { url: '/api/v2/flows/datatables',      size: 200 },
+    dataaction: { url: '/api/v2/integrations/actions',  size: 100 },
+    script:     { url: '/api/v2/scripts',               size: 100 },
+    surveyform: { url: '/api/v2/quality/forms/surveys', size: 100 },
+    // Alle tre flow-referencer slås op i den samme flow-liste
+    commonmodule: { url: '/api/v2/flows', size: 100 },
+    botflow:      { url: '/api/v2/flows', size: 100 },
+    targetflow:   { url: '/api/v2/flows', size: 100 },
+    knowledgebase:{ url: '/api/v2/knowledge/knowledgebases', size: 100 },
+    sttengine:    { url: '/api/v2/integrations/speech/stt/engines', size: 100 },
+    group:        { url: '/api/v2/groups', size: 100 }
   };
   if (bulk[kind]) {
     let page = 1;
@@ -945,11 +977,13 @@ async function lookupExisting(kind, names, token, apiBase) {
   }
 
   const byName = {
-    division:   '/api/v2/authorization/divisions',
-    queue:      '/api/v2/routing/queues',
-    prompt:     '/api/v2/architect/prompts',
-    wrapupcode: '/api/v2/routing/wrapupcodes',
-    skill:      '/api/v2/routing/skills'
+    division:      '/api/v2/authorization/divisions',
+    queue:         '/api/v2/routing/queues',
+    prompt:        '/api/v2/architect/prompts',
+    wrapupcode:    '/api/v2/routing/wrapupcodes',
+    skill:         '/api/v2/routing/skills',
+    schedule:      '/api/v2/architect/schedules',
+    schedulegroup: '/api/v2/architect/schedulegroups'
   };
   const url = byName[kind];
   if (!url) return found;
