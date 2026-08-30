@@ -1,10 +1,24 @@
-# Archy GUI — Flow Manager · v1.14.1
+# Archy GUI — Flow Manager · v1.15.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.15.0
+---
+**🇩🇰 Dansk**
+- **Herkomst i sammenligningen** — Dialogen viste kun en tynd linje "Migreret herfra" med et tidsstempel. Nu vises et helt afsnit ud fra manifestet: **hvilken org** flowet kom fra, **hvilken kildeversion** det blev bygget af, **hvilken handling** der blev brugt (`create` / `update` / `publish`) og hvornår. Er posten et nulpunkt i stedet for en migrering, står det som *NULPUNKT*.
+- **En konklusion man kan handle på** — Er indholdet identisk, siger dialogen nu rent ud: *"Målet svarer til kilde v3 — migreret med ArchyGUI og indholdet er stadig identisk."* Er kilden versioneret op siden, men indholdet stadig ens, siges det i stedet: *"Målet blev bygget af kilde v3, som nu står på v5. Indholdet er stadig identisk, så kilden er kun versioneret op."*
+- **Hint når `create` fejler** — Vælger man `create` og flowet allerede findes i mål-org'en, afviser Archy det og foreslår `--recreate`. Fejlen suppleres nu med det man i praksis vil gøre: vælg **update** eller **publish** i Handling.
+
+---
+**🇬🇧 English**
+- **Provenance in the comparison** — The dialog only showed a thin "Migrated from here" line with a timestamp. It now shows a full section from the manifest: **which org** the flow came from, **which source version** it was built from, **which action** was used (`create` / `update` / `publish`) and when. If the record is a baseline rather than a migration, it says *BASELINE*.
+- **A conclusion you can act on** — When the content is identical the dialog now states it plainly: *"The target matches source v3 — migrated with ArchyGUI and the content is still identical."* If the source has been re-versioned since but the content still matches: *"The target was built from source v3, which is now at v5. The content is still identical, so the source has only been re-versioned."*
+- **A hint when `create` fails** — Choosing `create` when the flow already exists in the target makes Archy refuse and suggest `--recreate`. The error now adds what you actually want: pick **update** or **publish** in the Action dropdown.
+
 
 ### v1.14.1
 ---
@@ -506,7 +520,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.14.1** — see [Changelog](#changelog) above.
+> Current version: **v1.15.0** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**

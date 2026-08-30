@@ -454,7 +454,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.14.1 · Archy GUI</div>
+    <div class="version" id="app-version">v1.15.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1259,6 +1259,13 @@ const LANGS = {
     fb_baseline_done:'Nulpunkt sat for flows',
     fb_baseline_skipped:'sprunget over (allerede migreret med værktøjet)',
     cmp_baseline_ref:'Nulpunkt sat',
+    cmp_provenance:'MIGRERET MED ARCHYGUI',
+    cmp_provenance_baseline:'NULPUNKT',
+    cmp_prov_from:'Migreret fra',
+    cmp_prov_action:'Handling',
+    cmp_prov_when:'Tidspunkt',
+    cmp_sync_ok:'Målet svarer til kilde {v} — migreret med ArchyGUI og indholdet er stadig identisk.',
+    cmp_sync_moved:'Målet blev bygget af kilde {built}, som nu står på {now}. Indholdet er stadig identisk, så kilden er kun versioneret op.',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1507,6 +1514,13 @@ const LANGS = {
     fb_baseline_done:'Baseline set for flows',
     fb_baseline_skipped:'skipped (already migrated with this tool)',
     cmp_baseline_ref:'Baseline set',
+    cmp_provenance:'MIGRATED WITH ARCHYGUI',
+    cmp_provenance_baseline:'BASELINE',
+    cmp_prov_from:'Migrated from',
+    cmp_prov_action:'Action',
+    cmp_prov_when:'When',
+    cmp_sync_ok:'The target matches source {v} — migrated with ArchyGUI and the content is still identical.',
+    cmp_sync_moved:'The target was built from source {built}, which is now at {now}. The content is still identical, so the source has only been re-versioned.',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -1755,6 +1769,13 @@ const LANGS = {
     fb_baseline_done:'Point zéro défini pour les flows',
     fb_baseline_skipped:'ignorés (déjà migrés avec cet outil)',
     cmp_baseline_ref:'Point zéro défini',
+    cmp_provenance:'MIGRÉ AVEC ARCHYGUI',
+    cmp_provenance_baseline:'POINT ZÉRO',
+    cmp_prov_from:'Migré depuis',
+    cmp_prov_action:'Action',
+    cmp_prov_when:'Date',
+    cmp_sync_ok:'La cible correspond à la source {v} — migrée avec ArchyGUI et le contenu est toujours identique.',
+    cmp_sync_moved:'La cible a été construite depuis la source {built}, désormais en {now}. Le contenu est identique : la source a seulement changé de version.',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -2003,6 +2024,13 @@ const LANGS = {
     fb_baseline_done:'Nulpunt ingesteld voor flows',
     fb_baseline_skipped:'overgeslagen (al gemigreerd met deze tool)',
     cmp_baseline_ref:'Nulpunt ingesteld',
+    cmp_provenance:'GEMIGREERD MET ARCHYGUI',
+    cmp_provenance_baseline:'NULPUNT',
+    cmp_prov_from:'Gemigreerd uit',
+    cmp_prov_action:'Actie',
+    cmp_prov_when:'Tijdstip',
+    cmp_sync_ok:'Het doel komt overeen met bron {v} — gemigreerd met ArchyGUI en de inhoud is nog identiek.',
+    cmp_sync_moved:'Het doel is gebouwd uit bron {built}, die nu op {now} staat. De inhoud is nog identiek, dus de bron is alleen opnieuw geversioneerd.',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -2251,6 +2279,13 @@ const LANGS = {
     fb_baseline_done:'Punto cero establecido para flows',
     fb_baseline_skipped:'omitidos (ya migrados con esta herramienta)',
     cmp_baseline_ref:'Punto cero establecido',
+    cmp_provenance:'MIGRADO CON ARCHYGUI',
+    cmp_provenance_baseline:'PUNTO CERO',
+    cmp_prov_from:'Migrado desde',
+    cmp_prov_action:'Acción',
+    cmp_prov_when:'Momento',
+    cmp_sync_ok:'El destino coincide con el origen {v} — migrado con ArchyGUI y el contenido sigue siendo idéntico.',
+    cmp_sync_moved:'El destino se construyó desde el origen {built}, que ahora está en {now}. El contenido sigue siendo idéntico, así que el origen solo cambió de versión.',
   }
 };
 
@@ -5324,8 +5359,31 @@ function renderCompare(r) {
     const txt = r.drift === 'both' ? t('cmp_drift_both')
               : r.drift === 'target' ? t('cmp_drift_target') : t('cmp_drift_source');
     html += `<div style="margin-top:12px;padding:8px 12px;background:rgba(241,196,15,.12);color:var(--yellow);font-size:12px">${txt}</div>`;
-  } else if (r.migratedAt) {
-    html += `<div style="margin-top:12px;font-size:11px;color:var(--muted)">${t('cmp_migrated_at')} ${new Date(r.migratedAt).toLocaleString()}</div>`;
+  }
+
+  // Herkomst: hvad siger manifestet om hvordan målet er blevet som det er?
+  if (r.migratedAt) {
+    const isMig = r.recordKind !== 'baseline';
+    html += `<div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--muted);margin:18px 0 8px">` +
+            `${isMig ? t('cmp_provenance') : t('cmp_provenance_baseline')}</div>`;
+
+    if (isMig) {
+      html += row(t('cmp_prov_from'),
+        (r.manifestSourceName || '—') + (r.manifestSourceVersion ? '   v' + r.manifestSourceVersion : ''));
+      if (r.manifestAction) html += row(t('cmp_prov_action'), r.manifestAction);
+    }
+    html += row(isMig ? t('cmp_prov_when') : t('cmp_baseline_ref'), new Date(r.migratedAt).toLocaleString());
+
+    // Den konklusion man er ude efter: svarer målet til den kildeversion det
+    // blev bygget af, og er indholdet stadig ens?
+    if (isMig && r.verdict === 'identical') {
+      const moved = r.manifestSourceVersion != null && String(r.manifestSourceVersion) !== String(r.sourceVersion);
+      html += moved
+        ? `<div style="margin-top:10px;padding:8px 12px;background:rgba(241,196,15,.12);color:var(--yellow);font-size:12px">` +
+          `⚠ ${t('cmp_sync_moved').replace('{built}', 'v' + r.manifestSourceVersion).replace('{now}', 'v' + r.sourceVersion)}</div>`
+        : `<div style="margin-top:10px;padding:8px 12px;background:rgba(46,204,113,.12);color:var(--green);font-size:12px;font-weight:600">` +
+          `✓ ${t('cmp_sync_ok').replace('{v}', 'v' + (r.manifestSourceVersion ?? r.sourceVersion))}</div>`;
+    }
   }
 
   if ((r.diffs || []).length) {

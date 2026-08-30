@@ -1173,6 +1173,10 @@ app.post('/api/flows/compare', async (req, res) => {
       sourceVersion: src.version, targetVersion: tgt.version,
       sourceHash, targetHash, diffCount, diffs, drift,
       migratedAt: rec?.ts || null, recordKind: rec?.kind || (rec ? 'migration' : null),
+      // Herkomst fra manifestet, så dialogen kan sige hvad målet er bygget af
+      manifestSourceName: rec?.sourceName || null,
+      manifestSourceVersion: rec?.sourceVersion ?? null,
+      manifestAction: rec?.action || null,
       srcPub, tgtPub, publishedAfterMigration });
 
   } catch (e) {
@@ -2305,8 +2309,14 @@ app.post('/api/migrate/commit', async (req, res) => {
     });
     res.json({ ok: true, fileName: path.basename(resolved), output: out, yaml: fs.readFileSync(resolved, 'utf8') });
   } catch (e) {
-    addLog('ERROR', `Migration failed for "${flowName}": ${e.message}`, target.name, 'MIGRATE');
-    res.status(500).json({ error: e.message });
+    let msg = e.message || '';
+    // "create" fejler når flowet allerede findes i mål-org'en. Archy foreslår
+    // --recreate, men i praksis vil man vælge update eller publish i stedet.
+    if (/already exists/i.test(msg) && (action || 'create') === 'create') {
+      msg += ' — vælg "update" eller "publish" i Handling for at overskrive det eksisterende flow.';
+    }
+    addLog('ERROR', `Migration failed for "${flowName}": ${msg}`, target.name, 'MIGRATE');
+    res.status(500).json({ error: msg });
   }
 });
 
