@@ -941,6 +941,47 @@ async function exportFlowToYaml(customer, flowName, flowType) {
   return { yaml: fs.readFileSync(path.join(dir, fileName), 'utf8'), fileName, version: versionFromFileName(fileName) };
 }
 
+// Hvornår blev flowet sidst publiceret, og af hvem? Det er den oplysning der
+// afslører om nogen har rettet direkte i mål-org'en efter en migrering.
+async function getFlowPublishInfo(customer, flowName, flowType) {
+  const { token, apiBase } = await getToken(customer);
+  const H = { headers: { Authorization: `Bearer ${token}` } };
+  let page = 1, hit = null;
+  while (!hit) {
+    const r = await axios.get(`${apiBase}/api/v2/flows`, {
+      ...H, params: { pageSize: 100, pageNumber: page, type: String(flowType).toLowerCase() }
+    });
+    const e = r.data.entities || [];
+    hit = e.find(f => f.name === flowName) || null;
+    if (hit || e.length < 100) break;
+    page++;
+  }
+  if (!hit) return null;
+
+  const pv = hit.publishedVersion;
+  // Et flow kan være checked in uden nogensinde at være publiceret. Det er
+  // værd at vide: flowet findes i org'en, men er ikke i drift.
+  if (!pv) return { version: hit.checkedInVersion?.name || null, publishedAt: null,
+                    publishedBy: null, active: !!hit.active };
+
+  let by = null;
+  if (pv.createdBy?.id) {
+    try {
+      const u = await axios.get(`${apiBase}/api/v2/users/${pv.createdBy.id}`, H);
+      by = u.data.name || u.data.email || null;
+    } catch (_) {
+      // 404 = brugeren findes ikke længere. Et rå GUID hjælper ingen.
+      by = null;
+    }
+  }
+  return {
+    version: pv.name || pv.commitVersion || null,
+    publishedAt: pv.dateCheckedIn || pv.dateCreated || null,
+    publishedBy: by,
+    active: !!hit.active
+  };
+}
+
 // ── Migreringsmanifest ────────────────────────────────────────────────────────
 // Hvad blev migreret hvorhen, og hvilket indhold havde det. Ligger under flows/
 // som resten af de lokale arbejdsfiler.
@@ -982,9 +1023,15 @@ app.post('/api/flows/compare', async (req, res) => {
       else throw e;
     }
 
+    // Publiceringsoplysninger — hentes uafhængigt af indholdssammenligningen
+    const [srcPub, tgtPub] = await Promise.all([
+      getFlowPublishInfo(source, flowName, flowType).catch(() => null),
+      missingInTarget ? Promise.resolve(null) : getFlowPublishInfo(target, flowName, flowType).catch(() => null)
+    ]);
+
     if (missingInTarget) {
       return res.json({ ok: true, verdict: 'missing', flowName, flowType,
-        sourceVersion: src.version, sourceHash: flowContentHash(src.yaml) });
+        sourceVersion: src.version, sourceHash: flowContentHash(src.yaml), srcPub });
     }
 
     const nsrc = normalizeFlowYaml(src.yaml), ntgt = normalizeFlowYaml(tgt.yaml);
@@ -1018,9 +1065,18 @@ app.post('/api/flows/compare', async (req, res) => {
       `Sammenligning "${flowName}": ${source.name} v${src.version} ↔ ${target.name} v${tgt.version} — ` +
       (same ? 'identisk indhold' : `${diffCount} forskelle`), target.name, 'MIGRATE');
 
+    // Er målet publiceret EFTER vi migrerede det, har nogen rettet direkte i
+    // mål-org'en. Det er den situation man ikke opdager ved at kigge på
+    // versionsnumre — og præcis den man vil fange.
+    let publishedAfterMigration = null;
+    if (rec?.ts && tgtPub?.publishedAt) {
+      publishedAfterMigration = tgtPub.publishedAt > new Date(rec.ts).getTime();
+    }
+
     res.json({ ok: true, verdict: same ? 'identical' : 'different', flowName, flowType,
       sourceVersion: src.version, targetVersion: tgt.version,
-      sourceHash, targetHash, diffCount, diffs, drift, migratedAt: rec?.ts || null });
+      sourceHash, targetHash, diffCount, diffs, drift, migratedAt: rec?.ts || null,
+      srcPub, tgtPub, publishedAfterMigration });
 
   } catch (e) {
     res.status(500).json({ error: e.message });

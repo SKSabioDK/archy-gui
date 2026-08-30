@@ -454,7 +454,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.12.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.13.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -531,7 +531,7 @@
           </div>
           <div style="flex:1">
             <label data-i18n="cmp_against">Sammenlign mod org (valgfrit)</label>
-            <select id="fb-compare" onchange="renderFlowTable(allFlows)"></select>
+            <select id="fb-compare" onchange="applyFlowFilter()"></select>
           </div>
           <button class="btn btn-secondary" onclick="loadFlows()" data-i18n="btn_reload">🔄 Genindlæs</button>
         </div>
@@ -540,7 +540,12 @@
       <div class="card" id="flowTableCard" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <div class="card-title" style="margin:0">FLOWS (<span id="flowCount">0</span>)</div>
-          <input style="width:220px" data-i18n-placeholder="ph_search_flow" placeholder="🔍  Søg flow…" oninput="filterFlows(this.value)" />
+          <div style="display:flex;gap:8px">
+            <select id="fb-type-filter" style="width:170px" onchange="applyFlowFilter()">
+              <option value="" data-i18n="fb_all_types">Alle typer</option>
+            </select>
+            <input id="fb-search" style="width:220px" data-i18n-placeholder="ph_search_flow" placeholder="🔍  Søg flow…" oninput="applyFlowFilter()" />
+          </div>
         </div>
         <table class="flow-table">
           <thead><tr>
@@ -1246,6 +1251,12 @@ const LANGS = {
     cmp_drift_source:'Kilden er ændret siden migreringen — målet er forældet.',
     cmp_drift_target:'Målet er ændret efter migreringen — nogen har rettet direkte i mål-org\'en.',
     cmp_drift_both:'Både kilde og mål er ændret siden migreringen.',
+    fb_all_types:'Alle typer',
+    cmp_source_published:'Kilde publiceret',
+    cmp_target_published:'Mål publiceret',
+    cmp_never_published:'aldrig publiceret',
+    cmp_published_after:'Målet er publiceret EFTER migreringen — nogen har ændret det direkte i mål-org\'en.',
+    cmp_not_touched:'Målet er ikke publiceret siden migreringen.',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1482,6 +1493,12 @@ const LANGS = {
     cmp_drift_source:'The source has changed since the migration — the target is out of date.',
     cmp_drift_target:'The target has changed since the migration — someone edited it directly in the target org.',
     cmp_drift_both:'Both source and target have changed since the migration.',
+    fb_all_types:'All types',
+    cmp_source_published:'Source published',
+    cmp_target_published:'Target published',
+    cmp_never_published:'never published',
+    cmp_published_after:'The target was published AFTER the migration — someone changed it directly in the target org.',
+    cmp_not_touched:'The target has not been published since the migration.',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -1718,6 +1735,12 @@ const LANGS = {
     cmp_drift_source:'La source a changé depuis la migration — la cible est obsolète.',
     cmp_drift_target:'La cible a changé depuis la migration — quelqu\'un l\'a modifiée directement dans l\'org cible.',
     cmp_drift_both:'La source et la cible ont toutes deux changé depuis la migration.',
+    fb_all_types:'Tous les types',
+    cmp_source_published:'Source publiée',
+    cmp_target_published:'Cible publiée',
+    cmp_never_published:'jamais publiée',
+    cmp_published_after:'La cible a été publiée APRÈS la migration — quelqu\'un l\'a modifiée directement dans l\'org cible.',
+    cmp_not_touched:'La cible n\'a pas été publiée depuis la migration.',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -1954,6 +1977,12 @@ const LANGS = {
     cmp_drift_source:'De bron is gewijzigd sinds de migratie — het doel is verouderd.',
     cmp_drift_target:'Het doel is gewijzigd na de migratie — iemand heeft het direct in de doel-org aangepast.',
     cmp_drift_both:'Zowel bron als doel zijn gewijzigd sinds de migratie.',
+    fb_all_types:'Alle types',
+    cmp_source_published:'Bron gepubliceerd',
+    cmp_target_published:'Doel gepubliceerd',
+    cmp_never_published:'nooit gepubliceerd',
+    cmp_published_after:'Het doel is gepubliceerd NA de migratie — iemand heeft het direct in de doel-org gewijzigd.',
+    cmp_not_touched:'Het doel is niet gepubliceerd sinds de migratie.',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -2190,6 +2219,12 @@ const LANGS = {
     cmp_drift_source:'El origen ha cambiado desde la migración — el destino está desactualizado.',
     cmp_drift_target:'El destino ha cambiado tras la migración — alguien lo editó directamente en la org de destino.',
     cmp_drift_both:'Tanto el origen como el destino han cambiado desde la migración.',
+    fb_all_types:'Todos los tipos',
+    cmp_source_published:'Origen publicado',
+    cmp_target_published:'Destino publicado',
+    cmp_never_published:'nunca publicado',
+    cmp_published_after:'El destino se publicó DESPUÉS de la migración — alguien lo cambió directamente en la org de destino.',
+    cmp_not_touched:'El destino no se ha publicado desde la migración.',
   }
 };
 
@@ -2569,7 +2604,19 @@ async function loadFlows() {
   if (data.error) return showAlert('flowAlert', data.error, 'err');
   allFlows = data;
   showAlert('flowAlert', '');
-  renderFlowTable(allFlows);
+  populateFlowTypeFilter();
+  applyFlowFilter();
+}
+
+// Typefilteret fyldes ud fra de typer der faktisk findes i org'en
+function populateFlowTypeFilter() {
+  const el = document.getElementById('fb-type-filter');
+  if (!el) return;
+  const cur = el.value;
+  const types = [...new Set(allFlows.map(f => f.type))].sort();
+  el.innerHTML = `<option value="" data-i18n="fb_all_types">${t('fb_all_types')}</option>`
+    + types.map(x => `<option value="${x}">${x} (${allFlows.filter(f => f.type === x).length})</option>`).join('');
+  if (cur) el.value = cur;
 }
 
 function renderFlowTable(flows) {
@@ -2589,10 +2636,18 @@ function renderFlowTable(flows) {
     </tr>`).join('');
 }
 
-function filterFlows(q) {
-  const filtered = allFlows.filter(f => f.name.toLowerCase().includes(q.toLowerCase()) || f.type.includes(q.toLowerCase()));
-  renderFlowTable(filtered);
+// Fælles filter for Flow Browser: fritekst OG flowtype.
+function applyFlowFilter() {
+  const q    = (document.getElementById('fb-search')?.value || '').toLowerCase();
+  const type = document.getElementById('fb-type-filter')?.value || '';
+  renderFlowTable(allFlows.filter(f =>
+    (!type || f.type === type) &&
+    (!q    || f.name.toLowerCase().includes(q))
+  ));
 }
+
+// Bevaret navn — ældre kald går gennem det fælles filter
+function filterFlows(q) { applyFlowFilter(); }
 
 async function prefillExport(name, type) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -5166,7 +5221,10 @@ function renderCompare(r) {
 
   if (r.verdict === 'missing')
     return `<div style="color:var(--yellow);font-size:14px;font-weight:600;margin-bottom:12px">⚠ ${t('cmp_missing')}</div>`
-         + row(t('cmp_source_version'), 'v' + r.sourceVersion);
+         + row(t('cmp_source_version'), 'v' + r.sourceVersion)
+         + row(t('cmp_source_published'), r.srcPub && r.srcPub.publishedAt
+             ? new Date(r.srcPub.publishedAt).toLocaleString() + (r.srcPub.publishedBy ? '  ·  ' + r.srcPub.publishedBy : '')
+             : '—');
 
   const head = r.verdict === 'identical'
     ? `<div style="color:var(--green);font-size:14px;font-weight:600;margin-bottom:4px">✓ ${t('cmp_identical')}</div>`
@@ -5174,12 +5232,32 @@ function renderCompare(r) {
 
   // Versionsnumrene vises til orientering — de er per-org tællere og siger
   // intet om indholdet. Det er hashen der afgør sagen.
+  // Publiceringstidspunkt og -bruger: det er dem der afslører en ændring lavet
+  // direkte i mål-org'en uden om dette værktøj.
+  const pub = p => !p ? '—'
+    : (p.publishedAt ? new Date(p.publishedAt).toLocaleString() : t('cmp_never_published'))
+      + (p.publishedBy ? '  ·  ' + p.publishedBy : '');
+
   let html = head
     + `<div style="font-size:11px;color:var(--muted);margin-bottom:14px">${t('cmp_version_note')}</div>`
     + row(t('cmp_source_version'), 'v' + r.sourceVersion + '   ' + (r.sourceHash || '').slice(0, 16))
-    + row(t('cmp_target_version'), 'v' + r.targetVersion + '   ' + (r.targetHash || '').slice(0, 16));
+    + row(t('cmp_source_published'), pub(r.srcPub))
+    + row(t('cmp_target_version'), 'v' + r.targetVersion + '   ' + (r.targetHash || '').slice(0, 16))
+    + row(t('cmp_target_published'), pub(r.tgtPub));
 
-  if (r.drift && r.drift !== 'none') {
+  // Den vigtigste enkeltoplysning: er målet publiceret efter vores migrering?
+  if (r.publishedAfterMigration === true) {
+    html += `<div style="margin-top:14px;padding:10px 12px;background:rgba(231,76,60,.12);color:var(--red);font-size:12px;font-weight:600">` +
+            `⚠ ${t('cmp_published_after')}</div>`;
+  } else if (r.publishedAfterMigration === false) {
+    html += `<div style="margin-top:14px;padding:8px 12px;background:rgba(46,204,113,.10);color:var(--green);font-size:12px">` +
+            `✓ ${t('cmp_not_touched')}</div>`;
+  }
+
+  // Sig ikke det samme to gange: er målet publiceret efter migreringen,
+  // er 'målet er ændret' allerede sagt tydeligere ovenfor.
+  const driftRedundant = r.drift === 'target' && r.publishedAfterMigration === true;
+  if (r.drift && r.drift !== 'none' && !driftRedundant) {
     const txt = r.drift === 'both' ? t('cmp_drift_both')
               : r.drift === 'target' ? t('cmp_drift_target') : t('cmp_drift_source');
     html += `<div style="margin-top:12px;padding:8px 12px;background:rgba(241,196,15,.12);color:var(--yellow);font-size:12px">${txt}</div>`;

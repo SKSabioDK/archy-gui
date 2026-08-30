@@ -1,10 +1,25 @@
-# Archy GUI — Flow Manager · v1.12.0
+# Archy GUI — Flow Manager · v1.13.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.13.0
+---
+**🇩🇰 Dansk**
+- **Typefilter i Flow Browser** — Rullemenu med de flowtyper der faktisk findes i org'en, med antal pr. type (`WORKFLOW (20)`). Vælges en type, vises kun den. Filteret virker sammen med fritekstsøgningen.
+- **Publiceringstidspunkt i sammenligningen** — Sammenligningsdialogen viser nu hvornår hver side sidst blev publiceret, og af hvem. Er flowet aldrig publiceret, står det eksplicit — det er værd at vide, for så findes flowet i org'en uden at være i drift.
+- **⚠️ Fanger ændringer lavet direkte i prod** — Er mål-flowet publiceret **efter** det tidspunkt hvor vi migrerede det, siger dialogen det tydeligt: *"Målet er publiceret EFTER migreringen — nogen har ændret det direkte i mål-org'en."* Det er præcis den situation hvor nogen har rettet i prod uden at føre ændringen tilbage til dev.
+- Er brugeren der publicerede slettet siden, udelades navnet i stedet for at vise et rå GUID.
+
+---
+**🇬🇧 English**
+- **Type filter in Flow Browser** — A dropdown with the flow types actually present in the org, with a count per type (`WORKFLOW (20)`). Picking a type shows only that type. The filter works together with the free-text search.
+- **Publish timestamps in the comparison** — The comparison dialog now shows when each side was last published, and by whom. If a flow has never been published that is stated explicitly — worth knowing, since the flow then exists in the org without being live.
+- **⚠️ Catches changes made directly in prod** — If the target flow was published **after** the time we migrated it, the dialog says so plainly: *"The target was published AFTER the migration — someone changed it directly in the target org."* That is exactly the case where someone fixed something in prod without carrying it back to dev.
+- If the publishing user has since been deleted, the name is omitted rather than showing a raw GUID.
 
 ### v1.12.0
 ---
@@ -461,7 +476,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.12.0** — see [Changelog](#changelog) above.
+> Current version: **v1.13.0** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
