@@ -454,7 +454,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.14.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.14.1 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -598,15 +598,10 @@
             </div>
           </div>
           <div style="display:flex;gap:8px">
-            <select id="m-type-filter" style="width:150px" onchange="applyMigrateFilter()">
+            <!-- Fyldes fra de typer org'en faktisk har — en hardkodet liste
+                 manglede bl.a. COMMONMODULE, INQUEUECALL og VOICESURVEY -->
+            <select id="m-type-filter" style="width:170px" onchange="applyMigrateFilter()">
               <option value="" data-i18n="opt_all_types">Alle typer</option>
-              <option value="inboundcall">InboundCall</option>
-              <option value="outboundcall">OutboundCall</option>
-              <option value="inboundshortmessage">InboundSMS</option>
-              <option value="inboundemail">InboundEmail</option>
-              <option value="workflow">Workflow</option>
-              <option value="digitalbot">DigitalBot</option>
-              <option value="bot">Bot</option>
             </select>
             <input id="m-search" style="width:200px" data-i18n-placeholder="placeholder_filter"
               placeholder="🔍  Skriv for at filtrere…" oninput="applyMigrateFilter()"/>
@@ -2734,8 +2729,22 @@ async function onMigrateSourceChange() {
     return;
   }
   migrateFlows = data;
-  renderMigrateFlows(migrateFlows);
+  populateMigrateTypeFilter();
+  applyMigrateFilter();
   document.querySelector('#mstep-2').classList.add('active');
+}
+
+// Typefilteret på Migrer Flow fyldes ud fra de typer kilde-org'en faktisk har,
+// så ingen flowtype kan mangle. Værdierne er små bogstaver, som filteret
+// sammenligner på.
+function populateMigrateTypeFilter() {
+  const el = document.getElementById('m-type-filter');
+  if (!el) return;
+  const cur = el.value;
+  const types = [...new Set(migrateFlows.map(f => f.type))].sort();
+  el.innerHTML = `<option value="" data-i18n="opt_all_types">${t('opt_all_types')}</option>`
+    + types.map(x => `<option value="${x.toLowerCase()}">${x} (${migrateFlows.filter(f => f.type === x).length})</option>`).join('');
+  if (cur) el.value = cur;
 }
 
 function renderMigrateFlows(flows) {

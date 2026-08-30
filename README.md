@@ -1,10 +1,19 @@
-# Archy GUI — Flow Manager · v1.14.0
+# Archy GUI — Flow Manager · v1.14.1
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.14.1
+---
+**🇩🇰 Dansk**
+- **Typefilteret på Migrer Flow manglede seks flowtyper** — Listen var hardkodet med syv typer og udelod **COMMONMODULE**, INQUEUECALL, INQUEUEEMAIL, INQUEUESHORTMESSAGE, SECURECALL, VOICEMAIL og VOICESURVEY. Man kunne altså ikke filtrere til common modules og migrere dem selvstændigt. Filteret fyldes nu ud fra de typer kilde-org'en faktisk har, med antal pr. type — så ingen type kan mangle igen. VF NL viser nu alle 13 typer.
+
+---
+**🇬🇧 English**
+- **The type filter on Migrate Flow was missing six flow types** — The list was hardcoded with seven types and left out **COMMONMODULE**, INQUEUECALL, INQUEUEEMAIL, INQUEUESHORTMESSAGE, SECURECALL, VOICEMAIL and VOICESURVEY. That made it impossible to filter to common modules and migrate them on their own. The filter is now populated from the types the source org actually has, with a count per type — so no type can go missing again. VF NL now shows all 13 types.
 
 ### v1.14.0
 ---
@@ -497,7 +506,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.14.0** — see [Changelog](#changelog) above.
+> Current version: **v1.14.1** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
