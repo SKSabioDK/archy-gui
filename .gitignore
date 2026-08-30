@@ -7,3 +7,6 @@ Thumbs.db
 
 # Per-maskine Claude Code permissions — hoerer ikke i repoet
 .claude/settings.local.json
+
+# CA-bundle bygget ved opstart til Archy-processen
+.archy-ca.pem

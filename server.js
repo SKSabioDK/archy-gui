@@ -1174,17 +1174,50 @@ function archyErrorReason(out) {
   return summary;
 }
 
+// Archy er en kompileret .exe med sin egen indlejrede Node. Den forstår IKKE
+// --use-system-ca (flaget kom i Node 22.15, binæren er ældre), så bag TLS-
+// inspektion — Norton, firmaproxy — fejler den med UNABLE_TO_VERIFY_LEAF_SIGNATURE
+// og rapporterer det misvisende som ugyldige credentials.
+//
+// NODE_EXTRA_CA_CERTS respekterer den derimod. Vi kan ikke regne med at
+// variablen er sat i miljøet, så vi skriver vores eget bundle: Nodes indbyggede
+// rødder + Windows' certifikatlager (hvor proxyens root ligger installeret).
+// Målt: bundle uden proxyens egen .pem er nok, så løsningen er ikke Norton-specifik.
+let ARCHY_CA_BUNDLE = null;
+function ensureArchyCaBundle() {
+  if (ARCHY_CA_BUNDLE !== null) return ARCHY_CA_BUNDLE;
+  ARCHY_CA_BUNDLE = false;
+  try {
+    const tls = require('tls');
+    if (typeof tls.getCACertificates !== 'function') return ARCHY_CA_BUNDLE;  // Node < 22.15
+    const seen = new Set(), pems = [];
+    for (const kind of ['bundled', 'system', 'extra']) {
+      let certs = [];
+      try { certs = tls.getCACertificates(kind) || []; } catch (_) {}
+      for (const pem of certs) if (pem && !seen.has(pem)) { seen.add(pem); pems.push(pem.trim()); }
+    }
+    if (!pems.length) return ARCHY_CA_BUNDLE;
+    const file = path.join(__dirname, '.archy-ca.pem');
+    fs.writeFileSync(file, pems.join('\n') + '\n');
+    ARCHY_CA_BUNDLE = file;
+    addLog('INFO', `CA-bundle til Archy skrevet (${pems.length} certifikater)`, null, 'SYSTEM');
+  } catch (e) {
+    addLog('WARN', `Kunne ikke bygge CA-bundle til Archy: ${e.message}`, null, 'SYSTEM');
+  }
+  return ARCHY_CA_BUNDLE;
+}
+
 function runArchy(args, customer) {
   return new Promise((resolve, reject) => {
     if (!ARCHY_DIR) return reject(new Error('archy not found in PATH'));
     const cmd = `archy ${args} ${archyCredFlags(customer)}`;
+    const bundle = ensureArchyCaBundle();
+    const env = { ...process.env };
+    if (bundle) env.NODE_EXTRA_CA_CERTS = bundle;
     exec(cmd, {
       cwd: ARCHY_DIR, shell: 'cmd.exe', timeout: 120000,
       maxBuffer: 20 * 1024 * 1024,      // Archys debug-output kan være stort
-      // Archy er sin egen Node-proces og arver ikke GUI'ens --use-system-ca.
-      // Uden den fejler den med UNABLE_TO_VERIFY_LEAF_SIGNATURE når Norton
-      // eller en firmaproxy gensignerer HTTPS.
-      env: { ...process.env, NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --use-system-ca`.trim() }
+      env
     }, (err, stdout, stderr) => {
       const combined = (stdout || '') + '\n' + (stderr || '');
       const parsed   = parseArchyOutput(combined) || '';

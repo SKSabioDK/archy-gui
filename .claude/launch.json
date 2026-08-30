@@ -5,7 +5,8 @@
       "name": "archy-gui",
       "runtimeExecutable": "node",
       "runtimeArgs": ["--use-system-ca", "server.js"],
-      "port": 3737
+      "port": 3737,
+      "autoPort": false
     }
   ]
 }
