@@ -1709,6 +1709,82 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
   }
 }
 
+// Opretter en manglende division i mål-org'en.
+app.post('/api/divisions/create', async (req, res) => {
+  const { targetId, name } = req.body;
+  const target = loadCustomers().find(c => c.id === targetId);
+  if (!target) return res.status(404).json({ error: 'Customer not found' });
+  try {
+    const { token, apiBase } = await getToken(target);
+    const H = { headers: { Authorization: `Bearer ${token}` } };
+    const ex = await axios.get(`${apiBase}/api/v2/authorization/divisions`, { ...H, params: { pageSize: 200 } });
+    if ((ex.data.entities || []).some(d => d.name === name))
+      return res.status(409).json({ error: 'already_exists', message: `Division "${name}" findes allerede` });
+
+    const r = await axios.post(`${apiBase}/api/v2/authorization/divisions`, { name },
+      { headers: { ...H.headers, 'Content-Type': 'application/json' } });
+    addLog('SUCCESS', `Division "${name}" oprettet i ${target.name}`, target.name, 'MIGRATE');
+    res.json({ ok: true, id: r.data.id, name });
+  } catch (e) {
+    const msg = describeApiError(e);
+    addLog('ERROR', `Kunne ikke oprette division "${name}": ${msg}`, target.name, 'MIGRATE');
+    res.status(500).json({ error: msg });
+  }
+});
+
+// Kopierer en survey forms definition fra kilde- til mål-org.
+app.post('/api/surveyforms/migrate', async (req, res) => {
+  const { sourceId, targetId, name } = req.body;
+  const source = loadCustomers().find(c => c.id === sourceId);
+  const target = loadCustomers().find(c => c.id === targetId);
+  if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
+  try {
+    const { token: srcToken, apiBase: srcBase } = await getToken(source);
+    const SH = { headers: { Authorization: `Bearer ${srcToken}` } };
+    const list = await axios.get(`${srcBase}/api/v2/quality/forms/surveys`, { ...SH, params: { pageSize: 200 } });
+    const hit = (list.data.entities || []).find(f => f.name === name);
+    if (!hit) return res.status(400).json({ error: `Survey form "${name}" findes ikke i ${source.name}` });
+    const full = (await axios.get(`${srcBase}/api/v2/quality/forms/surveys/${hit.id}`, SH)).data;
+
+    const { token: tgtToken, apiBase: tgtBase } = await getToken(target);
+    const TH = { headers: { Authorization: `Bearer ${tgtToken}`, 'Content-Type': 'application/json' } };
+    const ex = await axios.get(`${tgtBase}/api/v2/quality/forms/surveys`,
+      { headers: { Authorization: `Bearer ${tgtToken}` }, params: { pageSize: 200 } });
+    if ((ex.data.entities || []).some(f => f.name === name))
+      return res.status(409).json({ error: 'already_exists', message: `Survey form "${name}" findes allerede` });
+
+    // id/contextId/selfUri/modifiedDate hører til kildens form og skal ikke med
+    const body = {
+      name: full.name,
+      language: full.language,
+      published: full.published,
+      disabled: full.disabled,
+      questionGroups: stripFormIds(full.questionGroups || [])
+    };
+    const r = await axios.post(`${tgtBase}/api/v2/quality/forms/surveys`, body, TH);
+    addLog('SUCCESS', `Survey form "${name}" kopieret til ${target.name}`, target.name, 'MIGRATE');
+    res.json({ ok: true, id: r.data.id, name });
+  } catch (e) {
+    const msg = describeApiError(e);
+    addLog('ERROR', `Kunne ikke kopiere survey form "${name}": ${msg}`, target.name, 'MIGRATE');
+    res.status(500).json({ error: msg });
+  }
+});
+
+// Fjerner id'er fra en formdefinition — de peger på kildens form.
+function stripFormIds(node) {
+  if (Array.isArray(node)) return node.map(stripFormIds);
+  if (node && typeof node === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(node)) {
+      if (k === 'id' || k === 'contextId' || k === 'selfUri') continue;
+      out[k] = stripFormIds(v);
+    }
+    return out;
+  }
+  return node;
+}
+
 app.post('/api/flows/migrate-dependency', async (req, res) => {
   const { sourceId, targetId, flowName, flowType } = req.body;
   const source = loadCustomers().find(c => c.id === sourceId);
@@ -1848,6 +1924,15 @@ app.post('/api/migrate/prepare', async (req, res) => {
         const hit = srcFlows.find(f => f.name === r.name);
         if (!hit) r.manualReason = 'not_in_source';
         else { r.canMigrate = true; r.flowName = hit.name; r.flowType = hit.type; }
+      } else if (r.kind === 'division') {
+        // En manglende division kan enten oprettes, eller flowet kan lægges i
+        // Home i stedet. Begge dele er indgreb, så brugeren skal vælge.
+        r.needsChoice = true;
+        r.choices = ['create', 'useHome', 'skip'];
+      } else if (r.kind === 'surveyform') {
+        // Survey forms har en fuld definition der kan kopieres
+        r.needsChoice = true;
+        r.choices = ['copy', 'skip'];
       } else {
         r.manualReason = 'manual_only';  // køer, skills, wrapup, scripts, prompts, divisioner
       }
@@ -1876,7 +1961,7 @@ app.post('/api/migrate/prepare', async (req, res) => {
 
 // Fase 2: importér den allerede eksporterede fil til mål-org'en.
 app.post('/api/migrate/commit', async (req, res) => {
-  const { sourceId, targetId, flowName, filePath, action } = req.body;
+  const { sourceId, targetId, flowName, filePath, action, divisionMap } = req.body;
   const source = loadCustomers().find(c => c.id === sourceId);
   const target = loadCustomers().find(c => c.id === targetId);
   if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
@@ -1888,6 +1973,20 @@ app.post('/api/migrate/commit', async (req, res) => {
   }
 
   try {
+    // Valgte brugeren "brug Home" for en manglende division, skrives det om i
+    // YAML'en før importen. Kun de navngivne divisioner røres.
+    if (divisionMap && Object.keys(divisionMap).length) {
+      let yaml = fs.readFileSync(resolved, 'utf8');
+      for (const [from, to] of Object.entries(divisionMap)) {
+        const re = new RegExp('^([ \\t]*division:[ \\t]*["\']?)' +
+          from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(["\']?[ \\t]*)$', 'gm');
+        const before = yaml;
+        yaml = yaml.replace(re, `$1${to}$2`);
+        if (yaml !== before) addLog('INFO', `Division "${from}" → "${to}" i "${flowName}"`, target.name, 'MIGRATE');
+      }
+      fs.writeFileSync(resolved, yaml, 'utf8');
+    }
+
     const cmd = action || 'create';
     addLog('INFO', `Importing "${path.basename(resolved)}" to ${target.name} (action: ${cmd})`, target.name, 'MIGRATE');
     const out = await runArchy(`${cmd} --file "${resolved}"`, target);

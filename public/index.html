@@ -454,7 +454,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.10.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.11.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1209,6 +1209,11 @@ const LANGS = {
     dep_migrating:'Migrerer afhængigheder…',
     dep_failed_count:'afhængigheder fejlede',
     dep_skipped_flow:'Flowet sprunget over',
+    dep_choice:'KRÆVER ET VALG',
+    dep_choice_create:'Opret i mål-org',
+    dep_choice_useHome:'Brug Home i stedet',
+    dep_choice_copy:'Kopiér fra kilde-org',
+    dep_choice_skip:'Spring over',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1424,6 +1429,11 @@ const LANGS = {
     dep_migrating:'Migrating dependencies…',
     dep_failed_count:'dependencies failed',
     dep_skipped_flow:'Flow skipped',
+    dep_choice:'NEEDS A DECISION',
+    dep_choice_create:'Create in target org',
+    dep_choice_useHome:'Use Home instead',
+    dep_choice_copy:'Copy from source org',
+    dep_choice_skip:'Skip',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -1639,6 +1649,11 @@ const LANGS = {
     dep_migrating:'Migration des dépendances…',
     dep_failed_count:'dépendances en échec',
     dep_skipped_flow:'Flow ignoré',
+    dep_choice:'DÉCISION REQUISE',
+    dep_choice_create:'Créer dans l\'org cible',
+    dep_choice_useHome:'Utiliser Home à la place',
+    dep_choice_copy:'Copier depuis l\'org source',
+    dep_choice_skip:'Ignorer',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -1854,6 +1869,11 @@ const LANGS = {
     dep_migrating:'Afhankelijkheden migreren…',
     dep_failed_count:'afhankelijkheden mislukt',
     dep_skipped_flow:'Flow overgeslagen',
+    dep_choice:'VEREIST EEN KEUZE',
+    dep_choice_create:'Aanmaken in doel-org',
+    dep_choice_useHome:'Gebruik Home in plaats daarvan',
+    dep_choice_copy:'Kopiëren uit bron-org',
+    dep_choice_skip:'Overslaan',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -2069,6 +2089,11 @@ const LANGS = {
     dep_migrating:'Migrando dependencias…',
     dep_failed_count:'dependencias fallaron',
     dep_skipped_flow:'Flow omitido',
+    dep_choice:'REQUIERE UNA DECISIÓN',
+    dep_choice_create:'Crear en la org de destino',
+    dep_choice_useHome:'Usar Home en su lugar',
+    dep_choice_copy:'Copiar de la org de origen',
+    dep_choice_skip:'Omitir',
   }
 };
 
@@ -2671,15 +2696,33 @@ async function runMigration() {
       if (prep.error) { log(logBox, `  ✗ ${prep.error}`, 'err'); failed++; continue; }
 
       const missing = (prep.deps || []).filter(d => !d.ok);
+      const divisionMap = {};   // fyldes hvis brugeren vælger "brug Home"
       if (missing.length) {
         log(logBox, `  ⚠ ${missing.length} ${t('dep_missing_count')}`, 'info');
-        const { choice, picked } = await showDepModal(name, missing, prep.dynamicSkills);
+        const { choice, picked, decisions } = await showDepModal(name, missing, prep.dynamicSkills);
         if (choice === 'cancel') { log(logBox, `  ⊘ ${t('dep_skipped_flow')}`, 'info'); skipped++; continue; }
-        if (choice === 'migrate' && picked.length) {
-          log(logBox, `  ${t('dep_migrating')}`, 'info');
-          let depFail = 0;
-          for (const d of picked) if (!await migrateOneDep(d, sourceId, targetId, logBox)) depFail++;
-          if (depFail) log(logBox, `  ⚠ ${depFail} ${t('dep_failed_count')}`, 'info');
+        if (choice === 'migrate') {
+          if (picked.length) {
+            log(logBox, `  ${t('dep_migrating')}`, 'info');
+            let depFail = 0;
+            for (const d of picked) if (!await migrateOneDep(d, sourceId, targetId, logBox)) depFail++;
+            if (depFail) log(logBox, `  ⚠ ${depFail} ${t('dep_failed_count')}`, 'info');
+          }
+          // Valg der kræver en beslutning: opret division / brug Home / kopiér survey form
+          for (const { dep, action: act } of (decisions || [])) {
+            if (act === 'useHome') { divisionMap[dep.name] = 'Home';
+              log(logBox, `    ↦ ${dep.name} → Home`, 'info'); continue; }
+            const url  = act === 'create' ? '/api/divisions/create' : '/api/surveyforms/migrate';
+            const body = act === 'create' ? { targetId, name: dep.name }
+                                          : { sourceId, targetId, name: dep.name };
+            try {
+              const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body) }).then(x => x.json());
+              if (r.error === 'already_exists') log(logBox, `    ⚠ ${dep.name}: ${t('da_exists')}`, 'info');
+              else if (r.error) log(logBox, `    ✗ ${dep.name}: ${r.error}`, 'err');
+              else log(logBox, `    ✓ ${dep.name}`, 'ok');
+            } catch (e) { log(logBox, `    ✗ ${dep.name}: ${e.message}`, 'err'); }
+          }
         }
       } else {
         log(logBox, `  ✓ ${t('dep_all_present')}`, 'ok');
@@ -2688,7 +2731,7 @@ async function runMigration() {
       // Fase 2: importér flowet
       const data = await fetch('/api/migrate/commit', {
         method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ sourceId, targetId, flowName: name, filePath: prep.filePath, action })
+        body: JSON.stringify({ sourceId, targetId, flowName: name, filePath: prep.filePath, action, divisionMap })
       }).then(r => r.json());
       if (data.error) { log(logBox, `  ✗ ${data.error}`, 'err'); failed++; }
       else { log(logBox, `  ✓ ${data.fileName} → ${action} OK`, 'ok'); ok++; }
@@ -4998,14 +5041,18 @@ let depResolver = null;
 function depResolve(choice) {
   const picked = [...document.querySelectorAll('#dep-body input[type=checkbox]:checked')]
     .map(cb => JSON.parse(cb.dataset.dep));
+  const decisions = [...document.querySelectorAll('#dep-body select[data-choice]')]
+    .map(sel => ({ dep: JSON.parse(sel.dataset.choice), action: sel.value }))
+    .filter(x => x.action && x.action !== 'skip');
   document.getElementById('dep-overlay').style.display = 'none';
-  if (depResolver) { depResolver({ choice, picked }); depResolver = null; }
+  if (depResolver) { depResolver({ choice, picked, decisions }); depResolver = null; }
 }
 
 // Viser rapporten og venter på brugerens valg. Mål-org'en er urørt indtil her.
 function showDepModal(flowName, missing, dynamicSkills) {
   const auto   = missing.filter(d => d.canMigrate);
-  const manual = missing.filter(d => !d.canMigrate);
+  const choice = missing.filter(d => !d.canMigrate && d.needsChoice);
+  const manual = missing.filter(d => !d.canMigrate && !d.needsChoice);
   document.getElementById('dep-flowname').textContent = flowName;
 
   const reason = d =>
@@ -5023,6 +5070,19 @@ function showDepModal(flowName, missing, dynamicSkills) {
         <span>${d.name}</span>
       </label>`).join('');
   }
+  if (choice.length) {
+    html += `<div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--blue);margin:${auto.length ? '18px' : '0'} 0 8px">${t('dep_choice')}</div>`;
+    html += choice.map(d => {
+      const opts = (d.choices || []).map(c =>
+        `<option value="${c}">${t('dep_choice_' + c)}</option>`).join('');
+      return `
+      <div style="display:flex;align-items:center;gap:10px;padding:7px 0;font-size:13px">
+        <span style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:78px">${d.kind}</span>
+        <span style="flex:1">${d.name}</span>
+        <select style="width:auto;min-width:150px" data-choice='${JSON.stringify(d).replace(/'/g, "&apos;")}'>${opts}</select>
+      </div>`;
+    }).join('');
+  }
   if (manual.length) {
     html += `<div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--yellow);margin:${auto.length ? '18px' : '0'} 0 8px">${t('dep_manual')}</div>`;
     html += manual.map(d => `
@@ -5036,7 +5096,7 @@ function showDepModal(flowName, missing, dynamicSkills) {
     html += `<div style="margin-top:16px;font-size:11px;color:var(--muted);border-top:1px solid var(--border);padding-top:12px">${t('dep_dynamic_skills')}</div>`;
   }
   document.getElementById('dep-body').innerHTML = html;
-  document.getElementById('dep-btn-migrate').disabled = !auto.length;
+  document.getElementById('dep-btn-migrate').disabled = !auto.length && !choice.length;
   document.getElementById('dep-overlay').style.display = 'flex';
   return new Promise(resolve => { depResolver = resolve; });
 }

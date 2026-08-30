@@ -1,10 +1,29 @@
-# Archy GUI — Flow Manager · v1.10.0
+# Archy GUI — Flow Manager · v1.11.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.11.0
+---
+**🇩🇰 Dansk**
+- **⚖️ Ny sektion i dialogen: "Kræver et valg"** — Manglende ressourcer hvor der er mere end én rimelig håndtering får nu en rullemenu i stedet for blot at blive listet som manuelle.
+- **Manglende division** — Vælg mellem **Opret i mål-org**, **Brug Home i stedet** eller **Spring over**. Vælges Home, omskrives `division:`-linjerne i den eksporterede YAML før importen. Kun de navngivne divisioner røres — verificeret på en rigtig fil at ingen andre linjer ændres.
+- **Manglende survey form** — Vælg mellem **Kopiér fra kilde-org** eller **Spring over**. Definitionen hentes fra kilden, og `id`/`contextId`/`selfUri` strippes rekursivt, så den kopierede form ikke bærer referencer til kilde-org'en.
+- Valget træffes pr. ressource, og intet sker før du trykker **Migrér valgte og fortsæt**.
+
+> **Evaluation forms kan ikke tjekkes som flow-afhængighed.** De optræder kun som `evaluationFormID` / `evaluationFormIds` i YAML'en — altså variabelnavne og input til data actions, aldrig en statisk navnereference. Flowet slår formen op på kørselstidspunktet, typisk via et ID fra en DataTable, så der er ikke noget navn at kontrollere på forhånd.
+
+---
+**🇬🇧 English**
+- **⚖️ New dialog section: "Needs a decision"** — Missing resources where more than one handling is reasonable now get a dropdown instead of merely being listed as manual.
+- **Missing division** — Choose **Create in target org**, **Use Home instead** or **Skip**. Choosing Home rewrites the `division:` lines in the exported YAML before the import. Only the named divisions are touched — verified on a real file that no other line changes.
+- **Missing survey form** — Choose **Copy from source org** or **Skip**. The definition is fetched from the source and `id`/`contextId`/`selfUri` are stripped recursively so the copy carries no reference back to the source org.
+- The decision is made per resource, and nothing happens until you press **Migrate selected and continue**.
+
+> **Evaluation forms cannot be checked as a flow dependency.** They appear only as `evaluationFormID` / `evaluationFormIds` in the YAML — variable names and data action inputs, never a static name reference. The flow resolves the form at runtime, typically from an ID held in a DataTable, so there is no name to check up front.
 
 ### v1.10.0
 ---
@@ -423,7 +442,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.10.0** — see [Changelog](#changelog) above.
+> Current version: **v1.11.0** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
