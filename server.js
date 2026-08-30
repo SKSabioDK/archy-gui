@@ -1598,6 +1598,136 @@ app.post('/api/import', async (req, res) => {
 
 // ── Migrate (export + import in one go) ─────────────────────────────────────
 
+// Referencer der peger på et andet FLOW. De kan migreres med samme maskineri
+// som alt andet — et common module er bare et flow af typen COMMONMODULE.
+const FLOW_KINDS = new Set(['commonmodule', 'botflow', 'targetflow']);
+
+// Migrerer ét flow som afhængighed af et andet. Modulet kan selv have
+// afhængigheder — også andre common modules — så de tages først, nedefra og op.
+// 'visited' bryder cirkler, og dybden er begrænset for en sikkerheds skyld.
+async function migrateFlowDependency(source, target, flowName, flowType, visited, depth, trail) {
+  const key = `${flowType}|${flowName}`;
+  if (visited.has(key)) return { ok: true, skipped: 'cycle' };
+  visited.add(key);
+  if (depth > 5) return { ok: false, error: `For dybt afhængighedstræ ved "${flowName}"` };
+
+  const exportDir = path.join(FLOWS_DIR, sanitizeName(source.name));
+  if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir, { recursive: true });
+
+  const mtimes = f => { try { return fs.statSync(path.join(exportDir, f)).mtimeMs; } catch (_) { return 0; } };
+  const before = new Map(fs.readdirSync(exportDir).filter(f => f.endsWith('.yaml')).map(f => [f, mtimes(f)]));
+
+  await runArchy(
+    `export --flowName "${flowName}" --flowType ${String(flowType).toLowerCase()} --exportType yaml --force --outputDir "${exportDir}"`,
+    source
+  );
+  const touched = fs.readdirSync(exportDir).filter(f => f.endsWith('.yaml'))
+    .filter(f => !before.has(f) || mtimes(f) > before.get(f))
+    .sort((a, b) => mtimes(b) - mtimes(a));
+  if (!touched.length) return { ok: false, error: `Eksporten skrev ingen YAML-fil for "${flowName}"` };
+  const filePath = path.join(exportDir, touched[0]);
+
+  // Modulets egne afhængigheder først — ellers fejler dets import af samme
+  // grund som flowets ville have gjort.
+  const deps = scanYamlDependencies(fs.readFileSync(filePath, 'utf8'));
+  const { token: tgtToken, apiBase: tgtBase } = await getToken(target);
+
+  // 1) Tabeller og data actions modulet bruger
+  for (const kind of ['datatable', 'dataaction']) {
+    const names = deps[kind] || [];
+    if (!names.length) continue;
+    let existing = new Set();
+    try { existing = await lookupExisting(kind, names, tgtToken, tgtBase); } catch (_) {}
+    const missing = names.filter(n => !existing.has(n));
+    if (!missing.length) continue;
+
+    const { token: srcToken, apiBase: srcBase } = await getToken(source);
+    const SH = { headers: { Authorization: `Bearer ${srcToken}` } };
+    for (const n of missing) {
+      let url, body;
+      if (kind === 'datatable') {
+        const r = await axios.get(`${srcBase}/api/v2/flows/datatables`, { ...SH, params: { pageSize: 200 } });
+        const hit = (r.data.entities || []).find(t => t.name === n);
+        if (!hit) { trail.push(`⚠ tabel "${n}" findes ikke i kilde-org`); continue; }
+        url = '/api/datatables/migrate';
+        body = { sourceId: source.id, targetId: target.id, tableId: hit.id };
+      } else {
+        let all = [], p = 1;
+        while (true) {
+          const r = await axios.get(`${srcBase}/api/v2/integrations/actions`, { ...SH, params: { pageSize: 100, pageNumber: p } });
+          const e = r.data.entities || []; all = all.concat(e);
+          if (e.length < 100) break; p++;
+        }
+        const hit = all.find(a => a.name === n);
+        if (!hit) { trail.push(`⚠ action "${n}" findes ikke i kilde-org`); continue; }
+        url = '/api/actions/migrate';
+        body = { sourceId: source.id, targetId: target.id, actionId: hit.id, targetIntegrationId: '' };
+      }
+      // Kald vores egne, allerede gennemtestede endpoints internt frem for at
+      // duplikere deres logik her.
+      const resp = await fetch(`http://127.0.0.1:${PORT}${url}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+      }).then(r => r.json()).catch(e => ({ error: e.message }));
+
+      if (resp.error === 'already_exists') { trail.push(`· ${kind} "${n}" fandtes allerede`); continue; }
+      if (resp.error) {
+        trail.push(`✗ ${kind} "${n}": ${resp.error}`);
+        return { ok: false, error: `${kind} "${n}" kunne ikke migreres: ${resp.error}` };
+      }
+      trail.push(`✓ ${kind} "${n}"`);
+    }
+  }
+
+  // 2) Modulets egne flow-referencer
+  for (const kind of FLOW_KINDS) {
+    const names = deps[kind] || [];
+    if (!names.length) continue;
+    let existing = new Set();
+    try { existing = await lookupExisting(kind, names, tgtToken, tgtBase); } catch (_) {}
+    for (const n of names) {
+      if (existing.has(n)) continue;
+      const { token: srcToken, apiBase: srcBase } = await getToken(source);
+      const fr = await axios.get(`${srcBase}/api/v2/flows`, {
+        headers: { Authorization: `Bearer ${srcToken}` }, params: { pageSize: 100, name: n }
+      });
+      const hit = (fr.data.entities || []).find(f => f.name === n);
+      if (!hit) { trail.push(`⚠ "${n}" findes ikke i kilde-org — springes over`); continue; }
+      const sub = await migrateFlowDependency(source, target, hit.name, hit.type, visited, depth + 1, trail);
+      trail.push((sub.ok ? '✓ ' : '✗ ') + `${hit.name} (${hit.type})` + (sub.error ? ': ' + sub.error : ''));
+      if (!sub.ok) return { ok: false, error: `Underafhængighed "${hit.name}" fejlede: ${sub.error}` };
+    }
+  }
+
+  // Publicér — et modul skal være publiceret for at kunne refereres af et flow
+  try {
+    await runArchy(`publish --file "${filePath}"`, target);
+    addLog('SUCCESS', `Flow-afhængighed "${flowName}" (${flowType}) migreret til ${target.name}`, target.name, 'MIGRATE');
+    return { ok: true };
+  } catch (e) {
+    if (/already exists/i.test(e.message || '')) return { ok: true, skipped: 'exists' };
+    return { ok: false, error: e.message };
+  }
+}
+
+app.post('/api/flows/migrate-dependency', async (req, res) => {
+  const { sourceId, targetId, flowName, flowType } = req.body;
+  const source = loadCustomers().find(c => c.id === sourceId);
+  const target = loadCustomers().find(c => c.id === targetId);
+  if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
+  const trail = [];
+  try {
+    const r = await migrateFlowDependency(source, target, flowName, flowType, new Set(), 0, trail);
+    if (!r.ok) {
+      addLog('ERROR', `Flow-afhængighed "${flowName}" fejlede: ${r.error}`, target.name, 'MIGRATE');
+      return res.status(500).json({ error: r.error, trail });
+    }
+    res.json({ ok: true, skipped: r.skipped, trail });
+  } catch (e) {
+    addLog('ERROR', `Flow-afhængighed "${flowName}" fejlede: ${e.message}`, target.name, 'MIGRATE');
+    res.status(500).json({ error: e.message, trail });
+  }
+});
+
 // Fase 1 af en flow-migrering: eksportér fra kilden og undersøg om alt flowet
 // bruger findes i mål-org'en. Der importeres IKKE her — mål-org'en røres ikke
 // før brugeren har set rapporten og bekræftet.
@@ -1639,7 +1769,7 @@ app.post('/api/migrate/prepare', async (req, res) => {
     const { token: tgtToken, apiBase: tgtBase } = await getToken(target);
 
     // Kilde-opslag bruges kun til at finde id'er på det der kan auto-migreres
-    let srcTables = [], srcActions = [], srcInts = {};
+    let srcTables = [], srcActions = [], srcInts = {}, srcFlows = [];
     const needSource = [];
     const results = [];
 
@@ -1656,7 +1786,25 @@ app.post('/api/migrate/prepare', async (req, res) => {
       for (const name of names) {
         const ok = existing.has(name);
         results.push({ kind, name, ok });
-        if (!ok && (kind === 'datatable' || kind === 'dataaction')) needSource.push(kind);
+        if (!ok && (kind === 'datatable' || kind === 'dataaction' || FLOW_KINDS.has(kind))) needSource.push(kind);
+      }
+    }
+
+    // Et common module / bot flow / transfer-mål ER et flow, så det kan
+    // migreres med præcis samme maskineri som alt andet. Vi slår det op i
+    // kilden for at få dets rigtige flowtype med.
+    if (needSource.some(k => FLOW_KINDS.has(k))) {
+      const { token: srcToken, apiBase: srcBase } = await getToken(source);
+      let page = 1;
+      while (true) {
+        const r = await axios.get(`${srcBase}/api/v2/flows`, {
+          headers: { Authorization: `Bearer ${srcToken}` },
+          params: { pageSize: 100, pageNumber: page }
+        });
+        const e = r.data.entities || [];
+        srcFlows = srcFlows.concat(e);
+        if (e.length < 100) break;
+        page++;
       }
     }
 
@@ -1696,6 +1844,10 @@ app.post('/api/migrate/prepare', async (req, res) => {
           r.manualReason = 'function';   // functionen kan ikke oprettes via API
           r.integrationType = 'function-data-actions';
         } else { r.canMigrate = true; r.sourceRefId = hit.id; r.integrationType = srcInts[hit.integrationId] || ''; }
+      } else if (FLOW_KINDS.has(r.kind)) {
+        const hit = srcFlows.find(f => f.name === r.name);
+        if (!hit) r.manualReason = 'not_in_source';
+        else { r.canMigrate = true; r.flowName = hit.name; r.flowType = hit.type; }
       } else {
         r.manualReason = 'manual_only';  // køer, skills, wrapup, scripts, prompts, divisioner
       }

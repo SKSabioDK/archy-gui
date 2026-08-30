@@ -1,10 +1,29 @@
-# Archy GUI — Flow Manager · v1.9.5
+# Archy GUI — Flow Manager · v1.10.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.10.0
+---
+**🇩🇰 Dansk**
+- **🔗 Common modules migreres nu automatisk** — Et common module *er* et flow, så det kan migreres med præcis samme maskineri som alt andet. De flyttes fra "skal oprettes manuelt" til "kan migreres nu" og kan markeres i dialogen som en tabel eller data action. Gælder også **bot flows** og **transfer-mål** (`targetFlow`).
+- **Afhængigheder løses nedefra og op** — Et modul kan selv bruge tabeller, data actions og andre common modules. De migreres først, rekursivt, så rækkefølgen bliver rigtig. Cirkler brydes med et `visited`-sæt og dybden er begrænset til 5 niveauer.
+- **Moduler publiceres** — Der importeres med `publish`, ikke `create`. Et modul skal være publiceret i mål-org'en for at et andet flow kan referere det.
+- **Sporet vises i loggen** — Hvert delelement rapporteres med indrykning, så man kan se hvad der blev migreret undervejs og i hvilken rækkefølge.
+
+> **Bemærk:** Et modul kan stadig fejle på ting der ikke kan automatiseres — typisk en **division** der ikke findes i mål-org'en. Fejlen vises da med Archys egen begrundelse.
+
+---
+**🇬🇧 English**
+- **🔗 Common modules are now migrated automatically** — A common module *is* a flow, so it can be migrated with exactly the same machinery as everything else. They move from "must be created manually" to "can be migrated now" and can be ticked in the dialog like a table or data action. The same applies to **bot flows** and **transfer targets** (`targetFlow`).
+- **Dependencies are resolved bottom-up** — A module can itself use tables, data actions and other common modules. Those are migrated first, recursively, so the ordering is right. Cycles are broken with a `visited` set and depth is capped at 5 levels.
+- **Modules are published** — The import uses `publish`, not `create`. A module has to be published in the target org before another flow can reference it.
+- **The trail is shown in the log** — Each sub-item is reported indented, so you can see what was migrated along the way and in what order.
+
+> **Note:** A module can still fail on something that cannot be automated — typically a **division** that does not exist in the target org. The failure is then shown with Archy's own reason.
 
 ### v1.9.5
 ---
@@ -404,7 +423,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.9.5** — see [Changelog](#changelog) above.
+> Current version: **v1.10.0** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**

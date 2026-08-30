@@ -454,7 +454,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.9.5 · Archy GUI</div>
+    <div class="version" id="app-version">v1.10.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -5044,6 +5044,25 @@ function showDepModal(flowName, missing, dynamicSkills) {
 // Migrerer én afhængighed. DataTables og Data Actions genbruger de endpoints
 // Tabeller/Actions-siderne allerede bruger.
 async function migrateOneDep(dep, sourceId, targetId, logBox) {
+  // Common modules, bot flows og transfer-mål ER flows, så de migreres med
+  // flow-maskineriet — inkl. deres egne afhængigheder, nedefra og op.
+  const FLOW_KINDS = ['commonmodule', 'botflow', 'targetflow'];
+  if (FLOW_KINDS.includes(dep.kind)) {
+    try {
+      const data = await fetch('/api/flows/migrate-dependency', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceId, targetId, flowName: dep.flowName || dep.name, flowType: dep.flowType })
+      }).then(r => r.json());
+      for (const line of data.trail || []) log(logBox, `      ${line}`, 'info');
+      if (data.error) { log(logBox, `    \u2717 ${dep.name}: ${data.error}`, 'err'); return false; }
+      log(logBox, `    \u2713 ${dep.name}` + (data.skipped === 'exists' ? ' (fandtes allerede)' : ''), 'ok');
+      return true;
+    } catch (e) {
+      log(logBox, `    \u2717 ${dep.name}: ${e.message}`, 'err');
+      return false;
+    }
+  }
+
   const url  = dep.kind === 'datatable' ? '/api/datatables/migrate' : '/api/actions/migrate';
   const body = dep.kind === 'datatable'
     ? { sourceId, targetId, tableId: dep.sourceRefId }
