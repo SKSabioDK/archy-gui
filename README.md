@@ -1,10 +1,25 @@
-# Archy GUI — Flow Manager · v1.9.0
+# Archy GUI — Flow Manager · v1.9.1
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.9.1
+---
+**🇩🇰 Dansk**
+- **Archy-fejl blev slugt** — `runArchy` betragtede et kald som lykkedes hvis outputtet indeholdt fx `execution complete` eller `successfully`. Archy printer `execution complete.` ved **både** succes og fejl, og fejl-output indeholder linjen `did not fetch versions successfully` — så mønstrene matchede altid, og enhver rigtig Archy-fejl blev meldt som en succes. Resultatet afgøres nu på Archys eget slutbanner: `- Finish` mod `- Failure`.
+- **Læsbar årsag i stedet for debug-støj** — Fejlbeskeden er nu Archys egen konklusion (`the flow named 'X' of type 'inboundcall' does not exist.`) i stedet for de sidste 30 linjer råt output.
+- **Certifikater i Archy** — Archy er sin egen Node-proces og arvede ikke GUI'ens `--use-system-ca`. Den startes nu med `NODE_OPTIONS=--use-system-ca`, så den bruger Windows' certifikatlager. Uden det fejlede den med `UNABLE_TO_VERIFY_LEAF_SIGNATURE` bag TLS-inspektion — og rapporterede det misvisende som ugyldige credentials.
+- **`maxBuffer` hævet til 20 MB**, så Archys debug-output ikke kan afkorte svaret.
+
+---
+**🇬🇧 English**
+- **Archy errors were swallowed** — `runArchy` treated a call as successful if the output contained e.g. `execution complete` or `successfully`. Archy prints `execution complete.` on **both** success and failure, and failure output contains the line `did not fetch versions successfully` — so the patterns always matched and every real Archy error was reported as a success. The result is now decided by Archy's own closing banner: `- Finish` versus `- Failure`.
+- **A readable reason instead of debug noise** — The error message is now Archy's own conclusion (`the flow named 'X' of type 'inboundcall' does not exist.`) rather than the last 30 lines of raw output.
+- **Certificates in Archy** — Archy is its own Node process and did not inherit the GUI's `--use-system-ca`. It is now started with `NODE_OPTIONS=--use-system-ca` so it uses the Windows certificate store. Without it, it failed with `UNABLE_TO_VERIFY_LEAF_SIGNATURE` behind TLS inspection — and misreported that as invalid credentials.
+- **`maxBuffer` raised to 20 MB** so Archy's debug output cannot truncate the response.
 
 ### v1.9.0
 ---
@@ -341,7 +356,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.9.0** — see [Changelog](#changelog) above.
+> Current version: **v1.9.1** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**

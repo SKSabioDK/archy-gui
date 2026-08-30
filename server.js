@@ -1125,31 +1125,63 @@ function truncateArchyError(raw) {
   return `[... ${lines.length - ARCHY_LOG_TAIL} linjer skjult — viser de sidste ${ARCHY_LOG_TAIL} ...]\n` + tail.join('\n');
 }
 
+// Trækker den forklarende årsag ud af Archys output. Ved TLS-fejl er Archys
+// egen konklusion ("ugyldige credentials") misvisende, så den underliggende
+// certifikatfejl tages med i stedet.
+function archyErrorReason(out) {
+  const lines = out.split(/\r?\n/)
+    .map(l => l.replace(/\x1b\[[0-9;]*m/g, ''))            // ANSI-farver
+    .map(l => l.replace(/^\S+Z:\s*\[[A-Z]+\]\s*/, ''))      // debug-log-præfiks
+    .map(l => l.trim());
+
+  // Archy skriver sin egen konklusion på linjen lige før "Error(s) encountered."
+  const noise = /^(\*+|DateTime:|Summary$|Command:|Log:|\||└|┌|-\s*Architect Scripting|An error occurred)/i;
+  const end = lines.findIndex(l => /^Error\(s\) encountered\.?$/i.test(l));
+  let summary = '';
+  if (end > 0) {
+    for (let i = end - 1; i >= 0 && end - i < 8; i--) {
+      const l = lines[i];
+      if (l && !noise.test(l) && !/Architect Yaml Flow Processor/i.test(l)) { summary = l; break; }
+    }
+  }
+
+  // Ved TLS-fejl er Archys egen konklusion ("ugyldige credentials") misvisende,
+  // så den underliggende certifikatfejl skal frem i stedet.
+  if (/UNABLE_TO_VERIFY_LEAF_SIGNATURE|unable to verify the first certificate/i.test(out)) {
+    return 'Archy kunne ikke verificere certifikatkæden (UNABLE_TO_VERIFY_LEAF_SIGNATURE) — typisk ' +
+           'TLS-inspektion fra Norton eller en firmaproxy. Archy køres med --use-system-ca, så ' +
+           'proxyens root-CA skal ligge i Windows\' certifikatlager.' +
+           (summary ? ` [Archy: ${summary}]` : '');
+  }
+  return summary;
+}
+
 function runArchy(args, customer) {
   return new Promise((resolve, reject) => {
     if (!ARCHY_DIR) return reject(new Error('archy not found in PATH'));
     const cmd = `archy ${args} ${archyCredFlags(customer)}`;
-    exec(cmd, { cwd: ARCHY_DIR, shell: 'cmd.exe', timeout: 120000 }, (err, stdout, stderr) => {
-      const combined = stdout + '\n' + stderr;
+    exec(cmd, {
+      cwd: ARCHY_DIR, shell: 'cmd.exe', timeout: 120000,
+      maxBuffer: 20 * 1024 * 1024,      // Archys debug-output kan være stort
+      // Archy er sin egen Node-proces og arver ikke GUI'ens --use-system-ca.
+      // Uden den fejler den med UNABLE_TO_VERIFY_LEAF_SIGNATURE når Norton
+      // eller en firmaproxy gensignerer HTTPS.
+      env: { ...process.env, NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --use-system-ca`.trim() }
+    }, (err, stdout, stderr) => {
+      const combined = (stdout || '') + '\n' + (stderr || '');
       const parsed   = parseArchyOutput(combined) || '';
 
-      // Archy sometimes exits non-zero even on success (warnings, debug output).
-      // Treat as success if output contains known success indicators.
-      const successPatterns = [
-        /flow.*(?:created|updated|published|imported)/i,
-        /successfully/i,
-        /export.*complete/i,
-        /import.*complete/i,
-        /publish.*complete/i,
-        /execution complete/i,
-      ];
-      const looksLikeSuccess = successPatterns.some(p => p.test(combined));
+      // Archy afslutter med et banner: "… - Finish" ved succes, "… - Failure"
+      // ved fejl. Det er det eneste pålidelige signal. De tidligere heuristikker
+      // matchede ALTID: "execution complete." printes ved begge udfald, og
+      // fejl-output indeholder "did not fetch versions successfully" — så enhver
+      // rigtig Archy-fejl blev slugt og fremstod som en succes.
+      const failed   = /Architect Yaml Flow Processor[^\n]*-\s*Failure/i.test(combined);
+      const finished = /Architect Yaml Flow Processor[^\n]*-\s*Finish/i.test(combined);
 
-      if (!err || looksLikeSuccess) {
-        resolve(parsed || 'OK');
-      } else {
-        reject(new Error(truncateArchyError(parsed || err.message)));
-      }
+      if (failed)               return reject(new Error(truncateArchyError(archyErrorReason(combined) || parsed || 'Archy fejlede')));
+      if (finished || !err)     return resolve(parsed || 'OK');
+      reject(new Error(truncateArchyError(archyErrorReason(combined) || parsed || err.message)));
     });
   });
 }
