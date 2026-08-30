@@ -400,7 +400,21 @@ Tilføj Genesys Cloud orgs med to auth-typer:
 | **🌐 OAuth PKCE** | Personligt login | Kun Client ID — token i hukommelse |
 
 #### 📋 Flow Browser
-Hent, søg og filtrer flows. Klik **Export** direkte fra listen.
+Hent, søg og filtrer flows. Filtrér på **flowtype** (listen fyldes ud fra de typer org'en faktisk har, med antal pr. type) og på fritekst. Klik **Export** direkte fra listen.
+
+**⇄ Sammenlign to orgs.** Vælg en org i *Sammenlign mod org*, og hver række får en ⇄-knap. Den eksporterer flowet fra begge orgs og sammenligner **indholdet** — ikke versionsnumrene, som er per-org tællere og intet siger om hvad flowet indeholder.
+
+| Udfald | Betydning |
+|---|---|
+| ✓ Identisk indhold | Samme flow, uanset at der står fx v37 og v1 |
+| ⚠ N forskelle | De første vises linje for linje |
+| ⚠ Findes ikke i mål-org'en | Flowet mangler helt |
+
+Dialogen viser desuden hvornår hver side sidst blev **publiceret** og af hvem, og — hvis flowet er migreret med dette værktøj — hvilken org og hvilken kildeversion målet er bygget af.
+
+**📌 Sæt nulpunkt.** Noterer hvordan sammenlignings-org'ens flows ser ud nu. Derefter kan værktøjet fange at nogen har publiceret direkte i mål-org'en, **også for flows det aldrig selv har migreret**. Kør den én gang pr. par af orgs du arbejder med — fx `dev → uat` og `dev → prod` for hver kunde.
+
+> Oplysningerne gemmes i `flows/.migrations.json`, nøglet på Genesys' org-id. Filen er maskinspecifik og deles ikke via Git.
 
 #### 🔄 Migrer Flow
 Vælg kilde, mål og flows. Migreringen kører i to faser:
@@ -412,8 +426,11 @@ Mangler der noget, åbnes en dialog med to sektioner:
 
 | Sektion | Indhold | Handling |
 |---|---|---|
-| Kan migreres nu | DataTables, Data Actions | Afkrydsning — migreres inden flowet |
-| Skal oprettes manuelt | Køer, skills, wrap-up-koder, scripts, prompts, divisioner, Function Data Actions | Oprettes i mål-org'en først |
+| Kan migreres nu | DataTables, Data Actions, **common modules**, bot flows, transfer-mål | Afkrydsning — migreres inden flowet |
+| Kræver et valg | **Division** (opret / brug Home / spring over), **survey form** (kopiér / spring over) | Rullemenu pr. ressource |
+| Skal oprettes manuelt | Køer, skills, wrap-up-koder, scripts, prompts, schedules, knowledge bases, Function Data Actions | Oprettes i mål-org'en først |
+
+Common modules migreres med samme maskineri som flows, og deres **egne** afhængigheder tages først — rekursivt, nedefra og op. Et modul der selv bruger femten tabeller får dem alle med.
 
 Du kan vælge **Migrér valgte og fortsæt**, **Fortsæt uden** (flowet importeres selvom noget mangler — det fejler typisk i Architect bagefter) eller **Spring flowet over**.
 
@@ -546,7 +563,21 @@ Double-click **`start.bat`** or run `node server.js` manually.
 Add Genesys Cloud orgs with Client Credentials or OAuth PKCE.
 
 #### 📋 Flow Browser
-Fetch, search and filter flows. Click **Export** directly from the list.
+Fetch, search and filter flows. Filter by **flow type** (the list is populated from the types the org actually has, with a count each) and by free text. Click **Export** directly from the list.
+
+**⇄ Compare two orgs.** Pick an org under *Compare against org* and each row gets a ⇄ button. It exports the flow from both orgs and compares the **content** — not the version numbers, which are per-org counters and say nothing about what the flow contains.
+
+| Verdict | Meaning |
+|---|---|
+| ✓ Identical content | The same flow, regardless of it being e.g. v37 and v1 |
+| ⚠ N differences | The first ones are shown line by line |
+| ⚠ Does not exist in the target org | The flow is missing entirely |
+
+The dialog also shows when each side was last **published** and by whom, and — if the flow was migrated with this tool — which org and which source version the target was built from.
+
+**📌 Set baseline.** Records how the comparison org's flows look right now. From then on the tool can catch someone publishing directly in the target org, **including for flows it never migrated itself**. Run it once per pair of orgs you work with — e.g. `dev → uat` and `dev → prod` for each customer.
+
+> The records live in `flows/.migrations.json`, keyed on the Genesys org id. The file is machine-specific and is not shared through Git.
 
 #### 🔄 Migrate Flow
 Select source, target and flows. Migration runs in two phases:
@@ -558,8 +589,11 @@ If anything is missing, a dialog opens with two sections:
 
 | Section | Contents | Action |
 |---|---|---|
-| Can be migrated now | DataTables, Data Actions | Checkboxes — migrated before the flow |
-| Must be created manually | Queues, skills, wrap-up codes, scripts, prompts, divisions, Function Data Actions | Create them in the target org first |
+| Can be migrated now | DataTables, Data Actions, **common modules**, bot flows, transfer targets | Checkboxes — migrated before the flow |
+| Needs a decision | **Division** (create / use Home / skip), **survey form** (copy / skip) | Dropdown per resource |
+| Must be created manually | Queues, skills, wrap-up codes, scripts, prompts, schedules, knowledge bases, Function Data Actions | Create them in the target org first |
+
+Common modules are migrated with the same machinery as flows, and their **own** dependencies are handled first — recursively, bottom-up. A module that itself uses fifteen tables brings all of them along.
 
 You can choose **Migrate selected and continue**, **Continue anyway** (the flow is imported even though something is missing — it will usually fail in Architect afterwards) or **Skip this flow**.
 
