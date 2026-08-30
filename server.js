@@ -1134,14 +1134,32 @@ function archyErrorReason(out) {
     .map(l => l.replace(/^\S+Z:\s*\[[A-Z]+\]\s*/, ''))      // debug-log-præfiks
     .map(l => l.trim());
 
-  // Archy skriver sin egen konklusion på linjen lige før "Error(s) encountered."
-  const noise = /^(\*+|DateTime:|Summary$|Command:|Log:|\||└|┌|-\s*Architect Scripting|An error occurred)/i;
-  const end = lines.findIndex(l => /^Error\(s\) encountered\.?$/i.test(l));
   let summary = '';
-  if (end > 0) {
-    for (let i = end - 1; i >= 0 && end - i < 8; i--) {
-      const l = lines[i];
-      if (l && !noise.test(l) && !/Architect Yaml Flow Processor/i.test(l)) { summary = l; break; }
+
+  // Ved YAML-/importfejl lægger Archy den egentlige årsag i en "Exception:"-linje
+  // langt over sin afsluttende opsummering. Den er langt mere brugbar end det
+  // der står lige før terminatoren (typisk "Flow Name: '…'").
+  const exc = lines.find(l => /^Exception:/i.test(l));
+  if (exc) {
+    summary = exc
+      .replace(/^Exception:\s*-?\s*(ERROR!\s*)?/i, '')
+      .replace(/\s*--\s*\[.*$/, '')          // metadata-halen
+      .trim();
+    // Tag den ramte property og sti med — det er dem man skal rette i YAML'en
+    const prop = lines.find(l => /^Property name:/i.test(l))?.replace(/^Property name:\s*/i, '');
+    const at   = lines.find(l => /^Path:/i.test(l))?.replace(/^Path:\s*/i, '');
+    if (prop) summary += ` (${prop}${at ? ' i ' + at : ''})`;
+  }
+
+  // Ellers: Archys egen konklusion lige før "Error(s) [and warning(s)] encountered."
+  if (!summary) {
+    const noise = /^(\*+|DateTime:|Summary$|Command:|Log:|Flow Name:|Input YAML File:|\||└|┌|-\s*Architect Scripting|An error occurred)/i;
+    const end = lines.findIndex(l => /^Error\(s\)(\s+and\s+warning\(s\))?\s+encountered\.?$/i.test(l));
+    if (end > 0) {
+      for (let i = end - 1; i >= 0 && end - i < 12; i--) {
+        const l = lines[i];
+        if (l && !noise.test(l) && !/Architect Yaml Flow Processor/i.test(l)) { summary = l; break; }
+      }
     }
   }
 

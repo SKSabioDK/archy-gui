@@ -1,10 +1,19 @@
-# Archy GUI — Flow Manager · v1.9.1
+# Archy GUI — Flow Manager · v1.9.2
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.9.2
+---
+**🇩🇰 Dansk**
+- **Årsagen frem ved importfejl** — Archy afslutter nogle fejl med `Error(s) and warning(s) encountered.` i stedet for `Error(s) encountered.`, og lægger den egentlige forklaring i en `Exception:`-linje langt over opsummeringen. Begge dele ramte forbi, så en importfejl igen viste 30 linjer rå debug-log. Fejlen udtrækkes nu fra `Exception:`-linjen inkl. hvilken property og sti der fejlede — fx `a default voice was not found for engine 'Genesys Enhanced TTS' and language 'nl-NL'. ('textToSpeech' i '/inboundCall')`.
+
+---
+**🇬🇧 English**
+- **The real reason on import failures** — Archy ends some failures with `Error(s) and warning(s) encountered.` rather than `Error(s) encountered.`, and puts the actual explanation in an `Exception:` line far above the summary. Both were missed, so an import failure again showed 30 lines of raw debug log. The reason is now taken from the `Exception:` line including the failing property and path — e.g. `a default voice was not found for engine 'Genesys Enhanced TTS' and language 'nl-NL'. ('textToSpeech' in '/inboundCall')`.
 
 ### v1.9.1
 ---
@@ -356,7 +365,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.9.1** — see [Changelog](#changelog) above.
+> Current version: **v1.9.2** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
