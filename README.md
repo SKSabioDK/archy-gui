@@ -1,10 +1,29 @@
-# Archy GUI — Flow Manager · v1.11.0
+# Archy GUI — Flow Manager · v1.12.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.12.0
+---
+**🇩🇰 Dansk**
+- **⇄ Sammenlign et flow i to orgs på indhold** — Genesys' versionsnumre er per-org tællere: samme flow kan stå som v37 i kilden og v1 i målet. Tallene kan derfor aldrig bruges til at afgøre om to flows er ens. På Flow Browser vælges nu en org at sammenligne mod, og hver række får en ⇄-knap der eksporterer flowet fra begge orgs og sammenligner **indholdet**.
+- **Normalisering skiller støj fra reelle forskelle** — To slags Archy-intern nummerering fjernes først: `trackingId` og løbenumrene i `refId` / `[Navn_10]`. Målt på to flowpar: 8 rå forskelle blev til 1 (en ægte logikforskel), 296 blev til 280 (to reelt forskellige flows).
+- **Tre udfald** — *identisk indhold*, *N forskelle* med de første vist linje for linje, eller *findes ikke i mål-org'en*.
+- **Migreringsmanifest** — Hver vellykket flow-migrering noteres i `flows/.migrations.json` med kilde, mål, versioner og indholds-hash. Ved en senere sammenligning kan værktøjet derfor sige *hvad* der har flyttet sig: kilden er ændret (målet er forældet), målet er ændret (nogen har rettet direkte i mål-org'en), eller begge.
+
+> **Læs hashen asymmetrisk.** Ens hash betyder med sikkerhed samme indhold. Forskellig hash betyder "se på diffen" — normaliseringen er bygget på de støjklasser der er observeret, og andre flowtyper kan have flere.
+
+---
+**🇬🇧 English**
+- **⇄ Compare a flow across two orgs by content** — Genesys version numbers are per-org counters: the same flow can be v37 in the source and v1 in the target. The numbers can therefore never tell you whether two flows match. Flow Browser now has an org to compare against, and each row gets a ⇄ button that exports the flow from both orgs and compares the **content**.
+- **Normalisation separates noise from real differences** — Two kinds of Archy-internal numbering are removed first: `trackingId` and the sequence numbers in `refId` / `[Name_10]`. Measured on two flow pairs: 8 raw differences became 1 (a genuine logic difference), 296 became 280 (two genuinely different flows).
+- **Three verdicts** — *identical content*, *N differences* with the first shown line by line, or *does not exist in the target org*.
+- **Migration manifest** — Every successful flow migration is recorded in `flows/.migrations.json` with source, target, versions and content hash. A later comparison can therefore say *what* moved: the source changed (the target is out of date), the target changed (someone edited it directly), or both.
+
+> **Read the hash asymmetrically.** An equal hash means the content is certainly the same. A differing hash means "look at the diff" — the normalisation is built on the noise classes observed so far, and other flow types may have more.
 
 ### v1.11.0
 ---
@@ -442,7 +461,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.11.0** — see [Changelog](#changelog) above.
+> Current version: **v1.12.0** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**

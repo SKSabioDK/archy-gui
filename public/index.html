@@ -454,7 +454,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.11.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.12.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -528,6 +528,10 @@
           <div style="flex:1">
             <label data-i18n="label_select_customer">Vælg kunde</label>
             <select id="fb-customer" onchange="loadFlows()"></select>
+          </div>
+          <div style="flex:1">
+            <label data-i18n="cmp_against">Sammenlign mod org (valgfrit)</label>
+            <select id="fb-compare" onchange="renderFlowTable(allFlows)"></select>
           </div>
           <button class="btn btn-secondary" onclick="loadFlows()" data-i18n="btn_reload">🔄 Genindlæs</button>
         </div>
@@ -950,6 +954,18 @@
 </div><!-- /layout -->
 
 <!-- ── YAML Wizard Modal ─────────────────────────────────────────────────────── -->
+<div class="wiz-overlay" id="cmp-overlay">
+  <div class="wiz-modal" style="width:720px">
+    <div style="padding:20px 24px 0">
+      <div style="font-size:16px;font-weight:700" data-i18n="cmp_title">Sammenligning af indhold</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px" id="cmp-sub"></div>
+    </div>
+    <div style="padding:16px 24px;overflow-y:auto;flex:1" id="cmp-body"></div>
+    <div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end">
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('cmp-overlay').style.display='none'" data-i18n="cmp_close">Luk</button>
+    </div>
+  </div>
+</div>
 <div class="wiz-overlay" id="dep-overlay">
   <div class="wiz-modal" style="width:640px">
     <div style="padding:20px 24px 0">
@@ -1214,6 +1230,22 @@ const LANGS = {
     dep_choice_useHome:'Brug Home i stedet',
     dep_choice_copy:'Kopiér fra kilde-org',
     dep_choice_skip:'Spring over',
+    cmp_against:'Sammenlign mod org (valgfrit)',
+    cmp_title:'Sammenligning af indhold',
+    cmp_close:'Luk',
+    cmp_running:'Eksporterer fra begge orgs og sammenligner…',
+    cmp_identical:'Identisk indhold',
+    cmp_differences:'forskelle i indholdet',
+    cmp_missing:'Flowet findes ikke i mål-org\'en',
+    cmp_source_version:'Kilde',
+    cmp_target_version:'Mål',
+    cmp_version_note:'Versionsnumre er per-org tællere og siger intet om indholdet — sammenligningen sker på indholds-hashen.',
+    cmp_first_diffs:'FØRSTE FORSKELLE',
+    cmp_line:'linje',
+    cmp_migrated_at:'Migreret herfra',
+    cmp_drift_source:'Kilden er ændret siden migreringen — målet er forældet.',
+    cmp_drift_target:'Målet er ændret efter migreringen — nogen har rettet direkte i mål-org\'en.',
+    cmp_drift_both:'Både kilde og mål er ændret siden migreringen.',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1434,6 +1466,22 @@ const LANGS = {
     dep_choice_useHome:'Use Home instead',
     dep_choice_copy:'Copy from source org',
     dep_choice_skip:'Skip',
+    cmp_against:'Compare against org (optional)',
+    cmp_title:'Content comparison',
+    cmp_close:'Close',
+    cmp_running:'Exporting from both orgs and comparing…',
+    cmp_identical:'Identical content',
+    cmp_differences:'differences in the content',
+    cmp_missing:'The flow does not exist in the target org',
+    cmp_source_version:'Source',
+    cmp_target_version:'Target',
+    cmp_version_note:'Version numbers are per-org counters and say nothing about the content — the comparison uses the content hash.',
+    cmp_first_diffs:'FIRST DIFFERENCES',
+    cmp_line:'line',
+    cmp_migrated_at:'Migrated from here',
+    cmp_drift_source:'The source has changed since the migration — the target is out of date.',
+    cmp_drift_target:'The target has changed since the migration — someone edited it directly in the target org.',
+    cmp_drift_both:'Both source and target have changed since the migration.',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -1654,6 +1702,22 @@ const LANGS = {
     dep_choice_useHome:'Utiliser Home à la place',
     dep_choice_copy:'Copier depuis l\'org source',
     dep_choice_skip:'Ignorer',
+    cmp_against:'Comparer avec une org (facultatif)',
+    cmp_title:'Comparaison du contenu',
+    cmp_close:'Fermer',
+    cmp_running:'Export depuis les deux orgs et comparaison…',
+    cmp_identical:'Contenu identique',
+    cmp_differences:'différences dans le contenu',
+    cmp_missing:'Le flow n\'existe pas dans l\'org cible',
+    cmp_source_version:'Source',
+    cmp_target_version:'Cible',
+    cmp_version_note:'Les numéros de version sont des compteurs par org et ne disent rien du contenu — la comparaison utilise l\'empreinte du contenu.',
+    cmp_first_diffs:'PREMIÈRES DIFFÉRENCES',
+    cmp_line:'ligne',
+    cmp_migrated_at:'Migré depuis ici',
+    cmp_drift_source:'La source a changé depuis la migration — la cible est obsolète.',
+    cmp_drift_target:'La cible a changé depuis la migration — quelqu\'un l\'a modifiée directement dans l\'org cible.',
+    cmp_drift_both:'La source et la cible ont toutes deux changé depuis la migration.',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -1874,6 +1938,22 @@ const LANGS = {
     dep_choice_useHome:'Gebruik Home in plaats daarvan',
     dep_choice_copy:'Kopiëren uit bron-org',
     dep_choice_skip:'Overslaan',
+    cmp_against:'Vergelijk met org (optioneel)',
+    cmp_title:'Inhoudsvergelijking',
+    cmp_close:'Sluiten',
+    cmp_running:'Exporteren uit beide orgs en vergelijken…',
+    cmp_identical:'Identieke inhoud',
+    cmp_differences:'verschillen in de inhoud',
+    cmp_missing:'Het flow bestaat niet in de doel-org',
+    cmp_source_version:'Bron',
+    cmp_target_version:'Doel',
+    cmp_version_note:'Versienummers zijn tellers per org en zeggen niets over de inhoud — de vergelijking gebruikt de inhoudshash.',
+    cmp_first_diffs:'EERSTE VERSCHILLEN',
+    cmp_line:'regel',
+    cmp_migrated_at:'Hiervandaan gemigreerd',
+    cmp_drift_source:'De bron is gewijzigd sinds de migratie — het doel is verouderd.',
+    cmp_drift_target:'Het doel is gewijzigd na de migratie — iemand heeft het direct in de doel-org aangepast.',
+    cmp_drift_both:'Zowel bron als doel zijn gewijzigd sinds de migratie.',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -2094,6 +2174,22 @@ const LANGS = {
     dep_choice_useHome:'Usar Home en su lugar',
     dep_choice_copy:'Copiar de la org de origen',
     dep_choice_skip:'Omitir',
+    cmp_against:'Comparar con org (opcional)',
+    cmp_title:'Comparación de contenido',
+    cmp_close:'Cerrar',
+    cmp_running:'Exportando de ambas orgs y comparando…',
+    cmp_identical:'Contenido idéntico',
+    cmp_differences:'diferencias en el contenido',
+    cmp_missing:'El flow no existe en la org de destino',
+    cmp_source_version:'Origen',
+    cmp_target_version:'Destino',
+    cmp_version_note:'Los números de versión son contadores por org y no dicen nada del contenido — la comparación usa el hash del contenido.',
+    cmp_first_diffs:'PRIMERAS DIFERENCIAS',
+    cmp_line:'línea',
+    cmp_migrated_at:'Migrado desde aquí',
+    cmp_drift_source:'El origen ha cambiado desde la migración — el destino está desactualizado.',
+    cmp_drift_target:'El destino ha cambiado tras la migración — alguien lo editó directamente en la org de destino.',
+    cmp_drift_both:'Tanto el origen como el destino han cambiado desde la migración.',
   }
 };
 
@@ -2452,7 +2548,7 @@ async function testCustomer(id) {
 
 // ── Flow Browser ──────────────────────────────────────────────────────────────
 function populateCustomerSelects(ids) {
-  const selects = ids || ['fb-customer', 'ex-customer', 'im-customer'];
+  const selects = ids || ['fb-customer', 'fb-compare', 'ex-customer', 'im-customer'];
   selects.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -2488,6 +2584,7 @@ function renderFlowTable(flows) {
       <td style="color:var(--muted)">v${f.publishedVersion || f.savedVersion || '?'}</td>
       <td>
         <button class="btn btn-secondary btn-sm" onclick="prefillExport('${f.name}','${f.type}')">${t('btn_export_flow')}</button>
+        ${document.getElementById('fb-compare')?.value ? `<button class="btn btn-secondary btn-sm" onclick="compareFlow('${encodeURIComponent(f.name)}','${f.type}')">⇄</button>` : ''}
       </td>
     </tr>`).join('');
 }
@@ -5034,6 +5131,73 @@ async function daMigrateSelected() {
   daUpdateReady();
 }
 
+
+
+// ── Indholdssammenligning af flows mellem to orgs ─────────────────────────────
+async function compareFlow(nameEnc, type) {
+  const name     = decodeURIComponent(nameEnc);
+  const sourceId = document.getElementById('fb-customer').value;
+  const targetId = document.getElementById('fb-compare').value;
+  if (!sourceId || !targetId || sourceId === targetId) return;
+
+  const ov = document.getElementById('cmp-overlay');
+  document.getElementById('cmp-sub').textContent = name + '  (' + type + ')';
+  document.getElementById('cmp-body').innerHTML =
+    `<div style="color:var(--muted);font-size:12px"><span class="spin"></span> ${t('cmp_running')}</div>`;
+  ov.style.display = 'flex';
+
+  try {
+    const r = await fetch('/api/flows/compare', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sourceId, targetId, flowName: name, flowType: type })
+    }).then(x => x.json());
+    document.getElementById('cmp-body').innerHTML = renderCompare(r);
+  } catch (e) {
+    document.getElementById('cmp-body').innerHTML = `<div style="color:var(--red)">${e.message}</div>`;
+  }
+}
+
+function renderCompare(r) {
+  if (r.error) return `<div style="color:var(--red);font-size:13px">${r.error}</div>`;
+
+  const row = (k, v) =>
+    `<div style="display:flex;gap:12px;padding:4px 0;font-size:12px">` +
+    `<span style="color:var(--muted);min-width:150px">${k}</span><span style="font-family:var(--mono)">${v}</span></div>`;
+
+  if (r.verdict === 'missing')
+    return `<div style="color:var(--yellow);font-size:14px;font-weight:600;margin-bottom:12px">⚠ ${t('cmp_missing')}</div>`
+         + row(t('cmp_source_version'), 'v' + r.sourceVersion);
+
+  const head = r.verdict === 'identical'
+    ? `<div style="color:var(--green);font-size:14px;font-weight:600;margin-bottom:4px">✓ ${t('cmp_identical')}</div>`
+    : `<div style="color:var(--yellow);font-size:14px;font-weight:600;margin-bottom:4px">⚠ ${r.diffCount} ${t('cmp_differences')}</div>`;
+
+  // Versionsnumrene vises til orientering — de er per-org tællere og siger
+  // intet om indholdet. Det er hashen der afgør sagen.
+  let html = head
+    + `<div style="font-size:11px;color:var(--muted);margin-bottom:14px">${t('cmp_version_note')}</div>`
+    + row(t('cmp_source_version'), 'v' + r.sourceVersion + '   ' + (r.sourceHash || '').slice(0, 16))
+    + row(t('cmp_target_version'), 'v' + r.targetVersion + '   ' + (r.targetHash || '').slice(0, 16));
+
+  if (r.drift && r.drift !== 'none') {
+    const txt = r.drift === 'both' ? t('cmp_drift_both')
+              : r.drift === 'target' ? t('cmp_drift_target') : t('cmp_drift_source');
+    html += `<div style="margin-top:12px;padding:8px 12px;background:rgba(241,196,15,.12);color:var(--yellow);font-size:12px">${txt}</div>`;
+  } else if (r.migratedAt) {
+    html += `<div style="margin-top:12px;font-size:11px;color:var(--muted)">${t('cmp_migrated_at')} ${new Date(r.migratedAt).toLocaleString()}</div>`;
+  }
+
+  if ((r.diffs || []).length) {
+    html += `<div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--muted);margin:18px 0 8px">${t('cmp_first_diffs')}</div>`;
+    html += r.diffs.map(d => `
+      <div style="font-family:var(--mono);font-size:11px;padding:6px 0;border-bottom:1px solid var(--border)">
+        <div style="color:var(--muted)">${t('cmp_line')} ${d.line}</div>
+        <div style="color:var(--green)">− ${(d.source || '').replace(/</g, '&lt;')}</div>
+        <div style="color:var(--red)">+ ${(d.target || '').replace(/</g, '&lt;')}</div>
+      </div>`).join('');
+  }
+  return html;
+}
 
 // ── Afhængighedstjek før flow-migrering ───────────────────────────────────────
 let depResolver = null;

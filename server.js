@@ -890,6 +890,143 @@ app.post('/api/datatables/migrate', async (req, res) => {
   }
 });
 
+// ── Indholdssammenligning af flows ────────────────────────────────────────────
+
+// Genesys' versionsnumre er per-org tællere: kilden kan stå på v37 og målet på
+// v1 for præcis samme flow. Tallene kan derfor aldrig bruges til at afgøre om
+// to flows er ens — det kan kun indholdet.
+//
+// To slags støj skal ud først, begge Archys egen interne nummerering:
+//   trackingId: 12          rene tællere, uden betydning
+//   [Initial State_10]      løbenumre i refId og referencer til dem
+// Målt på to flowpar: 8 rå forskelle blev til 1 (en ægte logikforskel), og
+// 296 blev til 280 (to reelt forskellige flows).
+function normalizeFlowYaml(yaml) {
+  return String(yaml || '')
+    .split(/\r?\n/)
+    .filter(l => !/^\s*trackingId:\s*\d+\s*$/.test(l))
+    .join('\n')
+    .replace(/_(\d+)\]/g, '_#]')
+    .replace(/^(\s*refId:\s*.*?)_(\d+)\s*$/gm, '$1_#')
+    .replace(/[ \t]+$/gm, '')
+    .trim();
+}
+
+function flowContentHash(yaml) {
+  return crypto.createHash('sha256').update(normalizeFlowYaml(yaml)).digest('hex');
+}
+
+// Archy lægger versionen i filnavnet: "Mit Flow_v16-0.yaml" → 16
+function versionFromFileName(fileName) {
+  const m = String(fileName).match(/_v(\d+)-\d+\.yaml$/i);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+// Eksporterer ét flow og returnerer { yaml, fileName, version }.
+async function exportFlowToYaml(customer, flowName, flowType) {
+  const dir = path.join(FLOWS_DIR, sanitizeName(customer.name));
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const mt = f => { try { return fs.statSync(path.join(dir, f)).mtimeMs; } catch (_) { return 0; } };
+  const before = new Map(fs.readdirSync(dir).filter(f => f.endsWith('.yaml')).map(f => [f, mt(f)]));
+
+  await runArchy(
+    `export --flowName "${flowName}" --flowType ${String(flowType).toLowerCase()} --exportType yaml --force --outputDir "${dir}"`,
+    customer
+  );
+  const touched = fs.readdirSync(dir).filter(f => f.endsWith('.yaml'))
+    .filter(f => !before.has(f) || mt(f) > before.get(f))
+    .sort((a, b) => mt(b) - mt(a));
+  if (!touched.length) throw new Error(`Eksporten skrev ingen YAML-fil for "${flowName}"`);
+  const fileName = touched[0];
+  return { yaml: fs.readFileSync(path.join(dir, fileName), 'utf8'), fileName, version: versionFromFileName(fileName) };
+}
+
+// ── Migreringsmanifest ────────────────────────────────────────────────────────
+// Hvad blev migreret hvorhen, og hvilket indhold havde det. Ligger under flows/
+// som resten af de lokale arbejdsfiler.
+const MANIFEST_FILE = path.join(FLOWS_DIR, '.migrations.json');
+
+function loadManifest() {
+  try { return JSON.parse(fs.readFileSync(MANIFEST_FILE, 'utf8')); } catch (_) { return []; }
+}
+
+function recordMigration(entry) {
+  try {
+    const all = loadManifest();
+    // Én linje pr. (mål-org, flow) — den nyeste migrering er den gældende
+    const i = all.findIndex(e => e.targetId === entry.targetId &&
+      e.flowName === entry.flowName && e.flowType === entry.flowType);
+    if (i >= 0) all[i] = entry; else all.push(entry);
+    fs.writeFileSync(MANIFEST_FILE, JSON.stringify(all, null, 2));
+  } catch (e) {
+    addLog('WARN', `Kunne ikke skrive migreringsmanifest: ${e.message}`, null, 'SYSTEM');
+  }
+}
+
+app.get('/api/migrations', (req, res) => res.json(loadManifest()));
+
+// Sammenligner ét flow i to orgs på indhold — ikke på versionsnummer.
+app.post('/api/flows/compare', async (req, res) => {
+  const { sourceId, targetId, flowName, flowType } = req.body;
+  const source = loadCustomers().find(c => c.id === sourceId);
+  const target = loadCustomers().find(c => c.id === targetId);
+  if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
+
+  try {
+    let src, tgt, missingInTarget = false;
+    src = await exportFlowToYaml(source, flowName, flowType);
+    try {
+      tgt = await exportFlowToYaml(target, flowName, flowType);
+    } catch (e) {
+      if (/does not exist/i.test(e.message || '')) missingInTarget = true;
+      else throw e;
+    }
+
+    if (missingInTarget) {
+      return res.json({ ok: true, verdict: 'missing', flowName, flowType,
+        sourceVersion: src.version, sourceHash: flowContentHash(src.yaml) });
+    }
+
+    const nsrc = normalizeFlowYaml(src.yaml), ntgt = normalizeFlowYaml(tgt.yaml);
+    const same = nsrc === ntgt;
+
+    // Første håndfuld reelle forskelle, så man kan se hvad der adskiller dem
+    const A = nsrc.split('\n'), B = ntgt.split('\n');
+    const diffs = [];
+    for (let i = 0; i < Math.max(A.length, B.length) && diffs.length < 8; i++) {
+      if (A[i] !== B[i]) diffs.push({ line: i + 1, source: (A[i] || '').trim().slice(0, 120), target: (B[i] || '').trim().slice(0, 120) });
+    }
+    let diffCount = 0;
+    for (let i = 0; i < Math.max(A.length, B.length); i++) if (A[i] !== B[i]) diffCount++;
+
+    const sourceHash = flowContentHash(src.yaml);
+    const targetHash = flowContentHash(tgt.yaml);
+
+    // Har vi migreret dette flow før, kan vi sige HVAD der har flyttet sig
+    const rec = loadManifest().find(e => e.targetId === targetId &&
+      e.flowName === flowName && e.flowType === flowType);
+    let drift = null;
+    if (rec) {
+      const targetChanged = rec.hash !== targetHash;
+      const sourceChanged = rec.hash !== sourceHash;
+      drift = targetChanged && sourceChanged ? 'both'
+            : targetChanged ? 'target'
+            : sourceChanged ? 'source' : 'none';
+    }
+
+    addLog(same ? 'SUCCESS' : 'INFO',
+      `Sammenligning "${flowName}": ${source.name} v${src.version} ↔ ${target.name} v${tgt.version} — ` +
+      (same ? 'identisk indhold' : `${diffCount} forskelle`), target.name, 'MIGRATE');
+
+    res.json({ ok: true, verdict: same ? 'identical' : 'different', flowName, flowType,
+      sourceVersion: src.version, targetVersion: tgt.version,
+      sourceHash, targetHash, diffCount, diffs, drift, migratedAt: rec?.ts || null });
+
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── Afhængigheder i et flow ───────────────────────────────────────────────────
 
 // Finder de ressourcer et flow-YAML refererer til. Regexerne er skrevet mod
@@ -1991,6 +2128,20 @@ app.post('/api/migrate/commit', async (req, res) => {
     addLog('INFO', `Importing "${path.basename(resolved)}" to ${target.name} (action: ${cmd})`, target.name, 'MIGRATE');
     const out = await runArchy(`${cmd} --file "${resolved}"`, target);
     addLog('SUCCESS', `Migration complete: "${flowName}" is now in ${target.name}`, target.name, 'MIGRATE');
+
+    // Notér hvad målet blev bygget af, så det senere kan verificeres om kilden
+    // eller målet har flyttet sig. Versionsnumrene gemmes til orientering —
+    // sammenligningen sker altid på indholds-hashen.
+    const importedYaml = fs.readFileSync(resolved, 'utf8');
+    recordMigration({
+      ts: new Date().toISOString(),
+      sourceId, sourceName: source.name,
+      targetId, targetName: target.name,
+      flowName, flowType: (importedYaml.match(/^(\w+):/m) || [])[1] || null,
+      sourceVersion: versionFromFileName(path.basename(resolved)),
+      action: cmd,
+      hash: flowContentHash(importedYaml)
+    });
     res.json({ ok: true, fileName: path.basename(resolved), output: out, yaml: fs.readFileSync(resolved, 'utf8') });
   } catch (e) {
     addLog('ERROR', `Migration failed for "${flowName}": ${e.message}`, target.name, 'MIGRATE');
