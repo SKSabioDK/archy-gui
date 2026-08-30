@@ -1,10 +1,31 @@
-# Archy GUI — Flow Manager · v1.13.0
+# Archy GUI — Flow Manager · v1.14.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.14.0
+---
+**🇩🇰 Dansk**
+- **📌 Sæt nulpunkt** — Ny knap på Flow Browser der noterer hvordan sammenlignings-org'ens flows ser ud lige nu: version, publiceringstidspunkt og om flowet er aktivt. Derefter kan værktøjet fange en ændring lavet direkte i mål-org'en — **også for flows det aldrig selv har migreret**. Nulpunktet bruger kun API-opslag og tager sekunder; en indholds-hash pr. flow ville kræve en Archy-eksport hver og tage over 20 minutter for 84 flows.
+- **Et nulpunkt overskriver aldrig et rigtigt migreringsspor** — Har værktøjet migreret et flow, bevares den post med sin indholds-hash. Verificeret: 117 noteret, 1 sprunget over.
+- **Rettet: drift-detektionen virkede aldrig** — Manifestet gemte flowtypen fra YAML-roden (`inboundCall`), mens opslaget brugte API'ets form (`INBOUNDCALL`). De kunne aldrig matche, så både drift og "publiceret efter migrering" fra v1.12/v1.13 var reelt død kode. Typen normaliseres nu ét sted.
+- **Manifestet nøgles på Genesys' org-id, ikke vores kunde-id** — Med ti kunder der hver har dev/uat/prod er det afgørende at en post entydigt hører til én organisation. Kunde-id'er er lokale tidsstempler der skifter hvis en kunde slettes og oprettes igen; org-id'et følger organisationen. Ældre poster slås stadig op på kunde-id.
+- **Publiceringstidspunktet sammenlignes mod Genesys' eget ur** — Nulpunktet gemmer mål-flowets `dateCheckedIn`, og senere sammenligninger holdes op mod den værdi frem for vores egen tidsstempel, som afhænger af maskinens ur.
+
+> **Sæt nulpunkt pr. par af orgs.** Kør den én gang for hver kombination du arbejder med — fx `dev → uat` og `dev → prod` for hver kunde. Hver mål-org får sit eget sæt poster.
+
+---
+**🇬🇧 English**
+- **📌 Set baseline** — A new button in Flow Browser that records how the comparison org's flows look right now: version, publish timestamp and whether the flow is active. From then on the tool can catch a change made directly in the target org — **including for flows it never migrated itself**. The baseline uses API calls only and takes seconds; a content hash per flow would need an Archy export each and take over 20 minutes for 84 flows.
+- **A baseline never overwrites a real migration record** — If the tool migrated a flow, that record keeps its content hash. Verified: 117 recorded, 1 skipped.
+- **Fixed: drift detection never worked** — The manifest stored the flow type from the YAML root (`inboundCall`) while the lookup used the API form (`INBOUNDCALL`). They could never match, so both the drift verdict and "published after migration" from v1.12/v1.13 were dead code in practice. The type is now normalised in one place.
+- **The manifest is keyed on the Genesys org id, not our customer id** — With ten customers each having dev/uat/prod it matters that a record belongs unambiguously to one organisation. Customer ids are local timestamps that change if a customer is deleted and re-added; the org id follows the organisation. Older records are still matched on customer id.
+- **Publish times are compared against Genesys' own clock** — The baseline stores the target flow's `dateCheckedIn`, and later comparisons are measured against that rather than our own timestamp, which depends on the machine's clock.
+
+> **Set a baseline per pair of orgs.** Run it once for each combination you work with — e.g. `dev → uat` and `dev → prod` for each customer. Each target org gets its own set of records.
 
 ### v1.13.0
 ---
@@ -476,7 +497,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.13.0** — see [Changelog](#changelog) above.
+> Current version: **v1.14.0** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**

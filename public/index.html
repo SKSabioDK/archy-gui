@@ -454,7 +454,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.13.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.14.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -533,6 +533,7 @@
             <label data-i18n="cmp_against">Sammenlign mod org (valgfrit)</label>
             <select id="fb-compare" onchange="applyFlowFilter()"></select>
           </div>
+          <button class="btn btn-secondary" onclick="setBaseline()" id="fb-baseline-btn" data-i18n="fb_baseline">📌 Sæt nulpunkt</button>
           <button class="btn btn-secondary" onclick="loadFlows()" data-i18n="btn_reload">🔄 Genindlæs</button>
         </div>
       </div>
@@ -1257,6 +1258,12 @@ const LANGS = {
     cmp_never_published:'aldrig publiceret',
     cmp_published_after:'Målet er publiceret EFTER migreringen — nogen har ændret det direkte i mål-org\'en.',
     cmp_not_touched:'Målet er ikke publiceret siden migreringen.',
+    fb_baseline:'📌 Sæt nulpunkt',
+    fb_baseline_need_org:'Vælg først en org at sammenligne mod',
+    fb_baseline_running:'Noterer…',
+    fb_baseline_done:'Nulpunkt sat for flows',
+    fb_baseline_skipped:'sprunget over (allerede migreret med værktøjet)',
+    cmp_baseline_ref:'Nulpunkt sat',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1499,6 +1506,12 @@ const LANGS = {
     cmp_never_published:'never published',
     cmp_published_after:'The target was published AFTER the migration — someone changed it directly in the target org.',
     cmp_not_touched:'The target has not been published since the migration.',
+    fb_baseline:'📌 Set baseline',
+    fb_baseline_need_org:'Pick an org to compare against first',
+    fb_baseline_running:'Recording…',
+    fb_baseline_done:'Baseline set for flows',
+    fb_baseline_skipped:'skipped (already migrated with this tool)',
+    cmp_baseline_ref:'Baseline set',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -1741,6 +1754,12 @@ const LANGS = {
     cmp_never_published:'jamais publiée',
     cmp_published_after:'La cible a été publiée APRÈS la migration — quelqu\'un l\'a modifiée directement dans l\'org cible.',
     cmp_not_touched:'La cible n\'a pas été publiée depuis la migration.',
+    fb_baseline:'📌 Définir un point zéro',
+    fb_baseline_need_org:'Choisissez d\'abord une org de comparaison',
+    fb_baseline_running:'Enregistrement…',
+    fb_baseline_done:'Point zéro défini pour les flows',
+    fb_baseline_skipped:'ignorés (déjà migrés avec cet outil)',
+    cmp_baseline_ref:'Point zéro défini',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -1983,6 +2002,12 @@ const LANGS = {
     cmp_never_published:'nooit gepubliceerd',
     cmp_published_after:'Het doel is gepubliceerd NA de migratie — iemand heeft het direct in de doel-org gewijzigd.',
     cmp_not_touched:'Het doel is niet gepubliceerd sinds de migratie.',
+    fb_baseline:'📌 Nulpunt instellen',
+    fb_baseline_need_org:'Kies eerst een org om mee te vergelijken',
+    fb_baseline_running:'Vastleggen…',
+    fb_baseline_done:'Nulpunt ingesteld voor flows',
+    fb_baseline_skipped:'overgeslagen (al gemigreerd met deze tool)',
+    cmp_baseline_ref:'Nulpunt ingesteld',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -2225,6 +2250,12 @@ const LANGS = {
     cmp_never_published:'nunca publicado',
     cmp_published_after:'El destino se publicó DESPUÉS de la migración — alguien lo cambió directamente en la org de destino.',
     cmp_not_touched:'El destino no se ha publicado desde la migración.',
+    fb_baseline:'📌 Establecer punto cero',
+    fb_baseline_need_org:'Elige primero una org con la que comparar',
+    fb_baseline_running:'Registrando…',
+    fb_baseline_done:'Punto cero establecido para flows',
+    fb_baseline_skipped:'omitidos (ya migrados con esta herramienta)',
+    cmp_baseline_ref:'Punto cero establecido',
   }
 };
 
@@ -5187,6 +5218,29 @@ async function daMigrateSelected() {
 }
 
 
+
+
+// Noterer hvordan sammenlignings-org'ens flows ser ud nu, så senere ændringer
+// kan opdages — også for flows der aldrig er migreret med værktøjet.
+async function setBaseline() {
+  const sourceId = document.getElementById('fb-customer').value;
+  const targetId = document.getElementById('fb-compare').value;
+  if (!targetId) return alert(t('fb_baseline_need_org'));
+
+  const btn = document.getElementById('fb-baseline-btn');
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = t('fb_baseline_running');
+  try {
+    const r = await fetch('/api/flows/baseline', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sourceId, targetId })
+    }).then(x => x.json());
+    if (r.error) alert(r.error);
+    else alert(`${t('fb_baseline_done')}: ${r.recorded} / ${r.total}` +
+               (r.skipped ? `\n${r.skipped} ${t('fb_baseline_skipped')}` : ''));
+  } catch (e) { alert(e.message); }
+  btn.disabled = false; btn.textContent = label;
+}
 
 // ── Indholdssammenligning af flows mellem to orgs ─────────────────────────────
 async function compareFlow(nameEnc, type) {

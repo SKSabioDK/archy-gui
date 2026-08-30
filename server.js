@@ -983,21 +983,53 @@ async function getFlowPublishInfo(customer, flowName, flowType) {
 }
 
 // ── Migreringsmanifest ────────────────────────────────────────────────────────
-// Hvad blev migreret hvorhen, og hvilket indhold havde det. Ligger under flows/
-// som resten af de lokale arbejdsfiler.
+// Hvad blev migreret hvorhen, og hvilket indhold havde det.
+//
+// Nøglen er Genesys' EGEN org-id — ikke vores lokale kunde-id. Med ti kunder
+// der hver har dev/uat/prod er det afgørende at en post entydigt hører til én
+// org: kunde-id'er er lokale tidsstempler der ændrer sig hvis en kunde slettes
+// og oprettes igen, mens org-id'et følger organisationen.
 const MANIFEST_FILE = path.join(FLOWS_DIR, '.migrations.json');
+
+// Org-id pr. kunde. Slås op én gang og huskes — det ændrer sig ikke.
+const orgIdCache = {};
+async function getOrgId(customer) {
+  if (orgIdCache[customer.id]) return orgIdCache[customer.id];
+  try {
+    const { token, apiBase } = await getToken(customer);
+    const r = await axios.get(`${apiBase}/api/v2/organizations/me`,
+      { headers: { Authorization: `Bearer ${token}` } });
+    orgIdCache[customer.id] = r.data.id;
+    return r.data.id;
+  } catch (_) { return null; }
+}
+
+// Flowtyper skrives forskelligt de to steder de kommer fra: API'et siger
+// INBOUNDCALL, YAML-roden siger inboundCall. Manifestet gemmer én form.
+const normType = t => String(t || '').toUpperCase();
 
 function loadManifest() {
   try { return JSON.parse(fs.readFileSync(MANIFEST_FILE, 'utf8')); } catch (_) { return []; }
 }
 
-function recordMigration(entry) {
+// Find posten for ét flow i én mål-org. Matcher på org-id når det findes,
+// ellers på det lokale kunde-id, så ældre poster stadig kan slås op.
+function findManifestEntry(all, { targetOrgId, targetId, flowName, flowType }) {
+  const ft = normType(flowType);
+  return all.find(e =>
+    e.flowName === flowName && normType(e.flowType) === ft &&
+    (e.targetOrgId && targetOrgId ? e.targetOrgId === targetOrgId : e.targetId === targetId));
+}
+
+function recordManifest(entry) {
   try {
     const all = loadManifest();
-    // Én linje pr. (mål-org, flow) — den nyeste migrering er den gældende
-    const i = all.findIndex(e => e.targetId === entry.targetId &&
-      e.flowName === entry.flowName && e.flowType === entry.flowType);
-    if (i >= 0) all[i] = entry; else all.push(entry);
+    entry.flowType = normType(entry.flowType);
+    // Én linje pr. (mål-org, flow) — den nyeste hændelse er den gældende
+    const i = all.findIndex(e =>
+      e.flowName === entry.flowName && normType(e.flowType) === entry.flowType &&
+      (e.targetOrgId && entry.targetOrgId ? e.targetOrgId === entry.targetOrgId : e.targetId === entry.targetId));
+    if (i >= 0) all[i] = { ...all[i], ...entry }; else all.push(entry);
     fs.writeFileSync(MANIFEST_FILE, JSON.stringify(all, null, 2));
   } catch (e) {
     addLog('WARN', `Kunne ikke skrive migreringsmanifest: ${e.message}`, null, 'SYSTEM');
@@ -1005,6 +1037,63 @@ function recordMigration(entry) {
 }
 
 app.get('/api/migrations', (req, res) => res.json(loadManifest()));
+
+// Nulpunkt: noterer hvordan mål-org'ens flows ser ud LIGE NU, så senere
+// ændringer kan opdages — også for flows værktøjet aldrig har migreret.
+//
+// Bevidst kun API-opslag, ingen eksport: publiceringstidspunktet er det der
+// skal bruges til at fange en ændring lavet direkte i mål-org'en, og det kan
+// hentes for alle flows i ét hug. En indholds-hash ville kræve en Archy-eksport
+// pr. flow — 84 flows ville tage over 20 minutter.
+app.post('/api/flows/baseline', async (req, res) => {
+  const { sourceId, targetId } = req.body;
+  const source = loadCustomers().find(c => c.id === sourceId);
+  const target = loadCustomers().find(c => c.id === targetId);
+  if (!target) return res.status(404).json({ error: 'Customer not found' });
+
+  try {
+    const [targetOrgId, sourceOrgId] = await Promise.all([
+      getOrgId(target), source ? getOrgId(source) : Promise.resolve(null)
+    ]);
+    const { token, apiBase } = await getToken(target);
+    let all = [], page = 1;
+    while (true) {
+      const r = await axios.get(`${apiBase}/api/v2/flows`, {
+        headers: { Authorization: `Bearer ${token}` }, params: { pageSize: 100, pageNumber: page }
+      });
+      const e = r.data.entities || [];
+      all = all.concat(e);
+      if (e.length < 100) break;
+      page++;
+    }
+
+    const ts = new Date().toISOString();
+    let recorded = 0, skipped = 0;
+    for (const f of all) {
+      const existing = findManifestEntry(loadManifest(), {
+        targetOrgId, targetId, flowName: f.name, flowType: f.type });
+      // En rigtig migrering må ikke overskrives af et nulpunkt
+      if (existing && existing.kind !== 'baseline') { skipped++; continue; }
+      recordManifest({
+        ts, kind: 'baseline',
+        sourceId: source?.id || null, sourceOrgId, sourceName: source?.name || null,
+        targetId, targetOrgId, targetName: target.name,
+        flowName: f.name, flowType: f.type,
+        targetVersion: f.publishedVersion?.name || f.checkedInVersion?.name || null,
+        targetPublishedAt: f.publishedVersion?.dateCheckedIn || f.publishedVersion?.dateCreated || null,
+        targetActive: !!f.active
+      });
+      recorded++;
+    }
+
+    addLog('SUCCESS', `Nulpunkt sat for ${target.name}: ${recorded} flows noteret` +
+      (skipped ? `, ${skipped} sprunget over (allerede migreret med værktøjet)` : ''), target.name, 'MIGRATE');
+    res.json({ ok: true, recorded, skipped, total: all.length, targetOrgId });
+
+  } catch (e) {
+    res.status(500).json({ error: describeApiError(e) });
+  }
+});
 
 // Sammenligner ét flow i to orgs på indhold — ikke på versionsnummer.
 app.post('/api/flows/compare', async (req, res) => {
@@ -1049,11 +1138,12 @@ app.post('/api/flows/compare', async (req, res) => {
     const sourceHash = flowContentHash(src.yaml);
     const targetHash = flowContentHash(tgt.yaml);
 
-    // Har vi migreret dette flow før, kan vi sige HVAD der har flyttet sig
-    const rec = loadManifest().find(e => e.targetId === targetId &&
-      e.flowName === flowName && e.flowType === flowType);
+    // Kender vi dette flow fra en migrering eller et nulpunkt, kan vi sige
+    // HVAD der har flyttet sig siden.
+    const targetOrgId = await getOrgId(target);
+    const rec = findManifestEntry(loadManifest(), { targetOrgId, targetId, flowName, flowType });
     let drift = null;
-    if (rec) {
+    if (rec?.hash) {
       const targetChanged = rec.hash !== targetHash;
       const sourceChanged = rec.hash !== sourceHash;
       drift = targetChanged && sourceChanged ? 'both'
@@ -1068,14 +1158,21 @@ app.post('/api/flows/compare', async (req, res) => {
     // Er målet publiceret EFTER vi migrerede det, har nogen rettet direkte i
     // mål-org'en. Det er den situation man ikke opdager ved at kigge på
     // versionsnumre — og præcis den man vil fange.
+    // Foretræk det publiceringstidspunkt der blev noteret dengang: det er
+    // Genesys' eget ur på begge sider af sammenligningen. Vores egen ts bruges
+    // kun hvis posten ikke har et — den afhænger af maskinens ur.
     let publishedAfterMigration = null;
-    if (rec?.ts && tgtPub?.publishedAt) {
-      publishedAfterMigration = tgtPub.publishedAt > new Date(rec.ts).getTime();
+    if (tgtPub?.publishedAt) {
+      if (rec?.targetPublishedAt != null) publishedAfterMigration = tgtPub.publishedAt > rec.targetPublishedAt;
+      else if (rec?.ts) publishedAfterMigration = tgtPub.publishedAt > new Date(rec.ts).getTime();
+    } else if (rec?.targetPublishedAt != null) {
+      publishedAfterMigration = false;   // var publiceret, er det ikke længere
     }
 
     res.json({ ok: true, verdict: same ? 'identical' : 'different', flowName, flowType,
       sourceVersion: src.version, targetVersion: tgt.version,
-      sourceHash, targetHash, diffCount, diffs, drift, migratedAt: rec?.ts || null,
+      sourceHash, targetHash, diffCount, diffs, drift,
+      migratedAt: rec?.ts || null, recordKind: rec?.kind || (rec ? 'migration' : null),
       srcPub, tgtPub, publishedAfterMigration });
 
   } catch (e) {
@@ -2189,12 +2286,20 @@ app.post('/api/migrate/commit', async (req, res) => {
     // eller målet har flyttet sig. Versionsnumrene gemmes til orientering —
     // sammenligningen sker altid på indholds-hashen.
     const importedYaml = fs.readFileSync(resolved, 'utf8');
-    recordMigration({
-      ts: new Date().toISOString(),
-      sourceId, sourceName: source.name,
-      targetId, targetName: target.name,
-      flowName, flowType: (importedYaml.match(/^(\w+):/m) || [])[1] || null,
+    // Flowtypen tages fra YAML-roden og normaliseres, så den matcher API'ets
+    // form når posten senere slås op.
+    const yamlType = (importedYaml.match(/^(\w+):/m) || [])[1] || null;
+    const [sourceOrgId, targetOrgId] = await Promise.all([getOrgId(source), getOrgId(target)]);
+    const pub = await getFlowPublishInfo(target, flowName, yamlType).catch(() => null);
+
+    recordManifest({
+      ts: new Date().toISOString(), kind: 'migration',
+      sourceId, sourceOrgId, sourceName: source.name,
+      targetId, targetOrgId, targetName: target.name,
+      flowName, flowType: yamlType,
       sourceVersion: versionFromFileName(path.basename(resolved)),
+      targetVersion: pub?.version || null,
+      targetPublishedAt: pub?.publishedAt || null,
       action: cmd,
       hash: flowContentHash(importedYaml)
     });
