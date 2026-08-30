@@ -1,10 +1,21 @@
-# Archy GUI — Flow Manager · v1.9.3
+# Archy GUI — Flow Manager · v1.9.4
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.9.4
+---
+**🇩🇰 Dansk**
+- **Survey forms tjekkes nu** — `VOICESURVEY`-flows peger på en survey form ved navn (`surveyForm: name: …`). Den blev ikke tjekket, så importen nåede hele vejen til Archy og fejlede der. Survey forms indgår nu i afhængighedstjekket og listes under "skal oprettes manuelt".
+- **Manglende ressourcer navngives i fejlen** — Archy melder en manglende ressource som `find 'survey forms' by value of 'X' - no matches`, men opsummerer det som `Architect Scripting session ended in error ( code: 99 )`. Den generiske linje blev vist. Nu vises i stedet `survey forms "X" findes ikke i mål-org'en`.
+
+---
+**🇬🇧 English**
+- **Survey forms are now checked** — `VOICESURVEY` flows reference a survey form by name (`surveyForm: name: …`). It was not checked, so the import ran all the way to Archy and failed there. Survey forms are now part of the dependency check and listed under "must be created manually".
+- **Missing resources are named in the error** — Archy reports a missing resource as `find 'survey forms' by value of 'X' - no matches` but summarises it as `Architect Scripting session ended in error ( code: 99 )`. The generic line was what got shown. It now reads `survey forms "X" findes ikke i mål-org'en`.
 
 ### v1.9.3
 ---
@@ -378,7 +389,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.9.3** — see [Changelog](#changelog) above.
+> Current version: **v1.9.4** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**

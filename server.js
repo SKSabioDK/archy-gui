@@ -911,7 +911,9 @@ function scanYamlDependencies(yaml) {
     script:     grab(/screenPopScript:\s*\n\s+([\w][\w _\-]+):/gm),
     // Kun statiske skill-navne. FindSkill(Task.Skills) slås op på kørselstidspunktet
     // og kan ikke tjekkes her — det siges eksplicit i rapporten.
-    skill:      grab(/FindSkill\(\s*["']([^"']+)["']\s*\)/gm)
+    skill:      grab(/FindSkill\(\s*["']([^"']+)["']\s*\)/gm),
+    // VOICESURVEY-flows peger på en survey form ved navn
+    surveyform: grab(/surveyForm:\s*\n\s*name:\s*["']?([^'"\n]+)["']?/gm)
   };
 }
 
@@ -925,7 +927,8 @@ async function lookupExisting(kind, names, token, apiBase) {
   const bulk = {
     datatable:  { url: '/api/v2/flows/datatables',     size: 200 },
     dataaction: { url: '/api/v2/integrations/actions', size: 100 },
-    script:     { url: '/api/v2/scripts',              size: 100 }
+    script:     { url: '/api/v2/scripts',              size: 100 },
+    surveyform: { url: '/api/v2/quality/forms/surveys', size: 100 }
   };
   if (bulk[kind]) {
     let page = 1;
@@ -1161,6 +1164,16 @@ function archyErrorReason(out) {
         if (l && !noise.test(l) && !/Architect Yaml Flow Processor/i.test(l)) { summary = l; break; }
       }
     }
+  }
+
+  // Archy melder en manglende ressource som "find '<type>' by value of '<navn>'
+  // - no matches", men opsummerer det som "Architect Scripting session ended in
+  // error ( code: 99 )". Den generiske linje siger intet, så vi foretrækker den
+  // specifikke.
+  if (!summary || /session ended in error/i.test(summary)) {
+    const miss = lines.find(l => /find '[^']+' by value of '[^']+'\s*-\s*no matches/i.test(l));
+    const m = miss && miss.match(/find '([^']+)' by value of '([^']+)'/i);
+    if (m) summary = `${m[1]} "${m[2]}" findes ikke i mål-org'en`;
   }
 
   // Ved TLS-fejl er Archys egen konklusion ("ugyldige credentials") misvisende,
