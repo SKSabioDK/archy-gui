@@ -492,8 +492,11 @@ app.get('/api/customers/:id/flows', async (req, res) => {
       });
       const flows = (resp.data.entities || []).map(f => ({
         id: f.id, name: f.name, type: f.type,
-        publishedVersion: f.publishedVersion?.version,
-        savedVersion: f.savedVersion?.version,
+        publishedVersion: f.publishedVersion?.name || f.publishedVersion?.commitVersion || null,
+        savedVersion: f.checkedInVersion?.name || f.checkedInVersion?.commitVersion || null,
+        // savedVersion findes kun mens et flow er tjekket ud, og dens name er et
+        // GUID — ikke et versionsnummer. Vi melder det som udtjekket i stedet.
+        checkedOut: !!f.lockedUser || (!!f.savedVersion && !f.checkedInVersion),
         active: !!f.publishedVersion
       }));
       return res.json(flows);
@@ -510,8 +513,11 @@ app.get('/api/customers/:id/flows', async (req, res) => {
         id: f.id,
         name: f.name,
         type: f.type,
-        publishedVersion: f.publishedVersion?.version,
-        savedVersion: f.savedVersion?.version,
+        publishedVersion: f.publishedVersion?.name || f.publishedVersion?.commitVersion || null,
+        savedVersion: f.checkedInVersion?.name || f.checkedInVersion?.commitVersion || null,
+        // savedVersion findes kun mens et flow er tjekket ud, og dens name er et
+        // GUID — ikke et versionsnummer. Vi melder det som udtjekket i stedet.
+        checkedOut: !!f.lockedUser || (!!f.savedVersion && !f.checkedInVersion),
         active: !!f.publishedVersion
       })));
       if (flows.length < 100) break;
@@ -1037,6 +1043,52 @@ function recordManifest(entry) {
 }
 
 app.get('/api/migrations', (req, res) => res.json(loadManifest()));
+
+// Publicerer et flow der allerede ligger i org'en — typisk efter en migrering
+// med handlingen 'create', som lægger flowet ind som checked-in draft.
+//
+// Archy kan ikke bruges her: 'archy publish' kræver altid en YAML-fil og ville
+// re-importere fra kilden. Genesys' eget endpoint publicerer den version der
+// allerede ER i org'en, hvilket er præcis det man vil.
+app.post('/api/flows/publish', async (req, res) => {
+  const { customerId, flowId, flowName } = req.body;
+  const customer = loadCustomers().find(c => c.id === customerId);
+  if (!customer) return res.status(404).json({ error: 'Customer not found' });
+
+  try {
+    const { token, apiBase } = await getToken(customer);
+    const H = { headers: { Authorization: `Bearer ${token}` } };
+
+    const before = (await axios.get(`${apiBase}/api/v2/flows/${flowId}`, H)).data;
+    const version = before.checkedInVersion?.name || before.checkedInVersion?.commitVersion;
+    if (!version) return res.status(400).json({ error: `"${before.name}" har ingen checked-in version at publicere` });
+    if (before.publishedVersion && before.publishedVersion.name === version) {
+      return res.status(409).json({ error: 'already_published',
+        message: `"${before.name}" er allerede publiceret som v${version}` });
+    }
+
+    await axios.post(`${apiBase}/api/v2/flows/actions/publish?flow=${flowId}&version=${encodeURIComponent(version)}`,
+      {}, { headers: { ...H.headers, 'Content-Type': 'application/json' } });
+
+    // Et 200-svar beviser IKKE at der blev publiceret: endpointet svarer også
+    // 200 for en version der ikke findes, uden at gøre noget. Læs flowet igen.
+    const after = (await axios.get(`${apiBase}/api/v2/flows/${flowId}`, H)).data;
+    const nowPublished = after.publishedVersion?.name || after.publishedVersion?.commitVersion || null;
+    if (!nowPublished) {
+      addLog('ERROR', `Publicering af "${before.name}" gav intet resultat — flowet er stadig upubliceret`, customer.name, 'MIGRATE');
+      return res.status(500).json({ error: `Genesys svarede OK, men "${before.name}" er stadig ikke publiceret` });
+    }
+
+    addLog('SUCCESS', `"${after.name}" publiceret som v${nowPublished} i ${customer.name}`, customer.name, 'MIGRATE');
+    res.json({ ok: true, name: after.name, version: nowPublished,
+      publishedAt: after.publishedVersion?.dateCheckedIn || null });
+
+  } catch (e) {
+    const msg = describeApiError(e);
+    addLog('ERROR', `Kunne ikke publicere "${flowName || flowId}": ${msg}`, customer.name, 'MIGRATE');
+    res.status(500).json({ error: msg });
+  }
+});
 
 // Nulpunkt: noterer hvordan mål-org'ens flows ser ud LIGE NU, så senere
 // ændringer kan opdages — også for flows værktøjet aldrig har migreret.

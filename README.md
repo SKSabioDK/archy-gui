@@ -1,10 +1,26 @@
-# Archy GUI — Flow Manager · v1.15.0
+# Archy GUI — Flow Manager · v1.16.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.16.0
+---
+**🇩🇰 Dansk**
+- **🚀 Publicér et flow der allerede ligger i org'en** — Migrerer man med handlingen `create`, lander flowet som checked-in draft uden at være i drift. Flow Browser har nu en **Publicér**-knap på netop de flows, og den publicerer den version der allerede er i org'en. Archy kan ikke bruges til det: `archy publish` kræver altid en YAML-fil og ville re-importere fra kilden — havde kilden ændret sig, ville man publicere noget andet end det man migrerede.
+- **Resultatet verificeres** — Genesys' publiceringsendpoint svarer `200` selv når intet blev publiceret. Værktøjet læser derfor flowet igen bagefter og melder fejl hvis `publishedVersion` stadig er tom, frem for at stole på statuskoden.
+- **Rettet: versionskolonnen viste altid `v?`** — Koden læste `f.publishedVersion?.version`, men Genesys kalder feltet `name` / `commitVersion`. Værdien var derfor altid `undefined`. 104 af 119 flows viser nu deres rigtige versionsnummer.
+- **Udtjekkede flows vises som sådan** — De resterende 15 flows har hverken en publiceret eller checked-in version: de er tjekket ud af en bruger med ugemt arbejde. Deres `savedVersion.name` er et GUID, ikke et versionsnummer, så de vises nu som **Udtjekket** i stedet for `v?`. Det er værd at vide inden en migrering, da et låst flow kræver `--forceUnlock`.
+
+---
+**🇬🇧 English**
+- **🚀 Publish a flow that is already in the org** — Migrating with the `create` action leaves the flow as a checked-in draft that is not live. Flow Browser now has a **Publish** button on exactly those flows, and it publishes the version already in the org. Archy cannot do this: `archy publish` always requires a YAML file and would re-import from the source — if the source had changed, you would publish something other than what you migrated.
+- **The result is verified** — Genesys' publish endpoint answers `200` even when nothing was published. The tool therefore re-reads the flow afterwards and reports a failure if `publishedVersion` is still empty, rather than trusting the status code.
+- **Fixed: the version column always showed `v?`** — The code read `f.publishedVersion?.version`, but Genesys calls the field `name` / `commitVersion`. The value was therefore always `undefined`. 104 of 119 flows now show their real version number.
+- **Checked-out flows are shown as such** — The remaining 15 flows have neither a published nor a checked-in version: they are checked out by a user with unsaved work. Their `savedVersion.name` is a GUID, not a version number, so they now read **Checked out** instead of `v?`. Worth knowing before a migration, since a locked flow needs `--forceUnlock`.
+
 
 ### v1.15.0
 ---
@@ -402,6 +418,8 @@ Tilføj Genesys Cloud orgs med to auth-typer:
 #### 📋 Flow Browser
 Hent, søg og filtrer flows. Filtrér på **flowtype** (listen fyldes ud fra de typer org'en faktisk har, med antal pr. type) og på fritekst. Klik **Export** direkte fra listen.
 
+**🚀 Publicér.** Flows der er migreret med handlingen `create` ligger som checked-in draft uden at være i drift. De får en **Publicér**-knap der publicerer den version der allerede er i org'en — uden at hente noget fra kilden igen. Flows der er tjekket ud af en bruger vises som **Udtjekket** i versionskolonnen.
+
 **⇄ Sammenlign to orgs.** Vælg en org i *Sammenlign mod org*, og hver række får en ⇄-knap. Den eksporterer flowet fra begge orgs og sammenligner **indholdet** — ikke versionsnumrene, som er per-org tællere og intet siger om hvad flowet indeholder.
 
 | Udfald | Betydning |
@@ -537,7 +555,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.15.0** — see [Changelog](#changelog) above.
+> Current version: **v1.16.0** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
@@ -564,6 +582,8 @@ Add Genesys Cloud orgs with Client Credentials or OAuth PKCE.
 
 #### 📋 Flow Browser
 Fetch, search and filter flows. Filter by **flow type** (the list is populated from the types the org actually has, with a count each) and by free text. Click **Export** directly from the list.
+
+**🚀 Publish.** Flows migrated with the `create` action sit as a checked-in draft without being live. They get a **Publish** button that publishes the version already in the org — without fetching anything from the source again. Flows checked out by a user read **Checked out** in the version column.
 
 **⇄ Compare two orgs.** Pick an org under *Compare against org* and each row gets a ⇄ button. It exports the flow from both orgs and compares the **content** — not the version numbers, which are per-org counters and say nothing about what the flow contains.
 

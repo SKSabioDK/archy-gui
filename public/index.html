@@ -454,7 +454,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.15.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.16.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1266,6 +1266,10 @@ const LANGS = {
     cmp_prov_when:'Tidspunkt',
     cmp_sync_ok:'Målet svarer til kilde {v} — migreret med ArchyGUI og indholdet er stadig identisk.',
     cmp_sync_moved:'Målet blev bygget af kilde {built}, som nu står på {now}. Indholdet er stadig identisk, så kilden er kun versioneret op.',
+    fb_publish:'🚀 Publicér',
+    fb_publish_confirm:'Publicér "{name}" som v{v} i den valgte org?',
+    fb_publish_ok:'Publiceret',
+    col_checked_out:'Udtjekket',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1521,6 +1525,10 @@ const LANGS = {
     cmp_prov_when:'When',
     cmp_sync_ok:'The target matches source {v} — migrated with ArchyGUI and the content is still identical.',
     cmp_sync_moved:'The target was built from source {built}, which is now at {now}. The content is still identical, so the source has only been re-versioned.',
+    fb_publish:'🚀 Publish',
+    fb_publish_confirm:'Publish "{name}" as v{v} in the selected org?',
+    fb_publish_ok:'Published',
+    col_checked_out:'Checked out',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -1776,6 +1784,10 @@ const LANGS = {
     cmp_prov_when:'Date',
     cmp_sync_ok:'La cible correspond à la source {v} — migrée avec ArchyGUI et le contenu est toujours identique.',
     cmp_sync_moved:'La cible a été construite depuis la source {built}, désormais en {now}. Le contenu est identique : la source a seulement changé de version.',
+    fb_publish:'🚀 Publier',
+    fb_publish_confirm:'Publier « {name} » en v{v} dans l\'org sélectionnée ?',
+    fb_publish_ok:'Publié',
+    col_checked_out:'Extrait',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -2031,6 +2043,10 @@ const LANGS = {
     cmp_prov_when:'Tijdstip',
     cmp_sync_ok:'Het doel komt overeen met bron {v} — gemigreerd met ArchyGUI en de inhoud is nog identiek.',
     cmp_sync_moved:'Het doel is gebouwd uit bron {built}, die nu op {now} staat. De inhoud is nog identiek, dus de bron is alleen opnieuw geversioneerd.',
+    fb_publish:'🚀 Publiceren',
+    fb_publish_confirm:'"{name}" publiceren als v{v} in de gekozen org?',
+    fb_publish_ok:'Gepubliceerd',
+    col_checked_out:'Uitgecheckt',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -2286,6 +2302,10 @@ const LANGS = {
     cmp_prov_when:'Momento',
     cmp_sync_ok:'El destino coincide con el origen {v} — migrado con ArchyGUI y el contenido sigue siendo idéntico.',
     cmp_sync_moved:'El destino se construyó desde el origen {built}, que ahora está en {now}. El contenido sigue siendo idéntico, así que el origen solo cambió de versión.',
+    fb_publish:'🚀 Publicar',
+    fb_publish_confirm:'¿Publicar «{name}» como v{v} en la org seleccionada?',
+    fb_publish_ok:'Publicado',
+    col_checked_out:'Extraído',
   }
 };
 
@@ -2689,10 +2709,13 @@ function renderFlowTable(flows) {
       <td>${f.name}</td>
       <td><span class="badge badge-blue">${f.type}</span></td>
       <td>${f.active ? `<span class="badge badge-green">${t('badge_published')}</span>` : `<span class="badge badge-gray">${t('badge_draft')}</span>`}</td>
-      <td style="color:var(--muted)">v${f.publishedVersion || f.savedVersion || '?'}</td>
+      <td style="color:var(--muted)">${f.publishedVersion || f.savedVersion
+        ? 'v' + (f.publishedVersion || f.savedVersion)
+        : (f.checkedOut ? `<span class="badge badge-gray">${t('col_checked_out')}</span>` : '—')}</td>
       <td>
         <button class="btn btn-secondary btn-sm" onclick="prefillExport('${f.name}','${f.type}')">${t('btn_export_flow')}</button>
         ${document.getElementById('fb-compare')?.value ? `<button class="btn btn-secondary btn-sm" onclick="compareFlow('${encodeURIComponent(f.name)}','${f.type}')">⇄</button>` : ''}
+        ${!f.active && f.savedVersion ? `<button class="btn btn-blue btn-sm" onclick="publishFlow('${f.id}','${encodeURIComponent(f.name)}','${f.savedVersion}')">${t('fb_publish')}</button>` : ''}
       </td>
     </tr>`).join('');
 }
@@ -5263,6 +5286,29 @@ async function daMigrateSelected() {
 
 
 
+
+
+// Publicerer et flow der allerede ligger i org'en — fx efter en migrering
+// med handlingen "create", som lægger det ind som checked-in draft.
+async function publishFlow(flowId, nameEnc, version) {
+  const name = decodeURIComponent(nameEnc);
+  const customerId = document.getElementById('fb-customer').value;
+  if (!confirm(t('fb_publish_confirm').replace('{name}', name).replace('{v}', version))) return;
+
+  try {
+    const r = await fetch('/api/flows/publish', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customerId, flowId, flowName: name })
+    }).then(x => x.json());
+
+    if (r.error === 'already_published') alert(r.message);
+    else if (r.error) alert(r.error);
+    else {
+      alert(`${t('fb_publish_ok')}: ${r.name} v${r.version}`);
+      loadFlows();   // hent listen igen så status og version er opdateret
+    }
+  } catch (e) { alert(e.message); }
+}
 
 // Noterer hvordan sammenlignings-org'ens flows ser ud nu, så senere ændringer
 // kan opdages — også for flows der aldrig er migreret med værktøjet.
