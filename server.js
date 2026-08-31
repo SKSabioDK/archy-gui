@@ -2569,6 +2569,76 @@ app.get('/api/files', (req, res) => {
   res.json(results);
 });
 
+// Rydder op i eksporterede YAML-filer: behold de nyeste N versioner af hvert
+// flow pr. kunde, slet resten.
+//
+// Kaldes altid først med dryRun, så brugeren kan se præcis hvad der ryger.
+// Filer uden versionsnummer i navnet står alene i deres egen gruppe og røres
+// derfor aldrig.
+app.post('/api/files/cleanup', (req, res) => {
+  const keep = Math.max(1, Math.min(20, parseInt(req.body?.keep, 10) || 2));
+  const dryRun = req.body?.dryRun !== false;   // slet kun når der udtrykkeligt bedes om det
+
+  if (!fs.existsSync(FLOWS_DIR)) return res.json({ ok: true, keep, dryRun, toDelete: [], freed: 0 });
+
+  try {
+    const customers = loadCustomers();
+    const groups = new Map();   // kunde|flownavn -> [filer]
+
+    for (const dir of fs.readdirSync(FLOWS_DIR)) {
+      const fullDir = path.join(FLOWS_DIR, dir);
+      if (!fs.statSync(fullDir).isDirectory()) continue;
+      const isImportDir = dir.startsWith('import_');
+      const customer = isImportDir
+        ? customers.find(c => c.id === dir.replace('import_', ''))
+        : customers.find(c => sanitizeName(c.name) === dir);
+      const customerName = customer?.name || dir;
+
+      for (const f of fs.readdirSync(fullDir).filter(x => x.endsWith('.yaml'))) {
+        const p = path.join(fullDir, f);
+        let st; try { st = fs.statSync(p); } catch (_) { continue; }
+        const parsed = parseFlowFileName(f);
+        // Grupper pr. mappe, ikke kun pr. kunde: en eksport og en fil lagt op
+        // til import er to forskellige ting og skal ikke udkonkurrere hinanden.
+        const key = `${dir}|${parsed.flowName}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push({
+          path: p, fileName: f, dir, customerName, isImport: isImportDir,
+          flowName: parsed.flowName, version: parsed.version, major: parsed.major,
+          size: st.size, modified: st.mtime.toISOString()
+        });
+      }
+    }
+
+    const toDelete = [];
+    for (const files of groups.values()) {
+      if (files.length <= keep) continue;
+      // Nyeste først: højeste version, ellers senest ændret
+      files.sort((a, b) => (b.major ?? -1) !== (a.major ?? -1)
+        ? (b.major ?? -1) - (a.major ?? -1)
+        : String(b.modified).localeCompare(String(a.modified)));
+      toDelete.push(...files.slice(keep));
+    }
+    const freed = toDelete.reduce((n, f) => n + f.size, 0);
+
+    if (dryRun) return res.json({ ok: true, keep, dryRun: true, toDelete, freed });
+
+    let deleted = 0;
+    for (const f of toDelete) {
+      // Bliv inden for FLOWS_DIR uanset hvad
+      const resolved = path.resolve(f.path);
+      if (!resolved.startsWith(path.resolve(FLOWS_DIR) + path.sep)) continue;
+      try { fs.unlinkSync(resolved); deleted++; } catch (_) {}
+    }
+    addLog('SUCCESS', `Oprydning: ${deleted} gamle YAML-filer slettet (beholdt ${keep} pr. flow, ${Math.round(freed / 1024)} kB frigivet)`, null, 'SYSTEM');
+    res.json({ ok: true, keep, dryRun: false, deleted, freed, toDelete });
+
+  } catch (e) {
+    addLog('ERROR', `Oprydning fejlede: ${e.message}`, null, 'SYSTEM');
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/files/content', (req, res) => {
   const { filePath } = req.query;
   if (!filePath || !filePath.startsWith(FLOWS_DIR))

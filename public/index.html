@@ -454,7 +454,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.18.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.19.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -863,6 +863,7 @@
             <span data-i18n="fl_latest_only">Kun nyeste version</span>
           </label>
           <button class="btn btn-secondary" onclick="loadFiles()" data-i18n="btn_reload">🔄 Genindlæs</button>
+          <button class="btn btn-secondary" onclick="openCleanup()" data-i18n="fl_cleanup">🧹 Ryd op</button>
         </div>
       </div>
       <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:10px" id="fl-count"></div>
@@ -995,6 +996,26 @@
 </div><!-- /layout -->
 
 <!-- ── YAML Wizard Modal ─────────────────────────────────────────────────────── -->
+<div class="wiz-overlay" id="cl-overlay">
+  <div class="wiz-modal" style="width:680px">
+    <div style="padding:20px 24px 0">
+      <div style="font-size:16px;font-weight:700" data-i18n="fl_cleanup_title">Ryd op i eksporterede filer</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px" data-i18n="fl_cleanup_sub">Behold de nyeste versioner af hvert flow, slet resten.</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:14px">
+        <span style="font-size:13px" data-i18n="fl_keep">Behold pr. flow</span>
+        <select id="cl-keep" style="width:90px" onchange="previewCleanup()">
+          <option value="1">1</option><option value="2" selected>2</option>
+          <option value="3">3</option><option value="5">5</option>
+        </select>
+      </div>
+    </div>
+    <div style="padding:16px 24px;overflow-y:auto;flex:1" id="cl-body"></div>
+    <div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('cl-overlay').style.display='none'" data-i18n="cmp_close">Luk</button>
+      <button class="btn btn-primary btn-sm" id="cl-run" onclick="runCleanup()" disabled></button>
+    </div>
+  </div>
+</div>
 <div class="wiz-overlay" id="cmp-overlay">
   <div class="wiz-modal" style="width:720px">
     <div style="padding:20px 24px 0">
@@ -1328,6 +1349,15 @@ const LANGS = {
     fl_older_hidden:'ældre versioner skjult',
     fl_from_export:'hentet fra org',
     fl_from_import:'lagt op til import',
+    fl_cleanup:'🧹 Ryd op',
+    fl_cleanup_title:'Ryd op i eksporterede filer',
+    fl_cleanup_sub:'Behold de nyeste versioner af hvert flow, slet resten.',
+    fl_keep:'Behold pr. flow',
+    fl_cleanup_nothing:'Ingen filer at slette — alle flows har højst det valgte antal versioner.',
+    fl_cleanup_will_delete:'filer bliver slettet',
+    fl_cleanup_run:'Slet {n} filer',
+    fl_cleanup_confirm:'Slet {n} filer permanent? De kan ikke hentes tilbage.',
+    fl_cleanup_done:'Filer slettet',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1605,6 +1635,15 @@ const LANGS = {
     fl_older_hidden:'older versions hidden',
     fl_from_export:'fetched from org',
     fl_from_import:'staged for import',
+    fl_cleanup:'🧹 Clean up',
+    fl_cleanup_title:'Clean up exported files',
+    fl_cleanup_sub:'Keep the newest versions of each flow, delete the rest.',
+    fl_keep:'Keep per flow',
+    fl_cleanup_nothing:'Nothing to delete — no flow has more than the chosen number of versions.',
+    fl_cleanup_will_delete:'files will be deleted',
+    fl_cleanup_run:'Delete {n} files',
+    fl_cleanup_confirm:'Permanently delete {n} files? They cannot be recovered.',
+    fl_cleanup_done:'Files deleted',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -1882,6 +1921,15 @@ const LANGS = {
     fl_older_hidden:'versions plus anciennes masquées',
     fl_from_export:'récupéré de l\'org',
     fl_from_import:'préparé pour import',
+    fl_cleanup:'🧹 Nettoyer',
+    fl_cleanup_title:'Nettoyer les fichiers exportés',
+    fl_cleanup_sub:'Conserver les versions les plus récentes de chaque flow, supprimer le reste.',
+    fl_keep:'Conserver par flow',
+    fl_cleanup_nothing:'Rien à supprimer — aucun flow ne dépasse le nombre de versions choisi.',
+    fl_cleanup_will_delete:'fichiers seront supprimés',
+    fl_cleanup_run:'Supprimer {n} fichiers',
+    fl_cleanup_confirm:'Supprimer définitivement {n} fichiers ? Ils seront irrécupérables.',
+    fl_cleanup_done:'Fichiers supprimés',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -2159,6 +2207,15 @@ const LANGS = {
     fl_older_hidden:'oudere versies verborgen',
     fl_from_export:'opgehaald uit org',
     fl_from_import:'klaargezet voor import',
+    fl_cleanup:'🧹 Opruimen',
+    fl_cleanup_title:'Geëxporteerde bestanden opruimen',
+    fl_cleanup_sub:'Behoud de nieuwste versies van elk flow, verwijder de rest.',
+    fl_keep:'Behouden per flow',
+    fl_cleanup_nothing:'Niets te verwijderen — geen flow heeft meer dan het gekozen aantal versies.',
+    fl_cleanup_will_delete:'bestanden worden verwijderd',
+    fl_cleanup_run:'Verwijder {n} bestanden',
+    fl_cleanup_confirm:'{n} bestanden definitief verwijderen? Ze kunnen niet worden hersteld.',
+    fl_cleanup_done:'Bestanden verwijderd',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -2436,6 +2493,15 @@ const LANGS = {
     fl_older_hidden:'versiones anteriores ocultas',
     fl_from_export:'obtenido de la org',
     fl_from_import:'preparado para importar',
+    fl_cleanup:'🧹 Limpiar',
+    fl_cleanup_title:'Limpiar archivos exportados',
+    fl_cleanup_sub:'Conservar las versiones más recientes de cada flow y borrar el resto.',
+    fl_keep:'Conservar por flow',
+    fl_cleanup_nothing:'Nada que borrar — ningún flow supera el número de versiones elegido.',
+    fl_cleanup_will_delete:'archivos se borrarán',
+    fl_cleanup_run:'Borrar {n} archivos',
+    fl_cleanup_confirm:'¿Borrar {n} archivos permanentemente? No se podrán recuperar.',
+    fl_cleanup_done:'Archivos borrados',
   }
 };
 
@@ -3584,6 +3650,69 @@ async function doImport() {
 }
 
 // ── Files ─────────────────────────────────────────────────────────────────────
+
+// ── Oprydning i eksporterede YAML-filer ───────────────────────────────────────
+// Der vises altid en tørkørsel først: sletning skal kunne ses inden den sker.
+let clPending = [];
+
+function openCleanup() {
+  document.getElementById('cl-overlay').style.display = 'flex';
+  previewCleanup();
+}
+
+async function previewCleanup() {
+  const keep = parseInt(document.getElementById('cl-keep').value, 10);
+  const body = document.getElementById('cl-body');
+  const btn  = document.getElementById('cl-run');
+  btn.disabled = true;
+  body.innerHTML = `<div style="color:var(--muted);font-size:12px"><span class="spin"></span> …</div>`;
+
+  const r = await fetch('/api/files/cleanup', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keep, dryRun: true })
+  }).then(x => x.json()).catch(e => ({ error: e.message }));
+
+  if (r.error) { body.innerHTML = `<div style="color:var(--red);font-size:13px">${r.error}</div>`; return; }
+
+  clPending = r.toDelete || [];
+  if (!clPending.length) {
+    body.innerHTML = `<div style="color:var(--green);font-size:13px">✓ ${t('fl_cleanup_nothing')}</div>`;
+    btn.textContent = t('fl_cleanup_run').replace('{n}', 0);
+    return;
+  }
+
+  const kb = Math.round((r.freed || 0) / 1024);
+  body.innerHTML =
+    `<div style="font-size:13px;font-weight:600;color:var(--yellow);margin-bottom:12px">` +
+    `⚠ ${clPending.length} ${t('fl_cleanup_will_delete')} (${kb} kB)</div>` +
+    clPending.map(f => `
+      <div style="display:flex;gap:12px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <span style="color:var(--muted);min-width:150px">${f.customerName}</span>
+        <span style="flex:1;font-family:var(--mono)">${f.fileName}</span>
+        <span style="color:var(--muted)">${new Date(f.modified).toLocaleDateString()}</span>
+      </div>`).join('');
+  btn.textContent = t('fl_cleanup_run').replace('{n}', clPending.length);
+  btn.disabled = false;
+}
+
+async function runCleanup() {
+  const keep = parseInt(document.getElementById('cl-keep').value, 10);
+  if (!clPending.length) return;
+  if (!confirm(t('fl_cleanup_confirm').replace('{n}', clPending.length))) return;
+
+  const btn = document.getElementById('cl-run');
+  btn.disabled = true;
+  const r = await fetch('/api/files/cleanup', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keep, dryRun: false })
+  }).then(x => x.json()).catch(e => ({ error: e.message }));
+
+  if (r.error) { alert(r.error); btn.disabled = false; return; }
+  alert(`${t('fl_cleanup_done')}: ${r.deleted}`);
+  document.getElementById('cl-overlay').style.display = 'none';
+  loadFiles();
+}
+
 let allFiles = [];
 
 async function loadFiles() {

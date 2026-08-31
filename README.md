@@ -1,10 +1,26 @@
-# Archy GUI — Flow Manager · v1.18.0
+# Archy GUI — Flow Manager · v1.19.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.19.0
+---
+**🇩🇰 Dansk**
+- **🧹 Oprydning i eksporterede filer** — Ny knap på YAML Filer. Vælg hvor mange versioner der skal beholdes pr. flow (**2 som standard**, så der altid er en fallback til en tidligere version) og se præcis hvilke filer der ryger, før noget slettes.
+- **Tørkørsel først, altid** — Dialogen viser listen over filer der vil blive slettet med kunde, filnavn og dato, og knappen er slået fra indtil der faktisk er noget at slette. Sletningen kræver derefter en bekræftelse.
+- **Versionerne sammenlignes som tal** — v10 rangerer over v3. En tekstsortering ville have beholdt de forkerte to.
+- **Eksport og import holdes adskilt** — Filer i en kundes eksportmappe og filer lagt op til import grupperes hver for sig, så en eksport aldrig udkonkurrerer en fil der ligger klar til import. Filer uden versionsnummer i navnet står alene og røres ikke.
+
+---
+**🇬🇧 English**
+- **🧹 Cleanup of exported files** — A new button on YAML Files. Choose how many versions to keep per flow (**2 by default**, so there is always a fallback to an earlier version) and see exactly which files will go before anything is deleted.
+- **A dry run first, always** — The dialog lists the files that would be deleted with customer, file name and date, and the button stays disabled until there is actually something to delete. Deleting then asks for confirmation.
+- **Versions are compared numerically** — v10 ranks above v3. A string sort would have kept the wrong two.
+- **Exports and imports are kept apart** — Files in a customer's export directory and files staged for import are grouped separately, so an export never displaces a file waiting to be imported. Files with no version number in the name stand alone and are never touched.
+
 
 ### v1.18.0
 ---
@@ -562,6 +578,8 @@ Filtrér på **kunde**, **flowtype** og fritekst. **Kun nyeste version** er slå
 
 Hver fil kan åbnes (**View**) eller sendes videre til Import-siden (**Import**).
 
+**🧹 Ryd op** fjerner gamle versioner: vælg hvor mange der skal beholdes pr. flow — 2 som standard, så du kan falde tilbage til en tidligere version — og godkend listen inden noget slettes. Filer uden versionsnummer røres ikke.
+
 #### 📋 Systemlog
 Alle handlinger logges i realtid. Filtrer på niveau, handling, kunde og fritekst.
 <img width="1439" height="547" alt="image" src="https://github.com/user-attachments/assets/4d994a59-70b6-4886-be82-54876ff61193" />
@@ -626,7 +644,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.18.0** — see [Changelog](#changelog) above.
+> Current version: **v1.19.0** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
@@ -735,6 +753,8 @@ Archy names the files `<FlowName>_v<major>-<minor>.yaml` — so `Test33_v1-0.yam
 Filter by **customer**, **flow type** and free text. **Latest version only** is on by default, folding away older exports of the same flow — the counter shows how many are hidden.
 
 Each file can be opened (**View**) or sent on to the Import page (**Import**).
+
+**🧹 Clean up** removes old versions: choose how many to keep per flow — 2 by default, so you can fall back to an earlier version — and approve the list before anything is deleted. Files without a version number are left alone.
 
 #### 📋 System Log
 All actions logged in real time. Filter by level, action type, customer, and free text.
