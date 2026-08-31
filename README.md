@@ -1,10 +1,19 @@
-# Archy GUI — Flow Manager · v1.17.1
+# Archy GUI — Flow Manager · v1.17.2
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.17.2
+---
+**🇩🇰 Dansk**
+- **Migrér ressourcer flyttet op under Migrer Flow** — De to migreringssider står nu ved siden af hinanden i sidebaren: flows det ene sted, alt det andet det andet. Tidligere lå Export og Import YAML imellem dem.
+
+---
+**🇬🇧 English**
+- **Migrate resources moved up under Migrate Flow** — The two migration pages now sit next to each other in the sidebar: flows in one, everything else in the other. Export and Import YAML previously separated them.
 
 ### v1.17.1
 ---
@@ -595,7 +604,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.17.1** — see [Changelog](#changelog) above.
+> Current version: **v1.17.2** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
