@@ -1189,6 +1189,79 @@ app.post('/api/flows/baseline', async (req, res) => {
   }
 });
 
+// Hvilke flows findes hos flere kunder, og med hvilke versioner?
+// Kun API-opslag — ét kald pr. kunde — så oversigten er hurtig. Indholdet
+// sammenlignes først når man beder om det, for det kræver en eksport pr. org.
+app.get('/api/flows/cross-customer', async (req, res) => {
+  const customers = loadCustomers();
+  const byFlow = new Map();      // navn|type -> [{customer, version, ...}]
+  const problems = [];
+
+  for (const c of customers) {
+    try {
+      const { token, apiBase } = await getToken(c);
+      let page = 1;
+      while (true) {
+        const r = await axios.get(`${apiBase}/api/v2/flows`, {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { pageSize: 100, pageNumber: page, includeDraft: true }
+        });
+        const e = r.data.entities || [];
+        for (const f of e) {
+          const key = `${f.name}|${f.type}`;
+          if (!byFlow.has(key)) byFlow.set(key, []);
+          byFlow.get(key).push({
+            customerId: c.id, customerName: c.name,
+            flowId: f.id,
+            publishedVersion: f.publishedVersion?.name || f.publishedVersion?.commitVersion || null,
+            checkedInVersion: f.checkedInVersion?.name || f.checkedInVersion?.commitVersion || null,
+            publishedAt: f.publishedVersion?.dateCheckedIn || f.publishedVersion?.dateCreated || null,
+            active: !!f.active
+          });
+        }
+        if (e.length < 100) break;
+        page++;
+      }
+    } catch (e) {
+      problems.push({ customer: c.name, error: describeApiError(e) });
+    }
+  }
+
+  // Kun de flows der optræder hos mere end én kunde
+  const rows = [];
+  for (const [key, list] of byFlow) {
+    if (new Set(list.map(x => x.customerId)).size < 2) continue;
+    const [flowName, flowType] = key.split('|');
+    const versions = new Set(list.map(x => x.publishedVersion || x.checkedInVersion || '?'));
+    rows.push({ flowName, flowType, orgs: list, sameVersion: versions.size === 1 });
+  }
+  rows.sort((a, b) => a.flowName.localeCompare(b.flowName));
+
+  res.json({ ok: true, customers: customers.map(c => ({ id: c.id, name: c.name })), rows, problems });
+});
+
+// Indholds-hash for ét flow hos flere kunder. Eksporterer pr. org, så det
+// tager tid — kaldes kun for én række ad gangen.
+app.post('/api/flows/cross-hash', async (req, res) => {
+  const { flowName, flowType, customerIds } = req.body;
+  const customers = loadCustomers().filter(c => (customerIds || []).includes(c.id));
+  if (!customers.length) return res.status(400).json({ error: 'Ingen kunder valgt' });
+
+  const results = [];
+  for (const c of customers) {
+    try {
+      const { yaml, version } = await exportFlowToYaml(c, flowName, flowType);
+      results.push({ customerId: c.id, customerName: c.name, version, hash: flowContentHash(yaml) });
+    } catch (e) {
+      results.push({ customerId: c.id, customerName: c.name, error: e.message });
+    }
+  }
+  const hashes = new Set(results.filter(r => r.hash).map(r => r.hash));
+  addLog('INFO', `Indholdssammenligning af "${flowName}" hos ${results.length} kunder — ` +
+    (hashes.size === 1 ? 'identisk' : `${hashes.size} forskellige udgaver`), null, 'MIGRATE');
+  res.json({ ok: true, flowName, flowType, results, distinct: hashes.size });
+});
+
 // Sammenligner ét flow i to orgs på indhold — ikke på versionsnummer.
 app.post('/api/flows/compare', async (req, res) => {
   const { sourceId, targetId, flowName, flowType } = req.body;

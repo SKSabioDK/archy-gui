@@ -1,10 +1,28 @@
-# Archy GUI — Flow Manager · v1.19.0
+# Archy GUI — Flow Manager · v1.20.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.20.0
+---
+**🇩🇰 Dansk**
+- **🔀 Ny side: På tværs af kunder** — Viser de flows der findes hos **flere kunder**, med hver kundes version, publiceringstidspunkt og om flowet er aktivt. Ét API-kald pr. kunde, så oversigten er hurtig. Filtrér på flowtype og fritekst, og slå **Kun dem der er ude af trit** fra for at se dem alle.
+- **⇄ Sammenlign indhold pr. række** — Eksporterer flowet fra hver kunde der har det og sammenligner indholds-hashen. Kræver en eksport pr. org og tager derfor tid, så det køres på forlangende og én række ad gangen.
+- **Hvorfor begge niveauer** — `Default Voicemail Flow` står som **v1 hos begge** kunder, men indholdet er forskelligt. Versionsnumrene ville have sagt "samme version"; hashen afslører at de ikke er ens.
+- **Kunder der ikke kan nås siges højt** — Fejler et opslag mod en kunde, vises det som en advarsel over listen i stedet for at oversigten ser komplet ud.
+- **Import-knappen på YAML Filer hedder nu "Send til import"** — Den importerede ikke noget: den henter filens indhold, lægger det i tekstfeltet på Import YAML-siden og navigerer derhen. Man skal fortsat selv vælge mål-kunde og trykke import.
+
+---
+**🇬🇧 English**
+- **🔀 New page: Across customers** — Lists the flows that exist at **more than one customer**, with each customer's version, publish time and whether the flow is active. One API call per customer, so the overview is fast. Filter by flow type and free text, and turn off **Only those out of step** to see them all.
+- **⇄ Compare content per row** — Exports the flow from each customer that has it and compares the content hash. That needs an export per org and therefore takes time, so it runs on demand, one row at a time.
+- **Why both levels** — `Default Voicemail Flow` is **v1 at both** customers, but the content differs. The version numbers would have said "same version"; the hash shows they are not the same.
+- **Unreachable customers are called out** — If a lookup against a customer fails it is shown as a warning above the list, rather than letting the overview look complete.
+- **The Import button on YAML Files is now "Send to import"** — It never imported anything: it fetches the file content, puts it in the Import YAML page's text area and navigates there. You still pick the target customer and press import yourself.
+
 
 ### v1.19.0
 ---
@@ -511,6 +529,13 @@ Dialogen viser desuden hvornår hver side sidst blev **publiceret** og af hvem, 
 
 > Oplysningerne gemmes i `flows/.migrations.json`, nøglet på Genesys' org-id. Filen er maskinspecifik og deles ikke via Git.
 
+#### 🔀 På tværs af kunder
+Viser de flows der findes hos **flere kunder** — fx det samme common module i dev, uat og prod. Hver kunde vises med sin version, publiceringstidspunkt og om flowet er aktivt.
+
+Oversigten bygger på ét API-kald pr. kunde og er derfor hurtig. **⇄ Sammenlign indhold** på en række eksporterer flowet fra hver kunde og sammenligner indholds-hashen — det tager tid, så det køres kun for den række du beder om.
+
+> Begge niveauer er nødvendige: to kunder kan stå med samme versionsnummer og alligevel have forskelligt indhold, fordi numrene tælles pr. org.
+
 #### 🔄 Migrer Flow
 Vælg kilde, mål og flows. Migreringen kører i to faser:
 
@@ -644,7 +669,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.19.0** — see [Changelog](#changelog) above.
+> Current version: **v1.20.0** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
@@ -687,6 +712,13 @@ The dialog also shows when each side was last **published** and by whom, and —
 **📌 Set baseline.** Records how the comparison org's flows look right now. From then on the tool can catch someone publishing directly in the target org, **including for flows it never migrated itself**. Run it once per pair of orgs you work with — e.g. `dev → uat` and `dev → prod` for each customer.
 
 > The records live in `flows/.migrations.json`, keyed on the Genesys org id. The file is machine-specific and is not shared through Git.
+
+#### 🔀 Across customers
+Lists the flows that exist at **more than one customer** — for example the same common module in dev, uat and prod. Each customer is shown with its version, publish time and whether the flow is active.
+
+The overview is one API call per customer and therefore fast. **⇄ Compare content** on a row exports the flow from each customer and compares the content hash — that takes time, so it only runs for the row you ask for.
+
+> Both levels are needed: two customers can show the same version number and still hold different content, because the numbers are counted per org.
 
 #### 🔄 Migrate Flow
 Select source, target and flows. Migration runs in two phases:

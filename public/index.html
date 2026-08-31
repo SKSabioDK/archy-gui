@@ -425,6 +425,9 @@
       <div class="nav-item" data-page="flows" onclick="nav(this)">
         <span class="nav-icon">📋</span> <span data-i18n="nav_flows">Flow Browser</span>
       </div>
+      <div class="nav-item" data-page="cross" onclick="nav(this)">
+        <span class="nav-icon">🔀</span> <span data-i18n="nav_cross">På tværs af kunder</span>
+      </div>
       <div class="nav-item" data-page="migrate" onclick="nav(this)">
         <span class="nav-icon">🔄</span> <span data-i18n="nav_migrate">Migrer Flow</span>
       </div>
@@ -454,7 +457,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.19.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.20.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -558,6 +561,30 @@
     </div>
 
     <!-- MIGRATE PAGE -->
+    <div class="page" id="page-cross">
+      <div class="page-title" data-i18n="cross_title">På tværs af kunder</div>
+      <div class="page-sub" data-i18n="cross_sub">Flows der findes hos flere kunder — og om de er i trit</div>
+      <div class="card">
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+          <div style="flex:1;min-width:200px">
+            <label data-i18n="fl_type">Flowtype</label>
+            <select id="cx-type" onchange="renderCross()"><option value="" data-i18n="fb_all_types">Alle typer</option></select>
+          </div>
+          <div style="flex:1;min-width:200px">
+            <label data-i18n="fl_search">Søg</label>
+            <input id="cx-search" data-i18n-placeholder="ph_search_flow" placeholder="🔍  Søg flow…" oninput="renderCross()"/>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;padding-bottom:9px;cursor:pointer">
+            <input type="checkbox" id="cx-diff-only" checked style="width:auto" onchange="renderCross()"/>
+            <span data-i18n="cross_diff_only">Kun dem der er ude af trit</span>
+          </label>
+          <button class="btn btn-secondary" onclick="loadCross()" data-i18n="btn_reload">🔄 Genindlæs</button>
+        </div>
+      </div>
+      <div id="cx-alert"></div>
+      <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:10px" id="cx-count"></div>
+      <div id="cx-list"></div>
+    </div>
     <div class="page" id="page-migrate">
       <div class="page-title" data-i18n="nav_migrate">Migrer Flow</div>
       <div class="page-sub" data-i18n="page_migrate_sub">Export fra én org og importer direkte til en anden</div>
@@ -1116,7 +1143,7 @@ const LANGS = {
     import_action_publish:'publish (opret + publish)',
     migrate_action_create:'create (ny)', migrate_action_update:'update (opdater)',
     migrate_action_publish:'publish (opret+publish)',
-    view_file:'👁 Vis', copy_to_import:'→ Import',
+    view_file:'👁 Vis', copy_to_import:'→ Send til import',
     export_file:'📤 Export', syslog_showing:'Viser {n} poster (nyeste øverst)',
     syslog_auto_on:'⏱ Auto-opdater: Til (5s)',
     label_auth_type:'Auth type', btn_auth_credentials:'🔑 Client Credentials', btn_auth_oauth:'🌐 OAuth (PKCE)',
@@ -1358,6 +1385,20 @@ const LANGS = {
     fl_cleanup_run:'Slet {n} filer',
     fl_cleanup_confirm:'Slet {n} filer permanent? De kan ikke hentes tilbage.',
     fl_cleanup_done:'Filer slettet',
+    nav_cross:'På tværs af kunder',
+    cross_title:'På tværs af kunder',
+    cross_sub:'Flows der findes hos flere kunder — og om de er i trit',
+    cross_loading:'Henter flows fra alle kunder…',
+    cross_diff_only:'Kun dem der er ude af trit',
+    cross_flows:'vist',
+    cross_total:'i alt',
+    cross_none:'Ingen flows matcher.',
+    cross_same_version:'samme version',
+    cross_diff_version:'forskellige versioner',
+    cross_compare:'⇄ Sammenlign indhold',
+    cross_hashing:'Eksporterer fra hver kunde…',
+    cross_identical:'Identisk indhold hos alle',
+    cross_variants:'forskellige udgaver',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1402,7 +1443,7 @@ const LANGS = {
     import_action_publish:'publish (create + publish)',
     migrate_action_create:'create (new)', migrate_action_update:'update (update)',
     migrate_action_publish:'publish (create + publish)',
-    view_file:'👁 View', copy_to_import:'→ Import',
+    view_file:'👁 View', copy_to_import:'→ Send to import',
     export_file:'📤 Export', syslog_showing:'Showing {n} entries (newest first)',
     syslog_auto_on:'⏱ Auto-refresh: On (5s)',
     label_auth_type:'Auth type', btn_auth_credentials:'🔑 Client Credentials', btn_auth_oauth:'🌐 OAuth (PKCE)',
@@ -1644,6 +1685,20 @@ const LANGS = {
     fl_cleanup_run:'Delete {n} files',
     fl_cleanup_confirm:'Permanently delete {n} files? They cannot be recovered.',
     fl_cleanup_done:'Files deleted',
+    nav_cross:'Across customers',
+    cross_title:'Across customers',
+    cross_sub:'Flows that exist at more than one customer — and whether they are in step',
+    cross_loading:'Fetching flows from all customers…',
+    cross_diff_only:'Only those out of step',
+    cross_flows:'shown',
+    cross_total:'in total',
+    cross_none:'No flows match.',
+    cross_same_version:'same version',
+    cross_diff_version:'different versions',
+    cross_compare:'⇄ Compare content',
+    cross_hashing:'Exporting from each customer…',
+    cross_identical:'Identical content everywhere',
+    cross_variants:'distinct versions of the content',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -1688,7 +1743,7 @@ const LANGS = {
     import_action_publish:'publish (créer + publier)',
     migrate_action_create:'create (nouveau)', migrate_action_update:'update (mettre à jour)',
     migrate_action_publish:'publish (créer + publier)',
-    view_file:'👁 Voir', copy_to_import:'→ Importer',
+    view_file:'👁 Voir', copy_to_import:'→ Envoyer vers import',
     export_file:'📤 Exporter', syslog_showing:'{n} entrées (plus récentes en premier)',
     syslog_auto_on:'⏱ Actualisation auto : Oui (5s)',
     label_auth_type:'Type d\'auth', btn_auth_credentials:'🔑 Client Credentials', btn_auth_oauth:'🌐 OAuth (PKCE)',
@@ -1930,6 +1985,20 @@ const LANGS = {
     fl_cleanup_run:'Supprimer {n} fichiers',
     fl_cleanup_confirm:'Supprimer définitivement {n} fichiers ? Ils seront irrécupérables.',
     fl_cleanup_done:'Fichiers supprimés',
+    nav_cross:'Entre clients',
+    cross_title:'Entre clients',
+    cross_sub:'Flows présents chez plusieurs clients — et s\'ils sont alignés',
+    cross_loading:'Récupération des flows de tous les clients…',
+    cross_diff_only:'Uniquement ceux qui divergent',
+    cross_flows:'affichés',
+    cross_total:'au total',
+    cross_none:'Aucun flow ne correspond.',
+    cross_same_version:'même version',
+    cross_diff_version:'versions différentes',
+    cross_compare:'⇄ Comparer le contenu',
+    cross_hashing:'Export depuis chaque client…',
+    cross_identical:'Contenu identique partout',
+    cross_variants:'variantes du contenu',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -1974,7 +2043,7 @@ const LANGS = {
     import_action_publish:'publish (aanmaken + publiceren)',
     migrate_action_create:'create (nieuw)', migrate_action_update:'update (bijwerken)',
     migrate_action_publish:'publish (aanmaken + publiceren)',
-    view_file:'👁 Bekijken', copy_to_import:'→ Importeren',
+    view_file:'👁 Bekijken', copy_to_import:'→ Naar import sturen',
     export_file:'📤 Exporteren', syslog_showing:'{n} vermeldingen (nieuwste eerst)',
     syslog_auto_on:'⏱ Auto-vernieuwen: Aan (5s)',
     label_auth_type:'Auth type', btn_auth_credentials:'🔑 Client Credentials', btn_auth_oauth:'🌐 OAuth (PKCE)',
@@ -2216,6 +2285,20 @@ const LANGS = {
     fl_cleanup_run:'Verwijder {n} bestanden',
     fl_cleanup_confirm:'{n} bestanden definitief verwijderen? Ze kunnen niet worden hersteld.',
     fl_cleanup_done:'Bestanden verwijderd',
+    nav_cross:'Over klanten heen',
+    cross_title:'Over klanten heen',
+    cross_sub:'Flows die bij meerdere klanten bestaan — en of ze gelijk zijn',
+    cross_loading:'Flows van alle klanten ophalen…',
+    cross_diff_only:'Alleen die uit de pas lopen',
+    cross_flows:'getoond',
+    cross_total:'in totaal',
+    cross_none:'Geen flows komen overeen.',
+    cross_same_version:'zelfde versie',
+    cross_diff_version:'verschillende versies',
+    cross_compare:'⇄ Inhoud vergelijken',
+    cross_hashing:'Exporteren bij elke klant…',
+    cross_identical:'Overal identieke inhoud',
+    cross_variants:'verschillende uitvoeringen',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -2260,7 +2343,7 @@ const LANGS = {
     import_action_publish:'publish (crear + publicar)',
     migrate_action_create:'create (nuevo)', migrate_action_update:'update (actualizar)',
     migrate_action_publish:'publish (crear + publicar)',
-    view_file:'👁 Ver', copy_to_import:'→ Importar',
+    view_file:'👁 Ver', copy_to_import:'→ Enviar a importar',
     export_file:'📤 Exportar', syslog_showing:'{n} entradas (más recientes primero)',
     syslog_auto_on:'⏱ Auto-actualizar: Sí (5s)',
     label_auth_type:'Tipo de auth', btn_auth_credentials:'🔑 Client Credentials', btn_auth_oauth:'🌐 OAuth (PKCE)',
@@ -2502,6 +2585,20 @@ const LANGS = {
     fl_cleanup_run:'Borrar {n} archivos',
     fl_cleanup_confirm:'¿Borrar {n} archivos permanentemente? No se podrán recuperar.',
     fl_cleanup_done:'Archivos borrados',
+    nav_cross:'Entre clientes',
+    cross_title:'Entre clientes',
+    cross_sub:'Flows presentes en varios clientes — y si están alineados',
+    cross_loading:'Obteniendo flows de todos los clientes…',
+    cross_diff_only:'Solo los que están desalineados',
+    cross_flows:'mostrados',
+    cross_total:'en total',
+    cross_none:'Ningún flow coincide.',
+    cross_same_version:'misma versión',
+    cross_diff_version:'versiones distintas',
+    cross_compare:'⇄ Comparar contenido',
+    cross_hashing:'Exportando de cada cliente…',
+    cross_identical:'Contenido idéntico en todos',
+    cross_variants:'variantes del contenido',
   }
 };
 
@@ -2673,6 +2770,7 @@ function nav(el) {
   if (page === 'export') populateCustomerSelects(['ex-customer']);
   if (page === 'import') populateCustomerSelects(['im-customer']);
   if (page === 'files') loadFiles();
+  if (page === 'cross') loadCross();
   if (page === 'dataactions') daInit();
   if (page === 'syslog') { populateSyslogCustomers(); loadLog(); loadLogStats(); }
   if (page === 'readme') loadReadme();
@@ -3711,6 +3809,116 @@ async function runCleanup() {
   alert(`${t('fl_cleanup_done')}: ${r.deleted}`);
   document.getElementById('cl-overlay').style.display = 'none';
   loadFiles();
+}
+
+
+// ── Flows på tværs af kunder ──────────────────────────────────────────────────
+let crossRows = [], crossCustomers = [];
+
+async function loadCross() {
+  const el = document.getElementById('cx-list');
+  el.innerHTML = `<div style="color:var(--muted);font-size:12px"><span class="spin"></span> ${t('cross_loading')}</div>`;
+  document.getElementById('cx-alert').innerHTML = '';
+
+  const r = await fetch('/api/flows/cross-customer').then(x => x.json()).catch(e => ({ error: e.message }));
+  if (r.error) { el.innerHTML = `<div style="color:var(--red);font-size:13px">${r.error}</div>`; return; }
+
+  crossRows = r.rows || [];
+  crossCustomers = r.customers || [];
+  // Kunder vi ikke kunne nå skal siges højt — ellers ser listen komplet ud
+  if ((r.problems || []).length) {
+    document.getElementById('cx-alert').innerHTML = (r.problems).map(p =>
+      `<div class="card" style="border-color:var(--yellow);color:var(--yellow);font-size:12px;padding:10px 16px;margin-bottom:8px">` +
+      `⚠ ${p.customer}: ${p.error}</div>`).join('');
+  }
+
+  const types = [...new Set(crossRows.map(x => x.flowType))].sort();
+  const sel = document.getElementById('cx-type');
+  const cur = sel.value;
+  sel.innerHTML = `<option value="" data-i18n="fb_all_types">${t('fb_all_types')}</option>`
+    + types.map(x => `<option value="${x}">${x}</option>`).join('');
+  if (cur) sel.value = cur;
+  renderCross();
+}
+
+function renderCross() {
+  const el = document.getElementById('cx-list');
+  if (!el) return;
+  const type = document.getElementById('cx-type')?.value || '';
+  const q    = (document.getElementById('cx-search')?.value || '').toLowerCase();
+  const diffOnly = document.getElementById('cx-diff-only')?.checked;
+
+  const list = crossRows.filter(x =>
+    (!type || x.flowType === type) &&
+    (!q    || x.flowName.toLowerCase().includes(q)) &&
+    (!diffOnly || !x.sameVersion));
+
+  document.getElementById('cx-count').textContent =
+    `${list.length} ${t('cross_flows')} · ${crossRows.length} ${t('cross_total')}`;
+
+  if (!list.length) {
+    el.innerHTML = `<div style="color:var(--muted);font-size:13px">${t('cross_none')}</div>`;
+    return;
+  }
+
+  el.innerHTML = list.map((x, i) => {
+    const orgs = x.orgs.map(o => `
+      <div style="display:flex;gap:10px;font-size:12px;padding:3px 0">
+        <span style="min-width:190px;color:var(--muted)">${o.customerName}</span>
+        <span style="font-family:var(--mono);min-width:60px">v${o.publishedVersion || o.checkedInVersion || '?'}</span>
+        <span style="color:var(--muted)">${o.active ? t('badge_published') : t('badge_draft')}</span>
+        ${o.publishedAt ? `<span style="color:var(--muted)">${new Date(o.publishedAt).toLocaleDateString()}</span>` : ''}
+      </div>`).join('');
+    return `
+    <div class="card" style="padding:14px 20px;margin-bottom:8px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+        <div style="min-width:0;flex:1">
+          <div style="font-size:13px;font-weight:600">${x.flowName}
+            <span class="badge badge-blue" style="margin-left:8px">${x.flowType}</span>
+            ${x.sameVersion
+              ? `<span class="badge badge-green" style="margin-left:4px">${t('cross_same_version')}</span>`
+              : `<span class="badge badge-orange" style="margin-left:4px">${t('cross_diff_version')}</span>`}</div>
+          <div style="margin-top:8px">${orgs}</div>
+          <div id="cx-hash-${i}" style="margin-top:8px"></div>
+        </div>
+        <button class="btn btn-secondary btn-sm" style="flex-shrink:0"
+          onclick="crossHash(${i})">${t('cross_compare')}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Indholdssammenligning for én række. Kræver en eksport pr. org, så det tager
+// tid — derfor kun på forlangende og én række ad gangen.
+async function crossHash(i) {
+  const type = document.getElementById('cx-type')?.value || '';
+  const q    = (document.getElementById('cx-search')?.value || '').toLowerCase();
+  const diffOnly = document.getElementById('cx-diff-only')?.checked;
+  const list = crossRows.filter(x =>
+    (!type || x.flowType === type) && (!q || x.flowName.toLowerCase().includes(q)) &&
+    (!diffOnly || !x.sameVersion));
+  const row = list[i];
+  if (!row) return;
+
+  const box = document.getElementById(`cx-hash-${i}`);
+  box.innerHTML = `<div style="color:var(--muted);font-size:11px"><span class="spin"></span> ${t('cross_hashing')}</div>`;
+
+  const r = await fetch('/api/flows/cross-hash', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ flowName: row.flowName, flowType: row.flowType,
+                           customerIds: row.orgs.map(o => o.customerId) })
+  }).then(x => x.json()).catch(e => ({ error: e.message }));
+
+  if (r.error) { box.innerHTML = `<div style="color:var(--red);font-size:11px">${r.error}</div>`; return; }
+
+  const head = r.distinct === 1
+    ? `<div style="color:var(--green);font-size:12px;font-weight:600">✓ ${t('cross_identical')}</div>`
+    : `<div style="color:var(--yellow);font-size:12px;font-weight:600">⚠ ${r.distinct} ${t('cross_variants')}</div>`;
+  box.innerHTML = head + r.results.map(x => `
+    <div style="display:flex;gap:10px;font-size:11px;font-family:var(--mono);padding:2px 0">
+      <span style="min-width:190px;color:var(--muted)">${x.customerName}</span>
+      <span>${x.error ? '✗ ' + x.error.slice(0, 60) : (x.hash || '').slice(0, 16)}</span>
+    </div>`).join('');
 }
 
 let allFiles = [];
