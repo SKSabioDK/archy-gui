@@ -1,10 +1,20 @@
-# Archy GUI — Flow Manager · v1.17.0
+# Archy GUI — Flow Manager · v1.17.1
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.17.1
+---
+**🇩🇰 Dansk**
+- **Menupunktet hedder nu "Migrér ressourcer"** — Siden hed *Data Actions*, men rummer Data Actions, DataTable-strukturer og user prompts. Navnet dækkede altså kun en tredjedel af den. Det nye navn parrer med **Migrer Flow** — flows det ene sted, alt det andet her — og bliver ikke forkert hvis der kommer en fjerde fane til. Undertitlen nævner nu alle tre.
+
+---
+**🇬🇧 English**
+- **The menu item is now "Migrate resources"** — The page was called *Data Actions* but holds Data Actions, DataTable structures and user prompts, so the name covered only a third of it. The new name pairs with **Migrate Flow** — flows in one place, everything else here — and will not become wrong if a fourth tab arrives. The subtitle now names all three.
+
 
 ### v1.17.0
 ---
@@ -490,8 +500,10 @@ Eksporter ét flow eller hele org'en med live fremgangsindikator.
 - **🔍 Valider YAML** — syntax-tjek i browseren (ingen API-kald)
 - **🌐 Tjek mod org** — tjekker om alle ressourcer (division, køer, DataTables, Data Actions, Prompts) eksisterer i mål-org'en *inden* import
 
-#### ⚡ Data Actions
-Side til at migrere Data Actions mellem orgs:
+#### ⚡ Migrér ressourcer
+Siden migrerer det der ikke er flows mellem to orgs, fordelt på tre faner: **Data Actions**, **Data Tabeller** og **User Prompts**. Kilde- og mål-org vælges ét sted og deles af alle tre.
+
+**Fanen Data Actions:**
 1. Vælg **kilde-org** og **mål-org**
 2. Vælg **kilde-integration** → kun actions fra netop den integration vises
 3. **Mål-integrationen** foreslås automatisk — tjek noten over listen
@@ -583,7 +595,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.17.0** — see [Changelog](#changelog) above.
+> Current version: **v1.17.1** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
@@ -657,8 +669,10 @@ Export a single flow or an entire org with live progress indicator.
 - **🔍 Validate YAML** — browser-side syntax check (no API call)
 - **🌐 Check against org** — verifies that all resources referenced in the YAML (division, queues, DataTables, Data Actions, Prompts) exist in the target org *before* importing
 
-#### ⚡ Data Actions
-Page to migrate Data Actions between orgs:
+#### ⚡ Migrate resources
+This page migrates everything that is not a flow between two orgs, across three tabs: **Data Actions**, **Data Tables** and **User Prompts**. Source and target org are chosen once and shared by all three.
+
+**The Data Actions tab:**
 1. Select **source org** and **target org**
 2. Select the **source integration** → only its actions are listed
 3. The **target integration** is suggested automatically — check the note above the list

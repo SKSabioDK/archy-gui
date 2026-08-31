@@ -435,7 +435,7 @@
         <span class="nav-icon">📥</span> <span data-i18n="nav_import">Import YAML</span>
       </div>
       <div class="nav-item" data-page="dataactions" onclick="nav(this)">
-        <span class="nav-icon">⚡</span> <span data-i18n="nav_dataactions">Data Actions</span>
+        <span class="nav-icon">⚡</span> <span data-i18n="nav_dataactions">Migrér ressourcer</span>
       </div>
       <div class="nav-divider"></div>
       <div class="nav-item" data-page="files" onclick="nav(this)">
@@ -454,7 +454,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.17.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.17.1 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -742,7 +742,7 @@
 
     <!-- DATA ACTIONS PAGE -->
     <div class="page" id="page-dataactions">
-      <div class="page-title" data-i18n="da_title">Data Actions</div>
+      <div class="page-title" data-i18n="da_title">Migrér ressourcer</div>
       <div class="page-sub" data-i18n="da_sub">Migrér Data Actions mellem Genesys Cloud orgs</div>
 
       <div class="da-tabs">
@@ -1162,9 +1162,9 @@ const LANGS = {
     warn_missing_architect_perm:'⚠ Mangler \'architect:flow:view/edit\' — import/export vil fejle med adgang nægtet. Tildel en rolle med Architect-tilladelser under Admin → OAuth → din klient → Roles.',
     err_access_denied:'Adgang nægtet (403) — OAuth-klienten mangler \'architect:flow:edit\' tilladelse. Gå til Genesys Admin → OAuth → din klient → Roles og tildel en rolle med Architect-tilladelser.',
     // ── tilføjet i v1.6.0 ──
-    nav_dataactions:'Data Actions',
-    da_title:'Data Actions & Tabeller',
-    da_sub:'Migrér Data Actions og DataTable-strukturer mellem Genesys Cloud orgs',
+    nav_dataactions:'Migrér ressourcer',
+    da_title:'Migrér ressourcer',
+    da_sub:'Migrér Data Actions, DataTable-strukturer og user prompts mellem Genesys Cloud orgs',
     da_card_srctgt:'KILDE → MÅL',
     da_label_source:'Kilde (hent fra)',
     da_label_target:'Mål (kopier til)',
@@ -1430,9 +1430,9 @@ const LANGS = {
     warn_missing_architect_perm:'⚠ Missing \'architect:flow:view/edit\' — import/export will fail with access denied. Assign a role with Architect permissions under Admin → OAuth → your client → Roles.',
     err_access_denied:'Access denied (403) — the OAuth client is missing the \'architect:flow:edit\' permission. Go to Genesys Admin → OAuth → your client → Roles and assign a role with Architect permissions.',
     // ── tilføjet i v1.6.0 ──
-    nav_dataactions:'Data Actions',
-    da_title:'Data Actions & Tables',
-    da_sub:'Migrate Data Actions and DataTable structures between Genesys Cloud orgs',
+    nav_dataactions:'Migrate resources',
+    da_title:'Migrate resources',
+    da_sub:'Migrate Data Actions, DataTable structures and user prompts between Genesys Cloud orgs',
     da_card_srctgt:'SOURCE → TARGET',
     da_label_source:'Source (copy from)',
     da_label_target:'Target (copy to)',
@@ -1698,9 +1698,9 @@ const LANGS = {
     warn_missing_architect_perm:'⚠ Permission \'architect:flow:view/edit\' manquante — import/export échouera avec accès refusé. Attribuez un rôle avec les permissions Architect sous Admin → OAuth → votre client → Roles.',
     err_access_denied:'Accès refusé (403) — le client OAuth n\'a pas la permission \'architect:flow:edit\'. Allez dans Genesys Admin → OAuth → votre client → Roles et attribuez un rôle avec les permissions Architect.',
     // ── tilføjet i v1.6.0 ──
-    nav_dataactions:'Data Actions',
-    da_title:'Data Actions & Tables',
-    da_sub:'Migrer des Data Actions et des structures DataTable entre orgs Genesys Cloud',
+    nav_dataactions:'Migrer les ressources',
+    da_title:'Migrer les ressources',
+    da_sub:'Migrer des Data Actions, des structures DataTable et des user prompts entre orgs Genesys Cloud',
     da_card_srctgt:'SOURCE → CIBLE',
     da_label_source:'Source (copier depuis)',
     da_label_target:'Cible (copier vers)',
@@ -1966,9 +1966,9 @@ const LANGS = {
     warn_missing_architect_perm:'⚠ Ontbrekende \'architect:flow:view/edit\' — import/export mislukt met toegang geweigerd. Ken een rol toe met Architect-rechten via Admin → OAuth → uw client → Roles.',
     err_access_denied:'Toegang geweigerd (403) — de OAuth-client mist de \'architect:flow:edit\' rechten. Ga naar Genesys Admin → OAuth → uw client → Roles en wijs een rol toe met Architect-rechten.',
     // ── tilføjet i v1.6.0 ──
-    nav_dataactions:'Data Actions',
-    da_title:'Data Actions & Tabellen',
-    da_sub:'Data Actions en DataTable-structuren migreren tussen Genesys Cloud-orgs',
+    nav_dataactions:'Resources migreren',
+    da_title:'Resources migreren',
+    da_sub:'Data Actions, DataTable-structuren en user prompts migreren tussen Genesys Cloud-orgs',
     da_card_srctgt:'BRON → DOEL',
     da_label_source:'Bron (kopiëren van)',
     da_label_target:'Doel (kopiëren naar)',
@@ -2234,9 +2234,9 @@ const LANGS = {
     warn_missing_architect_perm:'⚠ Falta \'architect:flow:view/edit\' — import/export fallará con acceso denegado. Asigna un rol con permisos de Architect en Admin → OAuth → tu cliente → Roles.',
     err_access_denied:'Acceso denegado (403) — el cliente OAuth no tiene el permiso \'architect:flow:edit\'. Ve a Genesys Admin → OAuth → tu cliente → Roles y asigna un rol con permisos de Architect.',
     // ── tilføjet i v1.6.0 ──
-    nav_dataactions:'Data Actions',
-    da_title:'Data Actions y Tablas',
-    da_sub:'Migrar Data Actions y estructuras de DataTable entre orgs de Genesys Cloud',
+    nav_dataactions:'Migrar recursos',
+    da_title:'Migrar recursos',
+    da_sub:'Migrar Data Actions, estructuras de DataTable y user prompts entre orgs de Genesys Cloud',
     da_card_srctgt:'ORIGEN → DESTINO',
     da_label_source:'Origen (copiar de)',
     da_label_target:'Destino (copiar a)',
