@@ -457,7 +457,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.20.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.20.1 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1399,6 +1399,8 @@ const LANGS = {
     cross_hashing:'Eksporterer fra hver kunde…',
     cross_identical:'Identisk indhold hos alle',
     cross_variants:'forskellige udgaver',
+    cross_partial:'Kunne ikke sammenlignes — {failed} af {total} kunder fejlede',
+    cross_insufficient:'For få resultater til en sammenligning',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1699,6 +1701,8 @@ const LANGS = {
     cross_hashing:'Exporting from each customer…',
     cross_identical:'Identical content everywhere',
     cross_variants:'distinct versions of the content',
+    cross_partial:'Could not be compared — {failed} of {total} customers failed',
+    cross_insufficient:'Too few results to compare',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -1999,6 +2003,8 @@ const LANGS = {
     cross_hashing:'Export depuis chaque client…',
     cross_identical:'Contenu identique partout',
     cross_variants:'variantes du contenu',
+    cross_partial:'Comparaison impossible — {failed} clients sur {total} en échec',
+    cross_insufficient:'Trop peu de résultats pour comparer',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -2299,6 +2305,8 @@ const LANGS = {
     cross_hashing:'Exporteren bij elke klant…',
     cross_identical:'Overal identieke inhoud',
     cross_variants:'verschillende uitvoeringen',
+    cross_partial:'Kon niet vergeleken worden — {failed} van {total} klanten mislukt',
+    cross_insufficient:'Te weinig resultaten om te vergelijken',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -2599,6 +2607,8 @@ const LANGS = {
     cross_hashing:'Exportando de cada cliente…',
     cross_identical:'Contenido idéntico en todos',
     cross_variants:'variantes del contenido',
+    cross_partial:'No se pudo comparar — fallaron {failed} de {total} clientes',
+    cross_insufficient:'Muy pocos resultados para comparar',
   }
 };
 
@@ -3911,9 +3921,17 @@ async function crossHash(i) {
 
   if (r.error) { box.innerHTML = `<div style="color:var(--red);font-size:11px">${r.error}</div>`; return; }
 
-  const head = r.distinct === 1
+  // Kun "identisk" hvis hver eneste org faktisk gav en hash. Fejlede en
+  // eksport, ved vi ikke hvad der står i den org.
+  const head =
+      r.verdict === 'identical'
     ? `<div style="color:var(--green);font-size:12px;font-weight:600">✓ ${t('cross_identical')}</div>`
-    : `<div style="color:var(--yellow);font-size:12px;font-weight:600">⚠ ${r.distinct} ${t('cross_variants')}</div>`;
+    : r.verdict === 'different'
+    ? `<div style="color:var(--yellow);font-size:12px;font-weight:600">⚠ ${r.distinct} ${t('cross_variants')}</div>`
+    : r.verdict === 'partial'
+    ? `<div style="color:var(--red);font-size:12px;font-weight:600">✗ ${t('cross_partial')
+        .replace('{failed}', r.failed).replace('{total}', r.results.length)}</div>`
+    : `<div style="color:var(--muted);font-size:12px;font-weight:600">${t('cross_insufficient')}</div>`;
   box.innerHTML = head + r.results.map(x => `
     <div style="display:flex;gap:10px;font-size:11px;font-family:var(--mono);padding:2px 0">
       <span style="min-width:190px;color:var(--muted)">${x.customerName}</span>

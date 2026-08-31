@@ -1256,10 +1256,27 @@ app.post('/api/flows/cross-hash', async (req, res) => {
       results.push({ customerId: c.id, customerName: c.name, error: e.message });
     }
   }
-  const hashes = new Set(results.filter(r => r.hash).map(r => r.hash));
-  addLog('INFO', `Indholdssammenligning af "${flowName}" hos ${results.length} kunder — ` +
-    (hashes.size === 1 ? 'identisk' : `${hashes.size} forskellige udgaver`), null, 'MIGRATE');
-  res.json({ ok: true, flowName, flowType, results, distinct: hashes.size });
+  // Et flow kan kun kaldes identisk hvis ALLE orgs faktisk gav en hash.
+  // Fejler en eksport, ved vi ikke hvad der står i den org — og "identisk
+  // overalt" ville være direkte forkert.
+  const gotHash = results.filter(r => r.hash);
+  const failed  = results.filter(r => r.error);
+  const hashes  = new Set(gotHash.map(r => r.hash));
+
+  const verdict = failed.length ? 'partial'
+                : gotHash.length < 2 ? 'insufficient'
+                : hashes.size === 1 ? 'identical' : 'different';
+
+  addLog(failed.length ? 'WARN' : 'INFO',
+    `Indholdssammenligning af "${flowName}" hos ${results.length} kunder — ` +
+    (verdict === 'identical'    ? 'identisk'
+     : verdict === 'different'  ? `${hashes.size} forskellige udgaver`
+     : verdict === 'partial'    ? `ufuldstændig: ${failed.length} af ${results.length} kunder kunne ikke eksporteres`
+     : 'for få resultater til en sammenligning'),
+    null, 'MIGRATE');
+
+  res.json({ ok: true, flowName, flowType, results, verdict,
+    distinct: hashes.size, compared: gotHash.length, failed: failed.length });
 });
 
 // Sammenligner ét flow i to orgs på indhold — ikke på versionsnummer.
@@ -1725,6 +1742,17 @@ function archyErrorReason(out) {
         if (l && !noise.test(l) && !/Architect Yaml Flow Processor/i.test(l)) { summary = l; break; }
       }
     }
+  }
+
+  // Manglende Genesys-rettigheder ender også som den generiske "session ended
+  // in error ( code: 99 )". Rettighedens navn står i en linje for sig og er det
+  // eneste brugbare — uden det aner man ikke hvad man skal gøre.
+  const perm = lines.find(l => /missing permission '[^']+'|the '[^']+' permission is required/i.test(l));
+  if (perm && (!summary || /session ended in error/i.test(summary))) {
+    const p = perm.match(/'([^']+)'/);
+    summary = p
+      ? `OAuth-klienten mangler rettigheden '${p[1]}' i denne org`
+      : perm.replace(/\s*--\s*\[.*$/, '');
   }
 
   // Archy melder en manglende ressource som "find '<type>' by value of '<navn>'

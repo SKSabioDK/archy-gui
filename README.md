@@ -1,10 +1,38 @@
-# Archy GUI — Flow Manager · v1.20.0
+# Archy GUI — Flow Manager · v1.20.1
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.20.1
+---
+**🇩🇰 Dansk**
+- **Rettet: "identisk indhold" blev påstået når en org fejlede** — Sammenligningen talte kun de hashes den fik. Fejlede eksporten hos én kunde, stod der ét hash tilbage — og både dialogen og systemloggen kaldte det *identisk overalt*. Det er direkte forkert: vi ved intet om den org der fejlede. Udfaldet har nu fire tilstande, og **identisk kræver at hver eneste org gav en hash**:
+
+  | Udfald | Betydning |
+  |---|---|
+  | ✓ Identisk indhold hos alle | Alle orgs svarede, samme hash |
+  | ⚠ N forskellige udgaver | Alle orgs svarede, hashene er forskellige |
+  | ✗ Kunne ikke sammenlignes | En eller flere orgs fejlede — resultatet er ufuldstændigt |
+  | For få resultater | Under to orgs gav et resultat |
+
+- **Manglende rettigheder vises nu som det de er** — Archy melder rettighedsfejl som den generiske `Architect Scripting session ended in error ( code: 99 )`. Rettighedens navn står i en linje for sig i outputtet og trækkes nu ud: *"OAuth-klienten mangler rettigheden 'architect:ui:view' i denne org"*. Det er præcis grunden til at Vattenfall DE Test fejlede.
+
+---
+**🇬🇧 English**
+- **Fixed: "identical content" was claimed when an org had failed** — The comparison counted only the hashes it received. If the export failed at one customer, a single hash was left — and both the dialog and the system log called that *identical everywhere*. That is simply wrong: nothing is known about the org that failed. The verdict now has four states, and **identical requires every org to have produced a hash**:
+
+  | Verdict | Meaning |
+  |---|---|
+  | ✓ Identical content everywhere | Every org answered, same hash |
+  | ⚠ N distinct versions | Every org answered, the hashes differ |
+  | ✗ Could not be compared | One or more orgs failed — the result is incomplete |
+  | Too few results | Fewer than two orgs produced a result |
+
+- **Missing permissions are now reported as such** — Archy reports permission failures as the generic `Architect Scripting session ended in error ( code: 99 )`. The permission name sits on its own line in the output and is now extracted: *"The OAuth client is missing the 'architect:ui:view' permission in this org"*. That is exactly why Vattenfall DE Test failed.
+
 
 ### v1.20.0
 ---
@@ -669,7 +697,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.20.0** — see [Changelog](#changelog) above.
+> Current version: **v1.20.1** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
