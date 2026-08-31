@@ -1,10 +1,26 @@
-# Archy GUI — Flow Manager · v1.17.2
+# Archy GUI — Flow Manager · v1.18.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.18.0
+---
+**🇩🇰 Dansk**
+- **YAML Filer viser nu hvad filerne er** — Listen viste kun filnavnet, fx `Test33_v1-0.yaml`. Archy navngiver eksporter `<Flownavn>_v<major>-<minor>.yaml`, så det navn er flowet **Test33 version 1.0**. Siden splitter det nu ad og viser flownavn, version, **flowtype**, kunde, tidspunkt og filstørrelse. Filnavnet står stadig nederst i rækken.
+- **Filtre på kunde, flowtype og fritekst** — Begge rullemenuer fyldes ud fra det der faktisk ligger på disken.
+- **Kun nyeste version** — Slået til som standard. Samme flow kan ligge i flere versioner; de ældre foldes sammen, og tælleren fortæller hvor mange der er skjult (176 filer → 169 med 7 skjult).
+- **Rettet: undertitlen var forkert** — Der stod "gemt lokalt under import/export", men filerne kommer også fra **migreringer** og **sammenligninger**, som begge eksporterer flows undervejs. To filer der dukkede op samtidig i to orgs var en ⇄-sammenligning, ikke en eksport. Undertitlen siger det nu.
+
+---
+**🇬🇧 English**
+- **YAML Files now shows what the files are** — The list showed only the file name, e.g. `Test33_v1-0.yaml`. Archy names exports `<FlowName>_v<major>-<minor>.yaml`, so that is the flow **Test33 version 1.0**. The page now splits it apart and shows flow name, version, **flow type**, customer, timestamp and file size. The file name is still shown at the bottom of the row.
+- **Filters on customer, flow type and free text** — Both dropdowns are populated from what is actually on disk.
+- **Latest version only** — On by default. The same flow can exist in several versions; older ones are folded away and the counter says how many are hidden (176 files → 169 with 7 hidden).
+- **Fixed: the subtitle was wrong** — It said "saved locally during import/export", but files also come from **migrations** and **comparisons**, both of which export flows along the way. Two files appearing in two orgs at the same moment were a ⇄ comparison, not an export. The subtitle now says so.
+
 
 ### v1.17.2
 ---
@@ -538,7 +554,13 @@ Der kopieres navn, kategori, input/output-schema, request-config (URL, metode, h
 Wizard til at bygge Archy YAML trin for trin uden at skrive YAML i hånden. Understøtter alle 16 flow-typer, Data Tables, Data Actions med schema-hentning, og transfer/disconnect-handling.
 
 #### 🗂 YAML Filer
-Se og preview lokalt gemte YAML-filer. Send direkte til Import-siden.
+Alle flows værktøjet har eksporteret til disk. De havner her fra **Export YAML**, men også fra **migreringer** og **⇄ sammenligninger**, som begge eksporterer undervejs.
+
+Archy navngiver filerne `<Flownavn>_v<major>-<minor>.yaml` — `Test33_v1-0.yaml` er altså flowet *Test33* i version *1.0*. Listen splitter det ad og viser flownavn, version, flowtype, kunde, tidspunkt og størrelse.
+
+Filtrér på **kunde**, **flowtype** og fritekst. **Kun nyeste version** er slået til som standard, så ældre eksporter af samme flow foldes sammen — tælleren viser hvor mange der er skjult.
+
+Hver fil kan åbnes (**View**) eller sendes videre til Import-siden (**Import**).
 
 #### 📋 Systemlog
 Alle handlinger logges i realtid. Filtrer på niveau, handling, kunde og fritekst.
@@ -604,7 +626,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.17.2** — see [Changelog](#changelog) above.
+> Current version: **v1.18.0** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
@@ -706,7 +728,13 @@ Name, category, input/output schema, request config (URL, method, headers) and t
 Step-by-step wizard to build Archy YAML without writing it by hand. Supports all 16 flow types, Data Tables, Data Actions with schema fetching, and transfer/disconnect handling.
 
 #### 🗂 YAML Files
-View and preview locally saved YAML files. Send directly to the Import page.
+Every flow the tool has exported to disk. They arrive from **Export YAML**, but also from **migrations** and **⇄ comparisons**, both of which export along the way.
+
+Archy names the files `<FlowName>_v<major>-<minor>.yaml` — so `Test33_v1-0.yaml` is the flow *Test33* at version *1.0*. The list splits that apart and shows flow name, version, flow type, customer, timestamp and size.
+
+Filter by **customer**, **flow type** and free text. **Latest version only** is on by default, folding away older exports of the same flow — the counter shows how many are hidden.
+
+Each file can be opened (**View**) or sent on to the Import page (**Import**).
 
 #### 📋 System Log
 All actions logged in real time. Filter by level, action type, customer, and free text.

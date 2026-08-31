@@ -454,7 +454,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.17.2 · Archy GUI</div>
+    <div class="version" id="app-version">v1.18.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -843,8 +843,29 @@
     <!-- FILES PAGE -->
     <div class="page" id="page-files">
       <div class="page-title" data-i18n="page_files_title">Lokale YAML Filer</div>
-      <div class="page-sub" data-i18n="page_files_sub">Filer gemt lokalt under import/export</div>
-      <div style="margin-bottom:12px"><button class="btn btn-secondary" onclick="loadFiles()" data-i18n="btn_reload">🔄 Genindlæs</button></div>
+      <div class="page-sub" data-i18n="page_files_sub">Eksporterede flows — fra Export YAML, migreringer og sammenligninger</div>
+      <div class="card">
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+          <div style="flex:1;min-width:190px">
+            <label data-i18n="fl_customer">Kunde</label>
+            <select id="fl-customer" onchange="renderFiles()"><option value="" data-i18n="fl_all_customers">Alle kunder</option></select>
+          </div>
+          <div style="flex:1;min-width:190px">
+            <label data-i18n="fl_type">Flowtype</label>
+            <select id="fl-type" onchange="renderFiles()"><option value="" data-i18n="fb_all_types">Alle typer</option></select>
+          </div>
+          <div style="flex:1;min-width:190px">
+            <label data-i18n="fl_search">Søg</label>
+            <input id="fl-search" data-i18n-placeholder="ph_search_flow" placeholder="🔍  Søg flow…" oninput="renderFiles()"/>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;padding-bottom:9px;cursor:pointer">
+            <input type="checkbox" id="fl-latest" checked style="width:auto" onchange="renderFiles()"/>
+            <span data-i18n="fl_latest_only">Kun nyeste version</span>
+          </label>
+          <button class="btn btn-secondary" onclick="loadFiles()" data-i18n="btn_reload">🔄 Genindlæs</button>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:10px" id="fl-count"></div>
       <div id="files-list"></div>
     </div>
 
@@ -1056,7 +1077,7 @@ const LANGS = {
     label_target_customer:'Mål-kunde', label_filename:'Filnavn', label_upload:'Upload YAML fil:',
     label_yaml_content:'YAML Indhold', placeholder_yaml:'Indsæt YAML her eller upload fil…',
     btn_import:'📥 Import / Opret Flow', page_files_title:'Lokale YAML Filer',
-    page_files_sub:'Filer gemt lokalt under import/export',
+    page_files_sub:'Eksporterede flows — fra Export YAML, migreringer og sammenligninger',
     page_syslog_title:'Systemlog', page_syslog_sub:'Handlinger, forbindelser og fejl',
     btn_auto_refresh_off:'⏱ Auto-opdater: Fra', btn_auto_refresh_on:'⏱ Auto-opdater: Til (5s)',
     btn_clear_log:'🗑 Ryd log', btn_update:'↺ Opdater',
@@ -1298,6 +1319,15 @@ const LANGS = {
     pr_created:'Prompt oprettet',
     pr_languages:'sprog',
     pr_audio_note:'Både TTS-tekst og indtalt lyd kopieres. Prompts med lyd er markeret med 🔊.',
+    fl_customer:'Kunde',
+    fl_all_customers:'Alle kunder',
+    fl_type:'Flowtype',
+    fl_search:'Søg',
+    fl_latest_only:'Kun nyeste version',
+    fl_files:'filer',
+    fl_older_hidden:'ældre versioner skjult',
+    fl_from_export:'hentet fra org',
+    fl_from_import:'lagt op til import',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1324,7 +1354,7 @@ const LANGS = {
     label_target_customer:'Target customer', label_filename:'File name', label_upload:'Upload YAML file:',
     label_yaml_content:'YAML Content', placeholder_yaml:'Paste YAML here or upload file…',
     btn_import:'📥 Import / Create Flow', page_files_title:'Local YAML Files',
-    page_files_sub:'Files saved locally during import/export',
+    page_files_sub:'Exported flows — from Export YAML, migrations and comparisons',
     page_syslog_title:'System Log', page_syslog_sub:'Actions, connections and errors',
     btn_auto_refresh_off:'⏱ Auto-refresh: Off', btn_auto_refresh_on:'⏱ Auto-refresh: On (5s)',
     btn_clear_log:'🗑 Clear log', btn_update:'↺ Refresh',
@@ -1566,6 +1596,15 @@ const LANGS = {
     pr_created:'Prompt created',
     pr_languages:'languages',
     pr_audio_note:'Both TTS text and recorded audio are copied. Prompts with audio are marked 🔊.',
+    fl_customer:'Customer',
+    fl_all_customers:'All customers',
+    fl_type:'Flow type',
+    fl_search:'Search',
+    fl_latest_only:'Latest version only',
+    fl_files:'files',
+    fl_older_hidden:'older versions hidden',
+    fl_from_export:'fetched from org',
+    fl_from_import:'staged for import',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -1592,7 +1631,7 @@ const LANGS = {
     label_target_customer:'Client cible', label_filename:'Nom de fichier', label_upload:'Téléverser un fichier YAML :',
     label_yaml_content:'Contenu YAML', placeholder_yaml:'Collez le YAML ici ou téléversez un fichier…',
     btn_import:'📥 Importer / Créer le flow', page_files_title:'Fichiers YAML locaux',
-    page_files_sub:"Fichiers enregistrés localement lors de l'import/export",
+    page_files_sub:'Flows exportés — depuis Export YAML, migrations et comparaisons',
     page_syslog_title:'Journal système', page_syslog_sub:'Actions, connexions et erreurs',
     btn_auto_refresh_off:'⏱ Actualisation auto : Non', btn_auto_refresh_on:'⏱ Actualisation auto : Oui (5s)',
     btn_clear_log:'🗑 Effacer le journal', btn_update:'↺ Actualiser',
@@ -1834,6 +1873,15 @@ const LANGS = {
     pr_created:'Prompt créé',
     pr_languages:'langues',
     pr_audio_note:'Le texte TTS et l\'audio enregistré sont copiés. Les prompts avec audio portent 🔊.',
+    fl_customer:'Client',
+    fl_all_customers:'Tous les clients',
+    fl_type:'Type de flow',
+    fl_search:'Rechercher',
+    fl_latest_only:'Dernière version seulement',
+    fl_files:'fichiers',
+    fl_older_hidden:'versions plus anciennes masquées',
+    fl_from_export:'récupéré de l\'org',
+    fl_from_import:'préparé pour import',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -1860,7 +1908,7 @@ const LANGS = {
     label_target_customer:'Doelklant', label_filename:'Bestandsnaam', label_upload:'YAML-bestand uploaden:',
     label_yaml_content:'YAML-inhoud', placeholder_yaml:'Plak YAML hier of upload een bestand…',
     btn_import:'📥 Importeren / Flow aanmaken', page_files_title:'Lokale YAML-bestanden',
-    page_files_sub:'Lokaal opgeslagen bestanden tijdens import/export',
+    page_files_sub:'Geëxporteerde flows — van Export YAML, migraties en vergelijkingen',
     page_syslog_title:'Systeemlog', page_syslog_sub:'Acties, verbindingen en fouten',
     btn_auto_refresh_off:'⏱ Auto-vernieuwen: Uit', btn_auto_refresh_on:'⏱ Auto-vernieuwen: Aan (5s)',
     btn_clear_log:'🗑 Log wissen', btn_update:'↺ Vernieuwen',
@@ -2102,6 +2150,15 @@ const LANGS = {
     pr_created:'Prompt aangemaakt',
     pr_languages:'talen',
     pr_audio_note:'Zowel TTS-tekst als opgenomen audio wordt gekopieerd. Prompts met audio zijn gemarkeerd met 🔊.',
+    fl_customer:'Klant',
+    fl_all_customers:'Alle klanten',
+    fl_type:'Flowtype',
+    fl_search:'Zoeken',
+    fl_latest_only:'Alleen nieuwste versie',
+    fl_files:'bestanden',
+    fl_older_hidden:'oudere versies verborgen',
+    fl_from_export:'opgehaald uit org',
+    fl_from_import:'klaargezet voor import',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -2128,7 +2185,7 @@ const LANGS = {
     label_target_customer:'Cliente destino', label_filename:'Nombre del archivo', label_upload:'Subir archivo YAML:',
     label_yaml_content:'Contenido YAML', placeholder_yaml:'Pega el YAML aquí o sube un archivo…',
     btn_import:'📥 Importar / Crear flow', page_files_title:'Archivos YAML locales',
-    page_files_sub:'Archivos guardados localmente durante la importación/exportación',
+    page_files_sub:'Flows exportados — de Export YAML, migraciones y comparaciones',
     page_syslog_title:'Registro del sistema', page_syslog_sub:'Acciones, conexiones y errores',
     btn_auto_refresh_off:'⏱ Auto-actualizar: No', btn_auto_refresh_on:'⏱ Auto-actualizar: Sí (5s)',
     btn_clear_log:'🗑 Borrar registro', btn_update:'↺ Actualizar',
@@ -2370,6 +2427,15 @@ const LANGS = {
     pr_created:'Prompt creado',
     pr_languages:'idiomas',
     pr_audio_note:'Se copian tanto el texto TTS como el audio grabado. Los prompts con audio llevan 🔊.',
+    fl_customer:'Cliente',
+    fl_all_customers:'Todos los clientes',
+    fl_type:'Tipo de flow',
+    fl_search:'Buscar',
+    fl_latest_only:'Solo la última versión',
+    fl_files:'archivos',
+    fl_older_hidden:'versiones anteriores ocultas',
+    fl_from_export:'obtenido de la org',
+    fl_from_import:'preparado para importar',
   }
 };
 
@@ -3518,21 +3584,82 @@ async function doImport() {
 }
 
 // ── Files ─────────────────────────────────────────────────────────────────────
+let allFiles = [];
+
 async function loadFiles() {
-  const res = await fetch('/api/files');
-  const files = await res.json();
+  allFiles = await fetch('/api/files').then(r => r.json()).catch(() => []);
+
+  // Filtrene fyldes ud fra det der faktisk ligger på disken
+  const cust = [...new Set(allFiles.map(f => f.customerName))].sort();
+  const types = [...new Set(allFiles.map(f => f.flowType).filter(Boolean))].sort();
+  const fill = (id, values, allKey) => {
+    const el = document.getElementById(id); if (!el) return;
+    const cur = el.value;
+    el.innerHTML = `<option value="" data-i18n="${allKey}">${t(allKey)}</option>`
+      + values.map(v => `<option value="${v}">${v}</option>`).join('');
+    if (cur) el.value = cur;
+  };
+  fill('fl-customer', cust, 'fl_all_customers');
+  fill('fl-type', types, 'fb_all_types');
+  renderFiles();
+}
+
+function renderFiles() {
   const el = document.getElementById('files-list');
-  if (!files.length) {
+  if (!el) return;
+  const cust = document.getElementById('fl-customer')?.value || '';
+  const type = document.getElementById('fl-type')?.value || '';
+  const q    = (document.getElementById('fl-search')?.value || '').toLowerCase();
+  const latestOnly = document.getElementById('fl-latest')?.checked;
+
+  let list = allFiles.filter(f =>
+    (!cust || f.customerName === cust) &&
+    (!type || f.flowType === type) &&
+    (!q    || (f.flowName || f.fileName).toLowerCase().includes(q)));
+
+  // Samme flow kan ligge i flere versioner. Behold den højeste version pr.
+  // kunde+flow; er der ingen version i navnet, brug den nyest ændrede.
+  let hidden = 0;
+  if (latestOnly) {
+    const best = new Map();
+    for (const f of list) {
+      const key = f.customerName + '|' + (f.flowName || f.fileName);
+      const cur = best.get(key);
+      if (!cur) { best.set(key, f); continue; }
+      const newer = (f.major ?? -1) !== (cur.major ?? -1)
+        ? (f.major ?? -1) > (cur.major ?? -1)
+        : String(f.modified) > String(cur.modified);
+      if (newer) best.set(key, f);
+    }
+    hidden = list.length - best.size;
+    list = [...best.values()].sort((a, b) => String(b.modified).localeCompare(String(a.modified)));
+  }
+
+  const cnt = document.getElementById('fl-count');
+  if (cnt) cnt.textContent = `${list.length} ${t('fl_files')}`
+    + (hidden ? `  ·  ${hidden} ${t('fl_older_hidden')}` : '');
+
+  if (!list.length) {
     el.innerHTML = `<div style="color:var(--muted);font-size:13px">${t('no_yaml_files')}</div>`;
     return;
   }
-  el.innerHTML = files.map(f => `
+
+  const kb = n => n == null ? '' : (n < 1024 ? n + ' B' : Math.round(n / 1024) + ' kB');
+  el.innerHTML = list.map(f => `
     <div class="card" style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;margin-bottom:8px">
-      <div>
-        <div style="font-size:13px;font-weight:600;font-family:var(--mono)">${f.fileName}</div>
-        <div style="font-size:11px;color:var(--muted)">${f.customerName} · ${f.isImport ? 'import' : 'export'}</div>
+      <div style="min-width:0">
+        <div style="font-size:13px;font-weight:600">${f.flowName || f.fileName}
+          ${f.version ? `<span style="color:var(--muted);font-weight:400"> v${f.version}</span>` : ''}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px;display:flex;gap:10px;flex-wrap:wrap">
+          ${f.flowType ? `<span class="badge badge-blue">${f.flowType}</span>` : ''}
+          <span>${f.customerName}</span>
+          <span>${f.isImport ? t('fl_from_import') : t('fl_from_export')}</span>
+          ${f.modified ? `<span>${new Date(f.modified).toLocaleString()}</span>` : ''}
+          <span>${kb(f.size)}</span>
+        </div>
+        <div style="font-size:10px;color:var(--border2);font-family:var(--mono);margin-top:3px">${f.fileName}</div>
       </div>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:8px;flex-shrink:0">
         <button class="btn btn-secondary btn-sm" onclick="previewFile('${encodeURIComponent(f.path)}','${f.fileName}')">${t('view_file')}</button>
         <button class="btn btn-blue btn-sm" onclick="copyFileToImport('${encodeURIComponent(f.path)}','${f.fileName}')">${t('copy_to_import')}</button>
       </div>

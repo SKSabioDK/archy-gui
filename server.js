@@ -2511,6 +2511,28 @@ app.post('/api/logs/clear', (req, res) => {
 
 // ── Stored YAML files ────────────────────────────────────────────────────────
 
+// Archy navngiver eksporter <Flownavn>_v<major>-<minor>.yaml. Vi splitter det ad,
+// så listen kan vise flow, version og type frem for et filnavn man skal tyde.
+function parseFlowFileName(fileName) {
+  const m = fileName.match(/^(.*)_v(\d+)-(\d+)\.yaml$/i);
+  if (!m) return { flowName: fileName.replace(/\.yaml$/i, ''), version: null, major: null };
+  return { flowName: m[1], version: `${m[2]}.${m[3]}`, major: parseInt(m[2], 10) };
+}
+
+// Flowtypen står som YAML-roden. Vi læser kun starten af filen.
+function flowTypeFromFile(p) {
+  let fd;
+  try {
+    fd = fs.openSync(p, 'r');
+    const buf = Buffer.alloc(256);
+    const n = fs.readSync(fd, buf, 0, 256, 0);
+    const head = buf.slice(0, n).toString('utf8');
+    const t = head.match(/^([A-Za-z]\w*):/m);
+    return t ? t[1] : null;
+  } catch (_) { return null; }
+  finally { if (fd !== undefined) try { fs.closeSync(fd); } catch (_) {} }
+}
+
 app.get('/api/files', (req, res) => {
   const results = [];
   if (!fs.existsSync(FLOWS_DIR)) return res.json([]);
@@ -2528,13 +2550,22 @@ app.get('/api/files', (req, res) => {
     }
     const files = fs.readdirSync(fullDir).filter(f => f.endsWith('.yaml'));
     for (const f of files) {
+      const p = path.join(fullDir, f);
+      let st = null;
+      try { st = fs.statSync(p); } catch (_) {}
+      const parsed = parseFlowFileName(f);
       results.push({
         customerId: customer?.id || dir, customerName: customer?.name || dir,
-        fileName: f, isImport: isImportDir,
-        path: path.join(fullDir, f)
+        fileName: f, isImport: isImportDir, path: p,
+        flowName: parsed.flowName, version: parsed.version, major: parsed.major,
+        flowType: flowTypeFromFile(p),
+        size: st ? st.size : null,
+        modified: st ? st.mtime.toISOString() : null
       });
     }
   }
+  // Nyeste først
+  results.sort((a, b) => String(b.modified || '').localeCompare(String(a.modified || '')));
   res.json(results);
 });
 
