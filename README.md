@@ -1,10 +1,22 @@
-# Archy GUI — Flow Manager · v1.16.0
+# Archy GUI — Flow Manager · v1.16.1
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.16.1
+---
+**🇩🇰 Dansk**
+- **Rettet: publicering blev meldt som fejlet selvom den lykkedes** — Publicering i Genesys er **asynkron**. `POST` svarer 200 med det samme, mens arbejdet fortsætter i baggrunden, så et øjeblikkeligt opslag ser stadig det gamle flow. Verifikationen fra v1.16.0 læste for tidligt og meldte fejl på en publicering der gik fint. Den følger nu flowets `currentOperation` indtil den er færdig og læser dens `actionStatus`.
+- Fejler publiceringen rigtigt, vises Genesys' egne `errorDetails`. Er den stadig i gang efter 30 sekunder, meldes den som *sat i gang, ikke færdig* frem for at blive kaldt en fejl.
+
+---
+**🇬🇧 English**
+- **Fixed: publishing was reported as failed even when it succeeded** — Publishing in Genesys is **asynchronous**. The `POST` returns 200 immediately while the work continues in the background, so an immediate re-read still sees the old flow. The verification added in v1.16.0 read too early and reported a failure for a publish that worked. It now follows the flow's `currentOperation` until it completes and reads its `actionStatus`.
+- When a publish genuinely fails, Genesys' own `errorDetails` are shown. If it is still running after 30 seconds it is reported as *started but not finished* rather than called a failure.
+
 
 ### v1.16.0
 ---
@@ -555,7 +567,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.16.0** — see [Changelog](#changelog) above.
+> Current version: **v1.16.1** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**

@@ -454,7 +454,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.16.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.16.1 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -5302,6 +5302,7 @@ async function publishFlow(flowId, nameEnc, version) {
     }).then(x => x.json());
 
     if (r.error === 'already_published') alert(r.message);
+    else if (r.pending) { alert(r.error); loadFlows(); }   // sat i gang, ikke faerdig
     else if (r.error) alert(r.error);
     else {
       alert(`${t('fb_publish_ok')}: ${r.name} v${r.version}`);

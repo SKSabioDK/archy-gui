@@ -1070,13 +1070,34 @@ app.post('/api/flows/publish', async (req, res) => {
     await axios.post(`${apiBase}/api/v2/flows/actions/publish?flow=${flowId}&version=${encodeURIComponent(version)}`,
       {}, { headers: { ...H.headers, 'Content-Type': 'application/json' } });
 
-    // Et 200-svar beviser IKKE at der blev publiceret: endpointet svarer også
-    // 200 for en version der ikke findes, uden at gøre noget. Læs flowet igen.
-    const after = (await axios.get(`${apiBase}/api/v2/flows/${flowId}`, H)).data;
-    const nowPublished = after.publishedVersion?.name || after.publishedVersion?.commitVersion || null;
+    // Publicering er ASYNKRON: POST'en svarer 200 med det samme, mens Genesys
+    // arbejder videre i baggrunden. Et øjeblikkeligt opslag ser derfor stadig
+    // det gamle flow. Vi følger i stedet flowets currentOperation til den er
+    // færdig — den bærer både status og eventuelle fejldetaljer.
+    //
+    // Et 200-svar er i øvrigt heller ikke i sig selv et bevis: endpointet
+    // svarer også 200 for en version der ikke findes, uden at gøre noget.
+    let after = null, op = null;
+    for (let i = 0; i < 30; i++) {
+      await new Promise(r => setTimeout(r, 1000));
+      after = (await axios.get(`${apiBase}/api/v2/flows/${flowId}`, H)).data;
+      op = after.currentOperation || null;
+      if (op?.actionName === 'PUBLISH' && op.complete) break;
+      if (after.publishedVersion && after.publishedVersion.name !== before.publishedVersion?.name) break;
+    }
+
+    const nowPublished = after?.publishedVersion?.name || after?.publishedVersion?.commitVersion || null;
+    const failed = op?.actionName === 'PUBLISH' && op.complete && op.actionStatus && op.actionStatus !== 'SUCCESS';
+
+    if (failed) {
+      const why = (op.errorDetails || []).map(d => d.errorCode || d.message).filter(Boolean).join('; ') || op.actionStatus;
+      addLog('ERROR', `Publicering af "${before.name}" fejlede: ${why}`, customer.name, 'MIGRATE');
+      return res.status(500).json({ error: `Publicering fejlede: ${why}` });
+    }
     if (!nowPublished) {
-      addLog('ERROR', `Publicering af "${before.name}" gav intet resultat — flowet er stadig upubliceret`, customer.name, 'MIGRATE');
-      return res.status(500).json({ error: `Genesys svarede OK, men "${before.name}" er stadig ikke publiceret` });
+      addLog('WARN', `Publicering af "${before.name}" er stadig i gang efter 30 sekunder — tjek i Architect`, customer.name, 'MIGRATE');
+      return res.status(202).json({ pending: true,
+        error: `Publiceringen af "${before.name}" er sat i gang men er ikke færdig endnu — tjek status i Architect` });
     }
 
     addLog('SUCCESS', `"${after.name}" publiceret som v${nowPublished} i ${customer.name}`, customer.name, 'MIGRATE');
