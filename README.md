@@ -1,10 +1,24 @@
-# Archy GUI — Flow Manager · v1.16.1
+# Archy GUI — Flow Manager · v1.17.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.17.0
+---
+**🇩🇰 Dansk**
+- **🔊 Migrering af user prompts** — Tredje fane på *Data Actions & Tabeller*. Prompts listes med deres sprog, og dem med indtalt lyd er markeret 🔊. Både TTS-teksten og selve WAV-filen kopieres: lyden hentes fra kildens `mediaUri` og lægges op på den nye ressources `uploadUri`. Loggen viser resultatet pr. sprog.
+- **Rettet: promptlisten afkortede stille ved 50** — Den eksisterende `/prompts`-rute hentede med `pageSize: 50` uden paginering, så en org med flere prompts fik listen skåret af uden nogen besked. VF NL har 54. Ruten paginerer nu.
+- **Rettet: intetsigende `FAILURE` ved publicering** — Fejlårsagen ligger i `currentOperation.errorMessage` og `errorCode`, ikke i `errorDetails[]`, som typisk er tom. Beskeden var derfor bare "FAILURE". Den viser nu fx *"A backend service error occurred while publishing flow 'Indtast CPR_CVR'. (ARCHITECT_EXTERNAL_PUBLISH_ERROR)"*.
+
+---
+**🇬🇧 English**
+- **🔊 User prompt migration** — A third tab on *Data Actions & Tables*. Prompts are listed with their languages, and those with recorded audio are marked 🔊. Both the TTS text and the WAV file are copied: the audio is fetched from the source `mediaUri` and posted to the new resource's `uploadUri`. The log reports the outcome per language.
+- **Fixed: the prompt list silently truncated at 50** — The existing `/prompts` route fetched with `pageSize: 50` and no pagination, so an org with more prompts had its list cut off with no indication. VF NL has 54. The route now paginates.
+- **Fixed: a bare `FAILURE` on publish** — The reason lives in `currentOperation.errorMessage` and `errorCode`, not in `errorDetails[]`, which is usually empty. The message was therefore just "FAILURE". It now reads e.g. *"A backend service error occurred while publishing flow 'Indtast CPR_CVR'. (ARCHITECT_EXTERNAL_PUBLISH_ERROR)"*.
+
 
 ### v1.16.1
 ---
@@ -488,6 +502,8 @@ Side til at migrere Data Actions mellem orgs:
 >
 > Mål-integrationen matches på navn, ellers på integrationstype hvis der kun er én kandidat. Er der flere mulige, skal du selv vælge — og migreringen kan ikke startes før du har gjort det.
 
+**Fanen User Prompts** migrerer user prompts mellem orgs. Både TTS-teksten og indtalt lyd kopieres — prompts med lyd er markeret 🔊 i listen.
+
 **Fanen Data Tabeller** migrerer DataTable-*strukturer* mellem orgs: vælg kilde- og mål-org, markér tabellerne, klik **⚡ Migrér valgte**. Kun kolonnedefinitionen kopieres — **rækkerne følger ikke med**. Findes kildens division i mål-org'en, oprettes tabellen der; ellers havner den i standarddivisionen, og loggen siger det.
 
 > **Function Data Actions kan ikke migreres.** Deres `requestUrlTemplate` er ikke en URL, men et ID på en function der ligger i kilde-org'en. Der er ikke noget API til at oprette functionen i mål-org'en, så den skal oprettes manuelt først.
@@ -567,7 +583,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.16.1** — see [Changelog](#changelog) above.
+> Current version: **v1.17.0** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
@@ -652,6 +668,8 @@ Page to migrate Data Actions between orgs:
 > **Why pick an integration?** Data Actions belong to an integration, and an org can have several of the same type — for example multiple OAuth integrations that group actions and spread the load. Picking one at a time preserves that grouping in the target org. The selection is cleared when you switch integration, so you cannot accidentally migrate across groups.
 >
 > The target integration is matched by name, or by integration type when only one candidate exists. If several are possible you must choose yourself — and migration is blocked until you do.
+
+**The User Prompts tab** migrates user prompts between orgs. Both the TTS text and any recorded audio are copied — prompts with audio are marked 🔊 in the list.
 
 **The Data Tables tab** migrates DataTable *structures* between orgs: pick source and target org, select the tables, click **⚡ Migrate selected**. Only the column definition is copied — **rows do not come along**. If the source division exists in the target org the table is created there; otherwise it lands in the default division and the log says so.
 

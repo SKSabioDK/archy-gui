@@ -454,7 +454,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.16.1 · Archy GUI</div>
+    <div class="version" id="app-version">v1.17.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -748,6 +748,7 @@
       <div class="da-tabs">
         <div class="da-tab active" id="da-tab-actions" onclick="daSetTab('actions')" data-i18n="da_tab_actions">Data Actions</div>
         <div class="da-tab" id="da-tab-tables" onclick="daSetTab('tables')" data-i18n="da_tab_tables">Data Tabeller</div>
+        <div class="da-tab" id="da-tab-prompts" onclick="daSetTab('prompts')" data-i18n="da_tab_prompts">User Prompts</div>
       </div>
 
       <div class="card">
@@ -759,7 +760,7 @@
           </div>
           <div>
             <label data-i18n="da_label_target">Mål (kopier til)</label>
-            <select id="da-target" onchange="daLoadTargetIntegrations(); dtUpdateReady()"></select>
+            <select id="da-target" onchange="daLoadTargetIntegrations(); dtUpdateReady(); prUpdateReady()"></select>
           </div>
         </div>
         <div class="grid-2" id="da-actions-only" style="margin-top:12px">
@@ -815,6 +816,24 @@
         <div id="dt-list"></div>
       </div>
 
+      <div class="card" id="da-prompt-card" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="card-title" style="margin:0"><span data-i18n="pr_prompts">PROMPTS</span> (<span id="pr-count">0</span>)</div>
+          <div style="display:flex;gap:8px">
+            <input id="pr-search" style="width:220px" data-i18n-placeholder="pr_search_ph" placeholder="🔍 Søg prompts…" oninput="prFilter()"/>
+            <button class="btn btn-primary btn-sm" id="pr-migrate-btn" onclick="prMigrateSelected()" data-i18n="pr_migrate_btn" disabled>⚡ Migrér valgte</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:10px">
+          <span id="pr-sel-count" style="color:var(--accent);font-weight:700">0</span> <span data-i18n="da_selected">valgt</span>
+          &nbsp;·&nbsp;
+          <a href="#" onclick="prSelectAll();return false" style="color:var(--accent);text-decoration:none" data-i18n="da_select_all">Vælg alle</a>
+          &nbsp;·&nbsp;
+          <a href="#" onclick="prClearSel();return false" style="color:var(--muted);text-decoration:none" data-i18n="da_reset">Nulstil</a>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px" data-i18n="pr_audio_note">Prompts med indtalt lyd får WAV-filen kopieret med.</div>
+        <div id="pr-list"></div>
+      </div>
       <div id="da-log" class="card" style="display:none">
         <div class="card-title" data-i18n="da_log_title">MIGRERINGS LOG</div>
         <div class="log-box" id="da-logbox"></div>
@@ -1270,6 +1289,15 @@ const LANGS = {
     fb_publish_confirm:'Publicér "{name}" som v{v} i den valgte org?',
     fb_publish_ok:'Publiceret',
     col_checked_out:'Udtjekket',
+    da_tab_prompts:'User Prompts',
+    pr_prompts:'PROMPTS',
+    pr_search_ph:'🔍 Søg prompts…',
+    pr_migrate_btn:'⚡ Migrér valgte',
+    pr_loading:'Henter prompts…',
+    pr_none:'Ingen prompts fundet.',
+    pr_created:'Prompt oprettet',
+    pr_languages:'sprog',
+    pr_audio_note:'Både TTS-tekst og indtalt lyd kopieres. Prompts med lyd er markeret med 🔊.',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1529,6 +1557,15 @@ const LANGS = {
     fb_publish_confirm:'Publish "{name}" as v{v} in the selected org?',
     fb_publish_ok:'Published',
     col_checked_out:'Checked out',
+    da_tab_prompts:'User Prompts',
+    pr_prompts:'PROMPTS',
+    pr_search_ph:'🔍 Search prompts…',
+    pr_migrate_btn:'⚡ Migrate selected',
+    pr_loading:'Loading prompts…',
+    pr_none:'No prompts found.',
+    pr_created:'Prompt created',
+    pr_languages:'languages',
+    pr_audio_note:'Both TTS text and recorded audio are copied. Prompts with audio are marked 🔊.',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -1788,6 +1825,15 @@ const LANGS = {
     fb_publish_confirm:'Publier « {name} » en v{v} dans l\'org sélectionnée ?',
     fb_publish_ok:'Publié',
     col_checked_out:'Extrait',
+    da_tab_prompts:'User Prompts',
+    pr_prompts:'PROMPTS',
+    pr_search_ph:'🔍 Rechercher des prompts…',
+    pr_migrate_btn:'⚡ Migrer la sélection',
+    pr_loading:'Chargement des prompts…',
+    pr_none:'Aucun prompt trouvé.',
+    pr_created:'Prompt créé',
+    pr_languages:'langues',
+    pr_audio_note:'Le texte TTS et l\'audio enregistré sont copiés. Les prompts avec audio portent 🔊.',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -2047,6 +2093,15 @@ const LANGS = {
     fb_publish_confirm:'"{name}" publiceren als v{v} in de gekozen org?',
     fb_publish_ok:'Gepubliceerd',
     col_checked_out:'Uitgecheckt',
+    da_tab_prompts:'User Prompts',
+    pr_prompts:'PROMPTS',
+    pr_search_ph:'🔍 Zoek prompts…',
+    pr_migrate_btn:'⚡ Migreer selectie',
+    pr_loading:'Prompts laden…',
+    pr_none:'Geen prompts gevonden.',
+    pr_created:'Prompt aangemaakt',
+    pr_languages:'talen',
+    pr_audio_note:'Zowel TTS-tekst als opgenomen audio wordt gekopieerd. Prompts met audio zijn gemarkeerd met 🔊.',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -2306,6 +2361,15 @@ const LANGS = {
     fb_publish_confirm:'¿Publicar «{name}» como v{v} en la org seleccionada?',
     fb_publish_ok:'Publicado',
     col_checked_out:'Extraído',
+    da_tab_prompts:'User Prompts',
+    pr_prompts:'PROMPTS',
+    pr_search_ph:'🔍 Buscar prompts…',
+    pr_migrate_btn:'⚡ Migrar seleccionados',
+    pr_loading:'Cargando prompts…',
+    pr_none:'No se encontraron prompts.',
+    pr_created:'Prompt creado',
+    pr_languages:'idiomas',
+    pr_audio_note:'Se copian tanto el texto TTS como el audio grabado. Los prompts con audio llevan 🔊.',
   }
 };
 
@@ -5551,6 +5615,115 @@ async function migrateOneDep(dep, sourceId, targetId, logBox) {
   }
 }
 
+
+// ── User prompts ──────────────────────────────────────────────────────────────
+let prAll = [];
+let prSelectedIds = new Set();
+
+async function prLoadPrompts() {
+  const id = document.getElementById('da-source').value;
+  prAll = []; prSelectedIds.clear();
+  const card = document.getElementById('da-prompt-card');
+  if (!id) { card.style.display = 'none'; return; }
+  if (daTab === 'prompts') card.style.display = 'block';
+  document.getElementById('pr-list').innerHTML =
+    `<div style="color:var(--muted);font-size:12px"><span class="spin"></span> ${t('pr_loading')}</div>`;
+  try {
+    const data = await fetch(`/api/customers/${id}/prompts`).then(r => r.json());
+    if (data.error) { document.getElementById('pr-list').innerHTML = `<div style="color:var(--red);font-size:12px">${data.error}</div>`; return; }
+    prAll = data;
+    prFilter();
+  } catch (e) {
+    document.getElementById('pr-list').innerHTML = `<div style="color:var(--red);font-size:12px">${e.message}</div>`;
+  }
+}
+
+function prVisible() {
+  const q = (document.getElementById('pr-search')?.value || '').toLowerCase();
+  return prAll.filter(p => !q || p.name.toLowerCase().includes(q));
+}
+
+function prFilter() {
+  const list = prVisible();
+  document.getElementById('pr-count').textContent = list.length;
+  prRender(list);
+}
+
+function prRender(prompts) {
+  const el = document.getElementById('pr-list');
+  if (!prompts.length) {
+    el.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:8px 0">${t('pr_none')}</div>`;
+  } else {
+    el.innerHTML = prompts.map(p => {
+      const sel = prSelectedIds.has(p.id);
+      const langs = (p.languages || []).join(', ') || '—';
+      const audio = p.withAudio ? ` · 🔊 ${p.withAudio}` : '';
+      return `
+      <div class="migrate-flow-item ${sel ? 'selected' : ''}" onclick="prToggle('${p.id}')">
+        <div style="min-width:0">
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+          <div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-top:2px">${langs}${audio}</div>
+        </div>
+        <span style="color:var(--accent);font-size:16px;width:18px;text-align:center;flex-shrink:0">${sel ? '\u2713' : ''}</span>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('pr-sel-count').textContent = prSelectedIds.size;
+  prUpdateReady();
+}
+
+function prToggle(id) {
+  if (prSelectedIds.has(id)) prSelectedIds.delete(id); else prSelectedIds.add(id);
+  prFilter();
+}
+function prSelectAll() { prVisible().forEach(p => prSelectedIds.add(p.id)); prFilter(); }
+function prClearSel()  { prSelectedIds.clear(); prFilter(); }
+
+function prUpdateReady() {
+  const btn = document.getElementById('pr-migrate-btn');
+  if (!btn) return;
+  const src = document.getElementById('da-source')?.value || '';
+  const tgt = document.getElementById('da-target')?.value || '';
+  btn.disabled = !(src && tgt && src !== tgt && prSelectedIds.size);
+}
+
+async function prMigrateSelected() {
+  const sourceId = document.getElementById('da-source').value;
+  const targetId = document.getElementById('da-target').value;
+  if (!sourceId || !targetId) return alert(t('da_err_select'));
+  if (sourceId === targetId) return alert(t('da_err_same'));
+  if (!prSelectedIds.size) return;
+
+  const logCard = document.getElementById('da-log');
+  const logBox  = document.getElementById('da-logbox');
+  logCard.style.display = 'block';
+  logBox.innerHTML = '';
+
+  const btn = document.getElementById('pr-migrate-btn');
+  btn.disabled = true;
+  let ok = 0, skipped = 0, failed = 0;
+
+  for (const id of prSelectedIds) {
+    const p = prAll.find(x => x.id === id);
+    const name = p?.name || id;
+    log(logBox, `\n\u27f6 ${t('da_migrating')}: ${name}`, 'info');
+    try {
+      const data = await fetch('/api/prompts/migrate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceId, targetId, promptName: name })
+      }).then(r => r.json());
+      for (const line of data.trail || []) log(logBox, `    ${line}`, 'info');
+      if (data.error === 'already_exists') { log(logBox, `  \u26a0 ${t('da_exists')}`, 'info'); skipped++; }
+      else if (data.error) { log(logBox, `  \u2717 ${data.error}`, 'err'); failed++; }
+      else { log(logBox, `  \u2713 ${t('pr_created')} (${data.languages} ${t('pr_languages')})`, 'ok'); ok++; }
+    } catch (e) { log(logBox, `  \u2717 ${e.message}`, 'err'); failed++; }
+  }
+
+  log(logBox, `\n\u2500\u2500 ${t('da_done')} \u2500\u2500 ${ok} ${t('da_sum_ok')} \u00b7 ${skipped} ${t('da_sum_skipped')} \u00b7 ${failed} ${t('da_sum_failed')}`,
+      failed ? 'err' : 'info');
+  prUpdateReady();
+}
+
 // ── Data Tabeller ─────────────────────────────────────────────────────────────
 let dtAll         = [];
 let dtSelectedIds = new Set();
@@ -5560,6 +5733,7 @@ function daSetTab(tab) {
   daTab = tab;
   document.getElementById('da-tab-actions').classList.toggle('active', tab === 'actions');
   document.getElementById('da-tab-tables').classList.toggle('active',  tab === 'tables');
+  document.getElementById('da-tab-prompts').classList.toggle('active', tab === 'prompts');
   // Integrationsvælgerne giver kun mening for actions
   const io = document.getElementById('da-actions-only');
   if (io) io.style.display = tab === 'actions' ? '' : 'none';
@@ -5570,11 +5744,13 @@ function daSetTab(tab) {
   const srcPicked = !!document.getElementById('da-source').value;
   document.getElementById('da-action-card').style.display = (tab === 'actions' && srcPicked) ? 'block' : 'none';
   document.getElementById('da-table-card').style.display  = (tab === 'tables'  && srcPicked) ? 'block' : 'none';
+  document.getElementById('da-prompt-card').style.display = (tab === 'prompts' && srcPicked) ? 'block' : 'none';
 }
 
 function daSourceChanged() {
   daLoadActions();
   dtLoadTables();
+  prLoadPrompts();
 }
 
 async function dtLoadTables() {

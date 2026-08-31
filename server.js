@@ -459,14 +459,29 @@ app.get('/api/customers/:id/prompts', async (req, res) => {
   const search = (req.query.name || '').trim();
   try {
     const { token, apiBase } = await getToken(customer);
-    const r = await axios.get(`${apiBase}/api/v2/architect/prompts`, {
-      headers: { Authorization: `Bearer ${token}` },
-      params: { pageSize: 50, sortBy: 'name', sortOrder: 'ASC',
-                ...(search ? { name: `*${search}*` } : {}) }
-    });
-    res.json((r.data.entities || []).map(p => ({ id: p.id, name: p.name })));
+    const H = { headers: { Authorization: `Bearer ${token}` } };
+    // Uden paginering afkortede den stille ved 50 — org'en kan have flere.
+    let all = [], page = 1;
+    while (true) {
+      const r = await axios.get(`${apiBase}/api/v2/architect/prompts`, {
+        ...H,
+        params: { pageSize: 100, pageNumber: page, sortBy: 'name', sortOrder: 'ASC',
+                  ...(search ? { name: `*${search}*` } : {}) }
+      });
+      const e = r.data.entities || [];
+      all = all.concat(e);
+      if (e.length < 100) break;
+      page++;
+    }
+    res.json(all.map(p => ({
+      id: p.id, name: p.name, description: p.description || '',
+      languages: (p.resources || []).map(r => r.language),
+      // Ressourcer med indtalt lyd kræver at selve WAV-filen flyttes med
+      withAudio: (p.resources || []).filter(r => r.mediaUri).length,
+      resourceCount: (p.resources || []).length
+    })));
   } catch (e) {
-    res.status(500).json({ error: e.response?.data?.message || e.message });
+    res.status(500).json({ error: describeApiError(e) });
   }
 });
 
@@ -1090,7 +1105,13 @@ app.post('/api/flows/publish', async (req, res) => {
     const failed = op?.actionName === 'PUBLISH' && op.complete && op.actionStatus && op.actionStatus !== 'SUCCESS';
 
     if (failed) {
-      const why = (op.errorDetails || []).map(d => d.errorCode || d.message).filter(Boolean).join('; ') || op.actionStatus;
+      // Forklaringen ligger i errorMessage/errorCode på selve operationen.
+      // errorDetails[] er som regel tom, så den alene giver kun "FAILURE".
+      const why = [
+        op.errorMessage,
+        op.errorCode ? `(${op.errorCode})` : null,
+        (op.errorDetails || []).map(d => d.message || d.errorCode).filter(Boolean).join('; ') || null
+      ].filter(Boolean).join(' ') || op.actionStatus;
       addLog('ERROR', `Publicering af "${before.name}" fejlede: ${why}`, customer.name, 'MIGRATE');
       return res.status(500).json({ error: `Publicering fejlede: ${why}` });
     }
@@ -1362,6 +1383,72 @@ async function lookupExisting(kind, names, token, apiBase) {
   }
   return found;
 }
+
+// ── User prompts ──────────────────────────────────────────────────────────────
+
+// Migrerer én user prompt med alle dens sprogressourcer.
+// TTS-tekst kopieres direkte. Har en ressource indtalt lyd, hentes WAV-filen
+// fra kilden og lægges op på den nye ressources uploadUri.
+app.post('/api/prompts/migrate', async (req, res) => {
+  const { sourceId, targetId, promptName } = req.body;
+  const source = loadCustomers().find(c => c.id === sourceId);
+  const target = loadCustomers().find(c => c.id === targetId);
+  if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
+
+  const trail = [];
+  try {
+    const { token: srcToken, apiBase: srcBase } = await getToken(source);
+    const SH = { headers: { Authorization: `Bearer ${srcToken}` } };
+    const sl = await axios.get(`${srcBase}/api/v2/architect/prompts`, { ...SH, params: { pageSize: 200, name: promptName } });
+    const hit = (sl.data.entities || []).find(p => p.name === promptName);
+    if (!hit) return res.status(400).json({ error: `Prompt "${promptName}" findes ikke i ${source.name}` });
+    const src = (await axios.get(`${srcBase}/api/v2/architect/prompts/${hit.id}`, SH)).data;
+
+    const { token: tgtToken, apiBase: tgtBase } = await getToken(target);
+    const TH = { headers: { Authorization: `Bearer ${tgtToken}` } };
+    const TJ = { headers: { ...TH.headers, 'Content-Type': 'application/json' } };
+
+    const ex = await axios.get(`${tgtBase}/api/v2/architect/prompts`, { ...TH, params: { pageSize: 200, name: promptName } });
+    if ((ex.data.entities || []).some(p => p.name === promptName))
+      return res.status(409).json({ error: 'already_exists', message: `Prompt "${promptName}" findes allerede i ${target.name}` });
+
+    const created = (await axios.post(`${tgtBase}/api/v2/architect/prompts`,
+      { name: src.name, description: src.description || '' }, TJ)).data;
+
+    let ok = 0, audioOk = 0, audioFail = 0;
+    for (const r of src.resources || []) {
+      try {
+        const nr = (await axios.post(`${tgtBase}/api/v2/architect/prompts/${created.id}/resources`,
+          { language: r.language, ttsString: r.ttsString || undefined, text: r.text || undefined }, TJ)).data;
+        ok++;
+
+        if (!r.mediaUri) { trail.push(`✓ ${r.language} (TTS)`); continue; }
+
+        // Indtalt lyd: hent WAV'en fra kilden og læg den op på den nye ressource
+        if (!nr.uploadUri) { trail.push(`⚠ ${r.language}: lyd kunne ikke uploades (ingen uploadUri)`); audioFail++; continue; }
+        const wav = await axios.get(r.mediaUri, { responseType: 'arraybuffer', timeout: 60000 });
+        const form = new FormData();
+        form.append('file', new Blob([wav.data], { type: 'audio/wav' }), `${r.language}.wav`);
+        const up = await fetch(nr.uploadUri, {
+          method: 'POST', headers: { Authorization: `Bearer ${tgtToken}` }, body: form
+        });
+        if (!up.ok) { trail.push(`⚠ ${r.language}: lyd-upload svarede ${up.status}`); audioFail++; }
+        else { trail.push(`✓ ${r.language} (lyd, ${Math.round(wav.data.length / 1024)} kB)`); audioOk++; }
+      } catch (e) {
+        trail.push(`✗ ${r.language}: ${describeApiError(e)}`);
+      }
+    }
+
+    addLog('SUCCESS', `Prompt "${promptName}" migreret til ${target.name} — ${ok} sprog` +
+      (audioOk ? `, ${audioOk} med lyd` : '') + (audioFail ? `, ${audioFail} lyd fejlede` : ''), source.name, 'MIGRATE');
+    res.json({ ok: true, id: created.id, name: created.name, languages: ok, audioOk, audioFail, trail });
+
+  } catch (e) {
+    const msg = describeApiError(e);
+    addLog('ERROR', `Prompt "${promptName}" fejlede: ${msg}`, target.name, 'MIGRATE');
+    res.status(500).json({ error: msg, trail });
+  }
+});
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
