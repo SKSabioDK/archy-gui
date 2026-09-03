@@ -1,10 +1,61 @@
-# Archy GUI — Flow Manager · v1.20.1
+# Archy GUI — Flow Manager · v1.20.2
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.20.2
+---
+**🇩🇰 Dansk**
+- **Rettet: `--clientSecret` kunne havne i konsollen og `server.log`** — Archy kaldes med credentials på kommandolinjen. Når Node's `exec` fejler *inden* Archy selv siger noget, lægger Node **hele kommandolinjen** ind i `err.message` — inklusive `--clientSecret`. Den besked blev brugt som fejltekst, og gik derfra videre til systemloggen, `server.log`, konsollen og browseren. Målt og bekræftet før rettelsen:
+
+  ```
+  err.message: Command failed: archy ... --clientSecret "SUPERHEMMELIG123" --clientId "ID-ABC"
+  ```
+
+- **Alt der logges maskeres nu ét sted** — `addLog()` er den eneste vej til både systemloggen og konsollen, så maskeringen sidder dér, og kan ikke omgås af nye kald. Den fjerner:
+
+  | Mønster | Bliver til |
+  |---|---|
+  | `--clientSecret <værdi>` (med eller uden anførselstegn) | `--clientSecret "***"` |
+  | `--authToken <værdi>` | `--authToken "***"` |
+  | `Bearer <token>` | `Bearer ***` |
+  | Enhver hemmelighed fra `customers.json`, også uden flag foran | `***` |
+  | Ethvert client-id fra `customers.json` | `af9bcc12…` (første 8 tegn) |
+
+- **Client-id vises aldrig fuldt ud i en log** — det forkortes til de første 8 tegn. Nok til at se *hvilken* klient det drejer sig om, ikke nok til at genbruge. Kundelisten (`/api/customers`) har hele tiden sendt `••••••••` i stedet for hemmeligheden.
+- **Fejl til browseren maskeres også** — `runArchy` maskerer på begge fejlveje, så en fejlbesked ikke smugler kommandolinjen ud via HTTP-svaret.
+- Verificeret ved at fremprovokere en rigtig Archy-fejl mod en levende org og derefter gennemsøge `server.log`, systemloggen og HTTP-svaret for hver hemmelighed og hvert client-id i `customers.json` — ingen fund.
+
+> **Uden for programmets kontrol:** Archy's egne debug-logs under `C:\Tools\Archy\archyHome\debug\*.txt` skriver **client-id** (ikke hemmeligheden). Det er Archy's egen logning — ryd mappen hvis den skal deles.
+
+---
+**🇬🇧 English**
+- **Fixed: `--clientSecret` could reach the console and `server.log`** — Archy is invoked with credentials on the command line. When Node's `exec` fails *before* Archy itself says anything, Node puts **the entire command line** into `err.message` — including `--clientSecret`. That message was used as the error text, and travelled on to the system log, `server.log`, the console and the browser. Measured and confirmed before the fix:
+
+  ```
+  err.message: Command failed: archy ... --clientSecret "SUPERHEMMELIG123" --clientId "ID-ABC"
+  ```
+
+- **Everything logged is now masked in one place** — `addLog()` is the only route to both the system log and the console, so the masking sits there and cannot be bypassed by new calls. It removes:
+
+  | Pattern | Becomes |
+  |---|---|
+  | `--clientSecret <value>` (quoted or not) | `--clientSecret "***"` |
+  | `--authToken <value>` | `--authToken "***"` |
+  | `Bearer <token>` | `Bearer ***` |
+  | Any secret from `customers.json`, even with no flag in front | `***` |
+  | Any client id from `customers.json` | `af9bcc12…` (first 8 characters) |
+
+- **A client id is never shown in full in a log** — it is shortened to the first 8 characters. Enough to see *which* client is meant, not enough to reuse. The customer list (`/api/customers`) has always sent `••••••••` in place of the secret.
+- **Errors sent to the browser are masked too** — `runArchy` masks on both failure paths, so an error message cannot smuggle the command line out through the HTTP response.
+- Verified by provoking a real Archy failure against a live org and then searching `server.log`, the system log and the HTTP response for every secret and every client id in `customers.json` — no hits.
+
+> **Outside this program's control:** Archy's own debug logs under `C:\Tools\Archy\archyHome\debug\*.txt` write the **client id** (not the secret). That is Archy's own logging — clear the folder if it is to be shared.
+
+---
 
 ### v1.20.1
 ---
@@ -697,7 +748,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.20.1** — see [Changelog](#changelog) above.
+> Current version: **v1.20.2** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
