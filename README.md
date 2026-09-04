@@ -1,10 +1,79 @@
-# Archy GUI — Flow Manager · v1.20.3
+# Archy GUI — Flow Manager · v1.21.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.21.0
+---
+**🇩🇰 Dansk**
+- **Kunde → gruppe → miljø** — Det programmet hidtil kaldte en "kunde" er i virkeligheden ét *miljø*: én Genesys-org med ét OAuth-sæt. Der er nu to niveauer ovenover:
+
+  ```
+  Vattenfall            Kunde B
+  ├── DE   test → prod  ├── Firma A  test → prod
+  └── SE   test → prod  └── Firma C  dev → test → uat → prod
+  ```
+
+  **Gruppen er pipelinen.** Om den hedder et land eller et firma er kun en etiket — modellen behøver ikke kende forskel. Hvert miljø får et trin fra `dev → test → uat → prod`; en gruppe med kun to miljøer får bare to kolonner.
+
+- **Ingen omlægning af data** — `customers.json` er uændret i form. Hver post har fået tre felter (`tenant`, `group`, `stage`), og hierarkiet udledes af dem. Alle 48 opslag i koden virker uændret, og miljøer uden felterne samler sig i én "ikke grupperet"-bunke man kan rydde op i i sit eget tempo. Ingen engangsmigrering der kan gå galt.
+- **Gruppen kræves, men fylder ikke** — har en kunde kun én gruppe, skjules valget. Gruppen er der stadig, så modellen er ensartet.
+- **Ny side: Pipeline** — flows som rækker, gruppens miljøer som kolonner i trin-rækkefølge. Versionstallet vises kun til orientering; det er per-org og kan ikke sammenlignes på tværs. Filtrér på navn, eller på "kun dem der mangler i et senere trin". Et miljø der ikke kunne læses står som **ukendt** — aldrig som **mangler**, for vi ved ikke hvad der er i det.
+- **Forfrem ét trin ad gangen** — knappen i en kolonne henter fra kolonnen til venstre og lander på Migrer Flow med kilde, mål og flow sat. Den genbruger den eksisterende vej, så afhængighedstjek, divisionsvalg og logning er præcis som ellers.
+
+- **Fire vagter, håndhævet på serveren** — ikke kun skjult i brugerfladen:
+
+  | Vagt | Hvornår |
+  |---|---|
+  | `cross-group` | Kilde og mål er ikke i samme gruppe. Er ingen af dem grupperet, går en løs migrering igennem som før. |
+  | `prod-confirm` | Målet er et prod-miljø. Kræver en bevidst bekræftelse. |
+  | `unpublished-source` | Flowet er ikke publiceret i kilden. Publicér og test det dér først — en kladde er ikke testet. |
+  | `same-env` | Kilde og mål er det samme miljø. |
+
+  Både `prepare` og `commit` tjekker. Commit er den der skriver, og den stoler ikke på at klienten kom forbi `prepare` først.
+
+- **Rettet: `PUT /api/customers/:id` kunne ødelægge en client secret** — GET udleverer hemmeligheden maskeret. Sendte brugerfladen den værdi tilbage, ville en naiv fletning skrive prikker oven i den rigtige hemmelighed og gøre miljøet ubrugeligt. At genkende masken er for skrøbeligt — tegnene kan forvanskes undervejs, hvilket jeg fik målt undervejs. **PUT tager nu slet ikke imod `clientSecret`**; vil man skifte den, sender man `newClientSecret`. Endpointet var ubrugt før nu, men redigering af miljøer bruger det.
+- **Rettet: kladdeversioner viste et internt id** — Genesys navngiver en kladde `saved_version_0d4c8ad4-…`. Det er ikke et versionsnummer og vises ikke som ét.
+
+> **Endnu ikke bygget:** miljøspecifik oversættelse — at kø `Support_TEST` svarer til `Support_PROD` osv. Uden den vil en forfremmelse stadig fejle på ressourcer der hedder noget forskelligt i hvert miljø. Det er næste skridt.
+
+---
+**🇬🇧 English**
+- **Customer → group → environment** — What the app called a "customer" is really one *environment*: one Genesys org with one OAuth client. There are now two levels above it:
+
+  ```
+  Vattenfall            Customer B
+  ├── DE   test → prod  ├── Company A  test → prod
+  └── SE   test → prod  └── Company C  dev → test → uat → prod
+  ```
+
+  **The group is the pipeline.** Whether it is named after a country or a company is just a label — the model need not tell them apart. Each environment gets a stage from `dev → test → uat → prod`; a group with only two environments simply gets two columns.
+
+- **No data restructuring** — `customers.json` keeps its shape. Each record gained three fields (`tenant`, `group`, `stage`), and the hierarchy is derived from them. All 48 lookups in the code work unchanged, and environments without the fields collect in one "not grouped" bucket to be tidied at your own pace. No one-off migration that can go wrong.
+- **The group is required but stays out of the way** — when a customer has only one group, the choice is hidden. The group is still there, so the model stays uniform.
+- **New page: Pipeline** — flows as rows, the group's environments as columns in stage order. Version numbers are shown for orientation only; they are per-org and cannot be compared across. Filter by name, or by "only those missing in a later stage". An environment that could not be read shows as **unknown** — never as **missing**, because we do not know what is in it.
+- **Promote one stage at a time** — the button in a column pulls from the column to its left and lands on Migrate Flow with source, target and flow filled in. It reuses the existing path, so dependency checks, division choices and logging are exactly as before.
+
+- **Four guards, enforced on the server** — not merely hidden in the UI:
+
+  | Guard | When |
+  |---|---|
+  | `cross-group` | Source and target are not in the same group. If neither is grouped, an ad-hoc migration passes as before. |
+  | `prod-confirm` | The target is a production environment. Requires a deliberate confirmation. |
+  | `unpublished-source` | The flow is not published in the source. Publish and test it there first — a draft has not been tested. |
+  | `same-env` | Source and target are the same environment. |
+
+  Both `prepare` and `commit` check. Commit is the one that writes, and it does not trust that the client came through `prepare` first.
+
+- **Fixed: `PUT /api/customers/:id` could destroy a client secret** — GET hands out the secret masked. Had the UI sent that value back, a naive merge would have written dots over the real secret and made the environment unusable. Recognising the mask is too fragile — the characters can be mangled in transit, which is what I measured happening. **PUT no longer accepts `clientSecret` at all**; to change it you send `newClientSecret`. The endpoint was unused until now, but editing environments uses it.
+- **Fixed: draft versions showed an internal id** — Genesys names a draft `saved_version_0d4c8ad4-…`. That is not a version number and is no longer shown as one.
+
+> **Not built yet:** per-environment translation — that queue `Support_TEST` corresponds to `Support_PROD`, and so on. Without it a promotion will still fail on resources named differently in each environment. That is the next step.
+
+---
 
 ### v1.20.3
 ---
@@ -779,7 +848,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.20.3** — see [Changelog](#changelog) above.
+> Current version: **v1.21.0** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**

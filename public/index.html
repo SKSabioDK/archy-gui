@@ -422,6 +422,9 @@
       <div class="nav-item active" data-page="customers" onclick="nav(this)">
         <span class="nav-icon">🏢</span> <span data-i18n="nav_customers">Kunder</span>
       </div>
+      <div class="nav-item" data-page="pipeline" onclick="nav(this)">
+        <span class="nav-icon">🚦</span> <span data-i18n="nav_pipeline">Pipeline</span>
+      </div>
       <div class="nav-item" data-page="flows" onclick="nav(this)">
         <span class="nav-icon">📋</span> <span data-i18n="nav_flows">Flow Browser</span>
       </div>
@@ -457,7 +460,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.20.3 · Archy GUI</div>
+    <div class="version" id="app-version">v1.21.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -514,12 +517,67 @@
             <label data-i18n="label_clientsecret">Client Secret *</label>
             <input id="c-clientSecret" type="password" placeholder="••••••••••••" />
           </div>
+          <div>
+            <label data-i18n="label_tenant">Kunde</label>
+            <input id="c-tenant" list="tenantList" placeholder="Vattenfall" />
+            <datalist id="tenantList"></datalist>
+          </div>
+          <div>
+            <label data-i18n="label_group">Gruppe</label>
+            <input id="c-group" list="groupList" placeholder="DE" />
+            <datalist id="groupList"></datalist>
+          </div>
+          <div>
+            <label data-i18n="label_stage">Trin</label>
+            <select id="c-stage">
+              <option value="" data-i18n="stage_none">— intet trin —</option>
+              <option value="dev">dev</option>
+              <option value="test">test</option>
+              <option value="uat">uat</option>
+              <option value="prod">prod</option>
+            </select>
+          </div>
         </div>
+        <div style="margin-bottom:12px;font-size:11px;color:var(--muted)" data-i18n="hint_grouping">Kunde + gruppe afgør hvad der må migreres indbyrdes.</div>
         <button class="btn btn-primary" onclick="addCustomer()" data-i18n="btn_add_customer">+ Tilføj Kunde</button>
       </div>
 
       <div id="customerAlert"></div>
       <div class="customer-grid" id="customerGrid"></div>
+    </div>
+
+    <!-- PIPELINE PAGE -->
+    <div class="page" id="page-pipeline">
+      <div class="page-title" data-i18n="page_pipeline_title">Pipeline</div>
+      <div class="page-sub" data-i18n="page_pipeline_sub">Forfrem flows trin for trin mellem miljøerne i én gruppe</div>
+
+      <div class="card">
+        <div class="grid-2" style="margin-bottom:12px">
+          <div>
+            <label data-i18n="pl_tenant">Kunde</label>
+            <select id="pl-tenant" onchange="onPipelineTenant()"></select>
+          </div>
+          <div id="pl-group-wrap">
+            <label data-i18n="pl_group">Gruppe</label>
+            <select id="pl-group"></select>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="loadPipeline()" data-i18n="pl_show">Vis pipeline</button>
+      </div>
+
+      <div id="pipelineAlert"></div>
+      <div class="card" id="pl-filterCard" style="display:none">
+        <div class="grid-2">
+          <div><input id="pl-search" oninput="renderPipeline()" placeholder="🔍  Filtrér flows…" data-i18n-placeholder="pl_search" /></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin:0">
+              <input type="checkbox" id="pl-only-gaps" onchange="renderPipeline()" style="width:auto" />
+              <span data-i18n="pl_only_gaps">Kun dem der mangler i et senere trin</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div id="pipelineBoard"></div>
     </div>
 
     <!-- FLOWS PAGE -->
@@ -1401,6 +1459,35 @@ const LANGS = {
     cross_variants:'forskellige udgaver',
     cross_partial:'Kunne ikke sammenlignes — {failed} af {total} kunder fejlede',
     cross_insufficient:'For få resultater til en sammenligning',
+    nav_pipeline:'Pipeline',
+    page_pipeline_title:'Pipeline',
+    page_pipeline_sub:'Forfrem flows trin for trin mellem miljøerne i én gruppe',
+    pl_tenant:'Kunde',
+    pl_group:'Gruppe',
+    pl_show:'Vis pipeline',
+    pl_loading:'Henter flows fra hvert miljø…',
+    pl_no_groups:'Ingen grupper endnu. Sæt kunde, gruppe og trin på miljøerne under Kunder.',
+    pl_search:'🔍  Filtrér flows…',
+    pl_only_gaps:'Kun dem der mangler i et senere trin',
+    pl_flow:'FLOW',
+    pl_missing:'mangler',
+    pl_draft:'kladde',
+    pl_unknown:'ukendt',
+    pl_promote:'Forfrem',
+    pl_count:'flows vist',
+    pl_problem:'Miljøer der ikke kunne læses',
+    pl_unknown_note:'Et miljø der ikke kunne læses står som «ukendt» — ikke som «mangler». Vi ved ikke hvad der er i det.',
+    pl_prod_warn:'Målet er et prod-miljø. Bekræft forfremmelsen.',
+    label_tenant:'Kunde',
+    label_group:'Gruppe',
+    label_stage:'Trin',
+    stage_none:'— intet trin —',
+    hint_grouping:'Kunde + gruppe afgør hvad der må migreres indbyrdes. Gruppen kan være et land eller et firma — den er pipelinen.',
+    btn_save_grouping:'Gem',
+    btn_edit_grouping:'⚙ Gruppering',
+    cc_ungrouped:'ikke grupperet',
+    grouping_saved:'Gruppering gemt',
+    pl_needs_publish:'Publicér flowet i kildemiljøet først — en kladde er ikke testet',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1703,6 +1790,35 @@ const LANGS = {
     cross_variants:'distinct versions of the content',
     cross_partial:'Could not be compared — {failed} of {total} customers failed',
     cross_insufficient:'Too few results to compare',
+    nav_pipeline:'Pipeline',
+    page_pipeline_title:'Pipeline',
+    page_pipeline_sub:'Promote flows step by step between the environments in one group',
+    pl_tenant:'Customer',
+    pl_group:'Group',
+    pl_show:'Show pipeline',
+    pl_loading:'Fetching flows from each environment…',
+    pl_no_groups:'No groups yet. Set customer, group and stage on the environments under Customers.',
+    pl_search:'🔍  Filter flows…',
+    pl_only_gaps:'Only those missing in a later stage',
+    pl_flow:'FLOW',
+    pl_missing:'missing',
+    pl_draft:'draft',
+    pl_unknown:'unknown',
+    pl_promote:'Promote',
+    pl_count:'flows shown',
+    pl_problem:'Environments that could not be read',
+    pl_unknown_note:'An environment that could not be read shows as “unknown” — not “missing”. We do not know what is in it.',
+    pl_prod_warn:'The target is a production environment. Confirm the promotion.',
+    label_tenant:'Customer',
+    label_group:'Group',
+    label_stage:'Stage',
+    stage_none:'— no stage —',
+    hint_grouping:'Customer + group decide what may be migrated between. The group can be a country or a company — it is the pipeline.',
+    btn_save_grouping:'Save',
+    btn_edit_grouping:'⚙ Grouping',
+    cc_ungrouped:'not grouped',
+    grouping_saved:'Grouping saved',
+    pl_needs_publish:'Publish the flow in the source environment first — a draft has not been tested',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -2005,6 +2121,35 @@ const LANGS = {
     cross_variants:'variantes du contenu',
     cross_partial:'Comparaison impossible — {failed} clients sur {total} en échec',
     cross_insufficient:'Trop peu de résultats pour comparer',
+    nav_pipeline:'Pipeline',
+    page_pipeline_title:'Pipeline',
+    page_pipeline_sub:'Promouvoir les flows étape par étape entre les environnements d\'un groupe',
+    pl_tenant:'Client',
+    pl_group:'Groupe',
+    pl_show:'Afficher le pipeline',
+    pl_loading:'Récupération des flows de chaque environnement…',
+    pl_no_groups:'Aucun groupe. Renseignez client, groupe et étape sur les environnements sous Clients.',
+    pl_search:'🔍  Filtrer les flows…',
+    pl_only_gaps:'Uniquement ceux absents d\'une étape ultérieure',
+    pl_flow:'FLOW',
+    pl_missing:'absent',
+    pl_draft:'brouillon',
+    pl_unknown:'inconnu',
+    pl_promote:'Promouvoir',
+    pl_count:'flows affichés',
+    pl_problem:'Environnements illisibles',
+    pl_unknown_note:'Un environnement illisible s\'affiche « inconnu », pas « absent ». Nous ignorons son contenu.',
+    pl_prod_warn:'La cible est un environnement de production. Confirmez la promotion.',
+    label_tenant:'Client',
+    label_group:'Groupe',
+    label_stage:'Étape',
+    stage_none:'— aucune étape —',
+    hint_grouping:'Client + groupe déterminent les migrations autorisées. Le groupe peut être un pays ou une société — c\'est le pipeline.',
+    btn_save_grouping:'Enregistrer',
+    btn_edit_grouping:'⚙ Regroupement',
+    cc_ungrouped:'non regroupé',
+    grouping_saved:'Regroupement enregistré',
+    pl_needs_publish:'Publiez d\'abord le flow dans l\'environnement source — un brouillon n\'est pas testé',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -2307,6 +2452,35 @@ const LANGS = {
     cross_variants:'verschillende uitvoeringen',
     cross_partial:'Kon niet vergeleken worden — {failed} van {total} klanten mislukt',
     cross_insufficient:'Te weinig resultaten om te vergelijken',
+    nav_pipeline:'Pipeline',
+    page_pipeline_title:'Pipeline',
+    page_pipeline_sub:'Flows stap voor stap promoveren tussen de omgevingen in één groep',
+    pl_tenant:'Klant',
+    pl_group:'Groep',
+    pl_show:'Pipeline tonen',
+    pl_loading:'Flows uit elke omgeving ophalen…',
+    pl_no_groups:'Nog geen groepen. Stel klant, groep en fase in bij de omgevingen onder Klanten.',
+    pl_search:'🔍  Flows filteren…',
+    pl_only_gaps:'Alleen die ontbreken in een latere fase',
+    pl_flow:'FLOW',
+    pl_missing:'ontbreekt',
+    pl_draft:'concept',
+    pl_unknown:'onbekend',
+    pl_promote:'Promoveren',
+    pl_count:'flows getoond',
+    pl_problem:'Omgevingen die niet gelezen konden worden',
+    pl_unknown_note:'Een onleesbare omgeving toont “onbekend”, niet “ontbreekt”. We weten niet wat erin zit.',
+    pl_prod_warn:'Het doel is een productieomgeving. Bevestig de promotie.',
+    label_tenant:'Klant',
+    label_group:'Groep',
+    label_stage:'Fase',
+    stage_none:'— geen fase —',
+    hint_grouping:'Klant + groep bepalen waartussen gemigreerd mag worden. De groep kan een land of bedrijf zijn — het is de pipeline.',
+    btn_save_grouping:'Opslaan',
+    btn_edit_grouping:'⚙ Groepering',
+    cc_ungrouped:'niet gegroepeerd',
+    grouping_saved:'Groepering opgeslagen',
+    pl_needs_publish:'Publiceer de flow eerst in de bronomgeving — een concept is niet getest',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -2609,6 +2783,35 @@ const LANGS = {
     cross_variants:'variantes del contenido',
     cross_partial:'No se pudo comparar — fallaron {failed} de {total} clientes',
     cross_insufficient:'Muy pocos resultados para comparar',
+    nav_pipeline:'Pipeline',
+    page_pipeline_title:'Pipeline',
+    page_pipeline_sub:'Promover flows paso a paso entre los entornos de un grupo',
+    pl_tenant:'Cliente',
+    pl_group:'Grupo',
+    pl_show:'Mostrar pipeline',
+    pl_loading:'Obteniendo flows de cada entorno…',
+    pl_no_groups:'Aún no hay grupos. Defina cliente, grupo y etapa en los entornos en Clientes.',
+    pl_search:'🔍  Filtrar flows…',
+    pl_only_gaps:'Solo los que faltan en una etapa posterior',
+    pl_flow:'FLOW',
+    pl_missing:'falta',
+    pl_draft:'borrador',
+    pl_unknown:'desconocido',
+    pl_promote:'Promover',
+    pl_count:'flows mostrados',
+    pl_problem:'Entornos que no se pudieron leer',
+    pl_unknown_note:'Un entorno ilegible aparece como «desconocido», no «falta». No sabemos qué contiene.',
+    pl_prod_warn:'El destino es un entorno de producción. Confirme la promoción.',
+    label_tenant:'Cliente',
+    label_group:'Grupo',
+    label_stage:'Etapa',
+    stage_none:'— sin etapa —',
+    hint_grouping:'Cliente + grupo determinan entre qué se puede migrar. El grupo puede ser un país o una empresa: es el pipeline.',
+    btn_save_grouping:'Guardar',
+    btn_edit_grouping:'⚙ Agrupación',
+    cc_ungrouped:'sin agrupar',
+    grouping_saved:'Agrupación guardada',
+    pl_needs_publish:'Publique el flow primero en el entorno de origen: un borrador no está probado',
   }
 };
 
@@ -2781,6 +2984,7 @@ function nav(el) {
   if (page === 'import') populateCustomerSelects(['im-customer']);
   if (page === 'files') loadFiles();
   if (page === 'cross') loadCross();
+  if (page === 'pipeline') pipelineInit();
   if (page === 'dataactions') daInit();
   if (page === 'syslog') { populateSyslogCustomers(); loadLog(); loadLogStats(); }
   if (page === 'readme') loadReadme();
@@ -2790,6 +2994,7 @@ function nav(el) {
 async function refreshCustomers() {
   const res = await fetch('/api/customers');
   customers = await res.json();
+  await loadHierarchy();
   renderCustomerGrid();
   renderSidebarCustomers();
   populateCustomerSelects();
@@ -2844,10 +3049,13 @@ function renderCustomerGrid() {
       <div class="cc-status"><div class="dot" id="card-dot-${c.id}"></div><span id="card-status-${c.id}">–</span></div>
       <div class="cc-name">${c.name}</div>
       <div class="cc-region" style="display:flex;align-items:center;gap:8px">${c.region} ${authBadge}</div>
+      <div style="margin-top:6px;font-size:11px;font-family:var(--mono)">${groupingBadge(c)}</div>
+      <div id="grp-${c.id}" style="display:none;margin-top:10px"></div>
       <div id="card-archy-warn-${c.id}" style="display:none;margin-top:8px;padding:6px 10px;background:rgba(241,196,15,.1);border:1px solid rgba(241,196,15,.3);border-radius:5px;font-size:11px;color:var(--yellow);font-family:var(--mono)"></div>
       <div class="cc-actions" style="margin-top:14px">
         ${loginBtn}
         <button class="btn btn-secondary btn-sm" onclick="testCustomer('${c.id}')">${t('btn_test')}</button>
+        <button class="btn btn-secondary btn-sm" onclick="toggleGrouping('${c.id}')">${t('btn_edit_grouping')}</button>
         <button class="btn btn-blue btn-sm" onclick="quickViewFlows('${c.id}')">${t('btn_flows_card')}</button>
         <button class="btn btn-danger btn-sm" onclick="deleteCustomer('${c.id}')">✕</button>
       </div>
@@ -2871,13 +3079,16 @@ async function addCustomer() {
   const clientId     = document.getElementById('c-clientId').value.trim();
   const clientSecret = document.getElementById('c-clientSecret').value.trim();
   const authType     = document.getElementById('c-authType').value;
+  const tenant       = document.getElementById('c-tenant').value.trim();
+  const group        = document.getElementById('c-group').value.trim();
+  const stage        = document.getElementById('c-stage').value;
   const isOAuth      = authType === 'oauth';
   showAlert('customerAlert', '');
   if (!name || !clientId || (!isOAuth && !clientSecret))
     return showAlert('customerAlert', t('err_fields_required'), 'err');
   const res = await fetch('/api/customers', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({name, region, clientId, clientSecret, authType})
+    body: JSON.stringify({name, region, clientId, clientSecret, authType, tenant, group, stage})
   });
   const data = await res.json();
   if (data.error) return showAlert('customerAlert', data.error, 'err');
@@ -3230,6 +3441,15 @@ async function runMigration() {
   if (!sourceId || !targetId) return alert(t('err_select_source_target'));
   if (sourceId === targetId) return alert(t('err_same_org'));
 
+  // Er målet et prod-miljø, skal forfremmelsen bekræftes bevidst. Serveren
+  // afviser den ellers — det her er så brugeren får spørgsmålet, ikke en fejl.
+  const _tgt = customers.find(c => c.id === targetId);
+  let confirmProd = false;
+  if (String(_tgt && _tgt.stage || '').toLowerCase() === 'prod') {
+    if (!confirm(t('pl_prod_warn') + '\n\n' + (_tgt.name || ''))) return;
+    confirmProd = true;
+  }
+
   document.getElementById('m-log').style.display = 'block';
   const logBox = document.getElementById('m-logBox');
   logBox.innerHTML = '';
@@ -3245,7 +3465,7 @@ async function runMigration() {
       log(logBox, `  ${t('dep_checking')}`, 'info');
       const prep = await fetch('/api/migrate/prepare', {
         method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ sourceId, targetId, flowName: name, flowType: type })
+        body: JSON.stringify({ sourceId, targetId, flowName: name, flowType: type, confirmProd })
       }).then(r => r.json());
       if (prep.error) { log(logBox, `  ✗ ${prep.error}`, 'err'); failed++; continue; }
 
@@ -3285,7 +3505,7 @@ async function runMigration() {
       // Fase 2: importér flowet
       const data = await fetch('/api/migrate/commit', {
         method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ sourceId, targetId, flowName: name, filePath: prep.filePath, action, divisionMap })
+        body: JSON.stringify({ sourceId, targetId, flowName: name, filePath: prep.filePath, action, divisionMap, confirmProd })
       }).then(r => r.json());
       if (data.error) { log(logBox, `  ✗ ${data.error}`, 'err'); failed++; }
       else { log(logBox, `  ✓ ${data.fileName} → ${action} OK`, 'ok'); ok++; }
@@ -6353,6 +6573,206 @@ async function dtMigrateSelected() {
   log(logBox, `\n\u2500\u2500 ${t('da_done')} \u2500\u2500 ${ok} ${t('da_sum_ok')} \u00b7 ${skipped} ${t('da_sum_skipped')} \u00b7 ${failed} ${t('da_sum_failed')}`,
       failed ? 'err' : 'info');
   dtUpdateReady();
+}
+
+// ── Kunde → gruppe → miljø ────────────────────────────────────────────────────
+// Hierarkiet kommer fra serveren, som udleder det af felterne på hvert miljø.
+let hierarchy = { stages: [], tenants: [] };
+let pipelineData = null;
+
+async function loadHierarchy() {
+  try {
+    const r = await fetch('/api/hierarchy').then(x => x.json());
+    if (r.ok) hierarchy = r;
+  } catch (_) { /* uden hierarki virker resten stadig */ }
+  fillGroupingDatalists();
+}
+
+// Forslagslister, så samme kunde eller gruppe ikke bliver stavet på to måder.
+function fillGroupingDatalists() {
+  const tenants = [...new Set(customers.map(c => c.tenant).filter(Boolean))].sort();
+  const groups  = [...new Set(customers.map(c => c.group).filter(Boolean))].sort();
+  const put = (id, vals) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = vals.map(v => `<option value="${escapeHtml(v)}"></option>`).join('');
+  };
+  put('tenantList', tenants);
+  put('groupList', groups);
+}
+
+function escapeHtml(x) {
+  return String(x == null ? '' : x)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function groupingBadge(c) {
+  if (!c.tenant || !c.group)
+    return `<span style="color:var(--muted)">${t('cc_ungrouped')}</span>`;
+  const stage = c.stage
+    ? `<span style="color:var(--blue)">${escapeHtml(c.stage)}</span>`
+    : `<span style="color:var(--muted)">—</span>`;
+  return `${escapeHtml(c.tenant)} · ${escapeHtml(c.group)} · ${stage}`;
+}
+
+function toggleGrouping(id) {
+  const box = document.getElementById('grp-' + id);
+  if (!box) return;
+  if (box.style.display !== 'none') { box.style.display = 'none'; return; }
+  const c = customers.find(x => x.id === id) || {};
+  const opt = v => `<option value="${v}"${(c.stage || '') === v ? ' selected' : ''}>${v || t('stage_none')}</option>`;
+  box.style.display = 'block';
+  box.innerHTML = `
+    <input id="grp-tenant-${id}" list="tenantList" placeholder="${t('label_tenant')}" value="${escapeHtml(c.tenant || '')}" style="margin-bottom:6px" />
+    <input id="grp-group-${id}"  list="groupList"  placeholder="${t('label_group')}"  value="${escapeHtml(c.group  || '')}" style="margin-bottom:6px" />
+    <select id="grp-stage-${id}" style="margin-bottom:8px">${['', 'dev', 'test', 'uat', 'prod'].map(opt).join('')}</select>
+    <button class="btn btn-primary btn-sm" onclick="saveGrouping('${id}')">${t('btn_save_grouping')}</button>`;
+}
+
+async function saveGrouping(id) {
+  const body = {
+    tenant: document.getElementById('grp-tenant-' + id).value.trim(),
+    group:  document.getElementById('grp-group-'  + id).value.trim(),
+    stage:  document.getElementById('grp-stage-'  + id).value
+  };
+  const r = await fetch('/api/customers/' + id, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }).then(x => x.json());
+  if (r.error) return showAlert('customerAlert', r.error, 'err');
+  showAlert('customerAlert', t('grouping_saved'), 'ok');
+  await refreshCustomers();
+}
+
+// ── Pipeline ──────────────────────────────────────────────────────────────────
+function pipelineInit() {
+  const sel = document.getElementById('pl-tenant');
+  const named = (hierarchy.tenants || []).filter(x => x.named && x.groups.some(g => g.named));
+  if (!named.length) {
+    sel.innerHTML = '';
+    document.getElementById('pipelineBoard').innerHTML =
+      `<div class="card" style="color:var(--muted);font-size:13px">${t('pl_no_groups')}</div>`;
+    document.getElementById('pl-filterCard').style.display = 'none';
+    return;
+  }
+  sel.innerHTML = named.map(x => `<option value="${escapeHtml(x.tenant)}">${escapeHtml(x.tenant)}</option>`).join('');
+  onPipelineTenant();
+}
+
+function onPipelineTenant() {
+  const tenant = document.getElementById('pl-tenant').value;
+  const t0 = (hierarchy.tenants || []).find(x => x.tenant === tenant);
+  const groups = t0 ? t0.groups.filter(g => g.named) : [];
+  const sel = document.getElementById('pl-group');
+  sel.innerHTML = groups.map(g => `<option value="${escapeHtml(g.group)}">${escapeHtml(g.group)}</option>`).join('');
+  // Gruppen findes altid, men når kunden kun har én er der intet at vælge
+  // imellem — så fylder den ikke i billedet.
+  document.getElementById('pl-group-wrap').style.display = groups.length > 1 ? '' : 'none';
+}
+
+async function loadPipeline() {
+  const tenant = document.getElementById('pl-tenant').value;
+  const group  = document.getElementById('pl-group').value;
+  if (!tenant || !group) return;
+  const board = document.getElementById('pipelineBoard');
+  document.getElementById('pl-filterCard').style.display = 'none';
+  board.innerHTML = `<div class="card" style="color:var(--muted);font-size:12px"><span class="spin"></span> ${t('pl_loading')}</div>`;
+  const r = await fetch(`/api/pipeline?tenant=${encodeURIComponent(tenant)}&group=${encodeURIComponent(group)}`)
+    .then(x => x.json()).catch(e => ({ error: e.message }));
+  if (r.error) { board.innerHTML = `<div class="card" style="color:var(--red);font-size:13px">${escapeHtml(r.error)}</div>`; return; }
+  pipelineData = r;
+  document.getElementById('pl-filterCard').style.display = 'block';
+  renderPipeline();
+}
+
+function renderPipeline() {
+  const d = pipelineData;
+  if (!d) return;
+  const q = (document.getElementById('pl-search').value || '').trim().toLowerCase();
+  const onlyGaps = document.getElementById('pl-only-gaps').checked;
+
+  let rows = d.rows.filter(r => !q || r.flowName.toLowerCase().includes(q));
+  if (onlyGaps) rows = rows.filter(r => {
+    // Findes i et trin, men mangler i et senere. Et miljø vi ikke kunne læse
+    // tæller ikke som "mangler" — vi ved ikke hvad der er i det.
+    let seen = false;
+    for (const c of r.cells) {
+      if (c.unknown) continue;
+      if (!c.missing) seen = true;
+      else if (seen) return true;
+    }
+    return false;
+  });
+
+  const cell = (c, i, row) => {
+    let body, colour;
+    if (c.unknown)      { body = t('pl_unknown'); colour = 'var(--muted)'; }
+    else if (c.missing) { body = '—';             colour = 'var(--muted)'; }
+    else if (c.published) { body = 'v' + c.published; colour = 'var(--green)'; }
+    else                { body = t('pl_draft');   colour = 'var(--yellow)'; }
+
+    // Forfremmelse går altid ét trin ad gangen: fra kolonnen til venstre.
+    // Kun en publiceret udgave kan forfremmes — en kladde er ikke testet, og
+    // serveren afviser den alligevel. Knappen vises derfor slukket med grunden,
+    // i stedet for at love noget der ikke kan lade sig gøre.
+    const prev = i > 0 ? row.cells[i - 1] : null;
+    const promotable = prev && !prev.missing && !prev.unknown;
+    const btn = promotable
+      ? (prev.published
+          ? `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 6px"
+               onclick="promoteFromBoard('${escapeHtml(row.flowName).replace(/'/g, "\\'")}','${row.flowType}','${prev.envId}','${c.envId}')"
+               >⟶ ${t('pl_promote')}</button></div>`
+          : `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm" disabled
+               style="font-size:10px;padding:2px 6px;opacity:.4;cursor:not-allowed"
+               title="${t('pl_needs_publish')}">⟶ ${t('pl_promote')}</button></div>`)
+      : '';
+    return `<td style="padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:top">
+        <span style="color:${colour};font-family:var(--mono);font-size:12px">${body}</span>${btn}</td>`;
+  };
+
+  const head = d.environments.map(e =>
+    `<th style="text-align:left;padding:8px 10px;font-size:11px;color:var(--muted);font-family:var(--mono)">
+       ${(e.stage || '—').toUpperCase()}<div style="font-weight:400;color:var(--muted);font-size:10px">${escapeHtml(e.name)}</div></th>`).join('');
+
+  const body = rows.map(r => `<tr>
+      <td style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:12px">${escapeHtml(r.flowName)}
+        <div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${r.flowType}</div></td>
+      ${r.cells.map((c, i) => cell(c, i, r)).join('')}
+    </tr>`).join('');
+
+  const problems = d.problems.length
+    ? `<div style="margin-bottom:10px;padding:8px 12px;background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);border-radius:5px;font-size:12px">
+         <b>${t('pl_problem')}:</b> ${d.problems.map(p => escapeHtml(p.environment) + ' — ' + escapeHtml(p.error)).join('<br>')}
+         <div style="margin-top:6px;color:var(--muted)">${t('pl_unknown_note')}</div></div>`
+    : '';
+
+  document.getElementById('pipelineBoard').innerHTML = `<div class="card">
+      ${problems}
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${rows.length} ${t('pl_count')}</div>
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+        <thead><tr><th style="text-align:left;padding:8px 10px;font-size:11px;color:var(--muted);font-family:var(--mono)">${t('pl_flow')}</th>${head}</tr></thead>
+        <tbody>${body}</tbody></table></div></div>`;
+}
+
+// Forfremmelse genbruger Migrer Flow-siden, så afhængighedstjek, divisionsvalg
+// og logning er præcis de samme som ved en almindelig migrering.
+async function promoteFromBoard(flowName, flowType, fromId, toId) {
+  document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelector('[data-page=migrate]').classList.add('active');
+  document.getElementById('page-migrate').classList.add('active');
+  populateMigrateSelects();
+  document.getElementById('m-source').value = fromId;
+  document.getElementById('m-target').value = toId;
+  await onMigrateSourceChange();
+  const f = (migrateFlows || []).find(x => x.name === flowName && x.type === flowType);
+  if (f) {
+    selectedMigrateFlows.clear();
+    selectedMigrateFlows.add(f.id + '|' + f.name + '|' + f.type);
+    applyMigrateFilter();
+    updateMigrateBtn();
+  }
+  updateMigrateAuthStatus();
 }
 </script>
 </body>

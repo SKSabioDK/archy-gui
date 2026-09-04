@@ -181,23 +181,124 @@ function saveCustomers(customers) {
   fs.writeFileSync(CUSTOMERS_FILE, JSON.stringify(customers, null, 2));
 }
 
+// ── Kunde → gruppe → miljø ───────────────────────────────────────────────────
+// Én post i customers.json er ét miljø (én Genesys-org med ét OAuth-sæt).
+// Hierarkiet udledes af tre felter, så alle eksisterende opslag virker uændret
+// og poster uden felterne blot samler sig i én bunke.
+
+const STAGES = ['dev', 'test', 'uat', 'prod'];
+const stageOrder = s => { const i = STAGES.indexOf(String(s || '').toLowerCase()); return i === -1 ? 99 : i; };
+
+const UNGROUPED = '__ungrouped__';
+const tenantOf = c => (c.tenant || '').trim() || UNGROUPED;
+const groupOf  = c => (c.group  || '').trim() || UNGROUPED;
+const stageOf  = c => { const s = String(c.stage || '').toLowerCase(); return STAGES.includes(s) ? s : null; };
+
+// To miljøer må kun sammenlignes og migreres indbyrdes hvis de deler kunde OG
+// gruppe. Miljøer uden gruppe hører ikke sammen med noget — heller ikke med
+// hinanden — så en manglende opsætning aldrig kan læses som "de hører sammen".
+function sameGroup(a, b) {
+  if (!a || !b) return false;
+  if (tenantOf(a) === UNGROUPED || groupOf(a) === UNGROUPED) return false;
+  if (tenantOf(b) === UNGROUPED || groupOf(b) === UNGROUPED) return false;
+  return tenantOf(a) === tenantOf(b) && groupOf(a) === groupOf(b);
+}
+
+function buildHierarchy(customers) {
+  const tenants = new Map();
+  for (const c of customers) {
+    const t = tenantOf(c), g = groupOf(c);
+    if (!tenants.has(t)) tenants.set(t, new Map());
+    const groups = tenants.get(t);
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g).push({
+      id: c.id, name: c.name, region: c.region,
+      stage: stageOf(c), authType: c.authType || 'credentials'
+    });
+  }
+  const out = [];
+  for (const [tenant, groups] of tenants) {
+    const gs = [];
+    for (const [group, envs] of groups) {
+      envs.sort((a, b) => stageOrder(a.stage) - stageOrder(b.stage) || a.name.localeCompare(b.name));
+      gs.push({ group, named: group !== UNGROUPED, environments: envs });
+    }
+    gs.sort((a, b) => a.group.localeCompare(b.group));
+    out.push({
+      tenant, named: tenant !== UNGROUPED, groups: gs,
+      // Brugerfladen skjuler gruppeniveauet når kunden kun har én gruppe —
+      // gruppen er der stadig, den fylder bare ikke.
+      singleGroup: gs.length === 1
+    });
+  }
+  out.sort((a, b) => (a.named === b.named) ? a.tenant.localeCompare(b.tenant) : (a.named ? -1 : 1));
+  return out;
+}
+
+app.get('/api/hierarchy', (req, res) => {
+  res.json({ ok: true, stages: STAGES, tenants: buildHierarchy(loadCustomers()) });
+});
+
+// Vagt foran enhver skrivning fra ét miljø til et andet. Alt her udledes af
+// miljøernes egen opsætning — kun prod-bekræftelsen kommer fra brugeren, og
+// den er netop ment som en bevidst handling.
+// Returnerer null når det er tilladt, ellers { code, error }.
+function migrationGuard(source, target, body = {}) {
+  if (!source || !target) return { code: 'unknown-env', error: 'Ukendt miljø.' };
+  if (source.id === target.id)
+    return { code: 'same-env', error: 'Kilde og mål er det samme miljø.' };
+
+  // Er blot ét af miljøerne sat op i en gruppe, gælder gruppereglen. Er ingen
+  // af dem det, er der ingen pipeline at håndhæve, og en løs migrering går
+  // igennem som før — ellers ville alt stå stille indtil grupperne er sat op.
+  const grouped = c => tenantOf(c) !== UNGROUPED && groupOf(c) !== UNGROUPED;
+  if ((grouped(source) || grouped(target)) && !sameGroup(source, target) && !body.allowCrossGroup)
+    return { code: 'cross-group',
+             error: `"${source.name}" og "${target.name}" er ikke i samme gruppe. Migrering på tværs af grupper er spærret.` };
+
+  if (stageOf(target) === 'prod' && !body.confirmProd)
+    return { code: 'prod-confirm',
+             error: `"${target.name}" er et prod-miljø. Forfremmelsen skal bekræftes udtrykkeligt.` };
+
+  return null;
+}
+
+// Trinnet før: man bygger og publicerer i ét miljø, tester det dér, og
+// forfremmer først derefter. En upubliceret kladde er ikke testet.
+async function publishedVersionOf(customer, flowName, flowType) {
+  const { token, apiBase } = await getToken(customer);
+  const r = await axios.get(`${apiBase}/api/v2/flows`, {
+    headers: { Authorization: `Bearer ${token}` },
+    params: { name: flowName, type: flowType, pageSize: 50 }
+  });
+  const f = (r.data.entities || []).find(x =>
+    x.name.trim().toLowerCase() === String(flowName).trim().toLowerCase());
+  if (!f) return { found: false, published: null };
+  return { found: true, published: f.publishedVersion?.name || f.publishedVersion?.commitVersion || null };
+}
+
 app.get('/api/customers', (req, res) => {
   const customers = loadCustomers().map(c => ({ ...c, clientSecret: '••••••••' }));
   res.json(customers);
 });
 
 app.post('/api/customers', (req, res) => {
-  const { name, clientId, clientSecret, region, authType } = req.body;
+  const { name, clientId, clientSecret, region, authType, tenant, group, stage } = req.body;
   const isOAuth = authType === 'oauth';
   if (!name || !clientId || !region || (!isOAuth && !clientSecret))
     return res.status(400).json({ error: isOAuth ? 'Name, Client ID and Region required' : 'All fields required' });
+  if (stage && !STAGES.includes(String(stage).toLowerCase()))
+    return res.status(400).json({ error: `Ukendt trin "${stage}" — vælg et af: ${STAGES.join(', ')}` });
   const customers = loadCustomers();
   if (customers.find(c => c.name === name))
     return res.status(400).json({ error: 'Customer name already exists' });
   const customer = {
     id: Date.now().toString(), name, clientId,
     clientSecret: clientSecret || '', region,
-    authType: authType || 'credentials'
+    authType: authType || 'credentials',
+    tenant: (tenant || '').trim(),
+    group:  (group  || '').trim(),
+    stage:  String(stage || '').toLowerCase() || ''
   };
   customers.push(customer);
   saveCustomers(customers);
@@ -209,7 +310,26 @@ app.put('/api/customers/:id', (req, res) => {
   const customers = loadCustomers();
   const idx = customers.findIndex(c => c.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: 'Not found' });
-  const updated = { ...customers[idx], ...req.body };
+
+  const patch = { ...req.body };
+  delete patch.id;                                   // id'et er nøglen, ikke data
+  // GET udleverer hemmeligheden maskeret. Sendes den værdi tilbage, ville en
+  // naiv fletning overskrive den rigtige hemmelighed med prikker og gøre
+  // miljøet ubrugeligt. At genkende masken er for skrøbeligt — tegnene kan
+  // være forvansket undervejs — så PUT tager slet ikke imod clientSecret.
+  // Vil man skifte den, sender man newClientSecret.
+  delete patch.clientSecret;
+  if (patch.newClientSecret) patch.clientSecret = patch.newClientSecret;
+  delete patch.newClientSecret;
+  if (patch.stage !== undefined) {
+    const s = String(patch.stage || '').toLowerCase();
+    if (s && !STAGES.includes(s))
+      return res.status(400).json({ error: `Ukendt trin "${patch.stage}" — vælg et af: ${STAGES.join(', ')}` });
+    patch.stage = s;
+  }
+  for (const k of ['tenant', 'group']) if (patch[k] !== undefined) patch[k] = String(patch[k] || '').trim();
+
+  const updated = { ...customers[idx], ...patch };
   customers[idx] = updated;
   saveCustomers(customers);
   addLog('INFO', `Customer updated: ${updated.name}`, updated.name, 'CUSTOMER');
@@ -1297,6 +1417,86 @@ app.get('/api/flows/cross-customer', async (req, res) => {
   rows.sort((a, b) => a.flowName.localeCompare(b.flowName));
 
   res.json({ ok: true, customers: customers.map(c => ({ id: c.id, name: c.name })), rows, problems });
+});
+
+// ── Pipeline-tavlen ──────────────────────────────────────────────────────────
+// Flows som rækker, gruppens miljøer som kolonner i trin-rækkefølge.
+// Versionstallet er per-org og kan ikke sammenlignes på tværs — det vises kun
+// til orientering. Om indholdet faktisk er ens afgøres af /api/flows/cross-hash,
+// som eksporterer og hasher, og derfor kun kaldes for én række ad gangen.
+// Genesys navngiver en kladde med et internt id ("saved_version_0d4c8ad4-…").
+// Det er ikke et versionsnummer og skal ikke vises som ét.
+function versionLabel(v) {
+  if (!v) return null;
+  for (const cand of [v.commitVersion, v.name]) {
+    if (cand && /^\d+(\.\d+)?$/.test(String(cand).trim())) return String(cand).trim();
+  }
+  return null;
+}
+
+app.get('/api/pipeline', async (req, res) => {
+  const { tenant, group } = req.query;
+  if (!tenant || !group) return res.status(400).json({ error: 'tenant og group kræves' });
+
+  const envs = loadCustomers()
+    .filter(c => tenantOf(c) === tenant && groupOf(c) === group)
+    .sort((a, b) => stageOrder(a.stage) - stageOrder(b.stage) || a.name.localeCompare(b.name));
+  if (!envs.length) return res.status(404).json({ error: 'Ingen miljøer i den gruppe' });
+
+  const byFlow = new Map();
+  const problems = [];
+
+  for (const c of envs) {
+    try {
+      const { token, apiBase } = await getToken(c);
+      let page = 1;
+      for (;;) {
+        const r = await axios.get(`${apiBase}/api/v2/flows`, {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { pageSize: 100, pageNumber: page, includeDraft: true }
+        });
+        const e = r.data.entities || [];
+        for (const f of e) {
+          const key = `${f.name}|${f.type}`;
+          if (!byFlow.has(key)) byFlow.set(key, {});
+          byFlow.get(key)[c.id] = {
+            flowId: f.id,
+            published: versionLabel(f.publishedVersion),
+            saved:     versionLabel(f.savedVersion),
+            publishedAt: f.publishedVersion?.dateCheckedIn || f.publishedVersion?.dateCreated || null,
+            active: !!f.active
+          };
+        }
+        if (e.length < 100) break;
+        page++;
+      }
+    } catch (e) {
+      problems.push({ environment: c.name, error: describeApiError(e) });
+    }
+  }
+
+  // Et miljø der fejlede har ingen data — så ved vi ikke hvad der står i det,
+  // og rækkerne må ikke læses som "flowet mangler dér".
+  const failed = new Set(problems.map(p => p.environment));
+  const rows = [];
+  for (const [key, cells] of byFlow) {
+    const [flowName, flowType] = key.split('|');
+    rows.push({
+      flowName, flowType,
+      cells: envs.map(c => ({
+        envId: c.id,
+        unknown: failed.has(c.name),
+        ...(cells[c.id] || { missing: true })
+      }))
+    });
+  }
+  rows.sort((a, b) => a.flowName.localeCompare(b.flowName));
+
+  res.json({
+    ok: true, tenant, group,
+    environments: envs.map(c => ({ id: c.id, name: c.name, stage: stageOf(c), region: c.region })),
+    rows, problems
+  });
 });
 
 // Indholds-hash for ét flow hos flere kunder. Eksporterer pr. org, så det
@@ -2425,6 +2625,28 @@ app.post('/api/migrate/prepare', async (req, res) => {
   const target = loadCustomers().find(c => c.id === targetId);
   if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
 
+  const blocked = migrationGuard(source, target, req.body);
+  if (blocked) {
+    addLog('WARN', `Migration blocked (${blocked.code}): "${flowName}" ${source.name} → ${target.name}`, source.name, 'MIGRATE');
+    return res.status(409).json(blocked);
+  }
+
+  // Indenfor en gruppe er dette en forfremmelse, og så gælder rækkefølgen:
+  // publicér og test i kilden, forfrem derefter.
+  if (sameGroup(source, target)) {
+    try {
+      const { found, published } = await publishedVersionOf(source, flowName, flowType);
+      if (found && !published) {
+        const msg = `"${flowName}" er ikke publiceret i ${source.name}. Publicér og test det dér, før du forfremmer.`;
+        addLog('WARN', `Migration blocked (unpublished-source): ${msg}`, source.name, 'MIGRATE');
+        return res.status(409).json({ code: 'unpublished-source', error: msg });
+      }
+    } catch (e) {
+      // Kan vi ikke slå det op, standser vi ikke migreringen på et gæt.
+      addLog('WARN', `Kunne ikke tjekke publiceringsstatus i ${source.name}: ${describeApiError(e)}`, source.name, 'MIGRATE');
+    }
+  }
+
   const exportDir = path.join(FLOWS_DIR, sanitizeName(source.name));
   if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir, { recursive: true });
 
@@ -2577,6 +2799,14 @@ app.post('/api/migrate/commit', async (req, res) => {
   const source = loadCustomers().find(c => c.id === sourceId);
   const target = loadCustomers().find(c => c.id === targetId);
   if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
+
+  // Samme vagt som i prepare. Commit er den der faktisk skriver, så den må ikke
+  // stole på at klienten kom forbi prepare først.
+  const blocked = migrationGuard(source, target, req.body);
+  if (blocked) {
+    addLog('WARN', `Migration blocked (${blocked.code}): "${flowName}" ${source.name} → ${target.name}`, source.name, 'MIGRATE');
+    return res.status(409).json(blocked);
+  }
 
   // filePath kommer fra klienten — hold den inden for FLOWS_DIR
   const resolved = path.resolve(filePath || '');
