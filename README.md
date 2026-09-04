@@ -1,10 +1,25 @@
-# Archy GUI — Flow Manager · v1.26.0
+# Archy GUI — Flow Manager · v1.26.1
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.26.1
+---
+**🇩🇰 Dansk**
+- **Rettet: den rigtige migreringsvej skrev aldrig til org-manifestet.** `recordOrgManifest()` blev kun kaldt fra demoens forfremmelse. En manifesttabel oprettet i en rigtig org ville derfor have stået tom for evigt, og delingen var kun på papiret. `/api/migrate/commit` skriver nu også dertil.
+- **Nulpunkt skriver org-manifestet med.** `Sæt nulpunkt` noterer hvad org'en indeholder — præcis dét tabellen er til. Efter et nulpunkt gælder afvigelses-signalet **alle** flows, ikke kun dem værktøjet selv har flyttet. Det er én skrivning pr. flow, så det tager tid, og antallet står i loggen.
+- Et nulpunkt har ingen kilde, så kun mål-rækken skrives.
+
+---
+**🇬🇧 English**
+- **Fixed: the real migration path never wrote to the org manifest.** `recordOrgManifest()` was only called from the demo promotion. A manifest table created in a real org would therefore have stayed empty forever, and the sharing was only on paper. `/api/migrate/commit` now writes there too.
+- **Baseline writes the org manifest as well.** `Set baseline` records what the org holds — exactly what the table is for. After a baseline the drift signal covers **every** flow, not only those the tool moved itself. It is one write per flow, so it takes time, and the count appears in the log.
+- A baseline has no source, so only the target row is written.
+
+---
 
 ### v1.26.0
 ---
@@ -1134,7 +1149,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.26.0** — see [Changelog](#changelog) above.
+> Current version: **v1.26.1** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**

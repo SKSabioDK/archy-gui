@@ -1585,13 +1585,16 @@ async function recordOrgManifest(source, target, flowName, flowType, info) {
   };
   await write(target, {
     flowName, version: info.targetVersion, publishedAt: info.targetPublishedAt,
-    promotedFrom: source.name, promotedAt: info.targetPublishedAt,
-    sourceVersion: info.sourceVersion, hash: info.hash
+    promotedFrom: source ? source.name : null, promotedAt: info.targetPublishedAt,
+    sourceVersion: info.sourceVersion, hash: info.hash, kind: info.kind || 'migration'
   }, 'målet');
+  // Et nulpunkt har ingen kilde — der er ikke flyttet noget, vi noterer blot
+  // hvad org'en indeholder lige nu.
+  if (!source) return;
   await write(source, {
     flowName, version: info.sourceVersion, publishedAt: info.sourcePublishedAt || null,
     promotedTo: target.name, promotedAt: info.targetPublishedAt,
-    hash: info.hash
+    hash: info.hash, kind: info.kind || 'migration'
   }, 'kilden');
 }
 
@@ -1811,9 +1814,30 @@ app.post('/api/flows/baseline', async (req, res) => {
       recorded++;
     }
 
+    // Har org'en manifesttabellen, skrives nulpunktet også derind — så kender
+    // den sit eget indhold, og afvigelses-signalet gælder alle flows, ikke kun
+    // dem værktøjet selv har flyttet. Én skrivning pr. flow, så det tager tid.
+    let toOrg = 0, orgErr = null;
+    try {
+      if (await readOrgManifest(target)) {
+        for (const f of all) {
+          try {
+            await writeOrgManifestRow(target, f.name, f.type, {
+              flowName: f.name, kind: 'baseline',
+              version: f.publishedVersion?.name || f.checkedInVersion?.name || null,
+              publishedAt: f.publishedVersion?.dateCheckedIn || f.publishedVersion?.dateCreated || null
+            });
+            toOrg++;
+          } catch (e) { orgErr = describeApiError(e); break; }
+        }
+      }
+    } catch (e) { orgErr = describeApiError(e); }
+
     addLog('SUCCESS', `Nulpunkt sat for ${target.name}: ${recorded} flows noteret` +
-      (skipped ? `, ${skipped} sprunget over (allerede migreret med værktøjet)` : ''), target.name, 'MIGRATE');
-    res.json({ ok: true, recorded, skipped, total: all.length, targetOrgId });
+      (skipped ? `, ${skipped} sprunget over (allerede migreret med værktøjet)` : '') +
+      (toOrg ? `, ${toOrg} skrevet til org'ens manifesttabel` : '') +
+      (orgErr ? ` — manifesttabellen fejlede: ${orgErr}` : ''), target.name, 'MIGRATE');
+    res.json({ ok: true, recorded, skipped, total: all.length, targetOrgId, toOrg, orgError: orgErr });
 
   } catch (e) {
     res.status(500).json({ error: describeApiError(e) });
@@ -3389,6 +3413,17 @@ app.post('/api/migrate/commit', async (req, res) => {
       action: cmd,
       hash: flowContentHash(importedYaml)
     });
+
+    // Og i org'ens eget manifest, hvis den har tabellen. Uden dette ville en
+    // oprettet tabel stå tom for evigt, og delingen var kun på papiret.
+    await recordOrgManifest(source, target, flowName, yamlType, {
+      sourceVersion: versionFromFileName(path.basename(resolved)),
+      targetVersion: pub?.version || null,
+      targetPublishedAt: pub?.publishedAt || Date.now(),
+      sourcePublishedAt: null,
+      hash: flowContentHash(importedYaml)
+    });
+
     res.json({ ok: true, fileName: path.basename(resolved), output: out, yaml: fs.readFileSync(resolved, 'utf8') });
   } catch (e) {
     let msg = e.message || '';
