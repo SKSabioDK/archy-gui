@@ -1475,19 +1475,37 @@ app.get('/api/pipeline', async (req, res) => {
     }
   }
 
-  // Et miljø der fejlede har ingen data — så ved vi ikke hvad der står i det,
-  // og rækkerne må ikke læses som "flowet mangler dér".
+  // Manifestet er vores eneste nulpunkt: da vi forfremmede, skrev vi ned hvornår
+  // målet blev publiceret. Er målet publiceret SENERE end det, er der publiceret
+  // igen siden — og det var ikke os.
+  //
+  // Publiceringsdatoen alene duer ikke som signal: ved en sund forfremmelse
+  // bliver det senere trin altid publiceret bagefter det tidligere, præcis som
+  // når nogen retter direkte i prod. De to har samme form. Kun sammenholdt med
+  // manifestet siger datoen noget — og kun for flows vi selv har forfremmet.
+  const manifest = loadManifest();
+  const orgIds = {};
+  for (const c of envs) orgIds[c.id] = await getOrgId(c);
+
   const failed = new Set(problems.map(p => p.environment));
   const rows = [];
   for (const [key, cells] of byFlow) {
     const [flowName, flowType] = key.split('|');
     rows.push({
       flowName, flowType,
-      cells: envs.map(c => ({
-        envId: c.id,
-        unknown: failed.has(c.name),
-        ...(cells[c.id] || { missing: true })
-      }))
+      cells: envs.map(c => {
+        const cell = { envId: c.id, unknown: failed.has(c.name), ...(cells[c.id] || { missing: true }) };
+        if (!cell.missing && !cell.unknown && cell.publishedAt) {
+          const m = findManifestEntry(manifest, {
+            targetOrgId: orgIds[c.id], targetId: c.id, flowName, flowType
+          });
+          if (m && m.targetPublishedAt && cell.publishedAt > m.targetPublishedAt) {
+            cell.changedSincePromotion = true;
+            cell.promotedAt = m.targetPublishedAt;
+          }
+        }
+        return cell;
+      })
     });
   }
   rows.sort((a, b) => a.flowName.localeCompare(b.flowName));

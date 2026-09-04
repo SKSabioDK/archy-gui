@@ -460,7 +460,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.21.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.22.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1488,6 +1488,20 @@ const LANGS = {
     cc_ungrouped:'ikke grupperet',
     grouping_saved:'Gruppering gemt',
     pl_needs_publish:'Publicér flowet i kildemiljøet først — en kladde er ikke testet',
+    pl_check:'⇄ Tjek indhold',
+    pl_check_all:'⇄ Tjek alle der findes flere steder',
+    pl_checking:'Eksporterer og sammenligner…',
+    pl_in_sync:'i trit',
+    pl_drift:'afviger',
+    pl_unchecked:'ikke tjekket',
+    pl_pull_back:'⟵ Hent tilbage',
+    pl_pull_back_title:'Hent den senere udgave tilbage i dette miljø, så du kan se hvad der blev lavet',
+    pl_only_later:'findes kun i et senere trin',
+    pl_changed_since:'publiceret igen efter vores forfremmelse',
+    pl_check_failed:'kunne ikke tjekkes',
+    pl_only_multi:'Kun flows der findes i mere end ét miljø',
+    pl_checked_count:'tjekket',
+    pl_overwrites:'Dette miljø afviger. En forfremmelse hertil kasserer den forskel — hent den tilbage først hvis du vil se hvad den er',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1819,6 +1833,20 @@ const LANGS = {
     cc_ungrouped:'not grouped',
     grouping_saved:'Grouping saved',
     pl_needs_publish:'Publish the flow in the source environment first — a draft has not been tested',
+    pl_check:'⇄ Check content',
+    pl_check_all:'⇄ Check all present in more than one place',
+    pl_checking:'Exporting and comparing…',
+    pl_in_sync:'in step',
+    pl_drift:'differs',
+    pl_unchecked:'not checked',
+    pl_pull_back:'⟵ Pull back',
+    pl_pull_back_title:'Pull the later version back into this environment so you can see what was done',
+    pl_only_later:'only exists in a later stage',
+    pl_changed_since:'published again after our promotion',
+    pl_check_failed:'could not be checked',
+    pl_only_multi:'Only flows present in more than one environment',
+    pl_checked_count:'checked',
+    pl_overwrites:'This environment differs. Promoting here discards that difference — pull it back first if you want to see what it is',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -2150,6 +2178,20 @@ const LANGS = {
     cc_ungrouped:'non regroupé',
     grouping_saved:'Regroupement enregistré',
     pl_needs_publish:'Publiez d\'abord le flow dans l\'environnement source — un brouillon n\'est pas testé',
+    pl_check:'⇄ Vérifier le contenu',
+    pl_check_all:'⇄ Vérifier tous ceux présents à plusieurs endroits',
+    pl_checking:'Export et comparaison…',
+    pl_in_sync:'aligné',
+    pl_drift:'diverge',
+    pl_unchecked:'non vérifié',
+    pl_pull_back:'⟵ Rapatrier',
+    pl_pull_back_title:'Rapatrier la version ultérieure dans cet environnement pour voir ce qui a été fait',
+    pl_only_later:'n\'existe que dans une étape ultérieure',
+    pl_changed_since:'republié après notre promotion',
+    pl_check_failed:'vérification impossible',
+    pl_only_multi:'Uniquement les flows présents dans plus d\'un environnement',
+    pl_checked_count:'vérifiés',
+    pl_overwrites:'Cet environnement diverge. Une promotion ici écarte cette différence — rapatriez-la d\'abord pour voir ce dont il s\'agit',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -2481,6 +2523,20 @@ const LANGS = {
     cc_ungrouped:'niet gegroepeerd',
     grouping_saved:'Groepering opgeslagen',
     pl_needs_publish:'Publiceer de flow eerst in de bronomgeving — een concept is niet getest',
+    pl_check:'⇄ Inhoud checken',
+    pl_check_all:'⇄ Alle checken die op meer plekken staan',
+    pl_checking:'Exporteren en vergelijken…',
+    pl_in_sync:'gelijk',
+    pl_drift:'wijkt af',
+    pl_unchecked:'niet gecheckt',
+    pl_pull_back:'⟵ Terughalen',
+    pl_pull_back_title:'Haal de latere versie terug naar deze omgeving om te zien wat er is gedaan',
+    pl_only_later:'bestaat alleen in een latere fase',
+    pl_changed_since:'opnieuw gepubliceerd na onze promotie',
+    pl_check_failed:'kon niet gecheckt worden',
+    pl_only_multi:'Alleen flows die in meer dan één omgeving staan',
+    pl_checked_count:'gecheckt',
+    pl_overwrites:'Deze omgeving wijkt af. Hier promoveren gooit dat verschil weg — haal het eerst terug om te zien wat het is',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -2812,6 +2868,20 @@ const LANGS = {
     cc_ungrouped:'sin agrupar',
     grouping_saved:'Agrupación guardada',
     pl_needs_publish:'Publique el flow primero en el entorno de origen: un borrador no está probado',
+    pl_check:'⇄ Comprobar contenido',
+    pl_check_all:'⇄ Comprobar todos los presentes en más de un sitio',
+    pl_checking:'Exportando y comparando…',
+    pl_in_sync:'alineado',
+    pl_drift:'difiere',
+    pl_unchecked:'sin comprobar',
+    pl_pull_back:'⟵ Traer de vuelta',
+    pl_pull_back_title:'Traiga la versión posterior a este entorno para ver qué se hizo',
+    pl_only_later:'solo existe en una etapa posterior',
+    pl_changed_since:'publicado de nuevo tras nuestra promoción',
+    pl_check_failed:'no se pudo comprobar',
+    pl_only_multi:'Solo flows presentes en más de un entorno',
+    pl_checked_count:'comprobados',
+    pl_overwrites:'Este entorno difiere. Promover aquí descarta esa diferencia: tráigala de vuelta primero si quiere ver cuál es',
   }
 };
 
@@ -6680,6 +6750,10 @@ async function loadPipeline() {
   const r = await fetch(`/api/pipeline?tenant=${encodeURIComponent(tenant)}&group=${encodeURIComponent(group)}`)
     .then(x => x.json()).catch(e => ({ error: e.message }));
   if (r.error) { board.innerHTML = `<div class="card" style="color:var(--red);font-size:13px">${escapeHtml(r.error)}</div>`; return; }
+  // Hashene hører til den gruppe de blev målt i — miljø-id'erne er andre i den
+  // næste. Uden nulstilling ville en ny gruppe arve en tilstand der ikke gælder.
+  pipelineHashes = {};
+  pipelineChecking = {};
   pipelineData = r;
   document.getElementById('pl-filterCard').style.display = 'block';
   renderPipeline();
@@ -6705,11 +6779,37 @@ function renderPipeline() {
   });
 
   const cell = (c, i, row) => {
+    const key = row.flowName + '|' + row.flowType;
+    const hashes = pipelineHashes[key];
     let body, colour;
     if (c.unknown)      { body = t('pl_unknown'); colour = 'var(--muted)'; }
     else if (c.missing) { body = '—';             colour = 'var(--muted)'; }
     else if (c.published) { body = 'v' + c.published; colour = 'var(--green)'; }
     else                { body = t('pl_draft');   colour = 'var(--yellow)'; }
+
+    // Manifestet er nulpunktet: er miljøet publiceret igen efter vi forfremmede
+    // hertil, er der rørt ved det udenom. Gratis signal, ingen eksport.
+    const changed = c.changedSincePromotion
+      ? `<div style="margin-top:3px;font-size:9px;color:var(--yellow)" title="${new Date(c.promotedAt).toLocaleString()}">⚠ ${t('pl_changed_since')}</div>`
+      : '';
+
+    // Findes flowet først i et senere trin, er det ikke en ventende
+    // forfremmelse — det er bygget udenom kæden.
+    const laterOnly = (c.missing && !c.unknown && row.cells.slice(i + 1).some(x => !x.missing && !x.unknown))
+      ? `<div style="margin-top:3px;font-size:9px;color:var(--yellow)">⚠ ${t('pl_only_later')}</div>`
+      : '';
+
+    // Uenighed afgøres parvis, så knappen ved præcis hvilke to miljøer der er
+    // ude af trit — ikke bare at rækken er det et eller andet sted.
+    const nextCell = row.cells[i + 1];
+    const differs = hashes && nextCell && hashes[c.envId] && hashes[nextCell.envId]
+      && hashes[c.envId] !== hashes[nextCell.envId];
+    const pull = differs
+      ? `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 6px;border-color:var(--yellow);color:var(--yellow)"
+           title="${t('pl_pull_back_title')}"
+           onclick="promoteFromBoard('${escapeHtml(row.flowName).replace(/'/g, "\\'")}','${row.flowType}','${nextCell.envId}','${c.envId}')"
+           >${t('pl_pull_back')}</button></div>`
+      : '';
 
     // Forfremmelse går altid ét trin ad gangen: fra kolonnen til venstre.
     // Kun en publiceret udgave kan forfremmes — en kladde er ikke testet, og
@@ -6717,17 +6817,24 @@ function renderPipeline() {
     // i stedet for at love noget der ikke kan lade sig gøre.
     const prev = i > 0 ? row.cells[i - 1] : null;
     const promotable = prev && !prev.missing && !prev.unknown;
+    // Ved vi at dette miljø afviger fra det til venstre, så vil en forfremmelse
+    // kassere netop den forskel man lige har fundet. Knappen bliver ikke taget
+    // væk — nogle gange er det dét man vil — men den siger hvad den gør.
+    const overwrites = hashes && prev && hashes[c.envId] && hashes[prev.envId]
+      && hashes[c.envId] !== hashes[prev.envId];
     const btn = promotable
       ? (prev.published
-          ? `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 6px"
+          ? `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm"
+               style="font-size:10px;padding:2px 6px${overwrites ? ';border-color:var(--red);color:var(--red)' : ''}"
+               ${overwrites ? `title="${t('pl_overwrites')}"` : ''}
                onclick="promoteFromBoard('${escapeHtml(row.flowName).replace(/'/g, "\\'")}','${row.flowType}','${prev.envId}','${c.envId}')"
-               >⟶ ${t('pl_promote')}</button></div>`
+               >⟶ ${t('pl_promote')}${overwrites ? ' ⚠' : ''}</button></div>`
           : `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm" disabled
                style="font-size:10px;padding:2px 6px;opacity:.4;cursor:not-allowed"
                title="${t('pl_needs_publish')}">⟶ ${t('pl_promote')}</button></div>`)
       : '';
     return `<td style="padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:top">
-        <span style="color:${colour};font-family:var(--mono);font-size:12px">${body}</span>${btn}</td>`;
+        <span style="color:${colour};font-family:var(--mono);font-size:12px">${body}</span>${changed}${laterOnly}${btn}${pull}</td>`;
   };
 
   const head = d.environments.map(e =>
@@ -6736,7 +6843,8 @@ function renderPipeline() {
 
   const body = rows.map(r => `<tr>
       <td style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:12px">${escapeHtml(r.flowName)}
-        <div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${r.flowType}</div></td>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${r.flowType}</div>
+        ${verdictCell(r)}</td>
       ${r.cells.map((c, i) => cell(c, i, r)).join('')}
     </tr>`).join('');
 
@@ -6748,7 +6856,10 @@ function renderPipeline() {
 
   document.getElementById('pipelineBoard').innerHTML = `<div class="card">
       ${problems}
-      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${rows.length} ${t('pl_count')}</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--muted)">${rows.length} ${t('pl_count')} · ${Object.keys(pipelineHashes).length} ${t('pl_checked_count')}</span>
+        <button class="btn btn-secondary btn-sm" style="font-size:11px" onclick="checkAllShown()">${t('pl_check_all')}</button>
+      </div>
       <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
         <thead><tr><th style="text-align:left;padding:8px 10px;font-size:11px;color:var(--muted);font-family:var(--mono)">${t('pl_flow')}</th>${head}</tr></thead>
         <tbody>${body}</tbody></table></div></div>`;
@@ -6773,6 +6884,82 @@ async function promoteFromBoard(flowName, flowType, fromId, toId) {
     updateMigrateBtn();
   }
   updateMigrateAuthStatus();
+}
+
+// ── Afvigelse mellem miljøer ──────────────────────────────────────────────────
+// Versionstallene kan ikke sammenlignes på tværs af orgs, og publiceringsdatoen
+// heller ikke: ved en sund forfremmelse bliver det senere trin altid publiceret
+// bagefter det tidligere — præcis som når nogen retter direkte i prod. De to har
+// samme form. Kun indholdet kan afgøre det, og det kræver en eksport pr. org.
+// Derfor er tjekket noget man beder om, ikke noget der sker af sig selv.
+let pipelineHashes = {};   // "navn|type" -> { envId: hash }
+let pipelineChecking = {}; // "navn|type" -> true mens den kører
+
+function verdictCell(row) {
+  const key = row.flowName + '|' + row.flowType;
+  const present = row.cells.filter(c => !c.missing && !c.unknown);
+  // Findes flowet kun ét sted, er der intet at være uenig om.
+  if (present.length < 2) return '';
+
+  if (pipelineChecking[key])
+    return `<div style="margin-top:4px;font-size:10px;color:var(--muted)"><span class="spin"></span> ${t('pl_checking')}</div>`;
+
+  const h = pipelineHashes[key];
+  const btn = `<button class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 6px"
+      onclick="checkRow('${escapeHtml(row.flowName).replace(/'/g, "\\'")}','${row.flowType}')">${t('pl_check')}</button>`;
+
+  if (!h) return `<div style="margin-top:4px">${btn}</div>`;
+
+  const vals = present.map(c => h[c.envId]).filter(Boolean);
+  if (vals.length < 2)
+    return `<div style="margin-top:4px;font-size:10px;color:var(--red)">✗ ${t('pl_check_failed')}</div>${btn}`;
+
+  const same = new Set(vals).size === 1;
+  return `<div style="margin-top:4px;font-size:10px;color:${same ? 'var(--green)' : 'var(--yellow)'}">
+      ${same ? '✓ ' + t('pl_in_sync') : '⚠ ' + t('pl_drift')}</div>
+    <div style="margin-top:4px">${btn}</div>`;
+}
+
+async function checkRow(flowName, flowType) {
+  const d = pipelineData;
+  if (!d) return;
+  const row = d.rows.find(r => r.flowName === flowName && r.flowType === flowType);
+  if (!row) return;
+  const ids = row.cells.filter(c => !c.missing && !c.unknown).map(c => c.envId);
+  if (ids.length < 2) return;
+
+  const key = flowName + '|' + flowType;
+  pipelineChecking[key] = true;
+  renderPipeline();
+  try {
+    const r = await fetch('/api/flows/cross-hash', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ flowName, flowType, customerIds: ids })
+    }).then(x => x.json());
+    const map = {};
+    for (const x of (r.results || [])) if (x.hash) map[x.customerId] = x.hash;
+    pipelineHashes[key] = map;
+  } catch (_) {
+    pipelineHashes[key] = {};
+  } finally {
+    delete pipelineChecking[key];
+    renderPipeline();
+  }
+}
+
+// Tjekker kun de rækker der findes i mere end ét miljø — alle andre kan ikke
+// afvige fra noget. Én ad gangen, for hver enkelt koster en Archy-eksport pr. org.
+async function checkAllShown() {
+  const d = pipelineData;
+  if (!d) return;
+  const q = (document.getElementById('pl-search').value || '').trim().toLowerCase();
+  const todo = d.rows
+    .filter(r => !q || r.flowName.toLowerCase().includes(q))
+    .filter(r => r.cells.filter(c => !c.missing && !c.unknown).length >= 2)
+    .filter(r => !pipelineHashes[r.flowName + '|' + r.flowType]);
+  if (!todo.length) return;
+  if (!confirm(`${todo.length} × ${t('pl_check')}\n\n${t('pl_checking')}`)) return;
+  for (const r of todo) await checkRow(r.flowName, r.flowType);
 }
 </script>
 </body>

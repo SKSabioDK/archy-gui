@@ -1,10 +1,73 @@
-# Archy GUI — Flow Manager · v1.21.0
+# Archy GUI — Flow Manager · v1.22.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.22.0
+---
+**🇩🇰 Dansk**
+- **Tavlen kan nu se når et senere trin er løbet fra et tidligere** — altså når nogen har rettet direkte i prod. Tidligere var det usynligt: `v1.0 | v2.0` ser roligt ud, men tallene er per-org tællere og siger intet om indhold.
+
+- **Publiceringsdatoen duer ikke som signal — det blev målt.** Det oplagte forslag er "leder Test, er alt godt; er Prod nyere, har nogen rørt den". På fem ud af fem flows der findes i begge orgs var det senere trin publiceret senest:
+
+  | Flow | test | uat |
+  |---|---|---|
+  | Agent Logout - Transfer Emails | 2025-07-07 | 2025-10-22 |
+  | CM Recording with DT V2 | 2025-11-27 | 2026-02-11 |
+  | Default In-Queue Flow | 2024-09-30 | 2025-09-03 |
+  | DEV_CM Recording with DT V3 | 2025-11-27 | 2025-12-15 |
+  | Propose Callback | 2025-04-01 | 2025-08-05 |
+
+  Og sådan skal det være: forfremmer man Test → Prod, bliver Prod publiceret bagefter. **En sund forfremmelse og en ulovlig prod-rettelse har samme form.** Et datosignal ville markere alt eller intet.
+
+- **Tre signaler i stedet, hver med sin pris:**
+
+  | Signal | Koster | Rækkevidde |
+  |---|---|---|
+  | **Findes kun i et senere trin** | intet | alle flows — det er bygget udenom kæden, ikke en ventende forfremmelse |
+  | **Publiceret igen efter vores forfremmelse** | intet | kun flows vi selv har forfremmet — manifestet er nulpunktet |
+  | **Indholdshash** | en Archy-eksport pr. org | alle flows der findes flere steder — den eneste universelle test |
+
+- **Indholdstjek på forlangende** — `⇄ Tjek indhold` pr. række, eller `⇄ Tjek alle der findes flere steder`. Kun rækker der findes i mere end ét miljø kan afvige, så resten springes over. Rækken får tre tilstande: **✓ i trit**, **⚠ afviger**, **✗ kunne ikke tjekkes**. Kom der ikke en hash fra hvert miljø, siges der aldrig "i trit" — samme regel som i sammenligningen på tværs af kunder.
+- **Uenighed afgøres parvis**, ikke pr. række, så knappen ved præcis hvilke to miljøer der er ude af trit.
+- **`⟵ Hent tilbage`** — på en afvigende række kommer der en knap den anden vej, som lander på Migrer Flow med det senere miljø som kilde. Så kan man hente virkeligheden tilbage i test, se hvad der blev lavet, og køre det ordentligt frem igen.
+- **`⟶ Forfrem` advarer når den overskriver** — på en række vi ved afviger, bliver knappen rød og siger hvad den gør. Den fjernes ikke: nogle gange er det dét man vil. Men den kasserer den forskel man lige har fundet, og det skal man vide.
+- Hashene nulstilles når man skifter gruppe — de hører til de miljø-id'er de blev målt i.
+
+---
+**🇬🇧 English**
+- **The board can now see when a later stage has drifted from an earlier one** — that is, when someone edited production directly. This used to be invisible: `v1.0 | v2.0` looks calm, but those are per-org counters and say nothing about content.
+
+- **The publish date does not work as a signal — this was measured.** The obvious proposal is "if Test leads, all is well; if Prod is newer, someone touched it". On five of five flows present in both orgs, the later stage was published most recently:
+
+  | Flow | test | uat |
+  |---|---|---|
+  | Agent Logout - Transfer Emails | 2025-07-07 | 2025-10-22 |
+  | CM Recording with DT V2 | 2025-11-27 | 2026-02-11 |
+  | Default In-Queue Flow | 2024-09-30 | 2025-09-03 |
+  | DEV_CM Recording with DT V3 | 2025-11-27 | 2025-12-15 |
+  | Propose Callback | 2025-04-01 | 2025-08-05 |
+
+  And so it should be: promote Test → Prod and Prod is published afterwards. **A healthy promotion and an out-of-band production edit have the same shape.** A date signal would flag everything or nothing.
+
+- **Three signals instead, each with its own cost:**
+
+  | Signal | Costs | Reach |
+  |---|---|---|
+  | **Only exists in a later stage** | nothing | every flow — it was built outside the chain, not a pending promotion |
+  | **Published again after our promotion** | nothing | only flows we promoted ourselves — the manifest is the baseline |
+  | **Content hash** | one Archy export per org | every flow present in more than one place — the only universal test |
+
+- **Content check on demand** — `⇄ Check content` per row, or `⇄ Check all present in more than one place`. Only rows present in more than one environment can differ, so the rest are skipped. A row gets three states: **✓ in step**, **⚠ differs**, **✗ could not be checked**. If a hash did not come back from every environment, it never says "in step" — the same rule as the across-customers comparison.
+- **Disagreement is decided pairwise**, not per row, so the button knows exactly which two environments are out of step.
+- **`⟵ Pull back`** — on a differing row a button appears going the other way, landing on Migrate Flow with the later environment as source. You can pull reality back into test, see what was done, and roll it forward properly.
+- **`⟶ Promote` warns when it overwrites** — on a row known to differ, the button turns red and says what it does. It is not removed: sometimes that is what you want. But it discards the difference you just found, and you should know that.
+- Hashes are cleared when you switch group — they belong to the environment ids they were measured in.
+
+---
 
 ### v1.21.0
 ---
@@ -848,7 +911,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.21.0** — see [Changelog](#changelog) above.
+> Current version: **v1.22.0** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
