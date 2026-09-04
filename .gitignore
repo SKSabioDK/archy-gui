@@ -1,12 +1,20 @@
 node_modules/
-flows/
-customers.json
-*.log
-.DS_Store
-Thumbs.db
 
-# Per-maskine Claude Code permissions — hoerer ikke i repoet
-.claude/settings.local.json
+# Kundeprofiler med credentials — må aldrig i repoet
+customers.json
+
+# Eksporterede flows og migreringsmanifestet
+flows/
+
+# Demo-kundens flows — genskabes af "Opret demo-kunde"
+demo-data.json
 
 # CA-bundle bygget ved opstart til Archy-processen
 .archy-ca.pem
+
+# Per-maskine Claude Code permissions — hører ikke i repoet
+.claude/settings.local.json
+
+*.log
+.DS_Store
+Thumbs.db

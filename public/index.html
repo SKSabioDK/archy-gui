@@ -460,7 +460,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.22.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.23.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -540,6 +540,12 @@
         </div>
         <div style="margin-bottom:12px;font-size:11px;color:var(--muted)" data-i18n="hint_grouping">Kunde + gruppe afgør hvad der må migreres indbyrdes.</div>
         <button class="btn btn-primary" onclick="addCustomer()" data-i18n="btn_add_customer">+ Tilføj Kunde</button>
+      </div>
+
+      <div class="card" id="demoCard">
+        <div class="card-title" data-i18n="demo_title">DEMO-KUNDE</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px" data-i18n="demo_hint">Fire miljøer og tre flows der kun findes lokalt.</div>
+        <div id="demoButtons"></div>
       </div>
 
       <div id="customerAlert"></div>
@@ -1502,6 +1508,18 @@ const LANGS = {
     pl_only_multi:'Kun flows der findes i mere end ét miljø',
     pl_checked_count:'tjekket',
     pl_overwrites:'Dette miljø afviger. En forfremmelse hertil kasserer den forskel — hent den tilbage først hvis du vil se hvad den er',
+    demo_title:'DEMO-KUNDE',
+    demo_hint:'Fire miljøer (dev · test · uat · prod) og tre flows der kun findes lokalt. Ingen credentials, ingen kald til Genesys eller Archy — beregnet til at prøve pipelinen af uden at røre en rigtig org.',
+    btn_demo_create:'+ Opret demo-kunde',
+    btn_demo_reset:'↺ Nulstil demo',
+    btn_demo_remove:'✕ Fjern demo',
+    demo_created:'Demo-kunde oprettet — find den under Pipeline',
+    demo_reset_done:'Demoen er nulstillet',
+    demo_removed:'Demo-kunden er fjernet',
+    demo_confirm_remove:'Fjern demo-kundens fire miljøer og alle dens flows?',
+    demo_renamed_to:'forfremmet som',
+    demo_name_kept:'forfremmet — navn uændret',
+    demo_badge:'DEMO — rører ingen rigtig org',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1847,6 +1865,18 @@ const LANGS = {
     pl_only_multi:'Only flows present in more than one environment',
     pl_checked_count:'checked',
     pl_overwrites:'This environment differs. Promoting here discards that difference — pull it back first if you want to see what it is',
+    demo_title:'DEMO CUSTOMER',
+    demo_hint:'Four environments (dev · test · uat · prod) and three flows that exist only locally. No credentials, no calls to Genesys or Archy — meant for trying the pipeline without touching a real org.',
+    btn_demo_create:'+ Create demo customer',
+    btn_demo_reset:'↺ Reset demo',
+    btn_demo_remove:'✕ Remove demo',
+    demo_created:'Demo customer created — find it under Pipeline',
+    demo_reset_done:'The demo has been reset',
+    demo_removed:'The demo customer has been removed',
+    demo_confirm_remove:'Remove the demo customer\'s four environments and all its flows?',
+    demo_renamed_to:'promoted as',
+    demo_name_kept:'promoted — name unchanged',
+    demo_badge:'DEMO — touches no real org',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -2192,6 +2222,18 @@ const LANGS = {
     pl_only_multi:'Uniquement les flows présents dans plus d\'un environnement',
     pl_checked_count:'vérifiés',
     pl_overwrites:'Cet environnement diverge. Une promotion ici écarte cette différence — rapatriez-la d\'abord pour voir ce dont il s\'agit',
+    demo_title:'CLIENT DÉMO',
+    demo_hint:'Quatre environnements (dev · test · uat · prod) et trois flows purement locaux. Aucun identifiant, aucun appel à Genesys ou Archy — pour essayer le pipeline sans toucher une vraie org.',
+    btn_demo_create:'+ Créer le client démo',
+    btn_demo_reset:'↺ Réinitialiser la démo',
+    btn_demo_remove:'✕ Supprimer la démo',
+    demo_created:'Client démo créé — retrouvez-le sous Pipeline',
+    demo_reset_done:'La démo a été réinitialisée',
+    demo_removed:'Le client démo a été supprimé',
+    demo_confirm_remove:'Supprimer les quatre environnements du client démo et tous ses flows ?',
+    demo_renamed_to:'promu sous le nom de',
+    demo_name_kept:'promu — nom inchangé',
+    demo_badge:'DÉMO — ne touche aucune org réelle',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -2537,6 +2579,18 @@ const LANGS = {
     pl_only_multi:'Alleen flows die in meer dan één omgeving staan',
     pl_checked_count:'gecheckt',
     pl_overwrites:'Deze omgeving wijkt af. Hier promoveren gooit dat verschil weg — haal het eerst terug om te zien wat het is',
+    demo_title:'DEMOKLANT',
+    demo_hint:'Vier omgevingen (dev · test · uat · prod) en drie flows die alleen lokaal bestaan. Geen credentials, geen aanroepen naar Genesys of Archy — om de pipeline te proberen zonder een echte org aan te raken.',
+    btn_demo_create:'+ Demoklant aanmaken',
+    btn_demo_reset:'↺ Demo resetten',
+    btn_demo_remove:'✕ Demo verwijderen',
+    demo_created:'Demoklant aangemaakt — te vinden onder Pipeline',
+    demo_reset_done:'De demo is gereset',
+    demo_removed:'De demoklant is verwijderd',
+    demo_confirm_remove:'De vier omgevingen van de demoklant en al haar flows verwijderen?',
+    demo_renamed_to:'gepromoveerd als',
+    demo_name_kept:'gepromoveerd — naam ongewijzigd',
+    demo_badge:'DEMO — raakt geen echte org aan',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -2882,6 +2936,18 @@ const LANGS = {
     pl_only_multi:'Solo flows presentes en más de un entorno',
     pl_checked_count:'comprobados',
     pl_overwrites:'Este entorno difiere. Promover aquí descarta esa diferencia: tráigala de vuelta primero si quiere ver cuál es',
+    demo_title:'CLIENTE DEMO',
+    demo_hint:'Cuatro entornos (dev · test · uat · prod) y tres flows que solo existen localmente. Sin credenciales ni llamadas a Genesys o Archy: para probar el pipeline sin tocar una org real.',
+    btn_demo_create:'+ Crear cliente demo',
+    btn_demo_reset:'↺ Restablecer demo',
+    btn_demo_remove:'✕ Eliminar demo',
+    demo_created:'Cliente demo creado: lo encuentra en Pipeline',
+    demo_reset_done:'La demo se ha restablecido',
+    demo_removed:'El cliente demo ha sido eliminado',
+    demo_confirm_remove:'¿Eliminar los cuatro entornos del cliente demo y todos sus flows?',
+    demo_renamed_to:'promovido como',
+    demo_name_kept:'promovido: nombre sin cambios',
+    demo_badge:'DEMO: no toca ninguna org real',
   }
 };
 
@@ -3065,6 +3131,7 @@ async function refreshCustomers() {
   const res = await fetch('/api/customers');
   customers = await res.json();
   await loadHierarchy();
+  renderDemoButtons();
   renderCustomerGrid();
   renderSidebarCustomers();
   populateCustomerSelects();
@@ -6787,6 +6854,15 @@ function renderPipeline() {
     else if (c.published) { body = 'v' + c.published; colour = 'var(--green)'; }
     else                { body = t('pl_draft');   colour = 'var(--yellow)'; }
 
+    // Hvornår udgaven blev publiceret. Datoen kan ikke bruges til at afgøre om
+    // to miljøer er i trit — det senere trin publiceres altid sidst, både ved
+    // en sund forfremmelse og ved en rettelse udenom — men den fortæller hvor
+    // gammel udgaven er, og hvornår flowet sidst blev skubbet videre.
+    const when = (!c.missing && !c.unknown && c.publishedAt)
+      ? `<div style="margin-top:2px;font-size:9px;color:var(--muted);font-family:var(--mono)"
+           title="${new Date(c.publishedAt).toLocaleString()}">${new Date(c.publishedAt).toLocaleDateString()}</div>`
+      : '';
+
     // Manifestet er nulpunktet: er miljøet publiceret igen efter vi forfremmede
     // hertil, er der rørt ved det udenom. Gratis signal, ingen eksport.
     const changed = c.changedSincePromotion
@@ -6834,7 +6910,7 @@ function renderPipeline() {
                title="${t('pl_needs_publish')}">⟶ ${t('pl_promote')}</button></div>`)
       : '';
     return `<td style="padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:top">
-        <span style="color:${colour};font-family:var(--mono);font-size:12px">${body}</span>${changed}${laterOnly}${btn}${pull}</td>`;
+        <span style="color:${colour};font-family:var(--mono);font-size:12px">${body}</span>${when}${changed}${laterOnly}${btn}${pull}</td>`;
   };
 
   const head = d.environments.map(e =>
@@ -6868,6 +6944,29 @@ function renderPipeline() {
 // Forfremmelse genbruger Migrer Flow-siden, så afhængighedstjek, divisionsvalg
 // og logning er præcis de samme som ved en almindelig migrering.
 async function promoteFromBoard(flowName, flowType, fromId, toId) {
+  // Demo-miljøer har hverken credentials eller flows i Genesys, så Migrer
+  // Flow-siden har intet at arbejde med. Forfremmelsen sker i demofilen.
+  const from = customers.find(c => c.id === fromId);
+  const to   = customers.find(c => c.id === toId);
+  if (from && to && from.demo && to.demo) {
+    const body = { sourceId: fromId, targetId: toId, flowName, flowType };
+    if (String(to.stage || '').toLowerCase() === 'prod') {
+      if (!confirm(t('pl_prod_warn') + '\n\n' + to.name)) return;
+      body.confirmProd = true;
+    }
+    const r = await fetch('/api/demo/promote', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(x => x.json());
+    if (r.error) return showAlert('pipelineAlert', r.error, 'err');
+    showAlert('pipelineAlert', r.renamed
+      ? `"${r.fromName}" → ${to.name}: ${t('demo_renamed_to')} "${r.toName}"`
+      : `"${r.fromName}" → ${to.name}: ${t('demo_name_kept')}`, 'ok');
+    pipelineHashes = {};
+    await loadPipeline();
+    return;
+  }
+
   document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelector('[data-page=migrate]').classList.add('active');
@@ -6960,6 +7059,41 @@ async function checkAllShown() {
   if (!todo.length) return;
   if (!confirm(`${todo.length} × ${t('pl_check')}\n\n${t('pl_checking')}`)) return;
   for (const r of todo) await checkRow(r.flowName, r.flowType);
+}
+
+// ── Demo-kunde ────────────────────────────────────────────────────────────────
+async function renderDemoButtons() {
+  const box = document.getElementById('demoButtons');
+  if (!box) return;
+  const st = await fetch('/api/demo/status').then(r => r.json()).catch(() => ({ exists: false }));
+  box.innerHTML = st.exists
+    ? `<button class="btn btn-secondary btn-sm" onclick="demoReset()">${t('btn_demo_reset')}</button>
+       <button class="btn btn-danger btn-sm" onclick="demoRemove()">${t('btn_demo_remove')}</button>`
+    : `<button class="btn btn-primary btn-sm" onclick="demoCreate()">${t('btn_demo_create')}</button>`;
+}
+
+async function demoCreate() {
+  const r = await fetch('/api/demo/create', { method: 'POST' }).then(x => x.json());
+  if (r.error) return showAlert('customerAlert', r.error, 'err');
+  showAlert('customerAlert', t('demo_created'), 'ok');
+  await refreshCustomers();
+}
+
+async function demoReset() {
+  const r = await fetch('/api/demo/reset', { method: 'POST' }).then(x => x.json());
+  if (r.error) return showAlert('customerAlert', r.error, 'err');
+  showAlert('customerAlert', t('demo_reset_done'), 'ok');
+  pipelineHashes = {};
+  await refreshCustomers();
+}
+
+async function demoRemove() {
+  if (!confirm(t('demo_confirm_remove'))) return;
+  const r = await fetch('/api/demo', { method: 'DELETE' }).then(x => x.json());
+  if (r.error) return showAlert('customerAlert', r.error, 'err');
+  showAlert('customerAlert', t('demo_removed'), 'ok');
+  pipelineData = null; pipelineHashes = {};
+  await refreshCustomers();
 }
 </script>
 </body>

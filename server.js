@@ -235,6 +235,184 @@ function buildHierarchy(customers) {
   return out;
 }
 
+
+// ── Demo-kunde ───────────────────────────────────────────────────────────────
+// Fire miljøer og et par flows der kun findes lokalt, så hele pipelinen kan
+// prøves af uden at røre en rigtig org. Intet demo-miljø har credentials, og
+// ingen kode-vej herunder kalder Genesys eller Archy.
+const DEMO_FILE = path.join(__dirname, 'demo-data.json');
+const isDemo = c => !!(c && c.demo);
+
+function loadDemo() {
+  try { return JSON.parse(fs.readFileSync(DEMO_FILE, 'utf8')); }
+  catch { return { flows: {} }; }
+}
+function saveDemo(d) { fs.writeFileSync(DEMO_FILE, JSON.stringify(d, null, 2)); }
+
+const DEMO_TENANT = 'Demo A/S';
+const DEMO_GROUP  = 'Demo';
+const DEMO_ENVS = [
+  { suffix: 'dev',  stage: 'dev'  },
+  { suffix: 'test', stage: 'test' },
+  { suffix: 'uat',  stage: 'uat'  },
+  { suffix: 'prod', stage: 'prod' }
+];
+const demoEnvId = suffix => 'demo-' + suffix;
+
+// Et flows indhold er bare en tekst her — nok til at hashe og sammenligne.
+const demoYaml = (name, body) =>
+  `inboundCall:\n  name: ${name}\n  division: Home\n  description: "${body}"\n`;
+
+function seedDemo() {
+  const now = Date.now();
+  const day = 86400000;
+  const flows = {};
+  for (const e of DEMO_ENVS) flows[demoEnvId(e.suffix)] = [];
+
+  // 1) Findes overalt med samme indhold — den rolige række.
+  for (const [i, e] of DEMO_ENVS.entries())
+    flows[demoEnvId(e.suffix)].push({
+      name: 'Velkomst', type: 'INBOUNDCALL',
+      published: String(4 - i) + '.0',
+      publishedAt: now - (40 - i * 9) * day,
+      content: demoYaml('Velkomst', 'goddag og velkommen')
+    });
+
+  // 2) Findes kun i dev — hele kæden ligger foran.
+  flows[demoEnvId('dev')].push({
+    name: 'Aabningstider', type: 'INBOUNDCALL',
+    published: '10.0', publishedAt: now - 3 * day,
+    content: demoYaml('Aabningstider', 'vi har aabent 8-16')
+  });
+
+  // 3) Findes overalt, men prod er løbet fra de andre — nogen har rettet
+  //    direkte i prod. Det er den række afvigelses-visningen er til for.
+  for (const [i, e] of DEMO_ENVS.entries()) {
+    const drifted = e.stage === 'prod';
+    flows[demoEnvId(e.suffix)].push({
+      name: 'Kundeservice', type: 'WORKFLOW',
+      published: drifted ? '7.0' : String(3 - Math.min(i, 2)) + '.0',
+      publishedAt: now - (drifted ? 2 : 30 - i * 7) * day,
+      content: demoYaml('Kundeservice', drifted
+        ? 'rettet direkte i prod en fredag eftermiddag'
+        : 'stil om til kundeservice')
+    });
+  }
+  saveDemo({ flows, seededAt: now });
+}
+
+function demoFlowsFor(envId) { return (loadDemo().flows || {})[envId] || []; }
+
+
+// Navneregel ved forfremmelse.
+//
+//   "testest"          publiceret 10  ->  "testest_v10"
+//   "testcallback_v10" publiceret 34  ->  "testcallback_v34"   (v10 erstattes)
+//   "testtest_v10"     publiceret  1  ->  "testtest_v10"       (uændret)
+//
+// Tallet er kildens udgave, så navnet siger hvor det kom fra. Er kilden kun
+// publiceret én gang, er der ikke sket noget i det miljø siden det ankom — så
+// bærer navnet stadig den udgave det kom med, og vi rører det ikke.
+function promotionName(currentName, sourcePublishedVersion) {
+  const n = parseInt(String(sourcePublishedVersion || '').split('.')[0], 10);
+  if (!Number.isFinite(n) || n <= 1) return currentName;
+  const base = String(currentName).replace(/_v\d+$/i, '');
+  return `${base}_v${n}`;
+}
+
+// Forfremmelse inde i demoen. Kopierer indholdet fra kilden til målet under det
+// navn reglen giver. Ingen Archy, ingen Genesys — kun den lokale demofil.
+app.post('/api/demo/promote', (req, res) => {
+  const { sourceId, targetId, flowName, flowType } = req.body;
+  const all = loadCustomers();
+  const source = all.find(c => c.id === sourceId);
+  const target = all.find(c => c.id === targetId);
+  if (!source || !target) return res.status(404).json({ error: 'Ukendt miljø' });
+  if (!isDemo(source) || !isDemo(target))
+    return res.status(400).json({ error: 'Kun demo-miljøer' });
+
+  const blocked = migrationGuard(source, target, req.body);
+  if (blocked) return res.status(409).json(blocked);
+
+  const d = loadDemo();
+  const src = (d.flows[sourceId] || []).find(f => f.name === flowName && f.type === flowType);
+  if (!src) return res.status(404).json({ error: `"${flowName}" findes ikke i ${source.name}` });
+
+  const newName = promotionName(src.name, src.published);
+  d.flows[targetId] = d.flows[targetId] || [];
+  const existing = d.flows[targetId].find(f => f.name === newName && f.type === flowType);
+  const now = Date.now();
+
+  let action;
+  if (existing) {
+    // Samme navn findes allerede: det bliver en ny udgave af dét flow.
+    const cur = parseInt(String(existing.published || '0').split('.')[0], 10) || 0;
+    existing.published = `${cur + 1}.0`;
+    existing.publishedAt = now;
+    existing.content = src.content;
+    action = 'update';
+  } else {
+    // Nyt navn: det bliver et NYT flow i målet. Det gamle bliver liggende.
+    d.flows[targetId].push({
+      name: newName, type: flowType,
+      published: '1.0', publishedAt: now, content: src.content
+    });
+    action = 'create';
+  }
+  saveDemo(d);
+
+  recordManifest({
+    ts: new Date().toISOString(), kind: 'migration',
+    sourceId, sourceOrgId: sourceId, sourceName: source.name,
+    targetId, targetOrgId: targetId, targetName: target.name,
+    flowName: newName, flowType,
+    sourceVersion: src.published, targetVersion: existing ? existing.published : '1.0',
+    targetPublishedAt: now, action,
+    hash: flowContentHash(src.content)
+  });
+
+  const renamed = newName !== src.name;
+  addLog('SUCCESS',
+    `Demo: "${src.name}" ${source.name} → ${target.name}` +
+    (renamed ? ` som "${newName}"` : ' (navn uændret)'),
+    target.name, 'DEMO');
+  res.json({ ok: true, fromName: src.name, toName: newName, renamed, action });
+});
+
+app.get('/api/demo/status', (req, res) => {
+  const envs = loadCustomers().filter(isDemo);
+  res.json({ ok: true, exists: envs.length > 0, environments: envs.length });
+});
+
+app.post('/api/demo/create', (req, res) => {
+  const customers = loadCustomers().filter(c => !isDemo(c));
+  for (const e of DEMO_ENVS) customers.push({
+    id: demoEnvId(e.suffix),
+    name: `${DEMO_TENANT} — ${e.stage.toUpperCase()}`,
+    clientId: '', clientSecret: '', region: 'demo',
+    authType: 'demo', demo: true,
+    tenant: DEMO_TENANT, group: DEMO_GROUP, stage: e.stage
+  });
+  saveCustomers(customers);
+  seedDemo();
+  addLog('INFO', 'Demo-kunde oprettet: 4 miljøer, 3 flows — rører ingen rigtig org', DEMO_TENANT, 'DEMO');
+  res.json({ ok: true, tenant: DEMO_TENANT, group: DEMO_GROUP });
+});
+
+app.post('/api/demo/reset', (req, res) => {
+  if (!loadCustomers().some(isDemo)) return res.status(404).json({ error: 'Ingen demo-kunde' });
+  seedDemo();
+  addLog('INFO', 'Demo-kunde nulstillet', DEMO_TENANT, 'DEMO');
+  res.json({ ok: true });
+});
+
+app.delete('/api/demo', (req, res) => {
+  saveCustomers(loadCustomers().filter(c => !isDemo(c)));
+  try { fs.unlinkSync(DEMO_FILE); } catch (_) {}
+  addLog('INFO', 'Demo-kunde fjernet', DEMO_TENANT, 'DEMO');
+  res.json({ ok: true });
+});
+
 app.get('/api/hierarchy', (req, res) => {
   res.json({ ok: true, stages: STAGES, tenants: buildHierarchy(loadCustomers()) });
 });
@@ -1447,6 +1625,19 @@ app.get('/api/pipeline', async (req, res) => {
   const problems = [];
 
   for (const c of envs) {
+    // Demo-miljøer ligger kun lokalt — ingen token, intet kald ud af huset.
+    if (isDemo(c)) {
+      for (const f of demoFlowsFor(c.id)) {
+        const key = `${f.name}|${f.type}`;
+        if (!byFlow.has(key)) byFlow.set(key, {});
+        byFlow.get(key)[c.id] = {
+          flowId: `${c.id}:${f.name}`,
+          published: f.published, saved: null,
+          publishedAt: f.publishedAt, active: true
+        };
+      }
+      continue;
+    }
     try {
       const { token, apiBase } = await getToken(c);
       let page = 1;
@@ -1485,7 +1676,7 @@ app.get('/api/pipeline', async (req, res) => {
   // manifestet siger datoen noget — og kun for flows vi selv har forfremmet.
   const manifest = loadManifest();
   const orgIds = {};
-  for (const c of envs) orgIds[c.id] = await getOrgId(c);
+  for (const c of envs) orgIds[c.id] = isDemo(c) ? c.id : await getOrgId(c);
 
   const failed = new Set(problems.map(p => p.environment));
   const rows = [];
@@ -1527,6 +1718,13 @@ app.post('/api/flows/cross-hash', async (req, res) => {
   const results = [];
   for (const c of customers) {
     try {
+      if (isDemo(c)) {
+        const f = demoFlowsFor(c.id).find(x => x.name === flowName && x.type === flowType);
+        if (!f) throw new Error(`"${flowName}" findes ikke i ${c.name}`);
+        results.push({ customerId: c.id, customerName: c.name,
+                       version: f.published, hash: flowContentHash(f.content) });
+        continue;
+      }
       const { yaml, version } = await exportFlowToYaml(c, flowName, flowType);
       results.push({ customerId: c.id, customerName: c.name, version, hash: flowContentHash(yaml) });
     } catch (e) {

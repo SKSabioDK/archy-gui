@@ -1,10 +1,69 @@
-# Archy GUI — Flow Manager · v1.22.0
+# Archy GUI — Flow Manager · v1.23.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.23.0
+---
+**🇩🇰 Dansk**
+- **Publiceringsdato på hver celle** — så man kan se hvor gammel udgaven er, og hvornår flowet sidst blev skubbet videre. Datoen kan stadig ikke bruges til at afgøre om to miljøer er i trit (se v1.22.0), men den fortæller hvornår noget skete.
+
+- **Demo-kunde — fire miljøer og tre flows, helt lokalt.** `Kunder → Opret demo-kunde` giver `Demo A/S` med dev · test · uat · prod. Ingen credentials, ingen kald til Genesys eller Archy: demo-miljøerne har `demo: true`, og hver kode-vej der ellers ville hente en token springer den over. De tre flows dækker hver sin situation:
+
+  | Flow | Situation |
+  |---|---|
+  | `Velkomst` | findes i alle fire med samme indhold → ✓ i trit |
+  | `Aabningstider` | kun i dev, v10 → hele kæden ligger foran |
+  | `Kundeservice` | findes i alle fire, men prod er løbet fra → ⚠ afviger |
+
+  `↺ Nulstil demo` sætter den tilbage; `✕ Fjern demo` sletter miljøerne og filen. Demoens flows ligger i `demo-data.json`, som er gitignored.
+
+- **Navneregel ved forfremmelse — indbygget i demoen.** Navnet får kildens udgave sat på, så det kan ses hvor det kom fra:
+
+  | Navn i kilden | Publiceret | Bliver til |
+  |---|---|---|
+  | `testest` | 10 | `testest_v10` |
+  | `testcallback_v10` | 34 | `testcallback_v34` |
+  | `testtest_v10` | 1 | `testtest_v10` — uændret |
+
+  Er kilden kun publiceret én gang, er der ikke sket noget i det miljø siden flowet ankom, så navnet bærer stadig den udgave det kom med og røres ikke. Et eksisterende `_v<N>` erstattes, ikke stables. Reglen ligger i `promotionName()` og er prøvet af mod alle tre eksempler samt grænsetilfælde (`flow_V7` → `flow_v12`, `my_v2_flow` → `my_v2_flow_v9` — kun endelsen tælles).
+
+  > **Reglen findes indtil videre KUN i demoen.** Den er ikke koblet på migrering mod rigtige orgs, og det er med vilje — se forbeholdet nedenfor.
+
+- **Hvad demoen viste med det samme:** forfremmer man `Aabningstider` (dev, v10) til test, kommer den derover som `Aabningstider_v10` — og tavlen viser nu **to adskilte rækker**: `Aabningstider` som "kun i dev" og `Aabningstider_v10` som "kun i test". Tavlen matcher på navn, så et omdøbt flow er ikke længere det samme flow. Dermed falder både forfremmelses-kæden og hele afvigelses-visningen fra v1.22.0 fra hinanden. Skal reglen bruges mod rigtige orgs, skal tavlen først matche på **grundnavnet** med endelsen skrællet af.
+
+---
+**🇬🇧 English**
+- **Publish date on every cell** — so you can see how old a version is and when the flow was last pushed onward. The date still cannot decide whether two environments are in step (see v1.22.0), but it tells you when something happened.
+
+- **Demo customer — four environments and three flows, entirely local.** `Customers → Create demo customer` gives you `Demo A/S` with dev · test · uat · prod. No credentials, no calls to Genesys or Archy: demo environments carry `demo: true`, and every code path that would otherwise fetch a token skips it. The three flows each cover a different situation:
+
+  | Flow | Situation |
+  |---|---|
+  | `Velkomst` | present in all four with identical content → ✓ in step |
+  | `Aabningstider` | dev only, v10 → the whole chain lies ahead |
+  | `Kundeservice` | present in all four, but prod has drifted → ⚠ differs |
+
+  `↺ Reset demo` puts it back; `✕ Remove demo` deletes the environments and the file. The demo's flows live in `demo-data.json`, which is gitignored.
+
+- **Naming rule on promotion — built into the demo.** The name gets the source's version stamped on it, so you can see where it came from:
+
+  | Name in source | Published | Becomes |
+  |---|---|---|
+  | `testest` | 10 | `testest_v10` |
+  | `testcallback_v10` | 34 | `testcallback_v34` |
+  | `testtest_v10` | 1 | `testtest_v10` — unchanged |
+
+  If the source has been published only once, nothing has happened in that environment since the flow arrived, so the name still carries the version it came with and is left alone. An existing `_v<N>` is replaced, not stacked. The rule lives in `promotionName()` and is tested against all three examples plus edge cases (`flow_V7` → `flow_v12`, `my_v2_flow` → `my_v2_flow_v9` — only the suffix counts).
+
+  > **The rule exists ONLY in the demo so far.** It is not wired into migration against real orgs, and that is deliberate — see the caveat below.
+
+- **What the demo showed immediately:** promote `Aabningstider` (dev, v10) to test and it arrives as `Aabningstider_v10` — and the board now shows **two separate rows**: `Aabningstider` as "dev only" and `Aabningstider_v10` as "test only". The board matches by name, so a renamed flow is no longer the same flow. That breaks both the promotion chain and the whole drift view from v1.22.0. Before the rule can be used against real orgs, the board must match on the **base name** with the suffix stripped.
+
+---
 
 ### v1.22.0
 ---
@@ -911,7 +970,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.22.0** — see [Changelog](#changelog) above.
+> Current version: **v1.23.0** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
