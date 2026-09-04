@@ -1,10 +1,57 @@
-# Archy GUI — Flow Manager · v1.23.0
+# Archy GUI — Flow Manager · v1.24.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.24.0
+---
+**🇩🇰 Dansk**
+- **Navnereglen færdiggjort: kilden omdøbes med.** Det var det manglende stykke. Endelsen fortæller ikke hvad flowets nuværende udgave er — den fortæller **hvilken udgave der sidst blev skubbet videre herfra**. Hele forløbet:
+
+  | Trin | dev | test | uat |
+  |---|---|---|---|
+  | 0. bygger i dev | `Aabningstider` v10 | — | — |
+  | 1. dev → test | `Aabningstider_v10` v10 | `Aabningstider_v10` v1 | — |
+  | 2. test → uat | `Aabningstider_v10` v10 | `Aabningstider_v10` v1 | `Aabningstider_v10` v1 |
+  | 3. arbejdet videre i dev | `Aabningstider_v10` **v15** | `Aabningstider_v10` v1 | `Aabningstider_v10` v1 |
+  | 4. dev → test | `Aabningstider_v15` v15 | `Aabningstider_v15` v2 | `Aabningstider_v10` v1 |
+
+  I trin 4 kan man se på navnene alene at **uat er bagud**. I trin 3 kan man se at der er arbejdet videre i dev uden at det er kommet videre.
+
+- **Tavlen parrer nu på grundnavnet** — `testtest_v10` i uat og `testtest_v15` i dev er den samme række. Uden det ville en omdøbning splitte flowet i to og tage både forfremmelses-kæden og hele afvigelses-visningen med sig; det så man med det samme i v1.23.0's demo. Hvert miljøs faktiske navn står i cellen.
+- **Målets eksisterende flow omdøbes — der laves ikke et nyt ved siden af.** Det betyder at flowet beholder sit id i målorgen, og **alt der ruter til det bliver ved med at gøre det**. Det var den anden bekymring ved v1.23.0, og den er væk.
+- **Ny markering: `⚠ N udgave(r) ikke forfremmet`** — er miljøets egen udgave nået længere end endelsen siger, er der arbejdet videre uden at skubbe det videre. Er den lavere, har miljøet modtaget flowet, og det er normalt. Det er præcis signalet der viser at nogen har arbejdet i et miljø uden at føre det videre.
+- **`▲ Publicér` i demoen** — lader som om nogen har arbejdet videre og publiceret igen, så trin 3 kan afprøves. Navnet røres ikke, indholdet ændrer sig, så et indholdstjek også opdager det. Kun demo-miljøer har knappen.
+- **Indholdstjekket slår hvert miljø op under dets eget navn** — ellers ville det lede efter `testtest_v15` i uat, hvor flowet hedder `testtest_v10`, og fejlagtigt melde "kunne ikke tjekkes".
+
+> **Reglen findes stadig kun i demoen.** Den mangler ét stykke før den kan bruges mod rigtige orgs: at omdøbe et flow i Genesys via API'et er ikke afprøvet endnu, og jeg vil ikke påstå det virker før det er målt. Alt andet — navneregel, parring på grundnavn, markeringer — er færdigt og kører.
+
+---
+**🇬🇧 English**
+- **The naming rule completed: the source is renamed too.** That was the missing piece. The suffix does not say what the flow's current version is — it says **which version was last pushed onward from here**. The full sequence:
+
+  | Step | dev | test | uat |
+  |---|---|---|---|
+  | 0. building in dev | `Aabningstider` v10 | — | — |
+  | 1. dev → test | `Aabningstider_v10` v10 | `Aabningstider_v10` v1 | — |
+  | 2. test → uat | `Aabningstider_v10` v10 | `Aabningstider_v10` v1 | `Aabningstider_v10` v1 |
+  | 3. kept working in dev | `Aabningstider_v10` **v15** | `Aabningstider_v10` v1 | `Aabningstider_v10` v1 |
+  | 4. dev → test | `Aabningstider_v15` v15 | `Aabningstider_v15` v2 | `Aabningstider_v10` v1 |
+
+  At step 4 the names alone show that **uat is behind**. At step 3 they show that work has continued in dev without being pushed onward.
+
+- **The board now matches on the base name** — `testtest_v10` in uat and `testtest_v15` in dev are the same row. Without that a rename would split the flow in two and take the promotion chain and the whole drift view with it; v1.23.0's demo showed this immediately. Each environment's actual name is shown in its cell.
+- **The target's existing flow is renamed — no new one is created beside it.** The flow keeps its id in the target org, so **anything routing to it keeps routing to it**. That was the other concern with v1.23.0, and it is gone.
+- **New marker: `⚠ N version(s) not promoted`** — if an environment's own version has gone past what the suffix says, work has continued there without being pushed onward. If it is lower, the environment received the flow, which is normal. This is exactly the signal that shows someone has been working in an environment without carrying it forward.
+- **`▲ Publish` in the demo** — pretends someone kept working and published again, so step 3 can be tried. The name is left alone and the content changes, so a content check notices it too. Only demo environments get the button.
+- **The content check looks each environment up under its own name** — otherwise it would look for `testtest_v15` in uat, where the flow is called `testtest_v10`, and wrongly report "could not be checked".
+
+> **The rule still exists only in the demo.** One piece is missing before it can be used against real orgs: renaming a flow in Genesys through the API has not been tested yet, and I will not claim it works before it has been measured. Everything else — the naming rule, base-name matching, the markers — is finished and running.
+
+---
 
 ### v1.23.0
 ---
@@ -970,7 +1017,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.23.0** — see [Changelog](#changelog) above.
+> Current version: **v1.24.0** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**

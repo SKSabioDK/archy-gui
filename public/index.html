@@ -460,7 +460,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.23.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.24.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1520,6 +1520,10 @@ const LANGS = {
     demo_renamed_to:'forfremmet som',
     demo_name_kept:'forfremmet — navn uændret',
     demo_badge:'DEMO — rører ingen rigtig org',
+    demo_publish:'Publicér',
+    demo_publish_title:'Kun demo: lad som om nogen har arbejdet videre og publiceret igen. Navnet bliver stående.',
+    demo_publish_prompt:'Hvor mange gange skal der publiceres?',
+    pl_unpromoted:'{n} udgave(r) ikke forfremmet',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1877,6 +1881,10 @@ const LANGS = {
     demo_renamed_to:'promoted as',
     demo_name_kept:'promoted — name unchanged',
     demo_badge:'DEMO — touches no real org',
+    demo_publish:'Publish',
+    demo_publish_title:'Demo only: pretend someone kept working and published again. The name stays put.',
+    demo_publish_prompt:'How many times should it be published?',
+    pl_unpromoted:'{n} version(s) not promoted',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -2234,6 +2242,10 @@ const LANGS = {
     demo_renamed_to:'promu sous le nom de',
     demo_name_kept:'promu — nom inchangé',
     demo_badge:'DÉMO — ne touche aucune org réelle',
+    demo_publish:'Publier',
+    demo_publish_title:'Démo uniquement : simuler que quelqu\'un a continué et republié. Le nom ne change pas.',
+    demo_publish_prompt:'Combien de fois faut-il publier ?',
+    pl_unpromoted:'{n} version(s) non promue(s)',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -2591,6 +2603,10 @@ const LANGS = {
     demo_renamed_to:'gepromoveerd als',
     demo_name_kept:'gepromoveerd — naam ongewijzigd',
     demo_badge:'DEMO — raakt geen echte org aan',
+    demo_publish:'Publiceren',
+    demo_publish_title:'Alleen demo: doe alsof iemand is doorgegaan en opnieuw heeft gepubliceerd. De naam blijft staan.',
+    demo_publish_prompt:'Hoe vaak moet er gepubliceerd worden?',
+    pl_unpromoted:'{n} versie(s) niet gepromoveerd',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -2948,6 +2964,10 @@ const LANGS = {
     demo_renamed_to:'promovido como',
     demo_name_kept:'promovido: nombre sin cambios',
     demo_badge:'DEMO: no toca ninguna org real',
+    demo_publish:'Publicar',
+    demo_publish_title:'Solo demo: simula que alguien siguió trabajando y volvió a publicar. El nombre se mantiene.',
+    demo_publish_prompt:'¿Cuántas veces se debe publicar?',
+    pl_unpromoted:'{n} versión(es) sin promover',
   }
 };
 
@@ -6854,6 +6874,23 @@ function renderPipeline() {
     else if (c.published) { body = 'v' + c.published; colour = 'var(--green)'; }
     else                { body = t('pl_draft');   colour = 'var(--yellow)'; }
 
+    // Rækken er grundnavnet; her står hvad flowet faktisk hedder i dette miljø.
+    // Det er hele pointen med versionsendelsen: man kan se hvilken udgave der
+    // sidst blev skubbet hertil, uden at åbne noget.
+    const ownName = (!c.missing && !c.unknown && c.name && c.name !== row.flowName)
+      ? `<div style="margin-top:2px;font-size:9px;color:var(--blue);font-family:var(--mono)">${escapeHtml(c.name.slice(row.flowName.length))}</div>`
+      : '';
+
+    // Endelsen fortæller hvilken udgave der sidst blev forfremmet HERFRA. Er
+    // miljøets egen udgave nået længere, er der arbejdet videre uden at skubbe
+    // det videre. Er den lavere, har miljøet modtaget flowet — det er normalt.
+    const suffix = c.name ? (String(c.name).match(/_v(\d+)$/i) || [])[1] : null;
+    const own = c.published ? parseInt(String(c.published).split('.')[0], 10) : null;
+    const ahead = (suffix && Number.isFinite(own) && own > +suffix) ? own - +suffix : 0;
+    const notPromoted = ahead
+      ? `<div style="margin-top:3px;font-size:9px;color:var(--yellow)">⚠ ${t('pl_unpromoted').replace('{n}', ahead)}</div>`
+      : '';
+
     // Hvornår udgaven blev publiceret. Datoen kan ikke bruges til at afgøre om
     // to miljøer er i trit — det senere trin publiceres altid sidst, både ved
     // en sund forfremmelse og ved en rettelse udenom — men den fortæller hvor
@@ -6883,7 +6920,7 @@ function renderPipeline() {
     const pull = differs
       ? `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 6px;border-color:var(--yellow);color:var(--yellow)"
            title="${t('pl_pull_back_title')}"
-           onclick="promoteFromBoard('${escapeHtml(row.flowName).replace(/'/g, "\\'")}','${row.flowType}','${nextCell.envId}','${c.envId}')"
+           onclick="promoteFromBoard('${escapeHtml(nextCell.name || row.flowName).replace(/'/g, "\\'")}','${row.flowType}','${nextCell.envId}','${c.envId}')"
            >${t('pl_pull_back')}</button></div>`
       : '';
 
@@ -6903,14 +6940,24 @@ function renderPipeline() {
           ? `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm"
                style="font-size:10px;padding:2px 6px${overwrites ? ';border-color:var(--red);color:var(--red)' : ''}"
                ${overwrites ? `title="${t('pl_overwrites')}"` : ''}
-               onclick="promoteFromBoard('${escapeHtml(row.flowName).replace(/'/g, "\\'")}','${row.flowType}','${prev.envId}','${c.envId}')"
+               onclick="promoteFromBoard('${escapeHtml(prev.name || row.flowName).replace(/'/g, "\\'")}','${row.flowType}','${prev.envId}','${c.envId}')"
                >⟶ ${t('pl_promote')}${overwrites ? ' ⚠' : ''}</button></div>`
           : `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm" disabled
                style="font-size:10px;padding:2px 6px;opacity:.4;cursor:not-allowed"
                title="${t('pl_needs_publish')}">⟶ ${t('pl_promote')}</button></div>`)
       : '';
+    // Kun demo-miljøer: en knap til at lade som om nogen har arbejdet videre.
+    const env = (pipelineData.environments || []).find(e => e.id === c.envId);
+    const isDemoEnv = env && (customers.find(x => x.id === c.envId) || {}).demo;
+    const pub = (isDemoEnv && !c.missing && !c.unknown)
+      ? `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 6px"
+           title="${t('demo_publish_title')}"
+           onclick="demoPublish('${c.envId}','${escapeHtml(c.name).replace(/'/g, "\\'")}','${row.flowType}')"
+           >▲ ${t('demo_publish')}</button></div>`
+      : '';
+
     return `<td style="padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:top">
-        <span style="color:${colour};font-family:var(--mono);font-size:12px">${body}</span>${when}${changed}${laterOnly}${btn}${pull}</td>`;
+        <span style="color:${colour};font-family:var(--mono);font-size:12px">${body}</span>${ownName}${when}${notPromoted}${changed}${laterOnly}${btn}${pull}${pub}</td>`;
   };
 
   const head = d.environments.map(e =>
@@ -7024,8 +7071,15 @@ async function checkRow(flowName, flowType) {
   if (!d) return;
   const row = d.rows.find(r => r.flowName === flowName && r.flowType === flowType);
   if (!row) return;
-  const ids = row.cells.filter(c => !c.missing && !c.unknown).map(c => c.envId);
+  const present = row.cells.filter(c => !c.missing && !c.unknown);
+  const ids = present.map(c => c.envId);
   if (ids.length < 2) return;
+
+  // Efter en forfremmelse hedder flowet ikke det samme i hvert miljø —
+  // "testtest_v15" i dev, "testtest_v10" i test. Hvert miljø skal slås op
+  // under sit eget navn, ellers finder vi intet og melder "kunne ikke tjekkes".
+  const namesByCustomer = {};
+  for (const c of present) if (c.name) namesByCustomer[c.envId] = c.name;
 
   const key = flowName + '|' + flowType;
   pipelineChecking[key] = true;
@@ -7033,7 +7087,7 @@ async function checkRow(flowName, flowType) {
   try {
     const r = await fetch('/api/flows/cross-hash', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ flowName, flowType, customerIds: ids })
+      body: JSON.stringify({ flowName, flowType, customerIds: ids, namesByCustomer })
     }).then(x => x.json());
     const map = {};
     for (const x of (r.results || [])) if (x.hash) map[x.customerId] = x.hash;
@@ -7070,6 +7124,24 @@ async function renderDemoButtons() {
     ? `<button class="btn btn-secondary btn-sm" onclick="demoReset()">${t('btn_demo_reset')}</button>
        <button class="btn btn-danger btn-sm" onclick="demoRemove()">${t('btn_demo_remove')}</button>`
     : `<button class="btn btn-primary btn-sm" onclick="demoCreate()">${t('btn_demo_create')}</button>`;
+}
+
+// Kun i demoen: lad som om nogen har arbejdet videre og publiceret igen.
+// Navnet bliver stående — det er dét der viser at flowet er løbet foran det
+// der sidst blev forfremmet.
+async function demoPublish(envId, flowName, flowType) {
+  const svar = prompt(t('demo_publish_prompt'), '5');
+  if (svar === null) return;
+  const times = parseInt(svar, 10);
+  if (!Number.isFinite(times) || times < 1) return;
+  const r = await fetch('/api/demo/publish', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ envId, flowName, flowType, times })
+  }).then(x => x.json());
+  if (r.error) return showAlert('pipelineAlert', r.error, 'err');
+  showAlert('pipelineAlert', `"${r.name}" → v${r.published}`, 'ok');
+  pipelineHashes = {};
+  await loadPipeline();
 }
 
 async function demoCreate() {

@@ -313,6 +313,13 @@ function demoFlowsFor(envId) { return (loadDemo().flows || {})[envId] || []; }
 // Tallet er kildens udgave, så navnet siger hvor det kom fra. Er kilden kun
 // publiceret én gang, er der ikke sket noget i det miljø siden det ankom — så
 // bærer navnet stadig den udgave det kom med, og vi rører det ikke.
+// Grundnavnet uden versionsendelsen. Tavlen parrer på DET, så "testtest_v10" i
+// dev og "testtest_v15" i test stadig er den samme række — ellers ville en
+// omdøbning splitte flowet i to og tage både kæden og afvigelses-visningen med sig.
+function baseFlowName(name) {
+  return String(name || '').replace(/_v\d+$/i, '');
+}
+
 function promotionName(currentName, sourcePublishedVersion) {
   const n = parseInt(String(sourcePublishedVersion || '').split('.')[0], 10);
   if (!Number.isFinite(n) || n <= 1) return currentName;
@@ -339,26 +346,40 @@ app.post('/api/demo/promote', (req, res) => {
   if (!src) return res.status(404).json({ error: `"${flowName}" findes ikke i ${source.name}` });
 
   const newName = promotionName(src.name, src.published);
+  const base = baseFlowName(src.name);
   d.flows[targetId] = d.flows[targetId] || [];
-  const existing = d.flows[targetId].find(f => f.name === newName && f.type === flowType);
   const now = Date.now();
 
-  let action;
+  // Målet kan allerede have flowet under et ældre versionsnavn. Det er stadig
+  // det samme flow, så det omdøbes og opdateres — der laves ikke et nyt ved
+  // siden af. Dermed beholder det sit id i målet, og alt der ruter til det
+  // bliver ved med at gøre det.
+  const existing = d.flows[targetId].find(f =>
+    f.type === flowType && baseFlowName(f.name) === base);
+
+  let action, renamedTarget = null;
   if (existing) {
-    // Samme navn findes allerede: det bliver en ny udgave af dét flow.
+    if (existing.name !== newName) renamedTarget = existing.name;
     const cur = parseInt(String(existing.published || '0').split('.')[0], 10) || 0;
+    existing.name = newName;
     existing.published = `${cur + 1}.0`;
     existing.publishedAt = now;
     existing.content = src.content;
     action = 'update';
   } else {
-    // Nyt navn: det bliver et NYT flow i målet. Det gamle bliver liggende.
     d.flows[targetId].push({
       name: newName, type: flowType,
       published: '1.0', publishedAt: now, content: src.content
     });
     action = 'create';
   }
+
+  // Kilden omdøbes med. Det er dét der gør at man i dev kan se hvilken udgave
+  // der sidst blev skubbet videre: arbejder man videre og publicerer 15 gange,
+  // hedder den stadig _v10 indtil den bliver forfremmet igen.
+  const renamedSource = src.name !== newName ? src.name : null;
+  src.name = newName;
+
   saveDemo(d);
 
   recordManifest({
@@ -371,12 +392,37 @@ app.post('/api/demo/promote', (req, res) => {
     hash: flowContentHash(src.content)
   });
 
-  const renamed = newName !== src.name;
+  const renamed = !!renamedSource || !!renamedTarget;
   addLog('SUCCESS',
-    `Demo: "${src.name}" ${source.name} → ${target.name}` +
-    (renamed ? ` som "${newName}"` : ' (navn uændret)'),
+    `Demo: "${renamedSource || newName}" ${source.name} → ${target.name}` +
+    (renamed ? ` som "${newName}" (også omdøbt i ${source.name})` : ' (navn uændret)'),
     target.name, 'DEMO');
-  res.json({ ok: true, fromName: src.name, toName: newName, renamed, action });
+  res.json({ ok: true, fromName: renamedSource || newName, toName: newName,
+             renamed, renamedSource, renamedTarget, action });
+});
+
+// Simulerer at nogen arbejder videre i et miljø og publicerer igen. Navnet
+// røres ikke — det er netop pointen: udgaven stiger, men navnet bliver ved med
+// at fortælle hvilken udgave der sidst blev skubbet videre.
+app.post('/api/demo/publish', (req, res) => {
+  const { envId, flowName, flowType, times } = req.body;
+  const env = loadCustomers().find(c => c.id === envId);
+  if (!env || !isDemo(env)) return res.status(400).json({ error: 'Kun demo-miljøer' });
+
+  const d = loadDemo();
+  const f = (d.flows[envId] || []).find(x => x.name === flowName && x.type === flowType);
+  if (!f) return res.status(404).json({ error: `"${flowName}" findes ikke i ${env.name}` });
+
+  const n = Math.max(1, Math.min(parseInt(times, 10) || 1, 50));
+  const cur = parseInt(String(f.published || '0').split('.')[0], 10) || 0;
+  f.published = `${cur + n}.0`;
+  f.publishedAt = Date.now();
+  // Indholdet ændrer sig — ellers ville et indholdstjek stadig sige "i trit".
+  f.content = f.content.replace(/\s*# udgave \d+$/, '') + `\n  # udgave ${cur + n}`;
+  saveDemo(d);
+
+  addLog('INFO', `Demo: "${flowName}" publiceret ${n} gang(e) i ${env.name} → v${f.published}`, env.name, 'DEMO');
+  res.json({ ok: true, published: f.published, name: f.name });
 });
 
 app.get('/api/demo/status', (req, res) => {
@@ -1628,10 +1674,10 @@ app.get('/api/pipeline', async (req, res) => {
     // Demo-miljøer ligger kun lokalt — ingen token, intet kald ud af huset.
     if (isDemo(c)) {
       for (const f of demoFlowsFor(c.id)) {
-        const key = `${f.name}|${f.type}`;
+        const key = `${baseFlowName(f.name)}|${f.type}`;
         if (!byFlow.has(key)) byFlow.set(key, {});
         byFlow.get(key)[c.id] = {
-          flowId: `${c.id}:${f.name}`,
+          flowId: `${c.id}:${f.name}`, name: f.name,
           published: f.published, saved: null,
           publishedAt: f.publishedAt, active: true
         };
@@ -1648,10 +1694,10 @@ app.get('/api/pipeline', async (req, res) => {
         });
         const e = r.data.entities || [];
         for (const f of e) {
-          const key = `${f.name}|${f.type}`;
+          const key = `${baseFlowName(f.name)}|${f.type}`;
           if (!byFlow.has(key)) byFlow.set(key, {});
           byFlow.get(key)[c.id] = {
-            flowId: f.id,
+            flowId: f.id, name: f.name,
             published: versionLabel(f.publishedVersion),
             saved:     versionLabel(f.savedVersion),
             publishedAt: f.publishedVersion?.dateCheckedIn || f.publishedVersion?.dateCreated || null,
@@ -1711,21 +1757,26 @@ app.get('/api/pipeline', async (req, res) => {
 // Indholds-hash for ét flow hos flere kunder. Eksporterer pr. org, så det
 // tager tid — kaldes kun for én række ad gangen.
 app.post('/api/flows/cross-hash', async (req, res) => {
-  const { flowName, flowType, customerIds } = req.body;
+  // namesByCustomer: efter en forfremmelse kan det samme flow hedde noget
+  // forskelligt i hvert miljø ("testtest_v10" i test, "testtest_v15" i dev).
+  // Uden det ville vi lede efter et navn der ikke findes og fejlagtigt melde
+  // "kunne ikke tjekkes".
+  const { flowName, flowType, customerIds, namesByCustomer } = req.body;
   const customers = loadCustomers().filter(c => (customerIds || []).includes(c.id));
   if (!customers.length) return res.status(400).json({ error: 'Ingen kunder valgt' });
+  const nameFor = c => (namesByCustomer && namesByCustomer[c.id]) || flowName;
 
   const results = [];
   for (const c of customers) {
     try {
       if (isDemo(c)) {
-        const f = demoFlowsFor(c.id).find(x => x.name === flowName && x.type === flowType);
-        if (!f) throw new Error(`"${flowName}" findes ikke i ${c.name}`);
+        const f = demoFlowsFor(c.id).find(x => x.name === nameFor(c) && x.type === flowType);
+        if (!f) throw new Error(`"${nameFor(c)}" findes ikke i ${c.name}`);
         results.push({ customerId: c.id, customerName: c.name,
                        version: f.published, hash: flowContentHash(f.content) });
         continue;
       }
-      const { yaml, version } = await exportFlowToYaml(c, flowName, flowType);
+      const { yaml, version } = await exportFlowToYaml(c, nameFor(c), flowType);
       results.push({ customerId: c.id, customerName: c.name, version, hash: flowContentHash(yaml) });
     } catch (e) {
       results.push({ customerId: c.id, customerName: c.name, error: e.message });
