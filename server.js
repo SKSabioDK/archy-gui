@@ -243,6 +243,16 @@ function buildHierarchy(customers) {
 const DEMO_FILE = path.join(__dirname, 'demo-data.json');
 const isDemo = c => !!(c && c.demo);
 
+// Demoens forfremmelser skrives i det samme manifest som de rigtige. Når demoen
+// nulstilles eller fjernes, skal dens linjer med — ellers ville en øvelse
+// efterlade spor i den fortegnelse der beskriver rigtige migreringer.
+function dropDemoManifest() {
+  try {
+    const all = loadManifest().filter(e => !String(e.targetId || '').startsWith('demo-'));
+    fs.writeFileSync(MANIFEST_FILE, JSON.stringify(all, null, 2));
+  } catch (_) { /* intet manifest endnu */ }
+}
+
 function loadDemo() {
   try { return JSON.parse(fs.readFileSync(DEMO_FILE, 'utf8')); }
   catch { return { flows: {} }; }
@@ -447,6 +457,7 @@ app.post('/api/demo/create', (req, res) => {
 
 app.post('/api/demo/reset', (req, res) => {
   if (!loadCustomers().some(isDemo)) return res.status(404).json({ error: 'Ingen demo-kunde' });
+  dropDemoManifest();
   seedDemo();
   addLog('INFO', 'Demo-kunde nulstillet', DEMO_TENANT, 'DEMO');
   res.json({ ok: true });
@@ -455,6 +466,7 @@ app.post('/api/demo/reset', (req, res) => {
 app.delete('/api/demo', (req, res) => {
   saveCustomers(loadCustomers().filter(c => !isDemo(c)));
   try { fs.unlinkSync(DEMO_FILE); } catch (_) {}
+  dropDemoManifest();
   addLog('INFO', 'Demo-kunde fjernet', DEMO_TENANT, 'DEMO');
   res.json({ ok: true });
 });
@@ -1438,10 +1450,15 @@ function loadManifest() {
 
 // Find posten for ét flow i én mål-org. Matcher på org-id når det findes,
 // ellers på det lokale kunde-id, så ældre poster stadig kan slås op.
+// Sammenlignes på grundnavnet. Et flow skifter navn når det forfremmes
+// ("Aabningstider" → "_v10" → "_v15"), og matchede vi på det fulde navn, ville
+// hver omdøbning efterlade den gamle linje forældreløs og lave en ny ved siden
+// af — så ville vi hverken kunne slå op eller opdatere.
 function findManifestEntry(all, { targetOrgId, targetId, flowName, flowType }) {
   const ft = normType(flowType);
+  const base = baseFlowName(flowName);
   return all.find(e =>
-    e.flowName === flowName && normType(e.flowType) === ft &&
+    baseFlowName(e.flowName) === base && normType(e.flowType) === ft &&
     (e.targetOrgId && targetOrgId ? e.targetOrgId === targetOrgId : e.targetId === targetId));
 }
 
@@ -1449,9 +1466,12 @@ function recordManifest(entry) {
   try {
     const all = loadManifest();
     entry.flowType = normType(entry.flowType);
-    // Én linje pr. (mål-org, flow) — den nyeste hændelse er den gældende
+    // Én linje pr. (mål-org, flow) — den nyeste hændelse er den gældende.
+    // Grundnavnet er nøglen, så en omdøbning opdaterer linjen i stedet for at
+    // lægge en ny ved siden af.
+    const base = baseFlowName(entry.flowName);
     const i = all.findIndex(e =>
-      e.flowName === entry.flowName && normType(e.flowType) === entry.flowType &&
+      baseFlowName(e.flowName) === base && normType(e.flowType) === entry.flowType &&
       (e.targetOrgId && entry.targetOrgId ? e.targetOrgId === entry.targetOrgId : e.targetId === entry.targetId));
     if (i >= 0) all[i] = { ...all[i], ...entry }; else all.push(entry);
     fs.writeFileSync(MANIFEST_FILE, JSON.stringify(all, null, 2));
@@ -1732,13 +1752,24 @@ app.get('/api/pipeline', async (req, res) => {
       flowName, flowType,
       cells: envs.map(c => {
         const cell = { envId: c.id, unknown: failed.has(c.name), ...(cells[c.id] || { missing: true }) };
-        if (!cell.missing && !cell.unknown && cell.publishedAt) {
+        // Manifestet slås op så snart cellen har indhold — også hvis der ikke
+        // er nogen publiceringsdato, for udgavenummeret alene kan afsløre at
+        // miljøet er publiceret videre siden vi forfremmede.
+        if (!cell.missing && !cell.unknown) {
           const m = findManifestEntry(manifest, {
             targetOrgId: orgIds[c.id], targetId: c.id, flowName, flowType
           });
-          if (m && m.targetPublishedAt && cell.publishedAt > m.targetPublishedAt) {
-            cell.changedSincePromotion = true;
-            cell.promotedAt = m.targetPublishedAt;
+          if (m) {
+            // Både datoen og udgaven fra dengang vi forfremmede. Udgaven er den
+            // stærkeste: er miljøet publiceret videre siden, står tallet højere
+            // end det vi selv efterlod det på.
+            cell.promotedAt = m.targetPublishedAt || null;
+            cell.promotedVersion = m.targetVersion || null;
+            const left = parseInt(String(m.targetVersion || '').split('.')[0], 10);
+            const nowV = parseInt(String(cell.published || '').split('.')[0], 10);
+            const newerVersion = Number.isFinite(left) && Number.isFinite(nowV) && nowV > left;
+            const newerDate = m.targetPublishedAt && cell.publishedAt > m.targetPublishedAt;
+            if (newerVersion || newerDate) cell.changedSincePromotion = true;
           }
         }
         return cell;

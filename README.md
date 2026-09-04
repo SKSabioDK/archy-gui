@@ -1,10 +1,45 @@
-# Archy GUI — Flow Manager · v1.24.1
+# Archy GUI — Flow Manager · v1.25.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.25.0
+---
+**🇩🇰 Dansk**
+- **Grøn betød bare "publiceret" — nu betyder den "publiceret ad den rigtige vej".** En udgave nogen havde lavet uden om pipelinen så lige så rolig ud som en der kom den rette vej. To ting gør tallet rødt:
+
+  | Signal | Grundlag | Styrke |
+  |---|---|---|
+  | **publiceret uden om pipelinen** | manifestet siger vi efterlod miljøet på v*N*, og det står højere nu | nær bevis |
+  | **N udgave(r) foran trinnet før** | miljøet er publiceret flere gange end trinnet der fodrer det | fingerpeg |
+
+  Det andet bygger på at udgavetallene i en kæde **falder nedad** — arbejdet sker opstrøms, og hvert senere trin får kun én udgave pr. forfremmelse. Vender rækkefølgen, er der arbejdet nedstrøms. `Kundeservice` i demoen: dev v3 · test v2 · uat v1 · **prod v7** → rød.
+
+  > **Forbehold, der står i museover-teksten:** et miljø der var i drift længe før pipelinen kan stå højt af helt naturlige grunde. Fingerpeget er ikke bevis — indholdstjekket er stadig det eneste der afgør om to miljøer er ens.
+
+- **Rettet: manifestet mistede sporet så snart et flow blev omdøbt.** Manifestlinjen blev gemt under det fulde navn (`Aabningstider_v10`), men tavlen slog op på grundnavnet (`Aabningstider`) — så der var aldrig en træfning, og manifest-signalet var reelt dødt. Værre endnu lagde hver omdøbning en **ny** linje ved siden af den gamle i stedet for at opdatere den; efter tre forfremmelser stod der tre linjer for det samme flow. Både opslag og opdatering matcher nu på grundnavnet.
+- **Demoen efterlader ikke længere spor i det rigtige manifest** — `↺ Nulstil` og `✕ Fjern` rydder demoens linjer, så fortegnelsen over rigtige migreringer holdes ren.
+
+---
+**🇬🇧 English**
+- **Green used to mean just "published" — now it means "published the right way".** A version someone made outside the pipeline looked as calm as one that arrived properly. Two things turn the number red:
+
+  | Signal | Basis | Strength |
+  |---|---|---|
+  | **published outside the pipeline** | the manifest says we left the environment at v*N*, and it stands higher now | near proof |
+  | **N version(s) ahead of the previous stage** | the environment has been published more times than the stage feeding it | an indication |
+
+  The second rests on version numbers **falling downstream** in a chain — work happens upstream, and each later stage gains only one version per promotion. Invert that order and work has happened downstream. `Kundeservice` in the demo: dev v3 · test v2 · uat v1 · **prod v7** → red.
+
+  > **The caveat, stated in the hover text:** an environment that was in use long before the pipeline can stand high for perfectly ordinary reasons. The indication is not proof — the content check remains the only thing that decides whether two environments are the same.
+
+- **Fixed: the manifest lost track the moment a flow was renamed.** The manifest line was stored under the full name (`Aabningstider_v10`) while the board looked it up by base name (`Aabningstider`) — so there was never a match, and the manifest signal was effectively dead. Worse, each rename added a **new** line beside the old one instead of updating it; after three promotions there were three lines for one flow. Both lookup and update now match on the base name.
+- **The demo no longer leaves traces in the real manifest** — `↺ Reset` and `✕ Remove` clear the demo's lines, keeping the record of real migrations clean.
+
+---
 
 ### v1.24.1
 ---
@@ -1050,7 +1085,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.24.1** — see [Changelog](#changelog) above.
+> Current version: **v1.25.0** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**

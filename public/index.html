@@ -460,7 +460,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.24.1 · Archy GUI</div>
+    <div class="version" id="app-version">v1.25.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1503,7 +1503,7 @@ const LANGS = {
     pl_pull_back:'⟵ Hent tilbage',
     pl_pull_back_title:'Hent den senere udgave tilbage i dette miljø, så du kan se hvad der blev lavet',
     pl_only_later:'findes kun i et senere trin',
-    pl_changed_since:'publiceret igen efter vores forfremmelse',
+    pl_changed_since:'publiceret uden om pipelinen',
     pl_check_failed:'kunne ikke tjekkes',
     pl_only_multi:'Kun flows der findes i mere end ét miljø',
     pl_checked_count:'tjekket',
@@ -1525,6 +1525,9 @@ const LANGS = {
     demo_publish_prompt:'Hvor mange gange skal der publiceres?',
     pl_unpromoted:'{n} udgave(r) ikke forfremmet',
     pl_published_title:'Miljøets egen publicerede udgave — ikke det samme som versionsendelsen i navnet',
+    pl_changed_since_title:'Vi efterlod miljøet på v{v} ({when}). Det står højere nu, så nogen har publiceret her siden.',
+    pl_ahead_of_prev:'{n} udgave(r) foran trinnet før',
+    pl_ahead_of_prev_title:'I en kæde falder udgavetallene nedad — arbejdet sker opstrøms. Står et senere trin højere, er der sandsynligvis arbejdet direkte i det. Bemærk: et miljø der var i drift længe før pipelinen kan stå højt af helt naturlige grunde.',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1865,7 +1868,7 @@ const LANGS = {
     pl_pull_back:'⟵ Pull back',
     pl_pull_back_title:'Pull the later version back into this environment so you can see what was done',
     pl_only_later:'only exists in a later stage',
-    pl_changed_since:'published again after our promotion',
+    pl_changed_since:'published outside the pipeline',
     pl_check_failed:'could not be checked',
     pl_only_multi:'Only flows present in more than one environment',
     pl_checked_count:'checked',
@@ -1887,6 +1890,9 @@ const LANGS = {
     demo_publish_prompt:'How many times should it be published?',
     pl_unpromoted:'{n} version(s) not promoted',
     pl_published_title:'The environment\'s own published version — not the same as the version suffix in the name',
+    pl_changed_since_title:'We left this environment at v{v} ({when}). It is higher now, so someone has published here since.',
+    pl_ahead_of_prev:'{n} version(s) ahead of the previous stage',
+    pl_ahead_of_prev_title:'In a chain the version numbers fall as you go downstream — the work happens upstream. A later stage standing higher has probably been worked on directly. Note: an environment that was in use long before the pipeline can stand high for perfectly ordinary reasons.',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -2227,7 +2233,7 @@ const LANGS = {
     pl_pull_back:'⟵ Rapatrier',
     pl_pull_back_title:'Rapatrier la version ultérieure dans cet environnement pour voir ce qui a été fait',
     pl_only_later:'n\'existe que dans une étape ultérieure',
-    pl_changed_since:'republié après notre promotion',
+    pl_changed_since:'publié hors du pipeline',
     pl_check_failed:'vérification impossible',
     pl_only_multi:'Uniquement les flows présents dans plus d\'un environnement',
     pl_checked_count:'vérifiés',
@@ -2249,6 +2255,9 @@ const LANGS = {
     demo_publish_prompt:'Combien de fois faut-il publier ?',
     pl_unpromoted:'{n} version(s) non promue(s)',
     pl_published_title:'La version publiée propre à l\'environnement — à ne pas confondre avec le suffixe du nom',
+    pl_changed_since_title:'Nous avons laissé cet environnement en v{v} ({when}). Il est plus élevé maintenant : quelqu\'un a publié depuis.',
+    pl_ahead_of_prev:'{n} version(s) d\'avance sur l\'étape précédente',
+    pl_ahead_of_prev_title:'Dans une chaîne, les numéros de version diminuent vers l\'aval : le travail se fait en amont. Une étape ultérieure plus élevée a probablement été modifiée directement. Remarque : un environnement en service bien avant le pipeline peut être élevé pour des raisons tout à fait normales.',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -2589,7 +2598,7 @@ const LANGS = {
     pl_pull_back:'⟵ Terughalen',
     pl_pull_back_title:'Haal de latere versie terug naar deze omgeving om te zien wat er is gedaan',
     pl_only_later:'bestaat alleen in een latere fase',
-    pl_changed_since:'opnieuw gepubliceerd na onze promotie',
+    pl_changed_since:'buiten de pipeline gepubliceerd',
     pl_check_failed:'kon niet gecheckt worden',
     pl_only_multi:'Alleen flows die in meer dan één omgeving staan',
     pl_checked_count:'gecheckt',
@@ -2611,6 +2620,9 @@ const LANGS = {
     demo_publish_prompt:'Hoe vaak moet er gepubliceerd worden?',
     pl_unpromoted:'{n} versie(s) niet gepromoveerd',
     pl_published_title:'De eigen gepubliceerde versie van de omgeving — niet hetzelfde als het versiesuffix in de naam',
+    pl_changed_since_title:'We lieten deze omgeving achter op v{v} ({when}). Die staat nu hoger, dus iemand heeft hier sindsdien gepubliceerd.',
+    pl_ahead_of_prev:'{n} versie(s) voor op de vorige fase',
+    pl_ahead_of_prev_title:'In een keten dalen de versienummers stroomafwaarts — het werk gebeurt stroomopwaarts. Staat een latere fase hoger, dan is er waarschijnlijk direct in gewerkt. Let op: een omgeving die al lang vóór de pipeline in gebruik was, kan om heel gewone redenen hoog staan.',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -2951,7 +2963,7 @@ const LANGS = {
     pl_pull_back:'⟵ Traer de vuelta',
     pl_pull_back_title:'Traiga la versión posterior a este entorno para ver qué se hizo',
     pl_only_later:'solo existe en una etapa posterior',
-    pl_changed_since:'publicado de nuevo tras nuestra promoción',
+    pl_changed_since:'publicado fuera del pipeline',
     pl_check_failed:'no se pudo comprobar',
     pl_only_multi:'Solo flows presentes en más de un entorno',
     pl_checked_count:'comprobados',
@@ -2973,6 +2985,9 @@ const LANGS = {
     demo_publish_prompt:'¿Cuántas veces se debe publicar?',
     pl_unpromoted:'{n} versión(es) sin promover',
     pl_published_title:'La versión publicada propia del entorno: no es lo mismo que el sufijo de versión del nombre',
+    pl_changed_since_title:'Dejamos este entorno en v{v} ({when}). Ahora está más alto, así que alguien ha publicado aquí desde entonces.',
+    pl_ahead_of_prev:'{n} versión(es) por delante de la etapa anterior',
+    pl_ahead_of_prev_title:'En una cadena los números de versión bajan aguas abajo: el trabajo ocurre aguas arriba. Una etapa posterior más alta probablemente se ha tocado directamente. Nota: un entorno en uso mucho antes del pipeline puede estar alto por razones perfectamente normales.',
   }
 };
 
@@ -6873,10 +6888,32 @@ function renderPipeline() {
   const cell = (c, i, row) => {
     const key = row.flowName + '|' + row.flowType;
     const hashes = pipelineHashes[key];
+    // Grøn må ikke bare betyde "publiceret" — så ville en udgave nogen har
+    // lavet uden om pipelinen se lige så rolig ud som en der kom den rigtige
+    // vej. To ting gør den rød:
+    //
+    //   1. Manifestet siger vi efterlod miljøet på vN, og det står højere nu.
+    //      Det er nær bevis: nogen har publiceret her siden vi forfremmede.
+    //   2. Miljøet er publiceret flere gange end trinnet før det. I en kæde
+    //      falder tallene nedad — arbejdet sker opstrøms, og hvert senere trin
+    //      får kun én udgave pr. forfremmelse. Vender rækkefølgen, er der
+    //      arbejdet nedstrøms. Det er et fingerpeg, ikke bevis: et miljø der
+    //      var i drift længe før pipelinen kan stå højt af helt naturlige
+    //      grunde.
+    const ownV  = c.published ? parseInt(String(c.published).split('.')[0], 10) : null;
+    const prevC = i > 0 ? row.cells[i - 1] : null;
+    const prevV = (prevC && !prevC.missing && !prevC.unknown && prevC.published)
+      ? parseInt(String(prevC.published).split('.')[0], 10) : null;
+
+    const pastManifest = !!c.changedSincePromotion;
+    const aheadOfPrev  = (Number.isFinite(ownV) && Number.isFinite(prevV) && ownV > prevV)
+      ? ownV - prevV : 0;
+    const suspect = pastManifest || aheadOfPrev > 0;
+
     let body, colour;
     if (c.unknown)      { body = t('pl_unknown'); colour = 'var(--muted)'; }
     else if (c.missing) { body = '—';             colour = 'var(--muted)'; }
-    else if (c.published) { body = 'v' + c.published; colour = 'var(--green)'; }
+    else if (c.published) { body = 'v' + c.published; colour = suspect ? 'var(--red)' : 'var(--green)'; }
     else                { body = t('pl_draft');   colour = 'var(--yellow)'; }
 
     // Cellen viser flowets FULDE navn i dette miljø, ikke bare endelsen. Ellers
@@ -6908,8 +6945,18 @@ function renderPipeline() {
 
     // Manifestet er nulpunktet: er miljøet publiceret igen efter vi forfremmede
     // hertil, er der rørt ved det udenom. Gratis signal, ingen eksport.
-    const changed = c.changedSincePromotion
-      ? `<div style="margin-top:3px;font-size:9px;color:var(--yellow)" title="${new Date(c.promotedAt).toLocaleString()}">⚠ ${t('pl_changed_since')}</div>`
+    const changed = pastManifest
+      ? `<div style="margin-top:3px;font-size:9px;color:var(--red)"
+           title="${t('pl_changed_since_title')
+             .replace('{v}', c.promotedVersion || '?')
+             .replace('{when}', c.promotedAt ? new Date(c.promotedAt).toLocaleString() : '?')}"
+           >✗ ${t('pl_changed_since')}</div>`
+      : '';
+
+    // Kun når manifestet ikke allerede har sagt det — ellers to beskeder om
+    // det samme, hvoraf den svageste ville se ud som en selvstændig anke.
+    const inverted = (!pastManifest && aheadOfPrev > 0)
+      ? `<div style="margin-top:3px;font-size:9px;color:var(--red)" title="${t('pl_ahead_of_prev_title')}">✗ ${t('pl_ahead_of_prev').replace('{n}', aheadOfPrev)}</div>`
       : '';
 
     // Findes flowet først i et senere trin, er det ikke en ventende
@@ -6964,7 +7011,7 @@ function renderPipeline() {
 
     return `<td style="padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:top">
         ${ownName}<span style="color:${colour};font-family:var(--mono);font-size:12px"
-          title="${t('pl_published_title')}">${body}</span>${when}${notPromoted}${changed}${laterOnly}${btn}${pull}${pub}</td>`;
+          title="${t('pl_published_title')}">${body}</span>${when}${notPromoted}${changed}${inverted}${laterOnly}${btn}${pull}${pub}</td>`;
   };
 
   const head = d.environments.map(e =>
