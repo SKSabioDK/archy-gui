@@ -1,10 +1,43 @@
-# Archy GUI — Flow Manager · v1.24.0
+# Archy GUI — Flow Manager · v1.24.1
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.24.1
+---
+**🇩🇰 Dansk**
+- **Rettet: cellen viste kun et versionsnummer, ikke hvilket flow der stod der.** Med navnereglen er der pludselig **to tal der ligner hinanden** i samme celle — `v11.0` er miljøets egen publicerede udgave, `_v4` er den udgave der sidst blev forfremmet. Viste man kun `v11.0`, kunne man hverken se hvad flowet hed eller hvad tallet betød.
+
+  Cellen viser nu **flowets fulde navn** øverst, og udgaven under:
+
+  |  | DEV | TEST | UAT | PROD |
+  |---|---|---|---|---|
+  | **navn** | `Velkomst_v4` | `Velkomst_v4` | `Velkomst` | `Velkomst` |
+  | **udgave** | v11.0 | v4.0 | v2.0 | v1.0 |
+
+  Med ét blik ses at uat og prod stadig står på det uforfremmede `Velkomst`, mens dev og test er på `_v4` — og at dev er løbet 7 udgaver foran det der sidst blev skubbet videre.
+
+- Udgaven har fået en forklaring ved museover, så de to tal ikke kan forveksles.
+
+---
+**🇬🇧 English**
+- **Fixed: the cell showed only a version number, not which flow was there.** With the naming rule there are suddenly **two similar-looking numbers** in one cell — `v11.0` is the environment's own published version, `_v4` is the version last promoted. Showing only `v11.0` told you neither what the flow was called nor what the number meant.
+
+  The cell now shows the **flow's full name** on top, with the version beneath:
+
+  |  | DEV | TEST | UAT | PROD |
+  |---|---|---|---|---|
+  | **name** | `Velkomst_v4` | `Velkomst_v4` | `Velkomst` | `Velkomst` |
+  | **version** | v11.0 | v4.0 | v2.0 | v1.0 |
+
+  At a glance you can see uat and prod still hold the un-promoted `Velkomst` while dev and test are on `_v4` — and that dev has run 7 versions ahead of what was last pushed onward.
+
+- The version carries a hover explanation so the two numbers cannot be confused.
+
+---
 
 ### v1.24.0
 ---
@@ -1017,7 +1050,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.24.0** — see [Changelog](#changelog) above.
+> Current version: **v1.24.1** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**

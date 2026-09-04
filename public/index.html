@@ -460,7 +460,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.24.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.24.1 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1524,6 +1524,7 @@ const LANGS = {
     demo_publish_title:'Kun demo: lad som om nogen har arbejdet videre og publiceret igen. Navnet bliver stående.',
     demo_publish_prompt:'Hvor mange gange skal der publiceres?',
     pl_unpromoted:'{n} udgave(r) ikke forfremmet',
+    pl_published_title:'Miljøets egen publicerede udgave — ikke det samme som versionsendelsen i navnet',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1885,6 +1886,7 @@ const LANGS = {
     demo_publish_title:'Demo only: pretend someone kept working and published again. The name stays put.',
     demo_publish_prompt:'How many times should it be published?',
     pl_unpromoted:'{n} version(s) not promoted',
+    pl_published_title:'The environment\'s own published version — not the same as the version suffix in the name',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -2246,6 +2248,7 @@ const LANGS = {
     demo_publish_title:'Démo uniquement : simuler que quelqu\'un a continué et republié. Le nom ne change pas.',
     demo_publish_prompt:'Combien de fois faut-il publier ?',
     pl_unpromoted:'{n} version(s) non promue(s)',
+    pl_published_title:'La version publiée propre à l\'environnement — à ne pas confondre avec le suffixe du nom',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -2607,6 +2610,7 @@ const LANGS = {
     demo_publish_title:'Alleen demo: doe alsof iemand is doorgegaan en opnieuw heeft gepubliceerd. De naam blijft staan.',
     demo_publish_prompt:'Hoe vaak moet er gepubliceerd worden?',
     pl_unpromoted:'{n} versie(s) niet gepromoveerd',
+    pl_published_title:'De eigen gepubliceerde versie van de omgeving — niet hetzelfde als het versiesuffix in de naam',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -2968,6 +2972,7 @@ const LANGS = {
     demo_publish_title:'Solo demo: simula que alguien siguió trabajando y volvió a publicar. El nombre se mantiene.',
     demo_publish_prompt:'¿Cuántas veces se debe publicar?',
     pl_unpromoted:'{n} versión(es) sin promover',
+    pl_published_title:'La versión publicada propia del entorno: no es lo mismo que el sufijo de versión del nombre',
   }
 };
 
@@ -6874,11 +6879,12 @@ function renderPipeline() {
     else if (c.published) { body = 'v' + c.published; colour = 'var(--green)'; }
     else                { body = t('pl_draft');   colour = 'var(--yellow)'; }
 
-    // Rækken er grundnavnet; her står hvad flowet faktisk hedder i dette miljø.
-    // Det er hele pointen med versionsendelsen: man kan se hvilken udgave der
-    // sidst blev skubbet hertil, uden at åbne noget.
-    const ownName = (!c.missing && !c.unknown && c.name && c.name !== row.flowName)
-      ? `<div style="margin-top:2px;font-size:9px;color:var(--blue);font-family:var(--mono)">${escapeHtml(c.name.slice(row.flowName.length))}</div>`
+    // Cellen viser flowets FULDE navn i dette miljø, ikke bare endelsen. Ellers
+    // står der to tal der ligner hinanden — "v4.0" (miljøets egen udgave) og
+    // "_v3" (den udgave der sidst blev forfremmet) — og man kan ikke se hvad
+    // der er hvad, eller hvilket flow man kigger på.
+    const ownName = (!c.missing && !c.unknown && c.name)
+      ? `<div style="font-size:11px;font-family:var(--mono);margin-bottom:2px">${escapeHtml(c.name)}</div>`
       : '';
 
     // Endelsen fortæller hvilken udgave der sidst blev forfremmet HERFRA. Er
@@ -6957,7 +6963,8 @@ function renderPipeline() {
       : '';
 
     return `<td style="padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:top">
-        <span style="color:${colour};font-family:var(--mono);font-size:12px">${body}</span>${ownName}${when}${notPromoted}${changed}${laterOnly}${btn}${pull}${pub}</td>`;
+        ${ownName}<span style="color:${colour};font-family:var(--mono);font-size:12px"
+          title="${t('pl_published_title')}">${body}</span>${when}${notPromoted}${changed}${laterOnly}${btn}${pull}${pub}</td>`;
   };
 
   const head = d.environments.map(e =>
