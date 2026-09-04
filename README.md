@@ -1,10 +1,59 @@
-# Archy GUI — Flow Manager · v1.26.2
+# Archy GUI — Flow Manager · v1.27.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.27.0
+---
+**🇩🇰 Dansk**
+- **`⭳ Hent som CSV` på pipelinen.** Én række pr. flow, fem kolonner pr. miljø — navn, udgave, publiceringsdato, bemærkning og hvem der noterede det — plus indholdstjekkets udfald til sidst.
+
+  ```
+  Flow;Type;DEV navn;DEV udgave;DEV publiceret;DEV bemærkning;DEV noteret af;TEST navn;…;Indhold
+  Kundeservice;WORKFLOW;Kundeservice;v3.0;2026-08-05;;;…;v7.0;2026-09-02;6 udgave(r) foran trinnet før;;afviger
+  ```
+
+  **Semikolon som skilletegn og UTF-8 med BOM**, så dansk Excel åbner den i kolonner og viser æ, ø og å rigtigt uden at man skal ind i importguiden.
+
+- **Udtrækket følger skærmen.** Søgning og "kun dem der mangler i et senere trin" gælder også CSV'en. Filtreringen og signalerne er flyttet ud i `pipelineRowsShown()` og `cellSignals()`, som **både** tavlen og udtrækket bruger — ellers kunne de to komme til at vise hver sit uden at nogen opdagede det.
+- Et flow der ikke er indholdstjekket står som `ikke tjekket`, ikke som tomt felt. Tomt ville læses som "ingen forskel".
+
+- **Rettet, fundet i CSV'ens egen tekst: dev blev udråbt for "publiceret uden om pipelinen".** Manifestrækken i kilden noterer den udgave flowet havde da det blev forfremmet. Arbejder man så videre i dev — hvilket er hele meningen med dev — stod udgaven højere, og markeringen slog til. **Enhver dev-org ville stå rød så snart nogen rørte den.**
+
+  Markeringen gælder nu kun et miljø der **modtog** flowet fra os (rækken har `promotedFrom`). Sendte miljøet det videre (`promotedTo`), er senere publiceringer almindeligt udviklingsarbejde og dækkes af `N udgaver ikke forfremmet`.
+
+  | Miljø | Situation | Før | Nu |
+  |---|---|---|---|
+  | dev | forfremmet videre, derefter arbejdet på | ✗ uden om pipelinen | ⚠ 5 udgaver ikke forfremmet |
+  | test | modtog flowet, derefter publiceret i | ✗ uden om pipelinen | ✗ uden om pipelinen |
+
+---
+**🇬🇧 English**
+- **`⭳ Download as CSV` on the pipeline.** One row per flow, five columns per environment — name, version, publish date, note, and who recorded it — plus the content check verdict at the end.
+
+  ```
+  Flow;Type;DEV name;DEV version;DEV published;DEV note;DEV recorded by;TEST name;…;Content
+  Kundeservice;WORKFLOW;Kundeservice;v3.0;2026-08-05;;;…;v7.0;2026-09-02;6 version(s) ahead of the previous stage;;differs
+  ```
+
+  **Semicolon separated and UTF-8 with a BOM**, so Danish Excel opens it in columns and shows accented characters correctly without the import wizard.
+
+- **The export follows the screen.** Search and "only those missing in a later stage" apply to the CSV too. The filtering and the signals moved into `pipelineRowsShown()` and `cellSignals()`, used by **both** the board and the export — otherwise the two could drift apart without anyone noticing.
+- A flow that has not been content-checked reads `not checked`, not an empty field. Empty would read as "no difference".
+
+- **Fixed, spotted in the CSV's own text: dev was being accused of "published outside the pipeline".** The manifest row in the source records the version the flow had when it was promoted. Keep working in dev — which is the whole point of dev — and the version stands higher, so the marker fired. **Every dev org would have turned red the moment anyone touched it.**
+
+  The marker now applies only to an environment that **received** the flow from us (its row carries `promotedFrom`). If the environment sent it onward (`promotedTo`), later publishes are ordinary development work and are covered by `N versions not promoted`.
+
+  | Environment | Situation | Before | Now |
+  |---|---|---|---|
+  | dev | promoted onward, then worked on | ✗ outside the pipeline | ⚠ 5 versions not promoted |
+  | test | received the flow, then published in | ✗ outside the pipeline | ✗ outside the pipeline |
+
+---
 
 ### v1.26.2
 ---
@@ -1214,7 +1263,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.26.2** — see [Changelog](#changelog) above.
+> Current version: **v1.27.0** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**

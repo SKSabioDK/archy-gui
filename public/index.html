@@ -460,7 +460,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.26.2 · Archy GUI</div>
+    <div class="version" id="app-version">v1.27.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1544,6 +1544,17 @@ const LANGS = {
     mf_by:'noteret af',
     mf_local_only:'lokal fil — ikke delt',
     mf_by_machine:'noteret af (pc-bruger — miljøet bruger client credentials, så der er ingen Genesys-bruger)',
+    pl_csv:'⭳ Hent som CSV',
+    pl_csv_title:'Henter præcis de rækker der vises nu, med filter og søgning. Semikolon som skilletegn og UTF-8 med BOM, så Excel viser æøå rigtigt.',
+    csv_flow:'Flow',
+    csv_type:'Type',
+    csv_name:'navn',
+    csv_version:'udgave',
+    csv_published:'publiceret',
+    csv_note:'bemærkning',
+    csv_by:'noteret af',
+    csv_content:'Indhold',
+    csv_missing:'mangler',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1920,6 +1931,17 @@ const LANGS = {
     mf_by:'recorded by',
     mf_local_only:'local file — not shared',
     mf_by_machine:'recorded by (PC user — the environment uses client credentials, so there is no Genesys user)',
+    pl_csv:'⭳ Download as CSV',
+    pl_csv_title:'Downloads exactly the rows shown now, honouring filter and search. Semicolon separated, UTF-8 with BOM so Excel shows accented characters correctly.',
+    csv_flow:'Flow',
+    csv_type:'Type',
+    csv_name:'name',
+    csv_version:'version',
+    csv_published:'published',
+    csv_note:'note',
+    csv_by:'recorded by',
+    csv_content:'Content',
+    csv_missing:'missing',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -2296,6 +2318,17 @@ const LANGS = {
     mf_by:'noté par',
     mf_local_only:'fichier local — non partagé',
     mf_by_machine:'noté par (utilisateur du PC — l\'environnement utilise des client credentials, il n\'y a donc pas d\'utilisateur Genesys)',
+    pl_csv:'⭳ Télécharger en CSV',
+    pl_csv_title:'Télécharge exactement les lignes affichées, filtre et recherche compris. Séparé par des points-virgules, UTF-8 avec BOM pour qu\'Excel affiche correctement les accents.',
+    csv_flow:'Flow',
+    csv_type:'Type',
+    csv_name:'nom',
+    csv_version:'version',
+    csv_published:'publié',
+    csv_note:'remarque',
+    csv_by:'noté par',
+    csv_content:'Contenu',
+    csv_missing:'absent',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -2672,6 +2705,17 @@ const LANGS = {
     mf_by:'genoteerd door',
     mf_local_only:'lokaal bestand — niet gedeeld',
     mf_by_machine:'genoteerd door (pc-gebruiker — de omgeving gebruikt client credentials, dus er is geen Genesys-gebruiker)',
+    pl_csv:'⭳ Downloaden als CSV',
+    pl_csv_title:'Downloadt precies de rijen die nu getoond worden, inclusief filter en zoekopdracht. Puntkomma als scheidingsteken, UTF-8 met BOM zodat Excel accenten goed toont.',
+    csv_flow:'Flow',
+    csv_type:'Type',
+    csv_name:'naam',
+    csv_version:'versie',
+    csv_published:'gepubliceerd',
+    csv_note:'opmerking',
+    csv_by:'genoteerd door',
+    csv_content:'Inhoud',
+    csv_missing:'ontbreekt',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -3048,6 +3092,17 @@ const LANGS = {
     mf_by:'anotado por',
     mf_local_only:'archivo local: no compartido',
     mf_by_machine:'anotado por (usuario del PC: el entorno usa client credentials, así que no hay usuario de Genesys)',
+    pl_csv:'⭳ Descargar como CSV',
+    pl_csv_title:'Descarga exactamente las filas mostradas ahora, respetando filtro y búsqueda. Separado por punto y coma, UTF-8 con BOM para que Excel muestre bien los acentos.',
+    csv_flow:'Flow',
+    csv_type:'Tipo',
+    csv_name:'nombre',
+    csv_version:'versión',
+    csv_published:'publicado',
+    csv_note:'nota',
+    csv_by:'anotado por',
+    csv_content:'Contenido',
+    csv_missing:'falta',
   }
 };
 
@@ -6927,9 +6982,12 @@ async function loadPipeline() {
   loadManifestStatus();
 }
 
-function renderPipeline() {
+// Hvilke rækker er synlige lige nu. Både tavlen og CSV-udtrækket bruger DENNE
+// funktion — ellers kunne de to komme til at vise hver sit uden at nogen
+// opdagede det.
+function pipelineRowsShown() {
   const d = pipelineData;
-  if (!d) return;
+  if (!d) return [];
   const q = (document.getElementById('pl-search').value || '').trim().toLowerCase();
   const onlyGaps = document.getElementById('pl-only-gaps').checked;
 
@@ -6945,6 +7003,38 @@ function renderPipeline() {
     }
     return false;
   });
+  return rows;
+}
+
+// De signaler en celle bærer. Samme kilde for farven på skærmen og teksten i
+// CSV'en, så en bemærkning ikke kan mangle det ene sted.
+function cellSignals(c, i, row) {
+  const hashes = pipelineHashes[row.flowName + '|' + row.flowType];
+  const ownV  = c.published ? parseInt(String(c.published).split('.')[0], 10) : null;
+  const prevC = i > 0 ? row.cells[i - 1] : null;
+  const prevV = (prevC && !prevC.missing && !prevC.unknown && prevC.published)
+    ? parseInt(String(prevC.published).split('.')[0], 10) : null;
+  const suffix = c.name ? (String(c.name).match(/_v(\d+)$/i) || [])[1] : null;
+
+  const pastManifest = !!c.changedSincePromotion;
+  const aheadOfPrev  = (Number.isFinite(ownV) && Number.isFinite(prevV) && ownV > prevV) ? ownV - prevV : 0;
+  const unpromoted   = (suffix && Number.isFinite(ownV) && ownV > +suffix) ? ownV - +suffix : 0;
+  const laterOnly    = !!(c.missing && !c.unknown &&
+                          row.cells.slice(i + 1).some(x => !x.missing && !x.unknown));
+  const nextCell     = row.cells[i + 1];
+  const differsNext  = !!(hashes && nextCell && hashes[c.envId] && hashes[nextCell.envId]
+                          && hashes[c.envId] !== hashes[nextCell.envId]);
+  const overwrites   = !!(hashes && prevC && hashes[c.envId] && hashes[prevC.envId]
+                          && hashes[c.envId] !== hashes[prevC.envId]);
+
+  return { ownV, prevV, suffix, pastManifest, aheadOfPrev, unpromoted, laterOnly,
+           differsNext, overwrites, suspect: pastManifest || aheadOfPrev > 0 };
+}
+
+function renderPipeline() {
+  const d = pipelineData;
+  if (!d) return;
+  const rows = pipelineRowsShown();
 
   const cell = (c, i, row) => {
     const key = row.flowName + '|' + row.flowType;
@@ -6961,15 +7051,9 @@ function renderPipeline() {
     //      arbejdet nedstrøms. Det er et fingerpeg, ikke bevis: et miljø der
     //      var i drift længe før pipelinen kan stå højt af helt naturlige
     //      grunde.
-    const ownV  = c.published ? parseInt(String(c.published).split('.')[0], 10) : null;
+    const sig = cellSignals(c, i, row);
+    const { pastManifest, aheadOfPrev, suspect } = sig;
     const prevC = i > 0 ? row.cells[i - 1] : null;
-    const prevV = (prevC && !prevC.missing && !prevC.unknown && prevC.published)
-      ? parseInt(String(prevC.published).split('.')[0], 10) : null;
-
-    const pastManifest = !!c.changedSincePromotion;
-    const aheadOfPrev  = (Number.isFinite(ownV) && Number.isFinite(prevV) && ownV > prevV)
-      ? ownV - prevV : 0;
-    const suspect = pastManifest || aheadOfPrev > 0;
 
     let body, colour;
     if (c.unknown)      { body = t('pl_unknown'); colour = 'var(--muted)'; }
@@ -6988,11 +7072,8 @@ function renderPipeline() {
     // Endelsen fortæller hvilken udgave der sidst blev forfremmet HERFRA. Er
     // miljøets egen udgave nået længere, er der arbejdet videre uden at skubbe
     // det videre. Er den lavere, har miljøet modtaget flowet — det er normalt.
-    const suffix = c.name ? (String(c.name).match(/_v(\d+)$/i) || [])[1] : null;
-    const own = c.published ? parseInt(String(c.published).split('.')[0], 10) : null;
-    const ahead = (suffix && Number.isFinite(own) && own > +suffix) ? own - +suffix : 0;
-    const notPromoted = ahead
-      ? `<div style="margin-top:3px;font-size:9px;color:var(--yellow)">⚠ ${t('pl_unpromoted').replace('{n}', ahead)}</div>`
+    const notPromoted = sig.unpromoted
+      ? `<div style="margin-top:3px;font-size:9px;color:var(--yellow)">⚠ ${t('pl_unpromoted').replace('{n}', sig.unpromoted)}</div>`
       : '';
 
     // Hvornår udgaven blev publiceret. Datoen kan ikke bruges til at afgøre om
@@ -7026,16 +7107,14 @@ function renderPipeline() {
 
     // Findes flowet først i et senere trin, er det ikke en ventende
     // forfremmelse — det er bygget udenom kæden.
-    const laterOnly = (c.missing && !c.unknown && row.cells.slice(i + 1).some(x => !x.missing && !x.unknown))
+    const laterOnly = sig.laterOnly
       ? `<div style="margin-top:3px;font-size:9px;color:var(--yellow)">⚠ ${t('pl_only_later')}</div>`
       : '';
 
     // Uenighed afgøres parvis, så knappen ved præcis hvilke to miljøer der er
     // ude af trit — ikke bare at rækken er det et eller andet sted.
     const nextCell = row.cells[i + 1];
-    const differs = hashes && nextCell && hashes[c.envId] && hashes[nextCell.envId]
-      && hashes[c.envId] !== hashes[nextCell.envId];
-    const pull = differs
+    const pull = sig.differsNext
       ? `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 6px;border-color:var(--yellow);color:var(--yellow)"
            title="${t('pl_pull_back_title')}"
            onclick="promoteFromBoard('${escapeHtml(nextCell.name || row.flowName).replace(/'/g, "\\'")}','${row.flowType}','${nextCell.envId}','${c.envId}')"
@@ -7051,8 +7130,7 @@ function renderPipeline() {
     // Ved vi at dette miljø afviger fra det til venstre, så vil en forfremmelse
     // kassere netop den forskel man lige har fundet. Knappen bliver ikke taget
     // væk — nogle gange er det dét man vil — men den siger hvad den gør.
-    const overwrites = hashes && prev && hashes[c.envId] && hashes[prev.envId]
-      && hashes[c.envId] !== hashes[prev.envId];
+    const overwrites = sig.overwrites;
     const btn = promotable
       ? (prev.published
           ? `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm"
@@ -7101,6 +7179,7 @@ function renderPipeline() {
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
         <span style="font-size:12px;color:var(--muted)">${rows.length} ${t('pl_count')} · ${Object.keys(pipelineHashes).length} ${t('pl_checked_count')}</span>
         <button class="btn btn-secondary btn-sm" style="font-size:11px" onclick="checkAllShown()">${t('pl_check_all')}</button>
+        <button class="btn btn-secondary btn-sm" style="font-size:11px" title="${t('pl_csv_title')}" onclick="downloadPipelineCsv()">${t('pl_csv')}</button>
       </div>
       <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
         <thead><tr><th style="text-align:left;padding:8px 10px;font-size:11px;color:var(--muted);font-family:var(--mono)">${t('pl_flow')}</th>${head}</tr></thead>
@@ -7322,6 +7401,80 @@ async function createManifestTable(envId) {
   if (r.error) return showAlert('pipelineAlert', r.error, 'err');
   showAlert('pipelineAlert', t('mf_created'), 'ok');
   await loadManifestStatus();
+}
+
+// ── CSV-udtræk ────────────────────────────────────────────────────────────────
+// Bygger på pipelineRowsShown() og cellSignals(), så udtrækket viser præcis det
+// samme som skærmen — filter, søgning og bemærkninger.
+function csvCell(v) {
+  const s = v == null ? '' : String(v);
+  // Semikolon er skilletegnet (dansk Excel), så alt der kan forveksles pakkes ind.
+  return /[";\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+function pipelineCsv() {
+  const d = pipelineData;
+  if (!d) return '';
+  const rows = pipelineRowsShown();
+  const envs = d.environments;
+
+  const head = [t('csv_flow'), t('csv_type')];
+  for (const e of envs) {
+    const p = (e.stage || '—').toUpperCase();
+    head.push(`${p} ${t('csv_name')}`, `${p} ${t('csv_version')}`,
+              `${p} ${t('csv_published')}`, `${p} ${t('csv_note')}`, `${p} ${t('csv_by')}`);
+  }
+  head.push(t('csv_content'));
+
+  const body = rows.map(r => {
+    const line = [r.flowName, r.flowType];
+    r.cells.forEach((c, i) => {
+      const sig = cellSignals(c, i, r);
+      const noter = [];
+      if (sig.pastManifest)      noter.push(t('pl_changed_since'));
+      if (!sig.pastManifest && sig.aheadOfPrev) noter.push(t('pl_ahead_of_prev').replace('{n}', sig.aheadOfPrev));
+      if (sig.unpromoted)        noter.push(t('pl_unpromoted').replace('{n}', sig.unpromoted));
+      if (sig.laterOnly)         noter.push(t('pl_only_later'));
+      line.push(
+        c.unknown ? t('pl_unknown') : c.missing ? '' : (c.name || ''),
+        c.unknown ? '' : c.missing ? t('csv_missing') : (c.published ? 'v' + c.published : t('pl_draft')),
+        (!c.missing && !c.unknown && c.publishedAt) ? new Date(c.publishedAt).toISOString().slice(0, 10) : '',
+        noter.join(' · '),
+        c.promotedBy ? c.promotedBy + (c.promotedBySource === 'machine' ? ' (pc)' : '') : ''
+      );
+    });
+    // Indholdstjekket er kun kørt for de rækker man har bedt om — det siges
+    // som "ikke tjekket" i stedet for at lade feltet stå tomt og tvetydigt.
+    const h = pipelineHashes[r.flowName + '|' + r.flowType];
+    const present = r.cells.filter(c => !c.missing && !c.unknown);
+    let verdict = t('pl_unchecked');
+    if (present.length < 2) verdict = '';
+    else if (h) {
+      const vals = present.map(c => h[c.envId]).filter(Boolean);
+      verdict = vals.length < 2 ? t('pl_check_failed')
+              : (new Set(vals).size === 1 ? t('pl_in_sync') : t('pl_drift'));
+    }
+    line.push(verdict);
+    return line;
+  });
+
+  return [head, ...body].map(r => r.map(csvCell).join(';')).join('\r\n');
+}
+
+function downloadPipelineCsv() {
+  const d = pipelineData;
+  if (!d) return;
+  // BOM foran: uden den viser Excel æ, ø og å som volapyk.
+  const blob = new Blob(['\uFEFF' + pipelineCsv()], { type: 'text/csv;charset=utf-8;' });
+  const navn = `pipeline_${d.tenant}_${d.group}_${new Date().toISOString().slice(0, 10)}.csv`
+    .replace(/[\\/:*?"<>|\s]+/g, '_');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = navn;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 </script>
 </body>

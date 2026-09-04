@@ -2045,7 +2045,13 @@ app.get('/api/pipeline', async (req, res) => {
             cell.recordKind = om.kind || null;
             const left = parseInt(String(om.version || '').split('.')[0], 10);
             const nowV = parseInt(String(cell.published || '').split('.')[0], 10);
-            if (Number.isFinite(left) && Number.isFinite(nowV) && nowV > left)
+            // "Uden om pipelinen" gælder kun et miljø der MODTOG flowet fra os.
+            // Sendte miljøet det videre (promotedTo), er senere publiceringer
+            // helt almindeligt udviklingsarbejde — det er dét dev er til for —
+            // og dækkes af "N udgaver ikke forfremmet". Uden den skelnen ville
+            // hver eneste dev-org stå rød, så snart nogen rørte den.
+            const modtog = !!om.promotedFrom;
+            if (modtog && Number.isFinite(left) && Number.isFinite(nowV) && nowV > left)
               cell.changedSincePromotion = true;
             return cell;
           }
