@@ -1,10 +1,75 @@
-# Archy GUI — Flow Manager · v1.26.1
+# Archy GUI — Flow Manager · v1.26.2
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.26.2
+---
+**🇩🇰 Dansk**
+- **`by` bruger nu den rigtige Genesys-bruger når miljøet er logget ind med OAuth (PKCE).** Før skrev den altid pc-brugeren, fordi opslaget aldrig blev forsøgt. Nu spørges `/api/v2/users/me`, og rækken bærer personens e-mail.
+- **Med client credentials findes der ingen Genesys-bruger** — det er ikke en mangel, det er sådan tokenet er. Målt mod en rigtig org:
+
+  ```
+  GET /api/v2/users/me   →  400  "This request requires a user context.
+                                  Client credentials cannot be used..."
+  GET /api/v2/tokens/me  →  authenticatedUser: null
+  ```
+
+  Så er pc-brugeren det eneste sande vi kan notere. **Rækken siger nu hvilken slags identitet det er** via et nyt felt `bySource`:
+
+  | `bySource` | Betydning |
+  |---|---|
+  | `genesys` | rigtig Genesys-bruger, fra et PKCE-login |
+  | `machine` | pc-bruger — miljøet kører client credentials, så der er ingen Genesys-bruger |
+
+  Museover-teksten skriver det ud, så `skn_d@SKYOGA` ikke forveksles med en Genesys-identitet.
+
+- **`kind` i manifestet har præcis to værdier:**
+
+  | Værdi | Hvornår |
+  |---|---|
+  | `migration` | flowet blev flyttet hertil med værktøjet |
+  | `baseline` | nulpunkt — vi noterede blot hvad org'en indeholdt, uden at flytte noget |
+
+  Den bruges ét sted: et nulpunkt overskriver aldrig en rigtig migrering. (De `kind` man ser i afhængighedstjekket — `datatable`, `dataaction`, `division`, `surveyform` — er noget helt andet og hører ikke til manifestet.)
+
+- Brugeropslaget caches i 10 minutter pr. miljø, og fejler det, opdigtes ingen bruger — der falddes tilbage til pc-brugeren med `bySource: machine`.
+
+---
+**🇬🇧 English**
+- **`by` now uses the real Genesys user when the environment is logged in with OAuth (PKCE).** It always wrote the PC user before, because the lookup was never attempted. `/api/v2/users/me` is now asked, and the row carries the person's email.
+- **With client credentials there is no Genesys user** — that is not a shortcoming, it is what the token is. Measured against a real org:
+
+  ```
+  GET /api/v2/users/me   →  400  "This request requires a user context.
+                                  Client credentials cannot be used..."
+  GET /api/v2/tokens/me  →  authenticatedUser: null
+  ```
+
+  So the PC user is the only truthful thing to record. **The row now says which kind of identity it is**, through a new `bySource` field:
+
+  | `bySource` | Meaning |
+  |---|---|
+  | `genesys` | a real Genesys user, from a PKCE login |
+  | `machine` | PC user — the environment uses client credentials, so there is no Genesys user |
+
+  The hover text spells this out, so `skn_d@SKYOGA` is not mistaken for a Genesys identity.
+
+- **`kind` in the manifest has exactly two values:**
+
+  | Value | When |
+  |---|---|
+  | `migration` | the flow was moved here with the tool |
+  | `baseline` | baseline — we simply recorded what the org held, without moving anything |
+
+  It is used in one place: a baseline never overwrites a real migration. (The `kind` values seen in the dependency check — `datatable`, `dataaction`, `division`, `surveyform` — are something else entirely and do not belong to the manifest.)
+
+- The user lookup is cached for 10 minutes per environment, and if it fails no user is invented — it falls back to the PC user with `bySource: machine`.
+
+---
 
 ### v1.26.1
 ---
@@ -1149,7 +1214,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.26.1** — see [Changelog](#changelog) above.
+> Current version: **v1.26.2** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**

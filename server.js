@@ -1461,9 +1461,41 @@ function orgManifestKey(flowName, flowType) {
 
 // Hvem der rørte det. Med client-credentials findes der ingen bruger i Genesys,
 // så vi noterer hvem der kørte ArchyGUI — det er dét spørgsmålet handler om.
-function whoAmI() {
+const _whoCache = {};                 // customerId -> { who, at }
+const WHO_TTL = 10 * 60 * 1000;
+
+function machineUser() {
   try { return `${os.userInfo().username}@${os.hostname()}`; }
   catch (_) { return 'ukendt'; }
+}
+
+// Er miljøet logget ind med OAuth (PKCE), er tokenet en PERSON, og så skal
+// rækken bære den person — ikke hvem der tilfældigvis sad ved maskinen.
+//
+// Med client credentials findes der ingen Genesys-bruger: tokenet tilhører en
+// integration, ikke et menneske. Så er pc-brugeren det eneste sande vi kan
+// notere — og det skal siges, så det ikke forveksles med en Genesys-identitet.
+// Derfor bærer rækken både navnet og hvor det kommer fra.
+async function whoAmI(customer) {
+  if (!customer || customer.authType !== 'oauth')
+    return { by: machineUser(), bySource: 'machine' };
+
+  const hit = _whoCache[customer.id];
+  if (hit && Date.now() - hit.at < WHO_TTL) return { by: hit.who, bySource: 'genesys' };
+  try {
+    const { token, apiBase } = await getToken(customer);
+    const r = await axios.get(`${apiBase}/api/v2/users/me`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const who = r.data.email || r.data.username || r.data.name || r.data.id;
+    if (!who) throw new Error('intet brugernavn i svaret');
+    _whoCache[customer.id] = { who, at: Date.now() };
+    return { by: who, bySource: 'genesys' };
+  } catch (_) {
+    // Kan brugeren ikke slås op, opdigter vi ikke en — vi falder tilbage og
+    // siger hvad det er.
+    return { by: machineUser(), bySource: 'machine' };
+  }
 }
 
 const _mfTableCache = {};   // customerId -> { id, at }
@@ -1550,7 +1582,8 @@ async function readOrgManifest(customer) {
 
 async function writeOrgManifestRow(customer, flowName, flowType, data) {
   const key = orgManifestKey(flowName, flowType);
-  const payload = { ...data, by: whoAmI(), at: Date.now() };
+  const who = await whoAmI(customer);
+  const payload = { ...data, by: who.by, bySource: who.bySource, at: Date.now() };
   if (isDemo(customer)) { demoManifestWrite(customer.id, key, payload); return { ok: true, key }; }
 
   const tableId = await findOrgManifestTable(customer);
@@ -2007,7 +2040,9 @@ app.get('/api/pipeline', async (req, res) => {
             cell.promotedAt = om.publishedAt || om.at || null;
             cell.promotedVersion = om.version || null;
             cell.promotedBy = om.by || null;
+            cell.promotedBySource = om.bySource || null;
             cell.promotedFrom = om.promotedFrom || null;
+            cell.recordKind = om.kind || null;
             const left = parseInt(String(om.version || '').split('.')[0], 10);
             const nowV = parseInt(String(cell.published || '').split('.')[0], 10);
             if (Number.isFinite(left) && Number.isFinite(nowV) && nowV > left)

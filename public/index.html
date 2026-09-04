@@ -460,7 +460,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.26.1 · Archy GUI</div>
+    <div class="version" id="app-version">v1.26.2 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1543,6 +1543,7 @@ const LANGS = {
     mf_confirm:'Opret datatabellen "ArchyGUI_Manifest" i {env}? Det skriver et nyt objekt i kundens org.',
     mf_by:'noteret af',
     mf_local_only:'lokal fil — ikke delt',
+    mf_by_machine:'noteret af (pc-bruger — miljøet bruger client credentials, så der er ingen Genesys-bruger)',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1918,6 +1919,7 @@ const LANGS = {
     mf_confirm:'Create the datatable "ArchyGUI_Manifest" in {env}? This writes a new object in the customer\'s org.',
     mf_by:'recorded by',
     mf_local_only:'local file — not shared',
+    mf_by_machine:'recorded by (PC user — the environment uses client credentials, so there is no Genesys user)',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -2293,6 +2295,7 @@ const LANGS = {
     mf_confirm:'Créer la table « ArchyGUI_Manifest » dans {env} ? Cela écrit un nouvel objet dans l\'org du client.',
     mf_by:'noté par',
     mf_local_only:'fichier local — non partagé',
+    mf_by_machine:'noté par (utilisateur du PC — l\'environnement utilise des client credentials, il n\'y a donc pas d\'utilisateur Genesys)',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -2668,6 +2671,7 @@ const LANGS = {
     mf_confirm:'De datatable "ArchyGUI_Manifest" aanmaken in {env}? Dit schrijft een nieuw object in de org van de klant.',
     mf_by:'genoteerd door',
     mf_local_only:'lokaal bestand — niet gedeeld',
+    mf_by_machine:'genoteerd door (pc-gebruiker — de omgeving gebruikt client credentials, dus er is geen Genesys-gebruiker)',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -3043,6 +3047,7 @@ const LANGS = {
     mf_confirm:'¿Crear la tabla «ArchyGUI_Manifest» en {env}? Esto escribe un objeto nuevo en la org del cliente.',
     mf_by:'anotado por',
     mf_local_only:'archivo local: no compartido',
+    mf_by_machine:'anotado por (usuario del PC: el entorno usa client credentials, así que no hay usuario de Genesys)',
   }
 };
 
@@ -7006,7 +7011,9 @@ function renderPipeline() {
            title="${t('pl_changed_since_title')
              .replace('{v}', c.promotedVersion || '?')
              .replace('{when}', c.promotedAt ? new Date(c.promotedAt).toLocaleString() : '?')
-             + (c.promotedBy ? ` — ${t('mf_by')} ${c.promotedBy}` : '')
+             + (c.promotedBy
+                 ? ` — ${c.promotedBySource === 'machine' ? t('mf_by_machine') : t('mf_by')} ${c.promotedBy}`
+                 : '')
              + (c.manifestSource === 'local' ? ` (${t('mf_local_only')})` : '')}"
            >✗ ${t('pl_changed_since')}</div>`
       : '';
