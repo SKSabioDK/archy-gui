@@ -339,7 +339,7 @@ function promotionName(currentName, sourcePublishedVersion) {
 
 // Forfremmelse inde i demoen. Kopierer indholdet fra kilden til målet under det
 // navn reglen giver. Ingen Archy, ingen Genesys — kun den lokale demofil.
-app.post('/api/demo/promote', (req, res) => {
+app.post('/api/demo/promote', async (req, res) => {
   const { sourceId, targetId, flowName, flowType } = req.body;
   const all = loadCustomers();
   const source = all.find(c => c.id === sourceId);
@@ -399,6 +399,16 @@ app.post('/api/demo/promote', (req, res) => {
     flowName: newName, flowType,
     sourceVersion: src.published, targetVersion: existing ? existing.published : '1.0',
     targetPublishedAt: now, action,
+    hash: flowContentHash(src.content)
+  });
+
+  // To rækker, én i hver org, og hver beskriver kun sig selv. Kilden er også
+  // ændret — den blev omdøbt — så dens egen række skal med.
+  await recordOrgManifest(source, target, newName, flowType, {
+    sourceVersion: src.published,
+    targetVersion: existing ? existing.published : '1.0',
+    targetPublishedAt: now,
+    sourcePublishedAt: src.publishedAt,
     hash: flowContentHash(src.content)
   });
 
@@ -1427,6 +1437,204 @@ async function getFlowPublishInfo(customer, flowName, flowType) {
 // og oprettes igen, mens org-id'et følger organisationen.
 const MANIFEST_FILE = path.join(FLOWS_DIR, '.migrations.json');
 
+// ── Manifest i org'en ────────────────────────────────────────────────────────
+// Den lokale fil kan ikke deles: to personer på hver sin pc får hver sin
+// historik, og signalet "publiceret uden om pipelinen" ville sige noget
+// forskelligt alt efter hvem der kigger.
+//
+// Derfor ligger manifestet i en datatabel i org'en — og HVER ORG BESKRIVER KUN
+// SIG SELV. Kendsgerningen "dev har Velkomst_v10 på v10" skrives kun af den der
+// ændrede dev, så to skrivende kan aldrig sige hver sit om samme celle.
+// Uenighed er umulig af konstruktion, i stedet for noget vi skal løse bagefter.
+// En org der ikke kan nås bliver "ukendt" — præcis som tavlen allerede gør.
+
+const ORG_MANIFEST_TABLE = 'ArchyGUI_Manifest';
+
+// Nøglen er GRUNDNAVNET plus typen. Flownavnet ændrer sig ved hver forfremmelse
+// ("Velkomst" → "_v10" → "_v15"), så nøgles der på det fulde navn, bliver
+// rækken forældreløs hver gang. Samme fejl som i den lokale fil før v1.25.0.
+// Nøglefeltet i Genesys tager 256 tegn.
+function orgManifestKey(flowName, flowType) {
+  const k = `${baseFlowName(flowName)}|${normType(flowType)}`;
+  return k.length <= 256 ? k : k.slice(0, 256);
+}
+
+// Hvem der rørte det. Med client-credentials findes der ingen bruger i Genesys,
+// så vi noterer hvem der kørte ArchyGUI — det er dét spørgsmålet handler om.
+function whoAmI() {
+  try { return `${os.userInfo().username}@${os.hostname()}`; }
+  catch (_) { return 'ukendt'; }
+}
+
+const _mfTableCache = {};   // customerId -> { id, at }
+const MF_TABLE_TTL = 5 * 60 * 1000;
+
+async function findOrgManifestTable(customer) {
+  const hit = _mfTableCache[customer.id];
+  if (hit && Date.now() - hit.at < MF_TABLE_TTL) return hit.id;
+  const { token, apiBase } = await getToken(customer);
+  let page = 1;
+  for (;;) {
+    const r = await axios.get(`${apiBase}/api/v2/flows/datatables`, {
+      headers: { Authorization: `Bearer ${token}` },
+      params: { pageSize: 100, pageNumber: page }
+    });
+    const found = (r.data.entities || []).find(t => t.name === ORG_MANIFEST_TABLE);
+    if (found) { _mfTableCache[customer.id] = { id: found.id, at: Date.now() }; return found.id; }
+    if (page++ >= (r.data.pageCount || 1)) break;
+  }
+  _mfTableCache[customer.id] = { id: null, at: Date.now() };
+  return null;
+}
+
+async function createOrgManifestTable(customer) {
+  const { token, apiBase } = await getToken(customer);
+  const body = {
+    name: ORG_MANIFEST_TABLE,
+    description: 'ArchyGUI: hvad denne org indeholder, og hvornår det kom hertil. Skrives af ArchyGUI — ret ikke rækker i hånden.',
+    schema: {
+      $schema: 'http://json-schema.org/draft-04/schema#',
+      title: ORG_MANIFEST_TABLE,
+      type: 'object',
+      required: ['key'],
+      additionalProperties: false,
+      properties: {
+        key:  { title: 'Lookup Key', type: 'string', $id: '/properties/key',
+                displayOrder: 0, minLength: 1, maxLength: 256 },
+        Data: { title: 'Data', type: 'string', $id: '/properties/Data',
+                displayOrder: 1, minLength: 0, maxLength: 262144 }
+      }
+    }
+  };
+  const r = await axios.post(`${apiBase}/api/v2/flows/datatables`, body, {
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+  });
+  delete _mfTableCache[customer.id];
+  addLog('SUCCESS', `Manifesttabel "${ORG_MANIFEST_TABLE}" oprettet`, customer.name, 'MANIFEST');
+  return r.data.id;
+}
+
+// Demo-miljøer har ingen org — deres "tabel" ligger i demofilen.
+function demoManifest(envId) {
+  const d = loadDemo();
+  return (d.manifest || {})[envId] || {};
+}
+function demoManifestWrite(envId, key, data) {
+  const d = loadDemo();
+  d.manifest = d.manifest || {};
+  d.manifest[envId] = d.manifest[envId] || {};
+  d.manifest[envId][key] = data;
+  saveDemo(d);
+}
+
+async function readOrgManifest(customer) {
+  if (isDemo(customer)) return demoManifest(customer.id);
+  const tableId = await findOrgManifestTable(customer);
+  if (!tableId) return null;                       // ingen tabel = ikke taget i brug
+  const { token, apiBase } = await getToken(customer);
+  const out = {};
+  let page = 1;
+  for (;;) {
+    const r = await axios.get(`${apiBase}/api/v2/flows/datatables/${tableId}/rows`, {
+      headers: { Authorization: `Bearer ${token}` },
+      params: { pageSize: 100, pageNumber: page, showbrief: false }
+    });
+    for (const row of (r.data.entities || [])) {
+      try { out[row.key] = JSON.parse(row.Data || '{}'); }
+      catch (_) { /* en række nogen har rettet i hånden — spring den over */ }
+    }
+    if (page++ >= (r.data.pageCount || 1)) break;
+  }
+  return out;
+}
+
+async function writeOrgManifestRow(customer, flowName, flowType, data) {
+  const key = orgManifestKey(flowName, flowType);
+  const payload = { ...data, by: whoAmI(), at: Date.now() };
+  if (isDemo(customer)) { demoManifestWrite(customer.id, key, payload); return { ok: true, key }; }
+
+  const tableId = await findOrgManifestTable(customer);
+  if (!tableId) return { ok: false, reason: 'no-table' };
+  const { token, apiBase } = await getToken(customer);
+  const H = { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } };
+  const body = { key, Data: JSON.stringify(payload) };
+  const url = `${apiBase}/api/v2/flows/datatables/${tableId}/rows`;
+  try {
+    await axios.put(`${url}/${encodeURIComponent(key)}`, body, H);
+  } catch (e) {
+    // Findes rækken ikke endnu, oprettes den. Der er ingen upsert i API'et.
+    if (e.response?.status === 404) await axios.post(url, body, H);
+    else throw e;
+  }
+  return { ok: true, key };
+}
+
+// Skriver de to rækker en forfremmelse afstedkommer: én i kilden og én i målet.
+// Fejler den ene, siges det højt i loggen — men migreringen rulles ikke tilbage,
+// for flowet ER flyttet. Et manglende manifest er en mangel i bogføringen, ikke
+// en grund til at påstå at flytningen ikke skete.
+async function recordOrgManifest(source, target, flowName, flowType, info) {
+  const write = async (env, data, hvad) => {
+    try {
+      const r = await writeOrgManifestRow(env, flowName, flowType, data);
+      if (!r.ok && r.reason === 'no-table')
+        addLog('WARN', `${env.name} har ingen manifesttabel — ${hvad} blev ikke bogført. Opret den under Pipeline.`, env.name, 'MANIFEST');
+    } catch (e) {
+      addLog('ERROR', `Kunne ikke skrive manifest i ${env.name}: ${describeApiError(e)}`, env.name, 'MANIFEST');
+    }
+  };
+  await write(target, {
+    flowName, version: info.targetVersion, publishedAt: info.targetPublishedAt,
+    promotedFrom: source.name, promotedAt: info.targetPublishedAt,
+    sourceVersion: info.sourceVersion, hash: info.hash
+  }, 'målet');
+  await write(source, {
+    flowName, version: info.sourceVersion, publishedAt: info.sourcePublishedAt || null,
+    promotedTo: target.name, promotedAt: info.targetPublishedAt,
+    hash: info.hash
+  }, 'kilden');
+}
+
+app.get('/api/manifest/status', async (req, res) => {
+  const { tenant, group } = req.query;
+  const envs = loadCustomers().filter(c => tenantOf(c) === tenant && groupOf(c) === group)
+    .sort((a, b) => stageOrder(a.stage) - stageOrder(b.stage));
+  if (!envs.length) return res.status(404).json({ error: 'Ingen miljøer i den gruppe' });
+  const out = [];
+  for (const c of envs) {
+    if (isDemo(c)) {
+      out.push({ id: c.id, name: c.name, stage: stageOf(c), hasTable: true,
+                 rows: Object.keys(demoManifest(c.id)).length, demo: true });
+      continue;
+    }
+    try {
+      const rows = await readOrgManifest(c);
+      out.push({ id: c.id, name: c.name, stage: stageOf(c),
+                 hasTable: rows !== null, rows: rows ? Object.keys(rows).length : 0 });
+    } catch (e) {
+      out.push({ id: c.id, name: c.name, stage: stageOf(c), hasTable: false, error: describeApiError(e) });
+    }
+  }
+  res.json({ ok: true, table: ORG_MANIFEST_TABLE, environments: out });
+});
+
+app.post('/api/manifest/create', async (req, res) => {
+  const c = loadCustomers().find(x => x.id === req.body.envId);
+  if (!c) return res.status(404).json({ error: 'Ukendt miljø' });
+  if (isDemo(c)) return res.json({ ok: true, demo: true });
+  try {
+    const existing = await findOrgManifestTable(c);
+    if (existing) return res.json({ ok: true, existed: true });
+    await createOrgManifestTable(c);
+    res.json({ ok: true, created: true });
+  } catch (e) {
+    addLog('ERROR', `Kunne ikke oprette manifesttabel: ${describeApiError(e)}`, c.name, 'MANIFEST');
+    res.status(500).json({ error: describeApiError(e) });
+  }
+});
+
+
+
 // Org-id pr. kunde. Slås op én gang og huskes — det ændrer sig ikke.
 const orgIdCache = {};
 async function getOrgId(customer) {
@@ -1744,6 +1952,18 @@ app.get('/api/pipeline', async (req, res) => {
   const orgIds = {};
   for (const c of envs) orgIds[c.id] = isDemo(c) ? c.id : await getOrgId(c);
 
+  // Ligger manifestet i org'en, er DET nulpunktet — det er delt, så to personer
+  // på hver sin pc ser det samme. Den lokale fil bruges kun hvor org'en ikke har
+  // en tabel endnu, så intet går tabt undervejs i overgangen.
+  const orgManifests = {};
+  for (const c of envs) {
+    try { orgManifests[c.id] = await readOrgManifest(c); }
+    catch (e) {
+      orgManifests[c.id] = null;
+      addLog('WARN', `Kunne ikke læse manifesttabellen i ${c.name}: ${describeApiError(e)}`, c.name, 'MANIFEST');
+    }
+  }
+
   const failed = new Set(problems.map(p => p.environment));
   const rows = [];
   for (const [key, cells] of byFlow) {
@@ -1756,10 +1976,26 @@ app.get('/api/pipeline', async (req, res) => {
         // er nogen publiceringsdato, for udgavenummeret alene kan afsløre at
         // miljøet er publiceret videre siden vi forfremmede.
         if (!cell.missing && !cell.unknown) {
+          // Org-tabellen først: den beskriver netop dette miljø, og den er delt.
+          const om = orgManifests[c.id] && orgManifests[c.id][orgManifestKey(flowName, flowType)];
+          if (om) {
+            cell.manifestSource = 'org';
+            cell.promotedAt = om.publishedAt || om.at || null;
+            cell.promotedVersion = om.version || null;
+            cell.promotedBy = om.by || null;
+            cell.promotedFrom = om.promotedFrom || null;
+            const left = parseInt(String(om.version || '').split('.')[0], 10);
+            const nowV = parseInt(String(cell.published || '').split('.')[0], 10);
+            if (Number.isFinite(left) && Number.isFinite(nowV) && nowV > left)
+              cell.changedSincePromotion = true;
+            return cell;
+          }
+
           const m = findManifestEntry(manifest, {
             targetOrgId: orgIds[c.id], targetId: c.id, flowName, flowType
           });
           if (m) {
+            cell.manifestSource = 'local';
             // Både datoen og udgaven fra dengang vi forfremmede. Udgaven er den
             // stærkeste: er miljøet publiceret videre siden, står tallet højere
             // end det vi selv efterlod det på.

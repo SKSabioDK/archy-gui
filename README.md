@@ -1,10 +1,59 @@
-# Archy GUI — Flow Manager · v1.25.0
+# Archy GUI — Flow Manager · v1.26.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.26.0
+---
+**🇩🇰 Dansk**
+- **Manifestet kan nu ligge i org'en, så flere kan arbejde på samme kunde.** Den lokale `flows/.migrations.json` kan ikke deles: to personer på hver sin pc får hver sin historik, og signalet "publiceret uden om pipelinen" ville sige noget forskelligt alt efter hvem der kigger. Manifestet ligger nu i en datatabel — `ArchyGUI_Manifest` — i hvert miljø.
+
+- **Hver org beskriver kun sig selv.** Det er den afgørende beslutning. Kendsgerningen *"dev har Velkomst_v10 på v10"* skrives kun af den der ændrede dev, så to skrivende kan aldrig sige hver sit om samme celle — **uenighed er umulig af konstruktion**, i stedet for noget der skal løses bagefter. En forfremmelse skriver derfor to rækker: én i kilden (som netop blev omdøbt) og én i målet. Kan en org ikke nås, bliver den "ukendt", præcis som tavlen allerede gør.
+
+  Alternativet — at skrive hele billedet til alle orgs — ville give N kopier der kan komme ud af trit, hvilket er samme problem flyttet ind i Genesys.
+
+- **Målt mod jeres rigtige org før noget blev bygget:**
+
+  | Hvad | Grænse |
+  |---|---|
+  | Nøglefelt | 256 tegn |
+  | Strengfelt | 262.144 tegn |
+
+  Rigelig plads til JSON pr. række. Rækken bærer flownavn, udgave, publiceringstidspunkt, hvor det kom fra — og **hvem der gjorde det**. Det sidste er den egentlige gevinst ved at flytte det ud af den lokale fil, og det svarer direkte på *"hvem har arbejdet i det forkerte miljø"*.
+
+- **Nøglen er grundnavn + type**, ikke flownavnet. Med omdøbningsreglen ville en nøgle på det fulde navn blive forældreløs ved hver forfremmelse — samme fejl som i den lokale fil før v1.25.0.
+- **Tabellen oprettes ikke af sig selv.** Under Pipeline står der en oversigt pr. miljø med en `Opret tabel`-knap og en bekræftelse der siger hvad den gør. At ArchyGUI selv lægger et objekt i en kundes produktionsorg, fordi nogen åbnede programmet, bør være en bevidst handling.
+- **Den lokale fil bruges stadig hvor der ikke er en tabel**, så intet går tabt undervejs i overgangen. Er kilden den lokale fil, siges det i museover-teksten: *lokal fil — ikke delt*.
+- **Sidste skrivning vinder.** Datatabel-API'et har ingen "skriv kun hvis uændret". To der forfremmer samme flow samtidig — den sidste overskriver. Det kan mildnes ved at skrive efter en vellykket migrering og gemme hvem, men ikke fjernes.
+- Fejler manifestskrivningen, rulles migreringen **ikke** tilbage — flowet *er* flyttet. Det siges i loggen. En mangel i bogføringen er ikke en grund til at påstå at flytningen ikke skete.
+
+---
+**🇬🇧 English**
+- **The manifest can now live in the org, so several people can work on the same customer.** The local `flows/.migrations.json` cannot be shared: two people on different PCs get different histories, and the "published outside the pipeline" signal would say different things depending on who is looking. The manifest now lives in a datatable — `ArchyGUI_Manifest` — in each environment.
+
+- **Each org describes only itself.** That is the decisive choice. The fact *"dev holds Velkomst_v10 at v10"* is only ever written by whoever changed dev, so two writers can never disagree about the same cell — **disagreement is impossible by construction** rather than something to resolve afterwards. A promotion therefore writes two rows: one in the source (which was just renamed) and one in the target. An unreachable org becomes "unknown", exactly as the board already does.
+
+  The alternative — writing the whole picture to every org — would give N copies that can fall out of step, which is the same problem moved into Genesys.
+
+- **Measured against your real org before anything was built:**
+
+  | What | Limit |
+  |---|---|
+  | Key field | 256 characters |
+  | String field | 262,144 characters |
+
+  Ample room for JSON per row. The row carries flow name, version, publish time, where it came from — and **who did it**. That last one is the real gain from moving out of the local file, and it answers *"who worked in the wrong environment"* directly.
+
+- **The key is base name + type**, not the flow name. With the naming rule, keying on the full name would orphan the row at every promotion — the same bug as in the local file before v1.25.0.
+- **The table is not created on its own.** Under Pipeline there is a per-environment overview with a `Create table` button and a confirmation stating what it does. ArchyGUI placing an object in a customer's production org because someone opened the program should be a deliberate act.
+- **The local file is still used where there is no table**, so nothing is lost during the transition. When the local file is the source, the hover text says so: *local file — not shared*.
+- **Last write wins.** The datatable API has no compare-and-swap. Two people promoting the same flow at once — the last one overwrites. Writing only after a successful migration and recording who helps, but does not remove it.
+- If the manifest write fails, the migration is **not** rolled back — the flow *has* moved. It is stated in the log. A gap in the bookkeeping is not a reason to claim the move did not happen.
+
+---
 
 ### v1.25.0
 ---
@@ -1085,7 +1134,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.25.0** — see [Changelog](#changelog) above.
+> Current version: **v1.26.0** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**

@@ -460,7 +460,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.25.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.26.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -572,6 +572,11 @@
       </div>
 
       <div id="pipelineAlert"></div>
+      <div class="card" id="mfCard" style="display:none">
+        <div class="card-title" data-i18n="mf_title">DELT MANIFEST</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px" data-i18n="mf_hint">Hvert miljø har en datatabel der beskriver sig selv.</div>
+        <div id="mfStatus"></div>
+      </div>
       <div class="card" id="pl-filterCard" style="display:none">
         <div class="grid-2">
           <div><input id="pl-search" oninput="renderPipeline()" placeholder="🔍  Filtrér flows…" data-i18n-placeholder="pl_search" /></div>
@@ -1528,6 +1533,16 @@ const LANGS = {
     pl_changed_since_title:'Vi efterlod miljøet på v{v} ({when}). Det står højere nu, så nogen har publiceret her siden.',
     pl_ahead_of_prev:'{n} udgave(r) foran trinnet før',
     pl_ahead_of_prev_title:'I en kæde falder udgavetallene nedad — arbejdet sker opstrøms. Står et senere trin højere, er der sandsynligvis arbejdet direkte i det. Bemærk: et miljø der var i drift længe før pipelinen kan stå højt af helt naturlige grunde.',
+    mf_title:'DELT MANIFEST',
+    mf_hint:'Hvert miljø har en datatabel der beskriver sig selv — hvad org\'en indeholder, og hvornår det kom hertil. Fordi hver org kun skriver om sig selv, kan to personer på hver sin pc aldrig sige hver sit om samme celle. Uden tabellen falder vi tilbage på den lokale fil, som ikke er delt.',
+    mf_has_table:'har tabel',
+    mf_no_table:'ingen tabel',
+    mf_rows:'rækker',
+    mf_create:'Opret tabel',
+    mf_created:'Manifesttabellen er oprettet',
+    mf_confirm:'Opret datatabellen "ArchyGUI_Manifest" i {env}? Det skriver et nyt objekt i kundens org.',
+    mf_by:'noteret af',
+    mf_local_only:'lokal fil — ikke delt',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1893,6 +1908,16 @@ const LANGS = {
     pl_changed_since_title:'We left this environment at v{v} ({when}). It is higher now, so someone has published here since.',
     pl_ahead_of_prev:'{n} version(s) ahead of the previous stage',
     pl_ahead_of_prev_title:'In a chain the version numbers fall as you go downstream — the work happens upstream. A later stage standing higher has probably been worked on directly. Note: an environment that was in use long before the pipeline can stand high for perfectly ordinary reasons.',
+    mf_title:'SHARED MANIFEST',
+    mf_hint:'Each environment has a datatable describing itself — what the org holds and when it arrived. Because each org only writes about itself, two people on different PCs can never disagree about the same cell. Without the table we fall back on the local file, which is not shared.',
+    mf_has_table:'has table',
+    mf_no_table:'no table',
+    mf_rows:'rows',
+    mf_create:'Create table',
+    mf_created:'The manifest table has been created',
+    mf_confirm:'Create the datatable "ArchyGUI_Manifest" in {env}? This writes a new object in the customer\'s org.',
+    mf_by:'recorded by',
+    mf_local_only:'local file — not shared',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -2258,6 +2283,16 @@ const LANGS = {
     pl_changed_since_title:'Nous avons laissé cet environnement en v{v} ({when}). Il est plus élevé maintenant : quelqu\'un a publié depuis.',
     pl_ahead_of_prev:'{n} version(s) d\'avance sur l\'étape précédente',
     pl_ahead_of_prev_title:'Dans une chaîne, les numéros de version diminuent vers l\'aval : le travail se fait en amont. Une étape ultérieure plus élevée a probablement été modifiée directement. Remarque : un environnement en service bien avant le pipeline peut être élevé pour des raisons tout à fait normales.',
+    mf_title:'MANIFESTE PARTAGÉ',
+    mf_hint:'Chaque environnement possède une table de données qui le décrit — ce que contient l\'org et quand cela est arrivé. Comme chaque org n\'écrit que sur elle-même, deux personnes sur des PC différents ne peuvent jamais se contredire. Sans la table, nous revenons au fichier local, qui n\'est pas partagé.',
+    mf_has_table:'table présente',
+    mf_no_table:'pas de table',
+    mf_rows:'lignes',
+    mf_create:'Créer la table',
+    mf_created:'La table de manifeste a été créée',
+    mf_confirm:'Créer la table « ArchyGUI_Manifest » dans {env} ? Cela écrit un nouvel objet dans l\'org du client.',
+    mf_by:'noté par',
+    mf_local_only:'fichier local — non partagé',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -2623,6 +2658,16 @@ const LANGS = {
     pl_changed_since_title:'We lieten deze omgeving achter op v{v} ({when}). Die staat nu hoger, dus iemand heeft hier sindsdien gepubliceerd.',
     pl_ahead_of_prev:'{n} versie(s) voor op de vorige fase',
     pl_ahead_of_prev_title:'In een keten dalen de versienummers stroomafwaarts — het werk gebeurt stroomopwaarts. Staat een latere fase hoger, dan is er waarschijnlijk direct in gewerkt. Let op: een omgeving die al lang vóór de pipeline in gebruik was, kan om heel gewone redenen hoog staan.',
+    mf_title:'GEDEELD MANIFEST',
+    mf_hint:'Elke omgeving heeft een datatable die zichzelf beschrijft — wat de org bevat en wanneer het hier kwam. Doordat elke org alleen over zichzelf schrijft, kunnen twee mensen op verschillende pc\'s nooit iets anders zeggen over dezelfde cel. Zonder de tabel vallen we terug op het lokale bestand, dat niet gedeeld is.',
+    mf_has_table:'heeft tabel',
+    mf_no_table:'geen tabel',
+    mf_rows:'rijen',
+    mf_create:'Tabel aanmaken',
+    mf_created:'De manifesttabel is aangemaakt',
+    mf_confirm:'De datatable "ArchyGUI_Manifest" aanmaken in {env}? Dit schrijft een nieuw object in de org van de klant.',
+    mf_by:'genoteerd door',
+    mf_local_only:'lokaal bestand — niet gedeeld',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -2988,6 +3033,16 @@ const LANGS = {
     pl_changed_since_title:'Dejamos este entorno en v{v} ({when}). Ahora está más alto, así que alguien ha publicado aquí desde entonces.',
     pl_ahead_of_prev:'{n} versión(es) por delante de la etapa anterior',
     pl_ahead_of_prev_title:'En una cadena los números de versión bajan aguas abajo: el trabajo ocurre aguas arriba. Una etapa posterior más alta probablemente se ha tocado directamente. Nota: un entorno en uso mucho antes del pipeline puede estar alto por razones perfectamente normales.',
+    mf_title:'MANIFIESTO COMPARTIDO',
+    mf_hint:'Cada entorno tiene una tabla de datos que se describe a sí misma: qué contiene la org y cuándo llegó. Como cada org solo escribe sobre sí misma, dos personas en PC distintos nunca pueden discrepar sobre la misma celda. Sin la tabla recurrimos al archivo local, que no se comparte.',
+    mf_has_table:'tiene tabla',
+    mf_no_table:'sin tabla',
+    mf_rows:'filas',
+    mf_create:'Crear tabla',
+    mf_created:'La tabla de manifiesto ha sido creada',
+    mf_confirm:'¿Crear la tabla «ArchyGUI_Manifest» en {env}? Esto escribe un objeto nuevo en la org del cliente.',
+    mf_by:'anotado por',
+    mf_local_only:'archivo local: no compartido',
   }
 };
 
@@ -6864,6 +6919,7 @@ async function loadPipeline() {
   pipelineData = r;
   document.getElementById('pl-filterCard').style.display = 'block';
   renderPipeline();
+  loadManifestStatus();
 }
 
 function renderPipeline() {
@@ -6949,7 +7005,9 @@ function renderPipeline() {
       ? `<div style="margin-top:3px;font-size:9px;color:var(--red)"
            title="${t('pl_changed_since_title')
              .replace('{v}', c.promotedVersion || '?')
-             .replace('{when}', c.promotedAt ? new Date(c.promotedAt).toLocaleString() : '?')}"
+             .replace('{when}', c.promotedAt ? new Date(c.promotedAt).toLocaleString() : '?')
+             + (c.promotedBy ? ` — ${t('mf_by')} ${c.promotedBy}` : '')
+             + (c.manifestSource === 'local' ? ` (${t('mf_local_only')})` : '')}"
            >✗ ${t('pl_changed_since')}</div>`
       : '';
 
@@ -7220,6 +7278,43 @@ async function demoRemove() {
   showAlert('customerAlert', t('demo_removed'), 'ok');
   pipelineData = null; pipelineHashes = {};
   await refreshCustomers();
+}
+
+// ── Delt manifest ─────────────────────────────────────────────────────────────
+async function loadManifestStatus() {
+  const tenant = document.getElementById('pl-tenant').value;
+  const group  = document.getElementById('pl-group').value;
+  const card = document.getElementById('mfCard');
+  if (!tenant || !group) { card.style.display = 'none'; return; }
+  const r = await fetch(`/api/manifest/status?tenant=${encodeURIComponent(tenant)}&group=${encodeURIComponent(group)}`)
+    .then(x => x.json()).catch(e => ({ error: e.message }));
+  if (r.error) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  document.getElementById('mfStatus').innerHTML = r.environments.map(e => {
+    const state = e.error
+      ? `<span style="color:var(--red)">${escapeHtml(e.error)}</span>`
+      : e.hasTable
+        ? `<span style="color:var(--green)">✓ ${t('mf_has_table')}</span>
+           <span style="color:var(--muted)">· ${e.rows} ${t('mf_rows')}</span>`
+        : `<span style="color:var(--yellow)">${t('mf_no_table')}</span>
+           <button class="btn btn-secondary btn-sm" style="margin-left:8px;font-size:10px;padding:2px 8px"
+             onclick="createManifestTable('${e.id}')">${t('mf_create')}</button>`;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:5px 0;font-size:12px">
+        <span style="font-family:var(--mono);color:var(--muted);min-width:44px">${(e.stage || '—').toUpperCase()}</span>
+        <span style="min-width:190px">${escapeHtml(e.name)}</span>${state}</div>`;
+  }).join('');
+}
+
+async function createManifestTable(envId) {
+  const env = customers.find(c => c.id === envId);
+  if (!confirm(t('mf_confirm').replace('{env}', env ? env.name : envId))) return;
+  const r = await fetch('/api/manifest/create', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ envId })
+  }).then(x => x.json());
+  if (r.error) return showAlert('pipelineAlert', r.error, 'err');
+  showAlert('pipelineAlert', t('mf_created'), 'ok');
+  await loadManifestStatus();
 }
 </script>
 </body>
