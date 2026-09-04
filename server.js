@@ -1004,7 +1004,21 @@ async function exportFlowToYaml(customer, flowName, flowType) {
     .sort((a, b) => mt(b) - mt(a));
   if (!touched.length) throw new Error(`Eksporten skrev ingen YAML-fil for "${flowName}"`);
   const fileName = touched[0];
-  return { yaml: fs.readFileSync(path.join(dir, fileName), 'utf8'), fileName, version: versionFromFileName(fileName) };
+  const yaml = fs.readFileSync(path.join(dir, fileName), 'utf8');
+  assertYamlIsFlow(yaml, flowName, fileName);
+  return { yaml, fileName, version: versionFromFileName(fileName) };
+}
+
+// Sidste kontrol før vi viser eller migrerer indholdet: står der det flownavn i
+// YAML'en som brugeren bad om? Kan navnet ikke læses, lader vi det passere —
+// vi vil hellere mangle kontrollen end afvise en gyldig eksport.
+function assertYamlIsFlow(yaml, flowName, fileName) {
+  const m = String(yaml).match(/^[ \t]{2,}name:[ \t]*(.+?)[ \t]*$/m);
+  if (!m) return;
+  const got = m[1].replace(/^["']|["']$/g, '');
+  const norm = x => String(x).trim().toLowerCase();
+  if (norm(got) !== norm(flowName))
+    throw new Error(`Eksporten gav det forkerte flow: bad om "${flowName}", filen ${fileName} indeholder "${got}"`);
 }
 
 // Hvornår blev flowet sidst publiceret, og af hvem? Det er den oplysning der
@@ -1900,15 +1914,11 @@ app.post('/api/export', async (req, res) => {
   addLog('INFO', `Exporting flow "${flowName}" (${flowTypeLower}) from ${customer.name}`, customer.name, 'EXPORT');
 
   try {
-    await runArchy(
-      `export --flowName "${flowName}" --flowType ${flowTypeLower} --exportType yaml --force --outputDir "${exportDir}"`,
-      customer
-    );
-    // Find generated file
-    const files = fs.readdirSync(exportDir).filter(f => f.endsWith('.yaml'));
-    const match = files.find(f => f.toLowerCase().includes(flowName.toLowerCase().replace(/\s+/g, '')));
-    const yamlFile = match || files[files.length - 1];
-    const content = fs.readFileSync(path.join(exportDir, yamlFile), 'utf8');
+    // Tidligere gættede vi filnavnet ud fra flownavnet og faldt tilbage på
+    // "sidste fil i mappen". Navnet fik fjernet mellemrum, filnavnene beholdt
+    // dem — så ethvert flernavnsflow ramte forbi og viste et fremmed flow.
+    const { yaml: content, fileName: yamlFile } =
+      await exportFlowToYaml(customer, flowName, flowTypeLower);
     addLog('SUCCESS', `Exported: ${yamlFile} → ${exportDir}`, customer.name, 'EXPORT');
     res.json({ ok: true, fileName: yamlFile, content, savedTo: exportDir });
   } catch (e) {

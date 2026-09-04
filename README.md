@@ -1,10 +1,41 @@
-# Archy GUI — Flow Manager · v1.20.2
+# Archy GUI — Flow Manager · v1.20.3
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
 ---
 
 ## Changelog
+
+### v1.20.3
+---
+**🇩🇰 Dansk**
+- **Rettet: Export YAML kunne vise et helt andet flow end det man valgte** — Efter eksporten gættede `/api/export` sig frem til filen ved at lede efter flownavnet i filnavnene. Men navnet fik fjernet sine mellemrum, mens filnavnene beholdt deres:
+
+  | Valgt flow | Søgte efter | Filen hedder | Resultat |
+  |---|---|---|---|
+  | `Notify Flow Error` | `notifyflowerror` | `Notify Flow Error_v1-0.yaml` | rammer forbi |
+  | `WeekNumber` | `weeknumber` | `WeekNumber_v6-0.yaml` | rammer |
+
+  **Ethvert flownavn med mellemrum ramte forbi.** Og når intet matchede, tog koden *sidste fil i mappen* — et vilkårligt, fremmed flow, som så blev vist som om det var eksporten. Det er sådan et valgt `Notify Flow Error` kunne ende med at vise `WeekNumber`.
+
+- **Filen findes nu på hvad eksporten rørte ved** — mappen aflæses før og efter, og kun filer der er nye eller nyskrevne kommer i betragtning. Der er ingen "gæt"-tilbagefald: skrev eksporten ingen fil, siger den det. Samme fremgangsmåde som migrerings- og sammenligningsvejene allerede brugte — `/api/export` var det sidste sted med den gamle logik.
+- **Nyt værn: indholdet kontrolleres mod det man bad om** — flownavnet inde i YAML'en sammenholdes med det valgte flow, og passer de ikke, stopper eksporten med at sige hvad man bad om og hvad filen indeholder. Kontrollen gælder alle fire eksportveje. Afprøvet mod alle 147 eksisterende YAML-filer: 147 af 147 går igennem, ingen falske afvisninger.
+
+---
+**🇬🇧 English**
+- **Fixed: Export YAML could show an entirely different flow than the one selected** — After exporting, `/api/export` guessed at the file by looking for the flow name inside the file names. But the name had its spaces stripped while the file names kept theirs:
+
+  | Selected flow | Searched for | File is named | Result |
+  |---|---|---|---|
+  | `Notify Flow Error` | `notifyflowerror` | `Notify Flow Error_v1-0.yaml` | misses |
+  | `WeekNumber` | `weeknumber` | `WeekNumber_v6-0.yaml` | hits |
+
+  **Every flow name containing a space missed.** And when nothing matched, the code took *the last file in the directory* — an arbitrary, unrelated flow, then displayed as though it were the export. That is how a selected `Notify Flow Error` could end up showing `WeekNumber`.
+
+- **The file is now found by what the export actually touched** — the directory is read before and after, and only files that are new or freshly written are considered. There is no guessing fallback: if the export wrote no file, it says so. This is the same approach the migration and comparison paths already used — `/api/export` was the last place still on the old logic.
+- **New guard: the content is checked against what was asked for** — the flow name inside the YAML is compared with the selected flow, and if they disagree the export stops and states what was requested and what the file contains. The check covers all four export paths. Tested against all 147 existing YAML files: 147 of 147 pass, no false rejections.
+
+---
 
 ### v1.20.2
 ---
@@ -748,7 +779,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.20.2** — see [Changelog](#changelog) above.
+> Current version: **v1.20.3** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
