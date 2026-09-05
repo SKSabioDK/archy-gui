@@ -5,6 +5,31 @@
 
 ---
 
+### v1.31.0
+---
+**🇩🇰 Dansk**
+- **`N udgaver foran trinnet før` undertrykkes når flowet kom baglæns.** Fingerpeget bygger på at arbejdet flyder opstrøms → ned, så et højere udgavetal nedstrøms er mistænkeligt. Men henter man prod ned i et nyt dev, er rækkefølgen vendt om **med vilje**, og prods tæller er naturligt højere. Uden dette ville hvert eneste flow stå rødt dagen efter man satte dev op.
+
+  Viser manifestet at det tidligere trin blev hentet **fra** dette, springes fingerpeget over. Afprøvet i demoen: prod stod med *9 udgaver foran* før, og **0** efter at uat var hentet fra prod.
+
+- **Rettet: demoens forfremmelse skrev manifestrækken under en nøgle der aldrig blev læst.** Den sendte det præfiksede navn — `UAT_Betaling|INBOUNDCALL` — mens tavlen slår op på grundnavnet `Betaling|INBOUNDCALL`. Rækken var der, men usynlig. Samme fejl som jeg rettede i den rigtige migreringsvej i v1.30.0; demoens var overset.
+
+- **Rettet: README viste begge sprog på én gang.** Siden delte teksten på to `---` i træk — et mønster der forsvandt da changeloggen flyttede ud i v1.28.0. Delingen sker nu på **sprogankrene**, som står i filen netop for at kunne linke til hvert sprog.
+- **README følger appens sprogvalg.** De to flag-faner er væk; vælger man engelsk i toppen, skifter vejledningen med. Dansk viser dansk, alle andre sprog viser den engelske vejledning — der findes ikke andre.
+
+---
+**🇬🇧 English**
+- **`N versions ahead of the previous stage` is suppressed when the flow came backwards.** The indication rests on work flowing upstream → down, so a higher version count downstream is suspicious. But pull prod down into a fresh dev and the order is inverted **deliberately**; prod's counter is naturally higher. Without this, every single flow would sit red the day after you set dev up.
+
+  If the manifest shows the earlier stage was pulled **from** this one, the indication is skipped. Tested in the demo: prod read *9 versions ahead* before, and **0** after uat was pulled from prod.
+
+- **Fixed: the demo's promotion wrote the manifest row under a key that is never read.** It passed the prefixed name — `UAT_Betaling|INBOUNDCALL` — while the board looks up the base name `Betaling|INBOUNDCALL`. The row was there but invisible. The same fault I fixed in the real migration path in v1.30.0; the demo's copy was missed.
+
+- **Fixed: the README showed both languages at once.** The page split the text on two consecutive `---`, a pattern that disappeared when the changelog moved out in v1.28.0. It now splits on the **language anchors**, which exist in the file precisely so each language can be linked.
+- **The README follows the app's language.** The two flag tabs are gone; pick English at the top and the guide follows. Danish shows Danish, every other language shows the English guide — there are no others.
+
+---
+
 ### v1.30.1
 ---
 **🇩🇰 Dansk**

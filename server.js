@@ -543,7 +543,7 @@ app.post('/api/demo/promote', async (req, res) => {
     ts: new Date().toISOString(), kind: 'migration',
     sourceId, sourceOrgId: sourceId, sourceName: source.name,
     targetId, targetOrgId: targetId, targetName: target.name,
-    flowName: newName, flowType,
+    flowName: bareNew, flowType,
     sourceVersion: src.published, targetVersion: existing ? existing.published : '1.0',
     targetPublishedAt: now, action,
     hash: flowContentHash(src.content)
@@ -551,7 +551,9 @@ app.post('/api/demo/promote', async (req, res) => {
 
   // To rækker, én i hver org, og hver beskriver kun sig selv. Kilden er også
   // ændret — den blev omdøbt — så dens egen række skal med.
-  await recordOrgManifest(source, target, newName, flowType, {
+  // Grundnavnet UDEN præfiks — det er dét tavlen slår op på. Sendte vi det
+  // præfiksede navn, blev rækken skrevet under en nøgle der aldrig læses.
+  await recordOrgManifest(source, target, bareNew, flowType, {
     sourceVersion: src.published,
     targetVersion: existing ? existing.published : '1.0',
     targetPublishedAt: now,

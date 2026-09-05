@@ -460,7 +460,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.30.1 · Archy GUI</div>
+    <div class="version" id="app-version">v1.31.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1087,10 +1087,6 @@
           <button class="btn btn-secondary btn-sm" onclick="loadReadme()" data-i18n="btn_reload">🔄 Genindlæs</button>
           <button class="btn btn-secondary btn-sm" id="btn-check-update" onclick="manualCheckUpdate()" data-i18n="btn_check_update">🔍 Tjek for opdatering</button>
         </div>
-      </div>
-      <div class="md-lang-tabs">
-        <button class="md-lang-tab active" id="readme-tab-da" onclick="switchReadmeLang('da')">🇩🇰 Dansk</button>
-        <button class="md-lang-tab" id="readme-tab-en" onclick="switchReadmeLang('en')">🇬🇧 English</button>
       </div>
       <div class="card" id="readme-content" style="padding:28px 32px">
         <div style="color:var(--muted);font-size:13px"><span class="spin"></span> <span data-i18n="loading_readme">Henter README…</span></div>
@@ -3213,6 +3209,10 @@ function setLang(lang) {
   if (document.getElementById('page-migrate').classList.contains('active')) {
     updateMigrateAuthStatus();
   }
+  // README følger appens sprog, så den skal tegnes om når sproget skifter
+  if (document.getElementById('page-readme').classList.contains('active')) {
+    renderReadme();
+  }
   // Re-translate update banner if it is visible
   const banner = document.getElementById('update-banner');
   if (banner && banner.style.display !== 'none') {
@@ -4754,7 +4754,6 @@ async function clearLog() {
 
 // ── README viewer ────────────────────────────────────────────────────────────
 let readmeRaw = '';
-let readmeLang = 'da';
 
 async function loadReadme() {
   const el = document.getElementById('readme-content');
@@ -4769,25 +4768,27 @@ async function loadReadme() {
   }
 }
 
-function switchReadmeLang(lang) {
-  readmeLang = lang;
-  document.getElementById('readme-tab-da').classList.toggle('active', lang === 'da');
-  document.getElementById('readme-tab-en').classList.toggle('active', lang === 'en');
-  renderReadme();
-}
-
 function renderReadme() {
   if (!readmeRaw) return;
   const el = document.getElementById('readme-content');
 
-  // Split on the HR separator between the two language sections (--- on its own line)
-  // The file has: DA section ... ---\n---\n EN section
-  const parts = readmeRaw.split(/\n---\n---\n/);
-  let section = parts.length >= 2
-    ? (readmeLang === 'da' ? parts[0] : parts[1])
-    : readmeRaw;
+  // Del på SPROGANKRENE. Det gamle split ledte efter to "---" i træk, og da
+  // changeloggen flyttede ud i CHANGELOG.md forsvandt det mønster — så begge
+  // sprog blev vist under hinanden, og fanerne gjorde ingenting. Ankrene er
+  // stabile: de står i filen netop for at kunne linke til hvert sprog.
+  const iDa = readmeRaw.search(/<a name="dansk"\s*><\/a>/i);
+  const iEn = readmeRaw.search(/<a name="english"\s*><\/a>/i);
 
-  // Strip the top anchor/badge line ("> 🇩🇰 [Dansk]...")
+  // Kun ét sprog ad gangen, og det følger appens sprogvalg. Dansk er dansk;
+  // alle andre får den engelske vejledning, for der findes ikke andre.
+  const vilHaveDa = currentLang === 'da';
+  let section = readmeRaw;
+  if (iDa >= 0 && iEn > iDa) {
+    const head = readmeRaw.slice(0, iDa);
+    section = head + (vilHaveDa ? readmeRaw.slice(iDa, iEn) : readmeRaw.slice(iEn));
+  }
+
+  // Sproglinjen øverst peger på afsnit der ikke længere er på siden
   section = section.replace(/^>\s*🇩🇰.*\n/m, '').replace(/^>\s*🇬🇧.*\n/m, '');
 
   el.innerHTML = `<div class="md-body">${marked.parse(section)}</div>`;
@@ -7090,7 +7091,17 @@ function cellSignals(c, i, row) {
   const suffix = c.name ? (String(c.name).match(/_v(\d+)$/i) || [])[1] : null;
 
   const pastManifest = !!c.changedSincePromotion;
-  const aheadOfPrev  = (Number.isFinite(ownV) && Number.isFinite(prevV) && ownV > prevV) ? ownV - prevV : 0;
+
+  // "N udgaver foran trinnet før" bygger på at arbejdet flyder opstrøms → ned,
+  // så et højere tal nedstrøms er mistænkeligt. Men er det tidligere trin
+  // seedet FRA dette — som når man henter prod ned i et nyt dev — er
+  // rækkefølgen vendt om med vilje, og prods tæller er naturligt højere.
+  // Uden dette ville hvert eneste flow stå rødt dagen efter man satte dev op.
+  const denneEnv = ((pipelineData && pipelineData.environments) || [])[i];
+  const prevKomHerfra = !!(prevC && prevC.promotedFrom && denneEnv &&
+                           prevC.promotedFrom === denneEnv.name);
+  const aheadOfPrev  = (!prevKomHerfra && Number.isFinite(ownV) && Number.isFinite(prevV)
+                        && ownV > prevV) ? ownV - prevV : 0;
   const unpromoted   = (suffix && Number.isFinite(ownV) && ownV > +suffix) ? ownV - +suffix : 0;
   const laterOnly    = !!(c.missing && !c.unknown &&
                           row.cells.slice(i + 1).some(x => !x.missing && !x.unknown));
