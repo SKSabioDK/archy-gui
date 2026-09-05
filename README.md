@@ -131,6 +131,10 @@ Hver celle viser flowets **navn i netop det miljø**, dets publicerede udgave og
 
 **Delt manifest.** Hvert miljø kan have en datatabel — `ArchyGUI_Manifest`, med præfiks hvis miljøet har et — der beskriver **sig selv**: hvad org'en indeholder, hvornår det kom hertil og hvem der gjorde det. Fordi hver org kun skriver om sig selv, kan to personer på hver sin pc aldrig sige hver sit om samme celle. Tabellen oprettes med en knap, aldrig af sig selv.
 
+> **Ét manifest pr. miljø, ikke pr. org.** Deler flere virtuelle miljøer den samme org, skal hvert af dem have sin egen tabel: `DEV_ArchyGUI_Manifest`, `TEST_ArchyGUI_Manifest`, og `ArchyGUI_Manifest` for prod.
+>
+> Rækkenøglen er nemlig **grundnavnet uden præfiks** — `WeekNumber|INBOUNDCALL` — så tavlen kan parre `DEV_WeekNumber` og `WeekNumber` som én række. I én fælles tabel ville de to miljøer derfor skrive på samme nøgle og overskrive hinanden, og begge celler ville vise det samme.
+
 #### 🔀 På tværs af kunder
 Viser de flows der findes hos **flere kunder** — fx det samme common module i dev, uat og prod. Hver kunde vises med sin version, publiceringstidspunkt og om flowet er aktivt.
 
@@ -368,6 +372,10 @@ Each cell shows the flow's **name in that environment**, its published version a
 **Guards, enforced on the server:** migrating across groups is blocked; prod requires a deliberate confirmation; the source must be published; source and target cannot be the same environment.
 
 **Shared manifest.** Each environment can have a datatable — `ArchyGUI_Manifest`, prefixed if the environment has a prefix — describing **itself**: what the org holds, when it arrived, and who did it. Because each org only writes about itself, two people on different PCs can never disagree about the same cell. The table is created with a button, never on its own.
+
+> **One manifest per environment, not per org.** If several virtual environments share one org, each needs its own table: `DEV_ArchyGUI_Manifest`, `TEST_ArchyGUI_Manifest`, and `ArchyGUI_Manifest` for prod.
+>
+> The row key is the **base name without prefix** — `WeekNumber|INBOUNDCALL` — so the board can pair `DEV_WeekNumber` and `WeekNumber` as one row. In a single shared table the two environments would therefore write to the same key and overwrite each other, and both cells would show the same thing.
 
 #### 🔀 Across customers
 Lists the flows that exist at **more than one customer** — for example the same common module in dev, uat and prod. Each customer is shown with its version, publish time and whether the flow is active.
