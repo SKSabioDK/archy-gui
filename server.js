@@ -2802,8 +2802,19 @@ function archyErrorReason(out) {
   }
 
   // Ellers: Archys egen konklusion lige før "Error(s) [and warning(s)] encountered."
+  //
+  // Archy skriver fejlen som en overskriftslinje efterfulgt af indrykkede
+  // detaljer:
+  //
+  //     did not find a text to speech voice with the name 'da-DK-Standard-C' …
+  //         Path: '/inboundCall/supportedLanguages/textToSpeech'
+  //         Property name: 'voice'
+  //
+  // Detaljerne SKAL tælle som støj når vi leder baglæns efter overskriften —
+  // ellers greb vi "Property name: 'voice'" og kastede den eneste brugbare
+  // sætning væk. De hægtes i stedet på til sidst.
   if (!summary) {
-    const noise = /^(\*+|DateTime:|Summary$|Command:|Log:|Flow Name:|Input YAML File:|\||└|┌|-\s*Architect Scripting|An error occurred)/i;
+    const noise = /^(\*+|DateTime:|Summary$|Command:|Log:|Flow Name:|Input YAML File:|Path:|Property name:|Value:|Line:|\||└|┌|-\s*Architect Scripting|An error occurred)/i;
     const end = lines.findIndex(l => /^Error\(s\)(\s+and\s+warning\(s\))?\s+encountered\.?$/i.test(l));
     if (end > 0) {
       for (let i = end - 1; i >= 0 && end - i < 12; i--) {
@@ -2811,6 +2822,14 @@ function archyErrorReason(out) {
         if (l && !noise.test(l) && !/Architect Yaml Flow Processor/i.test(l)) { summary = l; break; }
       }
     }
+  }
+
+  // Sti og property hører til uanset hvilken af de to veje der fandt fejlen —
+  // det er dem man skal rette i YAML'en.
+  if (summary && !/\($/.test(summary)) {
+    const prop = lines.find(l => /^Property name:/i.test(l))?.replace(/^Property name:\s*/i, '');
+    const at   = lines.find(l => /^Path:/i.test(l))?.replace(/^Path:\s*/i, '');
+    if (prop && !summary.includes(prop)) summary += ` (${prop}${at ? ' i ' + at : ''})`;
   }
 
   // Manglende Genesys-rettigheder ender også som den generiske "session ended
@@ -3658,8 +3677,15 @@ app.post('/api/migrate/commit', async (req, res) => {
 
     const cmd = action || 'create';
     addLog('INFO', `Importing "${path.basename(importFile)}" to ${target.name} (action: ${cmd})`, target.name, 'MIGRATE');
-    const out = await runArchy(`${cmd} --file "${importFile}"`, target);
-    if (importFile !== resolved) { try { fs.unlinkSync(importFile); } catch (_) {} }
+    // finally: fejler importen, skal sidefilen alligevel væk. Uden den ligger
+    // der en ".import-…"-fil tilbage i eksportmappen efter hver mislykket
+    // migrering.
+    let out;
+    try {
+      out = await runArchy(`${cmd} --file "${importFile}"`, target);
+    } finally {
+      if (importFile !== resolved) { try { fs.unlinkSync(importFile); } catch (_) {} }
+    }
     addLog('SUCCESS', `Migration complete: "${nyName}" is now in ${target.name}`, target.name, 'MIGRATE');
 
     // Notér hvad målet blev bygget af, så det senere kan verificeres om kilden

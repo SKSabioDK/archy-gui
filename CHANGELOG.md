@@ -5,6 +5,49 @@
 
 ---
 
+### v1.29.1
+---
+**🇩🇰 Dansk**
+- **Rettet: fejludtrækningen greb detaljelinjen i stedet for selve fejlen.** En migrering fejlede med `Property name: 'voice'` — ubrugeligt. Archy havde i virkeligheden skrevet:
+
+  ```
+  Command: 'create'
+  did not find a text to speech voice with the name 'da-DK-Standard-C'
+  for engine 'Genesys Enhanced TTS' in language 'da-dk'.
+      Path: '/inboundCall/supportedLanguages/textToSpeech'
+      Property name: 'voice'
+  ...
+  Error(s) and warning(s) encountered.
+  ```
+
+  Vi leder baglæns fra `Error(s) … encountered.` efter den første linje der ikke er støj. `Flow Name:` og `Input YAML File:` stod på støjlisten — men **ikke** `Path:` og `Property name:`, så søgningen stoppede på en detaljelinje og kastede den eneste brugbare sætning væk. Detaljerne tæller nu som støj og hægtes i stedet på til sidst:
+
+  > `did not find a text to speech voice with the name 'da-DK-Standard-C' for engine 'Genesys Enhanced TTS' in language 'da-dk'. ('voice' i '/inboundCall/supportedLanguages/textToSpeech')`
+
+- **Rettet: sidefilen blev liggende når importen fejlede.** Den omdøbte `.import-…`-fil ryddes nu op i `finally`, ikke først efter et vellykket kald. Hver mislykket migrering efterlod ellers en fil i eksportmappen.
+
+---
+**🇬🇧 English**
+- **Fixed: the error extraction grabbed a detail line instead of the error.** A migration failed with `Property name: 'voice'` — useless. What Archy actually wrote was:
+
+  ```
+  Command: 'create'
+  did not find a text to speech voice with the name 'da-DK-Standard-C'
+  for engine 'Genesys Enhanced TTS' in language 'da-dk'.
+      Path: '/inboundCall/supportedLanguages/textToSpeech'
+      Property name: 'voice'
+  ...
+  Error(s) and warning(s) encountered.
+  ```
+
+  We search backwards from `Error(s) … encountered.` for the first line that is not noise. `Flow Name:` and `Input YAML File:` were on the noise list — but **not** `Path:` and `Property name:`, so the search stopped on a detail line and threw away the only useful sentence. The details now count as noise and are appended instead:
+
+  > `did not find a text to speech voice with the name 'da-DK-Standard-C' for engine 'Genesys Enhanced TTS' in language 'da-dk'. ('voice' in '/inboundCall/supportedLanguages/textToSpeech')`
+
+- **Fixed: the side file was left behind when the import failed.** The renamed `.import-…` file is now cleaned up in a `finally`, not only after a successful call. Every failed migration otherwise left a file in the export directory.
+
+---
+
 ### v1.29.0
 ---
 **🇩🇰 Dansk**
