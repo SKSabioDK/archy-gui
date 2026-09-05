@@ -460,7 +460,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.27.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.28.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -528,6 +528,14 @@
             <datalist id="groupList"></datalist>
           </div>
           <div>
+            <label data-i18n="label_prefix">Præfiks</label>
+            <input id="c-prefix" placeholder="DEV_" />
+          </div>
+          <div>
+            <label data-i18n="label_orglabel">Org-navn</label>
+            <input id="c-orgLabel" placeholder="Fælles non-prod org" />
+          </div>
+          <div>
             <label data-i18n="label_stage">Trin</label>
             <select id="c-stage">
               <option value="" data-i18n="stage_none">— intet trin —</option>
@@ -538,7 +546,8 @@
             </select>
           </div>
         </div>
-        <div style="margin-bottom:12px;font-size:11px;color:var(--muted)" data-i18n="hint_grouping">Kunde + gruppe afgør hvad der må migreres indbyrdes.</div>
+        <div style="margin-bottom:6px;font-size:11px;color:var(--muted)" data-i18n="hint_grouping">Kunde + gruppe afgør hvad der må migreres indbyrdes.</div>
+        <div style="margin-bottom:12px;font-size:11px;color:var(--muted)" data-i18n="hint_prefix">Præfiks bruges kun når flere miljøer deler den samme org.</div>
         <button class="btn btn-primary" onclick="addCustomer()" data-i18n="btn_add_customer">+ Tilføj Kunde</button>
       </div>
 
@@ -1555,6 +1564,14 @@ const LANGS = {
     csv_by:'noteret af',
     csv_content:'Indhold',
     csv_missing:'mangler',
+    pl_envs_in_org:'miljøer',
+    label_prefix:'Præfiks',
+    hint_prefix:'Kun hvis flere miljøer deler den samme org og kendes på et præfiks — fx DEV_. Lad feltet stå tomt for prod og for miljøer der har en org for sig selv. Datatabellerne følger samme konvention.',
+    label_orglabel:'Org-navn',
+    demo1_name:'Demo 1 — én org pr. miljø',
+    demo2_name:'Demo 2 — virtuelle miljøer på præfiks',
+    demo1_desc:'Fire orgs, ét miljø i hver.',
+    demo2_desc:'DEV_, TEST_ og UAT_ deler én org; prod har sin egen og intet præfiks.',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1942,6 +1959,14 @@ const LANGS = {
     csv_by:'recorded by',
     csv_content:'Content',
     csv_missing:'missing',
+    pl_envs_in_org:'environments',
+    label_prefix:'Prefix',
+    hint_prefix:'Only if several environments share one org and are told apart by a prefix — e.g. DEV_. Leave it empty for prod and for environments that have an org to themselves. Datatables follow the same convention.',
+    label_orglabel:'Org label',
+    demo1_name:'Demo 1 — one org per environment',
+    demo2_name:'Demo 2 — virtual environments by prefix',
+    demo1_desc:'Four orgs, one environment each.',
+    demo2_desc:'DEV_, TEST_ and UAT_ share one org; prod has its own and no prefix.',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -2329,6 +2354,14 @@ const LANGS = {
     csv_by:'noté par',
     csv_content:'Contenu',
     csv_missing:'absent',
+    pl_envs_in_org:'environnements',
+    label_prefix:'Préfixe',
+    hint_prefix:'Uniquement si plusieurs environnements partagent une org et se distinguent par un préfixe — par ex. DEV_. Laissez vide pour la prod et pour les environnements ayant leur propre org. Les tables de données suivent la même convention.',
+    label_orglabel:'Nom de l\'org',
+    demo1_name:'Démo 1 — une org par environnement',
+    demo2_name:'Démo 2 — environnements virtuels par préfixe',
+    demo1_desc:'Quatre orgs, un environnement chacune.',
+    demo2_desc:'DEV_, TEST_ et UAT_ partagent une org ; la prod a la sienne, sans préfixe.',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -2716,6 +2749,14 @@ const LANGS = {
     csv_by:'genoteerd door',
     csv_content:'Inhoud',
     csv_missing:'ontbreekt',
+    pl_envs_in_org:'omgevingen',
+    label_prefix:'Prefix',
+    hint_prefix:'Alleen als meerdere omgevingen één org delen en herkenbaar zijn aan een prefix — bv. DEV_. Laat leeg voor prod en voor omgevingen met een eigen org. Datatables volgen dezelfde conventie.',
+    label_orglabel:'Org-naam',
+    demo1_name:'Demo 1 — één org per omgeving',
+    demo2_name:'Demo 2 — virtuele omgevingen op prefix',
+    demo1_desc:'Vier orgs, elk één omgeving.',
+    demo2_desc:'DEV_, TEST_ en UAT_ delen één org; prod heeft een eigen org en geen prefix.',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -3103,6 +3144,14 @@ const LANGS = {
     csv_by:'anotado por',
     csv_content:'Contenido',
     csv_missing:'falta',
+    pl_envs_in_org:'entornos',
+    label_prefix:'Prefijo',
+    hint_prefix:'Solo si varios entornos comparten una org y se distinguen por un prefijo, p. ej. DEV_. Déjelo vacío para prod y para entornos con org propia. Las tablas de datos siguen la misma convención.',
+    label_orglabel:'Nombre de la org',
+    demo1_name:'Demo 1: una org por entorno',
+    demo2_name:'Demo 2: entornos virtuales por prefijo',
+    demo1_desc:'Cuatro orgs, un entorno en cada una.',
+    demo2_desc:'DEV_, TEST_ y UAT_ comparten una org; prod tiene la suya y sin prefijo.',
   }
 };
 
@@ -3374,13 +3423,15 @@ async function addCustomer() {
   const tenant       = document.getElementById('c-tenant').value.trim();
   const group        = document.getElementById('c-group').value.trim();
   const stage        = document.getElementById('c-stage').value;
+  const prefix       = document.getElementById('c-prefix').value.trim();
+  const orgLabel     = document.getElementById('c-orgLabel').value.trim();
   const isOAuth      = authType === 'oauth';
   showAlert('customerAlert', '');
   if (!name || !clientId || (!isOAuth && !clientSecret))
     return showAlert('customerAlert', t('err_fields_required'), 'err');
   const res = await fetch('/api/customers', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({name, region, clientId, clientSecret, authType, tenant, group, stage})
+    body: JSON.stringify({name, region, clientId, clientSecret, authType, tenant, group, stage, prefix, orgLabel})
   });
   const data = await res.json();
   if (data.error) return showAlert('customerAlert', data.error, 'err');
@@ -6917,7 +6968,9 @@ function toggleGrouping(id) {
   box.innerHTML = `
     <input id="grp-tenant-${id}" list="tenantList" placeholder="${t('label_tenant')}" value="${escapeHtml(c.tenant || '')}" style="margin-bottom:6px" />
     <input id="grp-group-${id}"  list="groupList"  placeholder="${t('label_group')}"  value="${escapeHtml(c.group  || '')}" style="margin-bottom:6px" />
-    <select id="grp-stage-${id}" style="margin-bottom:8px">${['', 'dev', 'test', 'uat', 'prod'].map(opt).join('')}</select>
+    <select id="grp-stage-${id}" style="margin-bottom:6px">${['', 'dev', 'test', 'uat', 'prod'].map(opt).join('')}</select>
+    <input id="grp-prefix-${id}" placeholder="${t('label_prefix')} (DEV_)" value="${escapeHtml(c.prefix || '')}" style="margin-bottom:6px" />
+    <input id="grp-orglabel-${id}" placeholder="${t('label_orglabel')}" value="${escapeHtml(c.orgLabel || '')}" style="margin-bottom:8px" />
     <button class="btn btn-primary btn-sm" onclick="saveGrouping('${id}')">${t('btn_save_grouping')}</button>`;
 }
 
@@ -6925,7 +6978,9 @@ async function saveGrouping(id) {
   const body = {
     tenant: document.getElementById('grp-tenant-' + id).value.trim(),
     group:  document.getElementById('grp-group-'  + id).value.trim(),
-    stage:  document.getElementById('grp-stage-'  + id).value
+    stage:  document.getElementById('grp-stage-'  + id).value,
+    prefix:   document.getElementById('grp-prefix-'   + id).value.trim(),
+    orgLabel: document.getElementById('grp-orglabel-' + id).value.trim()
   };
   const r = await fetch('/api/customers/' + id, {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -7157,9 +7212,30 @@ function renderPipeline() {
           title="${t('pl_published_title')}">${body}</span>${when}${notPromoted}${changed}${inverted}${laterOnly}${btn}${pull}${pub}</td>`;
   };
 
+  // Miljøerne grupperes under den fysiske org. Har en kunde fire miljøer der
+  // bor i den samme Genesys-org — kendt på et præfiks — skal det kunne ses,
+  // for så deler de også kvoter, integrationer og alt andet i orgen.
+  const orgSpans = [];
+  for (const e of d.environments) {
+    const sidste = orgSpans[orgSpans.length - 1];
+    if (sidste && sidste.key === e.orgKey) { sidste.span++; sidste.envs.push(e); }
+    else orgSpans.push({ key: e.orgKey, label: e.orgLabel || e.name, span: 1, envs: [e] });
+  }
+  // Én org pr. miljø er det almindelige — så siger grupperækken intet nyt og
+  // fylder bare. Den vises kun når mindst én org rummer flere miljøer.
+  const visOrgRaekke = orgSpans.some(o => o.span > 1);
+
+  const orgHead = visOrgRaekke
+    ? `<tr><th></th>${orgSpans.map(o =>
+        `<th colspan="${o.span}" style="text-align:left;padding:6px 10px;font-size:10px;
+           color:var(--muted);font-family:var(--mono);border-bottom:1px solid var(--border)"
+           >🏢 ${escapeHtml(o.label)}${o.span > 1 ? ` · ${o.span} ${t('pl_envs_in_org')}` : ''}</th>`).join('')}</tr>`
+    : '';
+
   const head = d.environments.map(e =>
     `<th style="text-align:left;padding:8px 10px;font-size:11px;color:var(--muted);font-family:var(--mono)">
-       ${(e.stage || '—').toUpperCase()}<div style="font-weight:400;color:var(--muted);font-size:10px">${escapeHtml(e.name)}</div></th>`).join('');
+       ${(e.stage || '—').toUpperCase()}${e.prefix ? `<span style="color:var(--blue)"> ${escapeHtml(e.prefix)}</span>` : ''}
+       <div style="font-weight:400;color:var(--muted);font-size:10px">${escapeHtml(e.name)}</div></th>`).join('');
 
   const body = rows.map(r => `<tr>
       <td style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:12px">${escapeHtml(r.flowName)}
@@ -7182,7 +7258,7 @@ function renderPipeline() {
         <button class="btn btn-secondary btn-sm" style="font-size:11px" title="${t('pl_csv_title')}" onclick="downloadPipelineCsv()">${t('pl_csv')}</button>
       </div>
       <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
-        <thead><tr><th style="text-align:left;padding:8px 10px;font-size:11px;color:var(--muted);font-family:var(--mono)">${t('pl_flow')}</th>${head}</tr></thead>
+        <thead>${orgHead}<tr><th style="text-align:left;padding:8px 10px;font-size:11px;color:var(--muted);font-family:var(--mono)">${t('pl_flow')}</th>${head}</tr></thead>
         <tbody>${body}</tbody></table></div></div>`;
 }
 
@@ -7317,11 +7393,18 @@ async function checkAllShown() {
 async function renderDemoButtons() {
   const box = document.getElementById('demoButtons');
   if (!box) return;
-  const st = await fetch('/api/demo/status').then(r => r.json()).catch(() => ({ exists: false }));
-  box.innerHTML = st.exists
-    ? `<button class="btn btn-secondary btn-sm" onclick="demoReset()">${t('btn_demo_reset')}</button>
-       <button class="btn btn-danger btn-sm" onclick="demoRemove()">${t('btn_demo_remove')}</button>`
-    : `<button class="btn btn-primary btn-sm" onclick="demoCreate()">${t('btn_demo_create')}</button>`;
+  const st = await fetch('/api/demo/status').then(r => r.json()).catch(() => ({ demos: [] }));
+  const navn = { '1': t('demo1_name'), '2': t('demo2_name') };
+  const desc = { '1': t('demo1_desc'), '2': t('demo2_desc') };
+  box.innerHTML = (st.demos || []).map(d => `
+    <div style="display:flex;align-items:center;gap:10px;padding:6px 0;flex-wrap:wrap">
+      <span style="min-width:250px;font-size:12px">${navn[d.which]}
+        <div style="font-size:11px;color:var(--muted)">${desc[d.which]}</div></span>
+      ${d.exists
+        ? `<button class="btn btn-secondary btn-sm" onclick="demoReset('${d.which}')">${t('btn_demo_reset')}</button>
+           <button class="btn btn-danger btn-sm" onclick="demoRemove('${d.which}')">${t('btn_demo_remove')}</button>`
+        : `<button class="btn btn-primary btn-sm" onclick="demoCreate('${d.which}')">${t('btn_demo_create')}</button>`}
+    </div>`).join('');
 }
 
 // Kun i demoen: lad som om nogen har arbejdet videre og publiceret igen.
@@ -7342,24 +7425,30 @@ async function demoPublish(envId, flowName, flowType) {
   await loadPipeline();
 }
 
-async function demoCreate() {
-  const r = await fetch('/api/demo/create', { method: 'POST' }).then(x => x.json());
+async function demoCreate(which = '1') {
+  const r = await fetch('/api/demo/create', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ which })
+  }).then(x => x.json());
   if (r.error) return showAlert('customerAlert', r.error, 'err');
   showAlert('customerAlert', t('demo_created'), 'ok');
   await refreshCustomers();
 }
 
-async function demoReset() {
-  const r = await fetch('/api/demo/reset', { method: 'POST' }).then(x => x.json());
+async function demoReset(which = '1') {
+  const r = await fetch('/api/demo/reset', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ which })
+  }).then(x => x.json());
   if (r.error) return showAlert('customerAlert', r.error, 'err');
   showAlert('customerAlert', t('demo_reset_done'), 'ok');
   pipelineHashes = {};
   await refreshCustomers();
 }
 
-async function demoRemove() {
+async function demoRemove(which = '1') {
   if (!confirm(t('demo_confirm_remove'))) return;
-  const r = await fetch('/api/demo', { method: 'DELETE' }).then(x => x.json());
+  const r = await fetch('/api/demo?which=' + encodeURIComponent(which), { method: 'DELETE' }).then(x => x.json());
   if (r.error) return showAlert('customerAlert', r.error, 'err');
   showAlert('customerAlert', t('demo_removed'), 'ok');
   pipelineData = null; pipelineHashes = {};

@@ -194,6 +194,40 @@ const tenantOf = c => (c.tenant || '').trim() || UNGROUPED;
 const groupOf  = c => (c.group  || '').trim() || UNGROUPED;
 const stageOf  = c => { const s = String(c.stage || '').toLowerCase(); return STAGES.includes(s) ? s : null; };
 
+// ── Virtuelle miljøer i samme org ────────────────────────────────────────────
+// Nogle kunder har ikke én org pr. miljø, men ÉN org hvor miljøerne kendes på
+// et præfiks: "DEV_Main flow", "TEST_Main flow", og prod uden præfiks. Samme
+// konvention gælder datatabellerne. Det er et udbredt Genesys-mønster, og det
+// findes allerede i jeres egne orgs.
+//
+// Et miljø er derfor stadig én post i customers.json — flere poster kan blot
+// pege på samme org med hvert sit præfiks. Så virker tavlen, forfremmelsen og
+// manifestet uændret; kun udvælgelsen af flows skal kende præfikset.
+const prefixOf = c => String(c.prefix || '');
+
+// Samme credentials = samme fysiske org. Det kan afgøres uden et opslag, og
+// bruges til at hente flowlisten én gang og dele den mellem søskendemiljøer.
+const orgKeyOf = c => isDemo(c) ? `demo:${c.demoOrg || c.id}` : `${c.clientId}|${c.region}`;
+
+// Hører flownavnet til dette miljø? Et præfikset miljø tager kun sine egne.
+// Prod har intet præfiks og tager alt DER IKKE bærer et søskendepræfiks —
+// ellers ville prod se hele orgen, dev og test inklusive.
+function belongsToEnv(name, env, siblings) {
+  const p = prefixOf(env);
+  const n = String(name || '');
+  if (p) return n.startsWith(p);
+  return !siblings.some(s => s !== env && prefixOf(s) && n.startsWith(prefixOf(s)));
+}
+
+function stripEnvPrefix(name, env) {
+  const p = prefixOf(env);
+  const n = String(name || '');
+  return p && n.startsWith(p) ? n.slice(p.length) : n;
+}
+
+// Navnet et flow skal have i et givet miljø: præfikset sat på grundnavnet.
+const withEnvPrefix = (baseName, env) => prefixOf(env) + String(baseName || '');
+
 // To miljøer må kun sammenlignes og migreres indbyrdes hvis de deler kunde OG
 // gruppe. Miljøer uden gruppe hører ikke sammen med noget — heller ikke med
 // hinanden — så en manglende opsætning aldrig kan læses som "de hører sammen".
@@ -246,9 +280,12 @@ const isDemo = c => !!(c && c.demo);
 // Demoens forfremmelser skrives i det samme manifest som de rigtige. Når demoen
 // nulstilles eller fjernes, skal dens linjer med — ellers ville en øvelse
 // efterlade spor i den fortegnelse der beskriver rigtige migreringer.
-function dropDemoManifest() {
+function dropDemoManifest(which) {
+  const hit = id => which === '2' ? String(id).startsWith('demo2-')
+            : which === '1' ? (String(id).startsWith('demo-') && !String(id).startsWith('demo2-'))
+            : String(id).startsWith('demo');
   try {
-    const all = loadManifest().filter(e => !String(e.targetId || '').startsWith('demo-'));
+    const all = loadManifest().filter(e => !hit(e.targetId || ''));
     fs.writeFileSync(MANIFEST_FILE, JSON.stringify(all, null, 2));
   } catch (_) { /* intet manifest endnu */ }
 }
@@ -268,6 +305,23 @@ const DEMO_ENVS = [
   { suffix: 'prod', stage: 'prod' }
 ];
 const demoEnvId = suffix => 'demo-' + suffix;
+
+// Demo 2 er et andet mønster: miljøerne er ikke hver sin org, men kendes på et
+// præfiks inde i den samme org — "DEV_Ordreflow", "TEST_Ordreflow" — og prod
+// har intet præfiks. Samme konvention gælder datatabellerne. Her ligger de tre
+// non-prod-miljøer i én org og prod i en anden, hvilket er den udbredte form.
+const DEMO2_TENANT = 'Kunde 2 A/S';
+const DEMO2_GROUP  = 'Norden';
+const DEMO2_ORG_A  = 'demo2-orgA';
+const DEMO2_ORG_B  = 'demo2-orgB';
+const DEMO2_ENVS = [
+  { suffix: 'dev',  stage: 'dev',  prefix: 'DEV_',  org: DEMO2_ORG_A, orgLabel: 'Fælles non-prod org' },
+  { suffix: 'test', stage: 'test', prefix: 'TEST_', org: DEMO2_ORG_A, orgLabel: 'Fælles non-prod org' },
+  { suffix: 'uat',  stage: 'uat',  prefix: 'UAT_',  org: DEMO2_ORG_A, orgLabel: 'Fælles non-prod org' },
+  { suffix: 'prod', stage: 'prod', prefix: '',      org: DEMO2_ORG_B, orgLabel: 'Prod-org' }
+];
+const demo2EnvId = suffix => 'demo2-' + suffix;
+
 
 // Et flows indhold er bare en tekst her — nok til at hashe og sammenligne.
 const demoYaml = (name, body) =>
@@ -311,7 +365,55 @@ function seedDemo() {
   saveDemo({ flows, seededAt: now });
 }
 
-function demoFlowsFor(envId) { return (loadDemo().flows || {})[envId] || []; }
+// Flowene ligger under den ORG miljøet hører til. For demo 1 er org og miljø
+// det samme; for demo 2 deler flere virtuelle miljøer den samme org, og så
+// skal de læse fra samme liste — ellers er der intet præfikset at filtrere i.
+const demoFlowKey = c => (typeof c === 'string' ? c : (c.demoOrg || c.id));
+function demoFlowsFor(env) { return (loadDemo().flows || {})[demoFlowKey(env)] || []; }
+
+function seedDemo2() {
+  const d = loadDemo();
+  d.flows = d.flows || {};
+  const now = Date.now(), day = 86400000;
+  const A = [], B = [];
+
+  // 1) Findes i alle fire med samme indhold — den rolige række.
+  const ord = 'tag imod ordren';
+  A.push({ name: 'DEV_Ordreflow',  type: 'INBOUNDCALL', published: '9.0',
+           publishedAt: now - 30 * day, content: demoYaml('DEV_Ordreflow', ord) });
+  A.push({ name: 'TEST_Ordreflow', type: 'INBOUNDCALL', published: '2.0',
+           publishedAt: now - 22 * day, content: demoYaml('TEST_Ordreflow', ord) });
+  A.push({ name: 'UAT_Ordreflow',  type: 'INBOUNDCALL', published: '2.0',
+           publishedAt: now - 15 * day, content: demoYaml('UAT_Ordreflow', ord) });
+  B.push({ name: 'Ordreflow',      type: 'INBOUNDCALL', published: '1.0',
+           publishedAt: now - 8 * day,  content: demoYaml('Ordreflow', ord) });
+
+  // 2) Kun i dev — hele kæden ligger foran.
+  A.push({ name: 'DEV_Fejlbesked', type: 'WORKFLOW', published: '4.0',
+           publishedAt: now - 2 * day, content: demoYaml('DEV_Fejlbesked', 'sig undskyld') });
+
+  // 3) Findes overalt, men prod er løbet fra de andre.
+  const bet = 'tag imod betaling';
+  A.push({ name: 'DEV_Betaling',  type: 'INBOUNDCALL', published: '5.0',
+           publishedAt: now - 26 * day, content: demoYaml('DEV_Betaling', bet) });
+  A.push({ name: 'TEST_Betaling', type: 'INBOUNDCALL', published: '2.0',
+           publishedAt: now - 20 * day, content: demoYaml('TEST_Betaling', bet) });
+  A.push({ name: 'UAT_Betaling',  type: 'INBOUNDCALL', published: '2.0',
+           publishedAt: now - 14 * day, content: demoYaml('UAT_Betaling', bet) });
+  B.push({ name: 'Betaling',      type: 'INBOUNDCALL', published: '11.0',
+           publishedAt: now - 1 * day,
+           content: demoYaml('Betaling', 'rettet direkte i prod, ingen ved hvorfor') });
+
+  // Et efterladt flow uden præfiks i non-prod-org'en. Det hører til INTET
+  // miljø — prod bor i en anden org — og skal derfor ikke dukke op på tavlen.
+  A.push({ name: 'Gammelt forsoeg', type: 'INBOUNDCALL', published: '1.0',
+           publishedAt: now - 300 * day, content: demoYaml('Gammelt forsoeg', 'glemt') });
+
+  d.flows[DEMO2_ORG_A] = A;
+  d.flows[DEMO2_ORG_B] = B;
+  saveDemo(d);
+}
+
 
 
 // Navneregel ved forfremmelse.
@@ -352,20 +454,28 @@ app.post('/api/demo/promote', async (req, res) => {
   if (blocked) return res.status(409).json(blocked);
 
   const d = loadDemo();
-  const src = (d.flows[sourceId] || []).find(f => f.name === flowName && f.type === flowType);
+  const srcKey = demoFlowKey(source), tgtKey = demoFlowKey(target);
+  const src = (d.flows[srcKey] || []).find(f => f.name === flowName && f.type === flowType);
   if (!src) return res.status(404).json({ error: `"${flowName}" findes ikke i ${source.name}` });
 
-  const newName = promotionName(src.name, src.published);
-  const base = baseFlowName(src.name);
-  d.flows[targetId] = d.flows[targetId] || [];
+  // Navnet regnes ud på GRUNDNAVNET uden miljøpræfiks, og præfikset sættes
+  // derefter på hver side for sig. Ellers ville "DEV_Velkomst" forfremmet til
+  // test hedde "DEV_Velkomst_v10" i test-miljøet — altså bære afsenderens
+  // præfiks ind i modtageren.
+  const bare       = stripEnvPrefix(src.name, source);
+  const bareNew    = promotionName(bare, src.published);
+  const newName    = withEnvPrefix(bareNew, target);   // navnet i målet
+  const srcNewName = withEnvPrefix(bareNew, source);   // og i kilden
+  const base       = baseFlowName(bareNew);
+  d.flows[tgtKey] = d.flows[tgtKey] || [];
   const now = Date.now();
 
   // Målet kan allerede have flowet under et ældre versionsnavn. Det er stadig
   // det samme flow, så det omdøbes og opdateres — der laves ikke et nyt ved
   // siden af. Dermed beholder det sit id i målet, og alt der ruter til det
   // bliver ved med at gøre det.
-  const existing = d.flows[targetId].find(f =>
-    f.type === flowType && baseFlowName(f.name) === base);
+  const existing = d.flows[tgtKey].find(f =>
+    f.type === flowType && baseFlowName(stripEnvPrefix(f.name, target)) === base);
 
   let action, renamedTarget = null;
   if (existing) {
@@ -377,7 +487,7 @@ app.post('/api/demo/promote', async (req, res) => {
     existing.content = src.content;
     action = 'update';
   } else {
-    d.flows[targetId].push({
+    d.flows[tgtKey].push({
       name: newName, type: flowType,
       published: '1.0', publishedAt: now, content: src.content
     });
@@ -387,8 +497,8 @@ app.post('/api/demo/promote', async (req, res) => {
   // Kilden omdøbes med. Det er dét der gør at man i dev kan se hvilken udgave
   // der sidst blev skubbet videre: arbejder man videre og publicerer 15 gange,
   // hedder den stadig _v10 indtil den bliver forfremmet igen.
-  const renamedSource = src.name !== newName ? src.name : null;
-  src.name = newName;
+  const renamedSource = src.name !== srcNewName ? src.name : null;
+  src.name = srcNewName;
 
   saveDemo(d);
 
@@ -430,7 +540,7 @@ app.post('/api/demo/publish', (req, res) => {
   if (!env || !isDemo(env)) return res.status(400).json({ error: 'Kun demo-miljøer' });
 
   const d = loadDemo();
-  const f = (d.flows[envId] || []).find(x => x.name === flowName && x.type === flowType);
+  const f = (d.flows[demoFlowKey(env)] || []).find(x => x.name === flowName && x.type === flowType);
   if (!f) return res.status(404).json({ error: `"${flowName}" findes ikke i ${env.name}` });
 
   const n = Math.max(1, Math.min(parseInt(times, 10) || 1, 50));
@@ -446,12 +556,43 @@ app.post('/api/demo/publish', (req, res) => {
 });
 
 app.get('/api/demo/status', (req, res) => {
-  const envs = loadCustomers().filter(isDemo);
-  res.json({ ok: true, exists: envs.length > 0, environments: envs.length });
+  const all = loadCustomers();
+  const one = all.filter(c => demoIs(c, '1'));
+  const two = all.filter(c => demoIs(c, '2'));
+  res.json({ ok: true,
+    exists: one.length > 0, environments: one.length,
+    demos: [
+      { which: '1', tenant: DEMO_TENANT,  group: DEMO_GROUP,  exists: one.length > 0,
+        environments: one.length, kind: 'org-pr-miljø' },
+      { which: '2', tenant: DEMO2_TENANT, group: DEMO2_GROUP, exists: two.length > 0,
+        environments: two.length, kind: 'præfiks i samme org' }
+    ] });
 });
 
+// which: '1' = én org pr. miljø, '2' = virtuelle miljøer på præfiks.
+// De to kan være oprettet samtidig — de rører ikke hinanden.
+function demoIs(c, which) {
+  return isDemo(c) && (which === '2' ? String(c.id).startsWith('demo2-')
+                                     : String(c.id).startsWith('demo-'));
+}
+
 app.post('/api/demo/create', (req, res) => {
-  const customers = loadCustomers().filter(c => !isDemo(c));
+  const which = String(req.body?.which || '1');
+  const customers = loadCustomers().filter(c => !demoIs(c, which));
+  if (which === '2') {
+    for (const e of DEMO2_ENVS) customers.push({
+      id: demo2EnvId(e.suffix),
+      name: `${DEMO2_TENANT} — ${e.prefix || 'PROD'}`,
+      clientId: '', clientSecret: '', region: 'demo',
+      authType: 'demo', demo: true, demoOrg: e.org, orgLabel: e.orgLabel,
+      prefix: e.prefix,
+      tenant: DEMO2_TENANT, group: DEMO2_GROUP, stage: e.stage
+    });
+    saveCustomers(customers);
+    seedDemo2();
+    addLog('INFO', 'Demo 2 oprettet: 4 virtuelle miljøer i 2 orgs, 3 flows', DEMO2_TENANT, 'DEMO');
+    return res.json({ ok: true, tenant: DEMO2_TENANT, group: DEMO2_GROUP });
+  }
   for (const e of DEMO_ENVS) customers.push({
     id: demoEnvId(e.suffix),
     name: `${DEMO_TENANT} — ${e.stage.toUpperCase()}`,
@@ -466,18 +607,27 @@ app.post('/api/demo/create', (req, res) => {
 });
 
 app.post('/api/demo/reset', (req, res) => {
-  if (!loadCustomers().some(isDemo)) return res.status(404).json({ error: 'Ingen demo-kunde' });
-  dropDemoManifest();
-  seedDemo();
-  addLog('INFO', 'Demo-kunde nulstillet', DEMO_TENANT, 'DEMO');
+  const which = String(req.body?.which || '1');
+  if (!loadCustomers().some(c => demoIs(c, which)))
+    return res.status(404).json({ error: 'Ingen demo-kunde' });
+  dropDemoManifest(which);
+  if (which === '2') seedDemo2(); else seedDemo();
+  addLog('INFO', 'Demo nulstillet', which === '2' ? DEMO2_TENANT : DEMO_TENANT, 'DEMO');
   res.json({ ok: true });
 });
 
 app.delete('/api/demo', (req, res) => {
-  saveCustomers(loadCustomers().filter(c => !isDemo(c)));
-  try { fs.unlinkSync(DEMO_FILE); } catch (_) {}
-  dropDemoManifest();
-  addLog('INFO', 'Demo-kunde fjernet', DEMO_TENANT, 'DEMO');
+  const which = String(req.query.which || '1');
+  saveCustomers(loadCustomers().filter(c => !demoIs(c, which)));
+  const d = loadDemo();
+  if (which === '2') { delete (d.flows||{})[DEMO2_ORG_A]; delete (d.flows||{})[DEMO2_ORG_B]; }
+  else for (const e of DEMO_ENVS) delete (d.flows||{})[demoEnvId(e.suffix)];
+  for (const k of Object.keys(d.manifest || {}))
+    if (which === '2' ? k.startsWith('demo2-') : (k.startsWith('demo-') && !k.startsWith('demo2-')))
+      delete d.manifest[k];
+  saveDemo(d);
+  dropDemoManifest(which);
+  addLog('INFO', 'Demo fjernet', which === '2' ? DEMO2_TENANT : DEMO_TENANT, 'DEMO');
   res.json({ ok: true });
 });
 
@@ -529,7 +679,8 @@ app.get('/api/customers', (req, res) => {
 });
 
 app.post('/api/customers', (req, res) => {
-  const { name, clientId, clientSecret, region, authType, tenant, group, stage } = req.body;
+  const { name, clientId, clientSecret, region, authType, tenant, group, stage,
+          prefix, orgLabel } = req.body;
   const isOAuth = authType === 'oauth';
   if (!name || !clientId || !region || (!isOAuth && !clientSecret))
     return res.status(400).json({ error: isOAuth ? 'Name, Client ID and Region required' : 'All fields required' });
@@ -544,7 +695,9 @@ app.post('/api/customers', (req, res) => {
     authType: authType || 'credentials',
     tenant: (tenant || '').trim(),
     group:  (group  || '').trim(),
-    stage:  String(stage || '').toLowerCase() || ''
+    stage:  String(stage || '').toLowerCase() || '',
+    prefix:   (prefix   || '').trim(),
+    orgLabel: (orgLabel || '').trim()
   };
   customers.push(customer);
   saveCustomers(customers);
@@ -573,7 +726,8 @@ app.put('/api/customers/:id', (req, res) => {
       return res.status(400).json({ error: `Ukendt trin "${patch.stage}" — vælg et af: ${STAGES.join(', ')}` });
     patch.stage = s;
   }
-  for (const k of ['tenant', 'group']) if (patch[k] !== undefined) patch[k] = String(patch[k] || '').trim();
+  for (const k of ['tenant', 'group', 'prefix', 'orgLabel'])
+    if (patch[k] !== undefined) patch[k] = String(patch[k] || '').trim();
 
   const updated = { ...customers[idx], ...patch };
   customers[idx] = updated;
@@ -1448,7 +1602,11 @@ const MANIFEST_FILE = path.join(FLOWS_DIR, '.migrations.json');
 // Uenighed er umulig af konstruktion, i stedet for noget vi skal løse bagefter.
 // En org der ikke kan nås bliver "ukendt" — præcis som tavlen allerede gør.
 
-const ORG_MANIFEST_TABLE = 'ArchyGUI_Manifest';
+const ORG_MANIFEST_BASE = 'ArchyGUI_Manifest';
+// Datatabellerne følger samme navnekonvention som flowene: et virtuelt miljø
+// har sit præfiks med, prod har ingen. Så har hvert miljø sit eget manifest,
+// også når fire af dem deler den samme org.
+const manifestTableName = c => prefixOf(c) + ORG_MANIFEST_BASE;
 
 // Nøglen er GRUNDNAVNET plus typen. Flownavnet ændrer sig ved hver forfremmelse
 // ("Velkomst" → "_v10" → "_v15"), så nøgles der på det fulde navn, bliver
@@ -1511,7 +1669,7 @@ async function findOrgManifestTable(customer) {
       headers: { Authorization: `Bearer ${token}` },
       params: { pageSize: 100, pageNumber: page }
     });
-    const found = (r.data.entities || []).find(t => t.name === ORG_MANIFEST_TABLE);
+    const found = (r.data.entities || []).find(t => t.name === manifestTableName(customer));
     if (found) { _mfTableCache[customer.id] = { id: found.id, at: Date.now() }; return found.id; }
     if (page++ >= (r.data.pageCount || 1)) break;
   }
@@ -1522,11 +1680,11 @@ async function findOrgManifestTable(customer) {
 async function createOrgManifestTable(customer) {
   const { token, apiBase } = await getToken(customer);
   const body = {
-    name: ORG_MANIFEST_TABLE,
+    name: manifestTableName(customer),
     description: 'ArchyGUI: hvad denne org indeholder, og hvornår det kom hertil. Skrives af ArchyGUI — ret ikke rækker i hånden.',
     schema: {
       $schema: 'http://json-schema.org/draft-04/schema#',
-      title: ORG_MANIFEST_TABLE,
+      title: manifestTableName(customer),
       type: 'object',
       required: ['key'],
       additionalProperties: false,
@@ -1542,7 +1700,7 @@ async function createOrgManifestTable(customer) {
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
   });
   delete _mfTableCache[customer.id];
-  addLog('SUCCESS', `Manifesttabel "${ORG_MANIFEST_TABLE}" oprettet`, customer.name, 'MANIFEST');
+  addLog('SUCCESS', `Manifesttabel "${manifestTableName(customer)}" oprettet`, customer.name, 'MANIFEST');
   return r.data.id;
 }
 
@@ -1640,18 +1798,19 @@ app.get('/api/manifest/status', async (req, res) => {
   for (const c of envs) {
     if (isDemo(c)) {
       out.push({ id: c.id, name: c.name, stage: stageOf(c), hasTable: true,
+                 table: manifestTableName(c),
                  rows: Object.keys(demoManifest(c.id)).length, demo: true });
       continue;
     }
     try {
       const rows = await readOrgManifest(c);
-      out.push({ id: c.id, name: c.name, stage: stageOf(c),
+      out.push({ id: c.id, name: c.name, stage: stageOf(c), table: manifestTableName(c),
                  hasTable: rows !== null, rows: rows ? Object.keys(rows).length : 0 });
     } catch (e) {
-      out.push({ id: c.id, name: c.name, stage: stageOf(c), hasTable: false, error: describeApiError(e) });
+      out.push({ id: c.id, name: c.name, stage: stageOf(c), table: manifestTableName(c), hasTable: false, error: describeApiError(e) });
     }
   }
-  res.json({ ok: true, table: ORG_MANIFEST_TABLE, environments: out });
+  res.json({ ok: true, table: ORG_MANIFEST_BASE, environments: out });
 });
 
 app.post('/api/manifest/create', async (req, res) => {
@@ -1955,11 +2114,18 @@ app.get('/api/pipeline', async (req, res) => {
   const byFlow = new Map();
   const problems = [];
 
+  // Deler flere miljøer den samme org, hentes flowlisten én gang og deles.
+  // Ellers ville fire virtuelle miljøer koste fire fulde gennemløb af samme org.
+  const orgFlows = new Map();
+
   for (const c of envs) {
+    const siblings = envs.filter(x => orgKeyOf(x) === orgKeyOf(c));
+
     // Demo-miljøer ligger kun lokalt — ingen token, intet kald ud af huset.
     if (isDemo(c)) {
-      for (const f of demoFlowsFor(c.id)) {
-        const key = `${baseFlowName(f.name)}|${f.type}`;
+      for (const f of demoFlowsFor(c)) {
+        if (!belongsToEnv(f.name, c, siblings)) continue;
+        const key = `${baseFlowName(stripEnvPrefix(f.name, c))}|${f.type}`;
         if (!byFlow.has(key)) byFlow.set(key, {});
         byFlow.get(key)[c.id] = {
           flowId: `${c.id}:${f.name}`, name: f.name,
@@ -1970,27 +2136,34 @@ app.get('/api/pipeline', async (req, res) => {
       continue;
     }
     try {
-      const { token, apiBase } = await getToken(c);
-      let page = 1;
-      for (;;) {
-        const r = await axios.get(`${apiBase}/api/v2/flows`, {
-          headers: { Authorization: `Bearer ${token}` },
-          params: { pageSize: 100, pageNumber: page, includeDraft: true }
-        });
-        const e = r.data.entities || [];
-        for (const f of e) {
-          const key = `${baseFlowName(f.name)}|${f.type}`;
-          if (!byFlow.has(key)) byFlow.set(key, {});
-          byFlow.get(key)[c.id] = {
-            flowId: f.id, name: f.name,
-            published: versionLabel(f.publishedVersion),
-            saved:     versionLabel(f.savedVersion),
-            publishedAt: f.publishedVersion?.dateCheckedIn || f.publishedVersion?.dateCreated || null,
-            active: !!f.active
-          };
+      const ok = orgKeyOf(c);
+      if (!orgFlows.has(ok)) {
+        const { token, apiBase } = await getToken(c);
+        const acc = [];
+        let page = 1;
+        for (;;) {
+          const r = await axios.get(`${apiBase}/api/v2/flows`, {
+            headers: { Authorization: `Bearer ${token}` },
+            params: { pageSize: 100, pageNumber: page, includeDraft: true }
+          });
+          const e = r.data.entities || [];
+          acc.push(...e);
+          if (e.length < 100) break;
+          page++;
         }
-        if (e.length < 100) break;
-        page++;
+        orgFlows.set(ok, acc);
+      }
+      for (const f of orgFlows.get(ok)) {
+        if (!belongsToEnv(f.name, c, siblings)) continue;
+        const key = `${baseFlowName(stripEnvPrefix(f.name, c))}|${f.type}`;
+        if (!byFlow.has(key)) byFlow.set(key, {});
+        byFlow.get(key)[c.id] = {
+          flowId: f.id, name: f.name,
+          published: versionLabel(f.publishedVersion),
+          saved:     versionLabel(f.savedVersion),
+          publishedAt: f.publishedVersion?.dateCheckedIn || f.publishedVersion?.dateCreated || null,
+          active: !!f.active
+        };
       }
     } catch (e) {
       problems.push({ environment: c.name, error: describeApiError(e) });
@@ -2081,7 +2254,15 @@ app.get('/api/pipeline', async (req, res) => {
 
   res.json({
     ok: true, tenant, group,
-    environments: envs.map(c => ({ id: c.id, name: c.name, stage: stageOf(c), region: c.region })),
+    // orgKey lader brugerfladen gruppere kolonnerne under den fysiske org, så
+    // man kan se at fire miljøer bor i samme Genesys-org. orgLabel er navnet at
+    // sætte over gruppen.
+    environments: envs.map(c => ({
+      id: c.id, name: c.name, stage: stageOf(c), region: c.region,
+      prefix: prefixOf(c) || null,
+      orgKey: orgKeyOf(c),
+      orgLabel: (c.orgLabel || '').trim() || c.name
+    })),
     rows, problems
   });
 });
@@ -2102,7 +2283,7 @@ app.post('/api/flows/cross-hash', async (req, res) => {
   for (const c of customers) {
     try {
       if (isDemo(c)) {
-        const f = demoFlowsFor(c.id).find(x => x.name === nameFor(c) && x.type === flowType);
+        const f = demoFlowsFor(c).find(x => x.name === nameFor(c) && x.type === flowType);
         if (!f) throw new Error(`"${nameFor(c)}" findes ikke i ${c.name}`);
         results.push({ customerId: c.id, customerName: c.name,
                        version: f.published, hash: flowContentHash(f.content) });
