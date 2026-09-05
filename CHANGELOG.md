@@ -5,6 +5,47 @@
 
 ---
 
+### v1.30.1
+---
+**🇩🇰 Dansk**
+- **Rettet: indholdstjekket meldte "afviger" på en fejlfri kopi.** To ting, begge målt frem for gættet.
+
+  **1. Præfikset talte med i hashen.** Flowets navn og dets referencer *skal* være forskellige i et præfikset miljø — det er hele pointen — men de indgik i sammenligningen. En byte-perfekt forfremmelse afveg derfor altid på præcis to linjer:
+
+  ```
+  prod: name: WeekNumber              prod: By Week Routing:
+  dev : name: DEV_WeekNumber          dev : DEV_By Week Routing:
+  ```
+
+  Miljøets præfiks fjernes nu fra både navnet og `dataTable:`/`commonModule:`-referencerne **inden** der hashes. En rigtig forskel fanges stadig — afprøvet med én ændret værdi.
+
+  **2. En tom beskrivelse talte med.** Archy skriver `description: ""` ud på et nyoprettet flow, men udelader linjen på et der aldrig har haft en beskrivelse. Kopien fik altså én linje mere end kilden. Tomme beskrivelser springes nu over; en beskrivelse med indhold tæller stadig.
+
+  Mod de rigtige orgs: `WeekNumber` i prod og `DEV_WeekNumber` i dev gav før to forskellige hashes, nu den samme — **i trit**.
+
+> **Bemærk om forskels-visningen.** Sammenligningen stiller linje 1 op mod linje 1, linje 2 mod linje 2 og så videre. Én indsat linje forskyder alt derefter, så en enkelt forskel kan vises som hundredvis. Hashen er upåvirket — den er den der afgør sagen — men listen af forskelle skal læses med det i baghovedet.
+
+---
+**🇬🇧 English**
+- **Fixed: the content check reported "differs" on a flawless copy.** Two causes, both measured rather than guessed.
+
+  **1. The prefix counted towards the hash.** A flow's name and its references *must* differ in a prefixed environment — that is the whole point — yet they went into the comparison. A byte-perfect promotion therefore always differed on exactly two lines:
+
+  ```
+  prod: name: WeekNumber              prod: By Week Routing:
+  dev : name: DEV_WeekNumber          dev : DEV_By Week Routing:
+  ```
+
+  The environment's prefix is now removed from both the name and the `dataTable:`/`commonModule:` references **before** hashing. A real difference is still caught — tested with a single changed value.
+
+  **2. An empty description counted.** Archy writes `description: ""` on a newly created flow but omits the line on one that never had a description, so the copy had one line more than the source. Empty descriptions are now skipped; a description with content still counts.
+
+  Against the real orgs: `WeekNumber` in prod and `DEV_WeekNumber` in dev previously produced two different hashes, now the same — **in step**.
+
+> **A note on the difference list.** The comparison lines up line 1 against line 1, line 2 against line 2 and so on. One inserted line shifts everything after it, so a single difference can be displayed as hundreds. The hash is unaffected — that is what decides — but the list of differences should be read with this in mind.
+
+---
+
 ### v1.30.0
 ---
 **🇩🇰 Dansk**

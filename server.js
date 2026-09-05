@@ -1532,6 +1532,11 @@ function normalizeFlowYaml(yaml) {
   return String(yaml || '')
     .split(/\r?\n/)
     .filter(l => !/^\s*trackingId:\s*\d+\s*$/.test(l))
+    // En TOM beskrivelse betyder det samme som ingen beskrivelse. Archy skriver
+    // den ud på et nyoprettet flow, men udelader den på et der aldrig har haft
+    // en — så en fejlfri kopi fik én linje mere end kilden og blev meldt som
+    // afvigende. En beskrivelse med indhold tæller stadig med.
+    .filter(l => !/^\s*description:\s*(""|'')\s*$/.test(l))
     .join('\n')
     .replace(/_(\d+)\]/g, '_#]')
     .replace(/^(\s*refId:\s*.*?)_(\d+)\s*$/gm, '$1_#')
@@ -1539,8 +1544,34 @@ function normalizeFlowYaml(yaml) {
     .trim();
 }
 
-function flowContentHash(yaml) {
-  return crypto.createHash('sha256').update(normalizeFlowYaml(yaml)).digest('hex');
+// Ved sammenligning på tværs af miljøer skal præfikset ud af BÅDE flowets eget
+// navn og dets referencer. De to linjer skal jo være forskellige — det er hele
+// pointen med et præfikset miljø — så uden dette ville en fejlfri forfremmelse
+// altid melde "afviger", og indholdstjekket ville være ubrugeligt netop dér
+// hvor man har mest brug for det.
+function stripEnvPrefixesInYaml(yaml, env) {
+  const p = prefixOf(env);
+  if (!p) return String(yaml);
+  const esc = p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  let done = false;
+  let out = String(yaml).split(/\r?\n/).map(l => {
+    if (done) return l;
+    const m = l.match(/^([ \t]{2,})name:([ \t]*)(.*)$/);
+    if (!m) return l;
+    done = true;
+    return `${m[1]}name:${m[2]}${m[3].replace(new RegExp('^(["\']?)' + esc), '$1')}`;
+  }).join('\n');
+
+  for (const tag of ['dataTable', 'commonModule'])
+    out = out.replace(new RegExp(`(^[ \\t]*${tag}:[ \\t]*\\r?\\n[ \\t]+)${esc}`, 'gm'), '$1');
+
+  return out;
+}
+
+function flowContentHash(yaml, env) {
+  const rent = env ? stripEnvPrefixesInYaml(yaml, env) : yaml;
+  return crypto.createHash('sha256').update(normalizeFlowYaml(rent)).digest('hex');
 }
 
 // Archy lægger versionen i filnavnet: "Mit Flow_v16-0.yaml" → 16
@@ -2353,11 +2384,11 @@ app.post('/api/flows/cross-hash', async (req, res) => {
         const f = demoFlowsFor(c).find(x => x.name === nameFor(c) && x.type === flowType);
         if (!f) throw new Error(`"${nameFor(c)}" findes ikke i ${c.name}`);
         results.push({ customerId: c.id, customerName: c.name,
-                       version: f.published, hash: flowContentHash(f.content) });
+                       version: f.published, hash: flowContentHash(f.content, c) });
         continue;
       }
       const { yaml, version } = await exportFlowToYaml(c, nameFor(c), flowType);
-      results.push({ customerId: c.id, customerName: c.name, version, hash: flowContentHash(yaml) });
+      results.push({ customerId: c.id, customerName: c.name, version, hash: flowContentHash(yaml, c) });
     } catch (e) {
       results.push({ customerId: c.id, customerName: c.name, error: e.message });
     }
@@ -2425,8 +2456,8 @@ app.post('/api/flows/compare', async (req, res) => {
     let diffCount = 0;
     for (let i = 0; i < Math.max(A.length, B.length); i++) if (A[i] !== B[i]) diffCount++;
 
-    const sourceHash = flowContentHash(src.yaml);
-    const targetHash = flowContentHash(tgt.yaml);
+    const sourceHash = flowContentHash(src.yaml, source);
+    const targetHash = flowContentHash(tgt.yaml, target);
 
     // Kender vi dette flow fra en migrering eller et nulpunkt, kan vi sige
     // HVAD der har flyttet sig siden.

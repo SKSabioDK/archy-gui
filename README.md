@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.30.0
+# Archy GUI — Flow Manager · v1.30.1
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.30.0**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.30.0**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.30.1**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.30.1**.
 
 ---
 
@@ -275,7 +275,7 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.30.0** — see [Changelog](#changelog) above.
+> Current version: **v1.30.1** — see [Changelog](#changelog) above.
 
 ### Requirements
 - **Node.js 18+**
