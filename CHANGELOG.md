@@ -5,6 +5,47 @@
 
 ---
 
+### v1.29.0
+---
+**🇩🇰 Dansk**
+- **Rettet: man kunne slet ikke migrere ind i et præfikset miljø.** To ting stod i vejen, og den anden var den alvorlige:
+
+  1. **Der var ingen knap.** Forfremmelse går kun fremad, og `⟵ Hent tilbage` kræver at *begge* sider har flowet. Et tomt `DEV_`-miljø kunne derfor ikke fyldes fra noget som helst.
+  2. **Navnet fulgte ikke med.** Importen tog YAML'en som den var, så et flow fra prod ville lande i `DEV_`-miljøet under **prod-navnet** — og bor de to i samme org, er det det samme flow. Archy ville have svaret "already exists".
+
+- **`⟵ Hent hertil`** — på et flow der kun findes senere i kæden kommer der nu en knap der henter det fra det nærmeste senere trin. Det er vejen ind i et tomt dev-miljø.
+- **Flowet omdøbes til målmiljøet.** Kildens præfiks af, målets på: `Bank bot` fra prod bliver til `DEV_Bank bot`. Kun **øverste** navnefelt i YAML'en røres — tasks og actions har også `name:`, og de skal stå. Citering bevares.
+
+  > Den omdøbte udgave skrives til en **sidefil**. Den eksporterede fil er vores lokale kopi af kildens flow; skrev vi ovenpå den, ville kopien stille og roligt blive til noget andet.
+
+  Versionsendelsen `_vN` sættes **ikke** på her — den regel kører fortsat kun i demoen, indtil omdøbning i en rigtig org er afprøvet.
+
+- **Datatabeller følger med:** `SystemConfig` fra prod bliver til `DEV_SystemConfig`, og "findes allerede"-tjekket ser på det nye navn. Uden det ville en tabel migreret inden for samme org ramme sig selv.
+- Manifestet nøgles på **grundnavnet uden præfiks**, men hver rækkes `flowName` er miljøets eget navn. Ellers ville en kilde med præfiks skrive under én nøgle og blive læst under en anden. Opslaget af målets publicerede udgave bruger nu også målets navn.
+
+- **Tydeligere adskillelse på tavlen:** ramme om hver org, og prod har sin egen tone og rød, fed overskrift. Prod får **ikke** rød baggrund — rødt betyder allerede "noget er galt" på tavlen, og prod er ikke i sig selv en fejl.
+
+---
+**🇬🇧 English**
+- **Fixed: migrating into a prefixed environment was simply not possible.** Two things blocked it, and the second was the serious one:
+
+  1. **There was no button.** Promotion only moves forward, and `⟵ Pull back` requires *both* sides to hold the flow. An empty `DEV_` environment could therefore not be filled from anything.
+  2. **The name did not come along.** The import took the YAML as it was, so a flow from prod would land in the `DEV_` environment under the **prod name** — and if the two live in the same org, that is the same flow. Archy would have answered "already exists".
+
+- **`⟵ Bring here`** — a flow that exists only later in the chain now gets a button that fetches it from the nearest later stage. That is the way into an empty dev environment.
+- **The flow is renamed for the target environment.** Source prefix off, target prefix on: `Bank bot` from prod becomes `DEV_Bank bot`. Only the **topmost** name field in the YAML is touched — tasks and actions have `name:` too and must stay. Quoting is preserved.
+
+  > The renamed copy is written to a **side file**. The exported file is our local copy of the source's flow; writing over it would quietly turn that copy into something else.
+
+  The `_vN` version suffix is **not** applied here — that rule still runs only in the demo, until renaming in a real org has been tested.
+
+- **Datatables follow the same convention:** `SystemConfig` from prod becomes `DEV_SystemConfig`, and the "already exists" check looks at the new name. Without it, a table migrated within one org would collide with itself.
+- The manifest is keyed on the **base name without prefix**, while each row's `flowName` is the environment's own name. Otherwise a prefixed source would write under one key and be read under another. The lookup of the target's published version now uses the target's name too.
+
+- **Clearer separation on the board:** a frame around each org, and prod gets its own tone with a bold red heading. Prod does **not** get a red background — red already means "something is wrong" on the board, and prod is not itself a fault.
+
+---
+
 ### v1.28.0
 ---
 **🇩🇰 Dansk**

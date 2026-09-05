@@ -460,7 +460,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.28.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.29.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1572,6 +1572,8 @@ const LANGS = {
     demo2_name:'Demo 2 — virtuelle miljøer på præfiks',
     demo1_desc:'Fire orgs, ét miljø i hver.',
     demo2_desc:'DEV_, TEST_ og UAT_ deler én org; prod har sin egen og intet præfiks.',
+    pl_pull_here:'⟵ Hent hertil',
+    pl_pull_here_title:'Hent flowet fra det nærmeste senere trin ned i dette miljø. Har miljøet et præfiks, får flowet det på undervejs.',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1967,6 +1969,8 @@ const LANGS = {
     demo2_name:'Demo 2 — virtual environments by prefix',
     demo1_desc:'Four orgs, one environment each.',
     demo2_desc:'DEV_, TEST_ and UAT_ share one org; prod has its own and no prefix.',
+    pl_pull_here:'⟵ Bring here',
+    pl_pull_here_title:'Bring the flow from the nearest later stage down into this environment. If the environment has a prefix, the flow gets it on the way.',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -2362,6 +2366,8 @@ const LANGS = {
     demo2_name:'Démo 2 — environnements virtuels par préfixe',
     demo1_desc:'Quatre orgs, un environnement chacune.',
     demo2_desc:'DEV_, TEST_ et UAT_ partagent une org ; la prod a la sienne, sans préfixe.',
+    pl_pull_here:'⟵ Rapatrier ici',
+    pl_pull_here_title:'Rapatrier le flow depuis l\'étape ultérieure la plus proche vers cet environnement. Si l\'environnement a un préfixe, le flow le reçoit au passage.',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -2757,6 +2763,8 @@ const LANGS = {
     demo2_name:'Demo 2 — virtuele omgevingen op prefix',
     demo1_desc:'Vier orgs, elk één omgeving.',
     demo2_desc:'DEV_, TEST_ en UAT_ delen één org; prod heeft een eigen org en geen prefix.',
+    pl_pull_here:'⟵ Hierheen halen',
+    pl_pull_here_title:'Haal de flow uit de dichtstbijzijnde latere fase naar deze omgeving. Heeft de omgeving een prefix, dan krijgt de flow die onderweg.',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -3152,6 +3160,8 @@ const LANGS = {
     demo2_name:'Demo 2: entornos virtuales por prefijo',
     demo1_desc:'Cuatro orgs, un entorno en cada una.',
     demo2_desc:'DEV_, TEST_ y UAT_ comparten una org; prod tiene la suya y sin prefijo.',
+    pl_pull_here:'⟵ Traer aquí',
+    pl_pull_here_title:'Traiga el flow desde la etapa posterior más cercana a este entorno. Si el entorno tiene prefijo, el flow lo recibe por el camino.',
   }
 };
 
@@ -7091,6 +7101,20 @@ function renderPipeline() {
   if (!d) return;
   const rows = pipelineRowsShown();
 
+  // Ramme om hver org, så det ses hvor den ene slutter og den næste begynder,
+  // og en egen tone på prod. Prod får IKKE rød baggrund — rødt betyder allerede
+  // "noget er galt" på tavlen, og prod er ikke i sig selv en fejl. Kun
+  // overskriften er rød, som en advarsel om hvor man er.
+  const colStyle = (e, i) => {
+    if (!e) return '';
+    const p = [];
+    if (e.stage === 'prod') p.push('background:var(--panel)');
+    const foer = d.environments[i - 1], efter = d.environments[i + 1];
+    if (!foer  || foer.orgKey  !== e.orgKey) p.push('border-left:2px solid var(--border)');
+    if (!efter || efter.orgKey !== e.orgKey) p.push('border-right:2px solid var(--border)');
+    return p.join(';');
+  };
+
   const cell = (c, i, row) => {
     const key = row.flowName + '|' + row.flowType;
     const hashes = pipelineHashes[key];
@@ -7162,8 +7186,21 @@ function renderPipeline() {
 
     // Findes flowet først i et senere trin, er det ikke en ventende
     // forfremmelse — det er bygget udenom kæden.
+    // Findes flowet kun senere i kæden, manglede der en vej TILBAGE. Uden den
+    // kunne man ikke få noget ind i et tomt dev-miljø overhovedet: forfremmelse
+    // går kun fremad, og "hent tilbage" kræver at begge sider har flowet.
+    const kilde = sig.laterOnly
+      ? row.cells.slice(i + 1).find(x => !x.missing && !x.unknown && x.published)
+      : null;
     const laterOnly = sig.laterOnly
-      ? `<div style="margin-top:3px;font-size:9px;color:var(--yellow)">⚠ ${t('pl_only_later')}</div>`
+      ? `<div style="margin-top:3px;font-size:9px;color:var(--yellow)">⚠ ${t('pl_only_later')}</div>` +
+        (kilde
+          ? `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm"
+               style="font-size:10px;padding:2px 6px;border-color:var(--yellow);color:var(--yellow)"
+               title="${t('pl_pull_here_title')}"
+               onclick="promoteFromBoard('${escapeHtml(kilde.name || row.flowName).replace(/'/g, "\\'")}','${row.flowType}','${kilde.envId}','${c.envId}')"
+               >${t('pl_pull_here')}</button></div>`
+          : '')
       : '';
 
     // Uenighed afgøres parvis, så knappen ved præcis hvilke to miljøer der er
@@ -7207,7 +7244,7 @@ function renderPipeline() {
            >▲ ${t('demo_publish')}</button></div>`
       : '';
 
-    return `<td style="padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:top">
+    return `<td style="padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:top;${colStyle(d.environments[i], i)}">
         ${ownName}<span style="color:${colour};font-family:var(--mono);font-size:12px"
           title="${t('pl_published_title')}">${body}</span>${when}${notPromoted}${changed}${inverted}${laterOnly}${btn}${pull}${pub}</td>`;
   };
@@ -7227,14 +7264,14 @@ function renderPipeline() {
 
   const orgHead = visOrgRaekke
     ? `<tr><th></th>${orgSpans.map(o =>
-        `<th colspan="${o.span}" style="text-align:left;padding:6px 10px;font-size:10px;
+        `<th colspan="${o.span}" style="text-align:left;padding:6px 10px;font-size:10px;border-left:2px solid var(--border);border-right:2px solid var(--border);
            color:var(--muted);font-family:var(--mono);border-bottom:1px solid var(--border)"
            >🏢 ${escapeHtml(o.label)}${o.span > 1 ? ` · ${o.span} ${t('pl_envs_in_org')}` : ''}</th>`).join('')}</tr>`
     : '';
 
-  const head = d.environments.map(e =>
-    `<th style="text-align:left;padding:8px 10px;font-size:11px;color:var(--muted);font-family:var(--mono)">
-       ${(e.stage || '—').toUpperCase()}${e.prefix ? `<span style="color:var(--blue)"> ${escapeHtml(e.prefix)}</span>` : ''}
+  const head = d.environments.map((e, i) =>
+    `<th style="text-align:left;padding:8px 10px;font-size:11px;color:var(--muted);font-family:var(--mono);${colStyle(e, i)}">
+       <span style="${e.stage === 'prod' ? 'color:var(--red);font-weight:700' : ''}">${(e.stage || '—').toUpperCase()}</span>${e.prefix ? `<span style="color:var(--blue)"> ${escapeHtml(e.prefix)}</span>` : ''}
        <div style="font-weight:400;color:var(--muted);font-size:10px">${escapeHtml(e.name)}</div></th>`).join('');
 
   const body = rows.map(r => `<tr>

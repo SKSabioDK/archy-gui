@@ -1428,8 +1428,12 @@ app.post('/api/datatables/migrate', async (req, res) => {
       headers: { Authorization: `Bearer ${tgtToken}` },
       params: { pageSize: 200, pageNumber: 1 }
     });
-    if ((existing.data.entities || []).some(t => t.name === src.name)) {
-      return res.status(409).json({ error: 'already_exists', message: `DataTable "${src.name}" findes allerede` });
+    // Datatabellerne følger samme præfiks-konvention som flowene. Uden det
+    // ville en tabel fra prod lande i DEV_-miljøet under prod-navnet — og bor
+    // de to i samme org, er det den samme tabel.
+    const tgtName = withEnvPrefix(stripEnvPrefix(src.name, source), target);
+    if ((existing.data.entities || []).some(t => t.name === tgtName)) {
+      return res.status(409).json({ error: 'already_exists', message: `DataTable "${tgtName}" findes allerede` });
     }
 
     // 3. Match division på navn. Findes den ikke, oprettes tabellen i orgens
@@ -1453,9 +1457,9 @@ app.post('/api/datatables/migrate', async (req, res) => {
     // ellers bærer den nye tabel en reference til en anden org.
     const schema = { ...src.schema };
     delete schema.datatableId;
-    schema.title = src.name;
+    schema.title = tgtName;
 
-    const body = { name: src.name, schema };
+    const body = { name: tgtName, schema };
     if (src.description) body.description = src.description;
     if (divisionId) body.division = { id: divisionId };
 
@@ -1532,6 +1536,28 @@ async function exportFlowToYaml(customer, flowName, flowType) {
 // Sidste kontrol før vi viser eller migrerer indholdet: står der det flownavn i
 // YAML'en som brugeren bad om? Kan navnet ikke læses, lader vi det passere —
 // vi vil hellere mangle kontrollen end afvise en gyldig eksport.
+// Skriver flowets navn om i YAML'en. Det er ØVERSTE navnefelt der er flowets —
+// de dybere hører til tasks og states — så kun det første røres.
+function renameFlowInYaml(yaml, newName) {
+  let done = false;
+  const eol = /\r\n/.test(yaml) ? '\r\n' : '\n';
+  return String(yaml).split(/\r?\n/).map(l => {
+    if (done) return l;
+    const m = l.match(/^([ \t]{2,})name:([ \t]*)(.*)$/);
+    if (!m) return l;
+    done = true;
+    const varQuoted = /^".*"$|^'.*'$/.test(m[3].trim());
+    return `${m[1]}name:${m[2] || ' '}${varQuoted ? JSON.stringify(newName) : newName}`;
+  }).join(eol);
+}
+
+// Hvad flowet skal hedde i målmiljøet: kildens præfiks af, målets på.
+// Versionsendelsen (_vN) røres IKKE her — den regel kører indtil videre kun i
+// demoen, fordi omdøbning af et flow i en rigtig org ikke er afprøvet endnu.
+function targetFlowName(flowName, source, target) {
+  return withEnvPrefix(stripEnvPrefix(flowName, source), target);
+}
+
 function assertYamlIsFlow(yaml, flowName, fileName) {
   const m = String(yaml).match(/^[ \t]{2,}name:[ \t]*(.+?)[ \t]*$/m);
   if (!m) return;
@@ -1764,6 +1790,9 @@ async function writeOrgManifestRow(customer, flowName, flowType, data) {
 // Fejler den ene, siges det højt i loggen — men migreringen rulles ikke tilbage,
 // for flowet ER flyttet. Et manglende manifest er en mangel i bogføringen, ikke
 // en grund til at påstå at flytningen ikke skete.
+// flowName SKAL være grundnavnet uden miljøpræfiks. Rækkerne nøgles på det, og
+// tavlen slår også op på det — ellers ville en kilde med præfiks skrive under
+// én nøgle og blive læst under en anden.
 async function recordOrgManifest(source, target, flowName, flowType, info) {
   const write = async (env, data, hvad) => {
     try {
@@ -1774,8 +1803,9 @@ async function recordOrgManifest(source, target, flowName, flowType, info) {
       addLog('ERROR', `Kunne ikke skrive manifest i ${env.name}: ${describeApiError(e)}`, env.name, 'MANIFEST');
     }
   };
+  // Navnet i rækken er miljøets EGET navn på flowet — nøglen er grundnavnet.
   await write(target, {
-    flowName, version: info.targetVersion, publishedAt: info.targetPublishedAt,
+    flowName: target ? withEnvPrefix(flowName, target) : flowName, version: info.targetVersion, publishedAt: info.targetPublishedAt,
     promotedFrom: source ? source.name : null, promotedAt: info.targetPublishedAt,
     sourceVersion: info.sourceVersion, hash: info.hash, kind: info.kind || 'migration'
   }, 'målet');
@@ -1783,7 +1813,7 @@ async function recordOrgManifest(source, target, flowName, flowType, info) {
   // hvad org'en indeholder lige nu.
   if (!source) return;
   await write(source, {
-    flowName, version: info.sourceVersion, publishedAt: info.sourcePublishedAt || null,
+    flowName: withEnvPrefix(flowName, source), version: info.sourceVersion, publishedAt: info.sourcePublishedAt || null,
     promotedTo: target.name, promotedAt: info.targetPublishedAt,
     hash: info.hash, kind: info.kind || 'migration'
   }, 'kilden');
@@ -3609,10 +3639,28 @@ app.post('/api/migrate/commit', async (req, res) => {
       fs.writeFileSync(resolved, yaml, 'utf8');
     }
 
+    // Har målmiljøet et præfiks, skal flowet hedde noget andet dér. Uden det
+    // ville et flow fra prod lande i DEV_-miljøet under prod-navnet — og bor de
+    // to i samme org, kolliderer det med det flow det kom fra.
+    //
+    // Den omdøbte udgave skrives til en SIDEFIL. Den eksporterede fil er vores
+    // lokale kopi af kildens flow; skrev vi ovenpå den, ville kopien af kilden
+    // stille og roligt blive til noget andet.
+    let importFile = resolved;
+    const nyName = targetFlowName(flowName, source, target);
+    if (nyName !== flowName) {
+      const yaml = fs.readFileSync(resolved, 'utf8');
+      importFile = path.join(path.dirname(resolved),
+        `.import-${sanitizeName(target.name)}-${path.basename(resolved)}`);
+      fs.writeFileSync(importFile, renameFlowInYaml(yaml, nyName), 'utf8');
+      addLog('INFO', `Omdøbes til målmiljøet: "${flowName}" → "${nyName}"`, target.name, 'MIGRATE');
+    }
+
     const cmd = action || 'create';
-    addLog('INFO', `Importing "${path.basename(resolved)}" to ${target.name} (action: ${cmd})`, target.name, 'MIGRATE');
-    const out = await runArchy(`${cmd} --file "${resolved}"`, target);
-    addLog('SUCCESS', `Migration complete: "${flowName}" is now in ${target.name}`, target.name, 'MIGRATE');
+    addLog('INFO', `Importing "${path.basename(importFile)}" to ${target.name} (action: ${cmd})`, target.name, 'MIGRATE');
+    const out = await runArchy(`${cmd} --file "${importFile}"`, target);
+    if (importFile !== resolved) { try { fs.unlinkSync(importFile); } catch (_) {} }
+    addLog('SUCCESS', `Migration complete: "${nyName}" is now in ${target.name}`, target.name, 'MIGRATE');
 
     // Notér hvad målet blev bygget af, så det senere kan verificeres om kilden
     // eller målet har flyttet sig. Versionsnumrene gemmes til orientering —
@@ -3622,13 +3670,14 @@ app.post('/api/migrate/commit', async (req, res) => {
     // form når posten senere slås op.
     const yamlType = (importedYaml.match(/^(\w+):/m) || [])[1] || null;
     const [sourceOrgId, targetOrgId] = await Promise.all([getOrgId(source), getOrgId(target)]);
-    const pub = await getFlowPublishInfo(target, flowName, yamlType).catch(() => null);
+    // Slå målet op under DETS navn — ellers finder vi intet og noterer null.
+    const pub = await getFlowPublishInfo(target, nyName, yamlType).catch(() => null);
 
     recordManifest({
       ts: new Date().toISOString(), kind: 'migration',
       sourceId, sourceOrgId, sourceName: source.name,
       targetId, targetOrgId, targetName: target.name,
-      flowName, flowType: yamlType,
+      flowName: stripEnvPrefix(flowName, source), flowType: yamlType,
       sourceVersion: versionFromFileName(path.basename(resolved)),
       targetVersion: pub?.version || null,
       targetPublishedAt: pub?.publishedAt || null,
@@ -3638,7 +3687,7 @@ app.post('/api/migrate/commit', async (req, res) => {
 
     // Og i org'ens eget manifest, hvis den har tabellen. Uden dette ville en
     // oprettet tabel stå tom for evigt, og delingen var kun på papiret.
-    await recordOrgManifest(source, target, flowName, yamlType, {
+    await recordOrgManifest(source, target, stripEnvPrefix(flowName, source), yamlType, {
       sourceVersion: versionFromFileName(path.basename(resolved)),
       targetVersion: pub?.version || null,
       targetPublishedAt: pub?.publishedAt || Date.now(),
