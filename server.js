@@ -228,6 +228,43 @@ function stripEnvPrefix(name, env) {
 // Navnet et flow skal have i et givet miljø: præfikset sat på grundnavnet.
 const withEnvPrefix = (baseName, env) => prefixOf(env) + String(baseName || '');
 
+// Hvilke ressourcetyper der bærer miljøets præfiks.
+//
+// Datatabeller gør — det er konventionen i orgen. Flows gør, og et common
+// module ER et flow, så det følger med af sig selv. Køer, skills, wrap-up-koder
+// og scripts er derimod fælles for hele org'en og duplikeres ikke pr. virtuelt
+// miljø; ville man præfikse dem, ledte vi efter noget der aldrig har eksisteret.
+//
+// Data actions står bevidst udenfor indtil det er afklaret: de hører til en
+// integration, og om man duplikerer dem pr. miljø afhænger af opsætningen.
+const prefixedKinds = () => new Set(['datatable', ...FLOW_KINDS]);
+
+// Navnet en afhængighed har i et givet miljø.
+function depNameIn(kind, name, env, source) {
+  if (!prefixedKinds().has(kind)) return name;
+  return withEnvPrefix(stripEnvPrefix(name, source), env);
+}
+
+// Inde i et præfikset miljø peger flowet på de præfiksede ressourcer. Uden
+// denne omskrivning ville DEV_-flowet pege tilbage på prods tabel — og så
+// ville dev og prod dele data, hvilket er lige præcis dét man ville undgå.
+function prefixDependenciesInYaml(yaml, source, target) {
+  if (prefixOf(source) === prefixOf(target)) return { yaml: String(yaml), changed: [] };
+  const changed = [];
+  let out = String(yaml);
+  for (const tag of ['dataTable', 'commonModule']) {
+    const re = new RegExp(`(^[ \\t]*${tag}:[ \\t]*\\r?\\n[ \\t]+)([^\\r\\n:]+)(:)`, 'gm');
+    out = out.replace(re, (hele, hoved, navn, hale) => {
+      const rent = navn.trim();
+      const ny = withEnvPrefix(stripEnvPrefix(rent, source), target);
+      if (ny === rent) return hele;
+      if (!changed.includes(`${rent} → ${ny}`)) changed.push(`${rent} → ${ny}`);
+      return `${hoved}${ny}${hale}`;
+    });
+  }
+  return { yaml: out, changed };
+}
+
 // To miljøer må kun sammenlignes og migreres indbyrdes hvis de deler kunde OG
 // gruppe. Miljøer uden gruppe hører ikke sammen med noget — heller ikke med
 // hinanden — så en manglende opsætning aldrig kan læses som "de hører sammen".
@@ -3515,16 +3552,21 @@ app.post('/api/migrate/prepare', async (req, res) => {
     for (const kind of Object.keys(deps)) {
       const names = deps[kind];
       if (!names.length) continue;
+      // Bærer typen miljøets præfiks, skal vi lede efter DET navn. Ellers sagde
+      // tjekket "alt findes" fordi prods tabel ligger i samme org — og flowet
+      // blev importeret pegende på prods data.
+      const wanted = names.map(n => depNameIn(kind, n, target, source));
       let existing;
       try {
-        existing = await lookupExisting(kind, names, tgtToken, tgtBase);
+        existing = await lookupExisting(kind, wanted, tgtToken, tgtBase);
       } catch (e) {
         addLog('WARN', `Kunne ikke tjekke ${kind}: ${describeApiError(e)}`, target.name, 'MIGRATE');
         existing = new Set();
       }
       for (const name of names) {
-        const ok = existing.has(name);
-        results.push({ kind, name, ok });
+        const iMaal = depNameIn(kind, name, target, source);
+        const ok = existing.has(iMaal);
+        results.push({ kind, name, ok, targetName: iMaal !== name ? iMaal : undefined });
         if (!ok && (kind === 'datatable' || kind === 'dataaction' || FLOW_KINDS.has(kind))) needSource.push(kind);
       }
     }
@@ -3667,12 +3709,22 @@ app.post('/api/migrate/commit', async (req, res) => {
     // stille og roligt blive til noget andet.
     let importFile = resolved;
     const nyName = targetFlowName(flowName, source, target);
-    if (nyName !== flowName) {
-      const yaml = fs.readFileSync(resolved, 'utf8');
+    if (prefixOf(source) !== prefixOf(target)) {
+      let yaml = fs.readFileSync(resolved, 'utf8');
+      if (nyName !== flowName) {
+        yaml = renameFlowInYaml(yaml, nyName);
+        addLog('INFO', `Omdøbes til målmiljøet: "${flowName}" → "${nyName}"`, target.name, 'MIGRATE');
+      }
+      // Og de ressourcer flowet peger på. Uden dette ville DEV_-flowet slå op i
+      // prods tabel, og de to miljøer ville dele data.
+      const dep = prefixDependenciesInYaml(yaml, source, target);
+      yaml = dep.yaml;
+      for (const æ of dep.changed)
+        addLog('INFO', `Reference omskrevet: ${æ}`, target.name, 'MIGRATE');
+
       importFile = path.join(path.dirname(resolved),
         `.import-${sanitizeName(target.name)}-${path.basename(resolved)}`);
-      fs.writeFileSync(importFile, renameFlowInYaml(yaml, nyName), 'utf8');
-      addLog('INFO', `Omdøbes til målmiljøet: "${flowName}" → "${nyName}"`, target.name, 'MIGRATE');
+      fs.writeFileSync(importFile, yaml, 'utf8');
     }
 
     const cmd = action || 'create';

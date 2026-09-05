@@ -5,6 +5,63 @@
 
 ---
 
+### v1.30.0
+---
+**🇩🇰 Dansk**
+- **Rettet: afhængigheder blev ikke præfikset — så flowet i DEV pegede tilbage på prods data.** `WeekNumber` blev migreret til `DEV_WeekNumber`, men tabellen `By Week Routing` fulgte ikke med, og flowet pegede stadig på prods tabel. Dev og prod ville have delt data, hvilket er lige præcis dét adskillelsen skal forhindre.
+
+  Der var to fejl bag:
+
+  | | Hvad der skete |
+  |---|---|
+  | **Tjekket** | slog `By Week Routing` op i mål-**org'en**. Den findes jo — det er samme org — så tjekket sagde "alle afhængigheder findes". Det skulle have ledt efter `DEV_By Week Routing`. |
+  | **Importen** | omskrev flowets eget navn, men ikke dets referencer. |
+
+- **Hvilke typer der bærer præfikset er nu udtrykkeligt afgjort:**
+
+  | Type | Præfiks | Hvorfor |
+  |---|---|---|
+  | datatabeller | ja | konventionen i orgen |
+  | flows og common modules | ja | et common module *er* et flow |
+  | køer, skills, wrap-up-koder, scripts | nej | fælles for hele org'en, duplikeres ikke pr. miljø |
+  | data actions | nej indtil videre | de hører til en integration, og om man duplikerer dem pr. miljø afhænger af opsætningen |
+
+  Ville vi præfikse en kø, ledte vi efter noget der aldrig har eksisteret.
+
+- **Referencer omskrives ved import.** `dataTable:` og `commonModule:` i YAML'en peges om til målmiljøets navne, og hver omskrivning står i loggen: *Reference omskrevet: By Week Routing → DEV_By Week Routing*. Afprøvet mod det rigtige `WeekNumber`-flow: præcis én linje ændret, køer og data actions urørt.
+- **Dialogen viser målnavnet** — `By Week Routing → DEV_By Week Routing` — så man kan se hvad der bliver oprettet, i stedet for at tro at prods tabel genbruges.
+
+> **Det `DEV_WeekNumber` der allerede er oprettet peger på prods tabel.** Slet det og kør migreringen igen, så kommer tabellen med og referencen bliver rettet.
+
+---
+**🇬🇧 English**
+- **Fixed: dependencies were not prefixed — so the flow in DEV pointed back at prod's data.** `WeekNumber` was migrated to `DEV_WeekNumber`, but the table `By Week Routing` did not come along, and the flow still pointed at prod's table. Dev and prod would have shared data, which is precisely what the separation exists to prevent.
+
+  Two faults behind it:
+
+  | | What happened |
+  |---|---|
+  | **The check** | looked `By Week Routing` up in the target **org**. It is there — it is the same org — so the check said "all dependencies exist". It should have looked for `DEV_By Week Routing`. |
+  | **The import** | rewrote the flow's own name but not its references. |
+
+- **Which types carry the prefix is now decided explicitly:**
+
+  | Type | Prefixed | Why |
+  |---|---|---|
+  | datatables | yes | the convention in the org |
+  | flows and common modules | yes | a common module *is* a flow |
+  | queues, skills, wrap-up codes, scripts | no | shared across the whole org, not duplicated per environment |
+  | data actions | not for now | they belong to an integration, and whether you duplicate them per environment depends on the setup |
+
+  Prefixing a queue would mean looking for something that never existed.
+
+- **References are rewritten on import.** `dataTable:` and `commonModule:` in the YAML are repointed to the target environment's names, and each rewrite is logged: *Reference rewritten: By Week Routing → DEV_By Week Routing*. Tested against the real `WeekNumber` flow: exactly one line changed, queues and data actions untouched.
+- **The dialog shows the target name** — `By Week Routing → DEV_By Week Routing` — so you can see what will be created, rather than assuming prod's table is reused.
+
+> **The `DEV_WeekNumber` already created points at prod's table.** Delete it and run the migration again; the table will follow and the reference will be corrected.
+
+---
+
 ### v1.29.1
 ---
 **🇩🇰 Dansk**

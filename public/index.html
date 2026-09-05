@@ -460,7 +460,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.29.1 · Archy GUI</div>
+    <div class="version" id="app-version">v1.30.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -6578,6 +6578,14 @@ function depResolve(choice) {
 }
 
 // Viser rapporten og venter på brugerens valg. Mål-org'en er urørt indtil her.
+// Bærer ressourcen målmiljøets præfiks, hedder den noget andet dér. Det skal
+// stå i dialogen, ellers ser det ud som om vi opretter noget vi ikke opretter.
+function depTargetName(d) {
+  return d && d.targetName
+    ? ` <span style="color:var(--blue);font-family:var(--mono);font-size:11px">→ ${escapeHtml(d.targetName)}</span>`
+    : '';
+}
+
 function showDepModal(flowName, missing, dynamicSkills) {
   const auto   = missing.filter(d => d.canMigrate);
   const choice = missing.filter(d => !d.canMigrate && d.needsChoice);
@@ -6596,7 +6604,7 @@ function showDepModal(flowName, missing, dynamicSkills) {
       <label style="display:flex;align-items:center;gap:10px;padding:7px 0;cursor:pointer;font-size:13px">
         <input type="checkbox" checked style="width:auto" data-dep='${JSON.stringify(d).replace(/'/g, "&apos;")}'/>
         <span style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:78px">${d.kind}</span>
-        <span>${d.name}</span>
+        <span>${d.name}${depTargetName(d)}</span>
       </label>`).join('');
   }
   if (choice.length) {
@@ -6607,7 +6615,7 @@ function showDepModal(flowName, missing, dynamicSkills) {
       return `
       <div style="display:flex;align-items:center;gap:10px;padding:7px 0;font-size:13px">
         <span style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:78px">${d.kind}</span>
-        <span style="flex:1">${d.name}</span>
+        <span style="flex:1">${d.name}${depTargetName(d)}</span>
         <select style="width:auto;min-width:150px" data-choice='${JSON.stringify(d).replace(/'/g, "&apos;")}'>${opts}</select>
       </div>`;
     }).join('');
@@ -6617,7 +6625,7 @@ function showDepModal(flowName, missing, dynamicSkills) {
     html += manual.map(d => `
       <div style="display:flex;align-items:baseline;gap:10px;padding:7px 0;font-size:13px">
         <span style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:78px">${d.kind}</span>
-        <span>${d.name}</span>
+        <span>${d.name}${depTargetName(d)}</span>
         <span style="font-size:11px;color:var(--yellow);margin-left:auto">${reason(d)}</span>
       </div>`).join('');
   }
