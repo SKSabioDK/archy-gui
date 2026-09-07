@@ -190,8 +190,39 @@ function saveCustomers(customers) {
 // Hierarkiet udledes af tre felter, så alle eksisterende opslag virker uændret
 // og poster uden felterne blot samler sig i én bunke.
 
+// ── Konventioner ─────────────────────────────────────────────────────────────
+// Trin-rækkefølgen og versionsendelsen er REGLER, ikke tilfældige værdier, og de
+// stod tre steder: her, i klientens sortering af miljøer, og i klientens
+// aflæsning af "_v10" på et flownavn. Ændrede man den ene, opdagede man først de
+// to andre når tavlen sorterede forkert — og en tavle der sorterer forkert siger
+// noget usandt om hvad der er forfremmet hvorhen.
+//
+// De står her alene. Klienten henter dem som et script (se /konventioner.js), så
+// de er sat før nogen anden kode kører, og der er intet sted at glemme.
+
 const STAGES = ['dev', 'test', 'uat', 'prod'];
 const stageOrder = s => { const i = STAGES.indexOf(String(s || '').toLowerCase()); return i === -1 ? 99 : i; };
+
+// Endelsen et forfremmet flow bærer: "testtest" publiceret som udgave 10 bliver
+// til "testtest_v10". Reglen bruges tre steder — når navnet dannes, når
+// grundnavnet skal findes igen, og når tavlen skal se hvor mange udgaver der er
+// kommet til siden forfremmelsen — så den må kun findes ét sted.
+const VERSION_SUFFIX = /_v(\d+)$/i;
+
+// Konventionerne som et script frem for et API-kald. Et kald ville komme
+// asynkront, og så ville den første optegning af tavlen nå at ske uden dem.
+// Et <script> i sidehovedet er indlæst før alt andet, og så findes reglerne
+// bare — der er ingen rækkefølge at få galt i halsen.
+app.get('/konventioner.js', (req, res) => {
+  res.type('application/javascript').send(
+    '// Genereret af serveren — se STAGES og VERSION_SUFFIX i server.js.\n' +
+    'window.KONVENTIONER = ' + JSON.stringify({
+      stages: STAGES,
+      versionSuffix: VERSION_SUFFIX.source,
+      versionSuffixFlags: VERSION_SUFFIX.flags
+    }) + ';\n'
+  );
+});
 
 const UNGROUPED = '__ungrouped__';
 const tenantOf = c => (c.tenant || '').trim() || UNGROUPED;
@@ -504,14 +535,20 @@ function seedDemo2() {
 // dev og "testtest_v15" i test stadig er den samme række — ellers ville en
 // omdøbning splitte flowet i to og tage både kæden og afvigelses-visningen med sig.
 function baseFlowName(name) {
-  return String(name || '').replace(/_v\d+$/i, '');
+  return String(name || '').replace(VERSION_SUFFIX, '');
+}
+
+// Tallet i endelsen, eller null hvis navnet ingen bærer. Tavlen bruger det til
+// at se hvor mange udgaver der er publiceret siden forfremmelsen.
+function versionSuffixOf(name) {
+  const m = String(name || '').match(VERSION_SUFFIX);
+  return m ? parseInt(m[1], 10) : null;
 }
 
 function promotionName(currentName, sourcePublishedVersion) {
   const n = parseInt(String(sourcePublishedVersion || '').split('.')[0], 10);
   if (!Number.isFinite(n) || n <= 1) return currentName;
-  const base = String(currentName).replace(/_v\d+$/i, '');
-  return `${base}_v${n}`;
+  return `${baseFlowName(currentName)}_v${n}`;
 }
 
 // Forfremmelse inde i demoen. Kopierer indholdet fra kilden til målet under det
@@ -4192,8 +4229,10 @@ if (require.main === module) {
 // eneste der kan efterprøves uden en rigtig org. Se test/*.test.js.
 module.exports = {
   app, tokenStore,
+  // konventioner
+  STAGES, VERSION_SUFFIX,
   // navne og versioner
-  compareVersions, baseFlowName, promotionName, versionFromFileName,
+  compareVersions, baseFlowName, versionSuffixOf, promotionName, versionFromFileName,
   parseFlowFileName, versionLabel, sanitizeName, normType,
   // miljøer og præfikser
   prefixOf, orgKeyOf, belongsToEnv, stripEnvPrefix, withEnvPrefix, depNameIn,

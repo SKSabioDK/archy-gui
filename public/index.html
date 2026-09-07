@@ -8,6 +8,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+<!-- Trin-rækkefølgen og versionsendelsen kommer fra serveren, hvor de er
+     defineret ét sted. Som script frem for et API-kald: så er de sat før
+     nogen anden kode kører, og der er ingen rækkefølge at få galt i halsen. -->
+<script src="/konventioner.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -483,7 +487,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.34.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.35.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -566,12 +570,9 @@
           </div>
           <div>
             <label data-i18n="label_stage">Trin</label>
+            <!-- Trinnene fyldes på af fillStages() fra serverens liste. -->
             <select id="c-stage">
               <option value="" data-i18n="stage_none">— intet trin —</option>
-              <option value="dev">dev</option>
-              <option value="test">test</option>
-              <option value="uat">uat</option>
-              <option value="prod">prod</option>
             </select>
           </div>
         </div>
@@ -1200,6 +1201,57 @@
 </div>
 
 <script>
+// ── Konventioner ────────────────────────────────────────────────────────────
+// Trin-rækkefølgen og versionsendelsen er serverens regler. De kommer fra
+// /konventioner.js, som er genereret ud fra STAGES og VERSION_SUFFIX i
+// server.js — de skal IKKE skrives af igen her. Gør man det, holder de op med
+// at følges ad, og tavlen sorterer forkert uden at nogen opdager det.
+const K = window.KONVENTIONER;
+
+// Kommer scriptet ikke igennem, kan reglerne ikke gættes — og en tavle der
+// sorterer efter gættede regler siger noget usandt om hvad der er forfremmet
+// hvorhen. Så skriver vi dem ikke af her; vi siger at de mangler.
+if (!K) {
+  document.addEventListener('DOMContentLoaded', () => {
+    document.body.insertAdjacentHTML('afterbegin',
+      '<div style="background:#b00020;color:#fff;padding:10px 14px;font:14px system-ui">' +
+      'Kunne ikke hente <code>/konventioner.js</code> fra serveren. Genindlæs siden — ' +
+      'indtil da er trin-rækkefølgen og versionsendelsen ukendte.</div>');
+  });
+}
+
+const STAGES = (K && K.stages) || [];
+// (?!) matcher aldrig noget: uden serverens regel er der ingen versionsendelse
+// at læse, og det er bedre end at læse en forkert.
+const VERSION_SUFFIX = K ? new RegExp(K.versionSuffix, K.versionSuffixFlags) : /(?!)/;
+
+// Ukendte eller manglende trin lægger sig bagest — som på serveren.
+const stageOrder = s => { const i = STAGES.indexOf(String(s || '').toLowerCase()); return i === -1 ? 99 : i; };
+const byStage = (a, b) => stageOrder(a.stage) - stageOrder(b.stage);
+
+// Tallet i "testtest_v10", eller null hvis navnet ingen endelse bærer.
+const versionSuffixOf = navn => {
+  const m = navn ? String(navn).match(VERSION_SUFFIX) : null;
+  return m ? parseInt(m[1], 10) : null;
+};
+
+// Trin-rullelisten i kundeformularen. Den stod med fire faste <option>-linjer i
+// HTML'en; nu kommer de fra serverens liste som alt andet.
+function fillStages() {
+  const sel = document.getElementById('c-stage');
+  if (!sel) return;
+  const valgt = sel.value;
+  const tom = sel.querySelector('option[value=""]');
+  sel.innerHTML = '';
+  if (tom) sel.appendChild(tom);
+  for (const s of STAGES) {
+    const o = document.createElement('option');
+    o.value = s; o.textContent = s;
+    sel.appendChild(o);
+  }
+  sel.value = valgt;
+}
+
 // ── State ───────────────────────────────────────────────────────────────────
 let customers = [];
 let allFlows = [];
@@ -3402,6 +3454,7 @@ function applyStoredTheme() {
 window.onload = async () => {
   applyStoredTheme();
   applyStoredLang();
+  fillStages();
   await refreshCustomers();
   checkArchy();
   checkVersion();
@@ -3539,13 +3592,11 @@ function renderSidebarCustomers() {
     if (!grupper.has(k)) grupper.set(k, []);
     grupper.get(k).push(c);
   }
-  const orden = x => ['dev','test','uat','prod'].indexOf(String(x.stage||'').toLowerCase());
   const navne = [...grupper.keys()].sort((a, b) =>
     a === '\u0000' ? 1 : b === '\u0000' ? -1 : a.localeCompare(b));
 
   el.innerHTML = navne.map(navn => {
-    const miljoer = grupper.get(navn).sort((a, b) =>
-      (orden(a) < 0 ? 99 : orden(a)) - (orden(b) < 0 ? 99 : orden(b)) || a.name.localeCompare(b.name));
+    const miljoer = grupper.get(navn).sort((a, b) => byStage(a, b) || a.name.localeCompare(b.name));
     const vist = navn === '\u0000' ? t('tree_ungrouped') : navn;
     const aaben = treeOpen.has(navn);
     const iFokus = focusTenant && navn === focusTenant;
@@ -3848,10 +3899,7 @@ function focusEnvironments() {
   return customers
     .filter(c => (c.tenant || '') === focusTenant &&
                  (!focusGroup || (c.group || '') === focusGroup))
-    .sort((a, b) => {
-      const o = x => ['dev','test','uat','prod'].indexOf(String(x.stage||'').toLowerCase());
-      return (o(a) < 0 ? 99 : o(a)) - (o(b) < 0 ? 99 : o(b));
-    });
+    .sort(byStage);
 }
 
 function populateMigrateSelects() {
@@ -7246,7 +7294,7 @@ function toggleGrouping(id) {
   box.innerHTML = `
     <input id="grp-tenant-${id}" list="tenantList" placeholder="${t('label_tenant')}" value="${escapeHtml(c.tenant || '')}" style="margin-bottom:6px" />
     <input id="grp-group-${id}"  list="groupList"  placeholder="${t('label_group')}"  value="${escapeHtml(c.group  || '')}" style="margin-bottom:6px" />
-    <select id="grp-stage-${id}" style="margin-bottom:6px">${['', 'dev', 'test', 'uat', 'prod'].map(opt).join('')}</select>
+    <select id="grp-stage-${id}" style="margin-bottom:6px">${['', ...STAGES].map(opt).join('')}</select>
     <input id="grp-prefix-${id}" placeholder="${t('label_prefix')} (DEV_)" value="${escapeHtml(c.prefix || '')}" style="margin-bottom:6px" />
     <input id="grp-orglabel-${id}" placeholder="${t('label_orglabel')}" value="${escapeHtml(c.orgLabel || '')}" style="margin-bottom:6px" />
     <select id="grp-division-${id}" style="margin-bottom:8px">
@@ -7382,7 +7430,7 @@ function cellSignals(c, i, row) {
   const prevC = i > 0 ? row.cells[i - 1] : null;
   const prevV = (prevC && !prevC.missing && !prevC.unknown && prevC.published)
     ? parseInt(String(prevC.published).split('.')[0], 10) : null;
-  const suffix = c.name ? (String(c.name).match(/_v(\d+)$/i) || [])[1] : null;
+  const suffix = versionSuffixOf(c.name);
 
   const pastManifest = !!c.changedSincePromotion;
 
@@ -7396,7 +7444,7 @@ function cellSignals(c, i, row) {
                            prevC.promotedFrom === denneEnv.name);
   const aheadOfPrev  = (!prevKomHerfra && Number.isFinite(ownV) && Number.isFinite(prevV)
                         && ownV > prevV) ? ownV - prevV : 0;
-  const unpromoted   = (suffix && Number.isFinite(ownV) && ownV > +suffix) ? ownV - +suffix : 0;
+  const unpromoted   = (suffix && Number.isFinite(ownV) && ownV > suffix) ? ownV - suffix : 0;
   const laterOnly    = !!(c.missing && !c.unknown &&
                           row.cells.slice(i + 1).some(x => !x.missing && !x.unknown));
   const nextCell     = row.cells[i + 1];
