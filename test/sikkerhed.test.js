@@ -72,7 +72,7 @@ test('et renset navn kan ikke komme ud af importmappen', () => {
 test('en værdi med anførselstegn afvises frem for at blive sendt af sted', () => {
   // Præcis den nyttelast der blev målt køre igennem cmd.exe.
   const ondt = 'uskyldigt" & echo naaet-igennem> "fil.txt" & rem ';
-  assert.throws(() => s.archyArg(ondt, 'Flownavn'), /anførselstegn/);
+  assert.throws(() => s.archyArg(ondt, 'Flownavn'), /double quote/);
 });
 
 test('archyArg citerer almindelige navne, også med mellemrum og æøå', () => {
@@ -88,7 +88,29 @@ test('uciterede værdier må kun være rene navne', () => {
   assert.equal(s.archyBareArg('common-module_2.0', 'Flowtype'), 'common-module_2.0');
   // Uden citater er selv et mellemrum nok til at starte noget nyt.
   for (const ondt of ['inboundcall & calc', 'a|b', 'a>fil', 'a"b', '', 'a b'])
-    assert.throws(() => s.archyBareArg(ondt, 'Flowtype'), /ikke et gyldigt navn/);
+    assert.throws(() => s.archyBareArg(ondt, 'Flowtype'), /is not a valid name/);
+});
+
+test('flowversionen er et tal, ikke en fri streng', () => {
+  // --flowVersion tages nu med, så migreringen henter den PUBLICEREDE udgave
+  // frem for kladden. Værdien kommer fra Genesys, men den skal ikke af den
+  // grund gå uciteret på kommandolinjen.
+  assert.equal(s.archyVersionFlag('5.0'), '--flowVersion "5.0" ');
+  assert.equal(s.archyVersionFlag('5'), '--flowVersion "5.0" ', 'et helt tal skal få sin .0');
+  // Tom eller manglende betyder Archys standard: latest.
+  for (const x of [null, undefined, '']) assert.equal(s.archyVersionFlag(x), '');
+  for (const ondt of ['5.0 & calc', 'latest', '../x', '5"0'])
+    assert.throws(() => s.archyVersionFlag(ondt), /Invalid flow version/);
+});
+
+test('migreringen henter den publicerede udgave, ikke kladden', () => {
+  // Vagten sagde god for flowet fordi det VAR publiceret, mens eksporten tog
+  // 'latest' — altså kladden. Målt på en rigtig org: prods ChatGPT var
+  // publiceret som 5.0 med sin data action, mens kladden 7.0 havde mistet den.
+  const SRV = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  assert.match(SRV, /archyVersionFlag\(kildeVersion\)/, 'migrate/prepare eksporterer uden version');
+  assert.match(SRV, /archyVersionFlag\(depVersion\)/, 'afhængigheder eksporteres uden version');
+  assert.match(SRV, /archyVersionFlag\(version\)/, 'exportFlowToYaml tager ikke imod en version');
 });
 
 test('underkommandoen kan kun være en af de tre Archy kender', () => {
@@ -96,7 +118,7 @@ test('underkommandoen kan kun være en af de tre Archy kender', () => {
   assert.equal(s.archyVerb(undefined), 'create');
   // Den kom fra req.body.action og gik uciteret ind i kommandoen.
   for (const ondt of ['create & calc', 'publish; rm -rf /', 'CREATE', 'delete'])
-    assert.throws(() => s.archyVerb(ondt), /Ukendt handling/);
+    assert.throws(() => s.archyVerb(ondt), /Unknown action/);
 });
 
 test('credentials citeres med archyArg, ikke med en POSIX-escape', () => {
@@ -109,7 +131,7 @@ test('credentials citeres med archyArg, ikke med en POSIX-escape', () => {
   assert.ok(!flags.includes('\\"'));
   assert.throws(
     () => s.archyCredFlags({ name: 'X', region: 'mypurecloud.de', clientId: 'i', clientSecret: 'a"b' }),
-    /anførselstegn/
+    /double quote/
   );
 });
 
@@ -140,7 +162,7 @@ test('opslag i mål-org\'en bliver ikke slugt', () => {
   const slugt = SERVER.match(/lookupExisting\([^;]*\);\s*\}\s*catch\s*\(_\)\s*\{\s*\}/g) || [];
   assert.equal(slugt.length, 0, 'et opslag mod mål-org\'en sluger stadig sin fejl');
   // Og fejlen skal komme frem som en rigtig besked.
-  assert.match(SERVER, /Kunne ikke slå \$\{kind\} op i/);
+  assert.match(SERVER, /Could not look up \$\{kind\} in/);
 });
 
 test('stier fra klienten tjekkes med insideFlowsDir, ikke med startsWith', () => {
@@ -216,7 +238,7 @@ test('/api/import kan ikke skrive uden for flows/', async (t) => {
                              yamlContent: 'a: 1', action: 'create & calc' })
     });
     assert.equal(r2.status, 400);
-    assert.match((await r2.json()).error, /Ukendt handling/);
+    assert.match((await r2.json()).error, /Unknown action/);
   } finally {
     for (const f of skrevet) { try { fs.unlinkSync(f); } catch (_) {} }
     try { fs.unlinkSync(uden); } catch (_) {}

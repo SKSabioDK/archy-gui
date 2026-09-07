@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.36.1
+# Archy GUI — Flow Manager · v1.37.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.36.1**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.36.1**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.37.0**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.37.0**.
 
 ---
 
@@ -44,11 +44,13 @@ Alternativt manuelt: `node server.js`
 npm test
 ```
 
-109 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+115 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
 `test/sikkerhed.test.js` spærrer for tre huller der har været åbne: læsning uden for `flows/`, skrivning uden for `flows/`, og kommandoindsprøjtning gennem et flownavn. De er skrevet mod de angreb der faktisk virkede.
+
+`test/log-engelsk.test.js` læser `server.js` og fælder hvis en dansk besked er sluppet ind i systemloggen — også ad bagvejen gennem en kastet fejl.
 
 Testene ligger i `test/` og kræver ingen pakker ud over Node selv (`node --test`, Node 18+).
 
@@ -227,6 +229,8 @@ Hver fil kan åbnes (**View**) eller sendes videre til Import-siden (**Import**)
 
 #### 📋 Systemlog
 Alle handlinger logges i realtid. Filtrer på niveau, handling, kunde og fritekst.
+
+**Selve logteksten er altid engelsk**, uanset hvilket sprog brugerfladen står på. Kolonneoverskrifter og filtre følger sproget; linjerne gør ikke. Loggen bliver kopieret ind i en sag og læst af folk der ikke nødvendigvis kører programmet i samme sprog som den der lavede migreringen.
 <img width="1439" height="547" alt="image" src="https://github.com/user-attachments/assets/4d994a59-70b6-4886-be82-54876ff61193" />
 
 ---
@@ -317,11 +321,13 @@ Double-click **`start.bat`** or run `node server.js` manually.
 npm test
 ```
 
-109 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+115 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 
 `test/sikkerhed.test.js` guards three holes that were open: reading outside `flows/`, writing outside `flows/`, and command injection through a flow name. They are written against the attacks that actually worked.
+
+`test/log-engelsk.test.js` reads `server.js` and fails if a Danish message has slipped into the system log — including by way of a thrown error.
 
 The tests live in `test/` and need nothing beyond Node itself (`node --test`, Node 18+).
 
@@ -486,6 +492,8 @@ Each file can be opened (**View**) or sent on to the Import page (**Import**).
 
 #### 📋 System Log
 All actions logged in real time. Filter by level, action type, customer, and free text.
+
+**The log text itself is always English**, whatever language the interface is set to. Column headers and filters follow the language; the lines do not. The log gets pasted into a ticket and read by people who do not necessarily run the app in the same language as whoever ran the migration.
 
 ---
 

@@ -5,6 +5,48 @@
 
 ---
 
+### v1.37.0
+---
+**🇩🇰 Dansk**
+
+- **Migreringen henter nu den PUBLICEREDE udgave, ikke kladden.** `archy export` tager `latest` som standard, og latest er den gemte kladde. Vagten i `/api/migrate/prepare` sagde god for flowet fordi det ER publiceret — og så sendte vi kladden af sted. Vi lovede ét og leverede noget andet.
+
+  Målt på en rigtig org, før og efter:
+
+  ```
+  før:  ChatGPT_v7-0.yaml   0 dataAction-referencer   (kladden — nogen havde
+                                                        fjernet data action-valget)
+  nu:   ChatGPT_v5-0.yaml   1 dataAction-referencer   (den publicerede)
+  ```
+
+  Det var årsagen til migreringen der fejlede med *"A data action must be selected."* Samme opslag afgør nu både vagten og hvilken udgave der eksporteres, så de to ikke kan komme på tværs af hinanden igen. Gælder også afhængige flows.
+
+  Kan udgaven ikke slås op, falder vi tilbage på latest og skriver det i loggen — hellere den gamle opførsel end ingen migrering. Versionen citeres som alt andet på kommandolinjen.
+
+  **Export YAML-siden er urørt**: den giver stadig `latest`, for der er det netop det man arbejder på man vil have fat i.
+
+- **Systemloggen er altid engelsk.** Før var den en blanding: kolonneoverskrifterne fulgte sproget, og linjerne var dels danske, dels engelske. Loggen er driftsdata — den bliver kopieret ind i en sag og læst af folk der ikke nødvendigvis kører programmet i samme sprog som den der lavede migreringen.
+
+  **53 beskeder oversat**, fordelt på tre veje dansk kom ind ad:
+
+  | Vej | Eksempel før | Nu |
+  |---|---|---|
+  | `addLog` direkte | `Oprydning: 12 gamle YAML-filer slettet` | `Cleanup: 12 old YAML files deleted` |
+  | Kastede fejl, som ender i loggen som `${e.message}` | `Eksporten skrev ingen YAML-fil for …` | `The export wrote no YAML file for …` |
+  | Vejledning der blev logget råt | `Migration blocked: "X" er ikke publiceret i …` | `Migration blocked (unpublished-source): "X" is not published in …` |
+
+  Vejledningen til brugeren bliver på dansk i selve dialogen — det er kun loggen der er låst. Kolonneoverskrifter og filtre følger stadig sproget.
+
+  `test/log-engelsk.test.js` læser `server.js` og fælder hvis en dansk besked slipper ind igen, også gennem en kastet fejl. Den fandt fire beskeder jeg selv havde overset i første gennemgang, og to falske udslag i sin egen opdager — begge dele er rettet, og der er en kontroltest der beviser at opdageren stadig fælder rigtig dansk.
+
+**6 nye tests**, i alt 115.
+
+**🇬🇧 English**
+- **Migrations now export the PUBLISHED version, not the draft.** `archy export` defaults to `latest`, which is the saved draft. The guard in `/api/migrate/prepare` approved the flow because it *is* published, and then we shipped the draft. Measured on a real org: `ChatGPT_v7-0.yaml` with 0 data action references before, `ChatGPT_v5-0.yaml` with 1 after. That was the cause of the migration that failed with *"A data action must be selected."* The same lookup now drives both the guard and the export. The Export YAML page still gives you `latest` — there, the draft is what you want.
+- **The system log is always English**, whatever language the interface is set to. 53 messages translated, across three routes Danish came in by: `addLog` itself, thrown errors that reach the log as `${e.message}`, and user guidance that was logged verbatim. Guidance shown in dialogs stays translated; only the log is fixed. `test/log-engelsk.test.js` reads `server.js` and fails if Danish gets back in.
+
+---
+
 ### v1.36.1
 ---
 **🇩🇰 Dansk**

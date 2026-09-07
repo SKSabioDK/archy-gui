@@ -182,7 +182,7 @@ test('archyErrorReason foretrækker den manglende ressource frem for "code: 99"'
     'Architect Scripting session ended in error ( code: 99 )',
     'Error(s) and warning(s) encountered.'
   ));
-  assert.equal(ud, 'queue "Support DK" findes ikke i mål-org\'en');
+  assert.equal(ud, 'queue "Support DK" does not exist in the target org');
 });
 
 test('archyErrorReason siger hvilken rettighed OAuth-klienten mangler', () => {
@@ -191,7 +191,7 @@ test('archyErrorReason siger hvilken rettighed OAuth-klienten mangler', () => {
     'Architect Scripting session ended in error ( code: 99 )',
     'Error(s) encountered.'
   ));
-  assert.match(ud, /mangler rettigheden 'architect:flow:add'/);
+  assert.match(ud, /missing the 'architect:flow:add' permission/);
 });
 
 test('archyErrorReason kalder en certifikatfejl hvad den er', () => {
@@ -202,8 +202,8 @@ test('archyErrorReason kalder en certifikatfejl hvad den er', () => {
     'invalid credentials',
     'Error(s) encountered.'
   ));
-  assert.match(ud, /certifikatkæden/);
-  assert.match(ud, /TLS-inspektion/);
+  assert.match(ud, /certificate chain/);
+  assert.match(ud, /TLS inspection/);
 });
 
 test('archyErrorReason tager Exception-linjen ved en YAML-fejl', () => {

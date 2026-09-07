@@ -639,7 +639,7 @@ app.post('/api/demo/promote', async (req, res) => {
   const renamed = !!renamedSource || !!renamedTarget;
   addLog('SUCCESS',
     `Demo: "${renamedSource || newName}" ${source.name} → ${target.name}` +
-    (renamed ? ` som "${newName}" (også omdøbt i ${source.name})` : ' (navn uændret)'),
+    (renamed ? ` as "${newName}" (also renamed in ${source.name})` : ' (name unchanged)'),
     target.name, 'DEMO');
   res.json({ ok: true, fromName: renamedSource || newName, toName: newName,
              renamed, renamedSource, renamedTarget, action });
@@ -665,7 +665,7 @@ app.post('/api/demo/publish', (req, res) => {
   f.content = f.content.replace(/\s*# udgave \d+$/, '') + `\n  # udgave ${cur + n}`;
   saveDemo(d);
 
-  addLog('INFO', `Demo: "${flowName}" publiceret ${n} gang(e) i ${env.name} → v${f.published}`, env.name, 'DEMO');
+  addLog('INFO', `Demo: "${flowName}" published ${n} time(s) in ${env.name} → v${f.published}`, env.name, 'DEMO');
   res.json({ ok: true, published: f.published, name: f.name });
 });
 
@@ -704,7 +704,7 @@ app.post('/api/demo/create', (req, res) => {
     });
     saveCustomers(customers);
     seedDemo2();
-    addLog('INFO', 'Demo 2 oprettet: 4 virtuelle miljøer i 2 orgs, 3 flows', DEMO2_TENANT, 'DEMO');
+    addLog('INFO', 'Demo 2 created: 4 virtual environments across 2 orgs, 3 flows', DEMO2_TENANT, 'DEMO');
     return res.json({ ok: true, tenant: DEMO2_TENANT, group: DEMO2_GROUP });
   }
   for (const e of DEMO_ENVS) customers.push({
@@ -716,7 +716,7 @@ app.post('/api/demo/create', (req, res) => {
   });
   saveCustomers(customers);
   seedDemo();
-  addLog('INFO', 'Demo-kunde oprettet: 4 miljøer, 3 flows — rører ingen rigtig org', DEMO_TENANT, 'DEMO');
+  addLog('INFO', 'Demo customer created: 4 environments, 3 flows — touches no real org', DEMO_TENANT, 'DEMO');
   res.json({ ok: true, tenant: DEMO_TENANT, group: DEMO_GROUP });
 });
 
@@ -726,7 +726,7 @@ app.post('/api/demo/reset', (req, res) => {
     return res.status(404).json({ error: 'Ingen demo-kunde' });
   dropDemoManifest(which);
   if (which === '2') seedDemo2(); else seedDemo();
-  addLog('INFO', 'Demo nulstillet', which === '2' ? DEMO2_TENANT : DEMO_TENANT, 'DEMO');
+  addLog('INFO', 'Demo reset', which === '2' ? DEMO2_TENANT : DEMO_TENANT, 'DEMO');
   res.json({ ok: true });
 });
 
@@ -741,7 +741,7 @@ app.delete('/api/demo', (req, res) => {
       delete d.manifest[k];
   saveDemo(d);
   dropDemoManifest(which);
-  addLog('INFO', 'Demo fjernet', which === '2' ? DEMO2_TENANT : DEMO_TENANT, 'DEMO');
+  addLog('INFO', 'Demo removed', which === '2' ? DEMO2_TENANT : DEMO_TENANT, 'DEMO');
   res.json({ ok: true });
 });
 
@@ -984,8 +984,8 @@ async function getToken(customer) {
   // fortalte om hvorfor. Nu siger den hvad der faktisk er på færde.
   // Det demoen KAN, har sine egne veje; alt andet lander her.
   if (isDemo(customer))
-    throw new Error(`"${customer.name}" er et demo-miljø — det findes kun lokalt, ` +
-                    `så denne funktion har ingen org at spørge. Brug Pipeline til at prøve forfremmelser af.`);
+    throw new Error(`"${customer.name}" is a demo environment — it exists only locally, ` +
+                    `so this function has no org to ask. Use the Pipeline page to try promotions.`);
 
   const apiBase = REGION_MAP[customer.region] || `https://api.${customer.region}`;
 
@@ -1512,8 +1512,8 @@ app.post('/api/actions/migrate', async (req, res) => {
       // Gør det synligt i loggen når vi ikke ramte kildens integration præcist
       if (match.name !== srcIntName) {
         addLog('WARN',
-          `Ingen integration ved navn "${srcIntName}" i ${target.name}; bruger "${match.name}". ` +
-          `Vælg mål-integration manuelt hvis migreringen fejler.`,
+          `No integration named "${srcIntName}" in ${target.name}; using "${match.name}". ` +
+          `Pick the target integration by hand if the migration fails.`,
           source.name, 'MIGRATE');
       }
       integrationId = match.id;
@@ -1558,7 +1558,7 @@ app.post('/api/actions/migrate', async (req, res) => {
     // POST .../draft/publish (404, da der ingen draft er), hvilket fik en
     // fuldt lykkedes migrering til at fremstå som en fejl.
 
-    addLog('SUCCESS', `Data Action "${published.name}" migreret til ${target.name}`, source.name, 'MIGRATE');
+    addLog('SUCCESS', `Data Action "${published.name}" migrated to ${target.name}`, source.name, 'MIGRATE');
     res.json({ ok: true, newActionId: newAction.id, name: published.name });
 
   } catch (e) {
@@ -1640,7 +1640,7 @@ app.post('/api/datatables/migrate', async (req, res) => {
     const created = await axios.post(`${tgtBase}/api/v2/flows/datatables`, body, { headers: tgtHeaders });
 
     if (divisionNote) addLog('WARN', `"${src.name}": ${divisionNote}`, source.name, 'MIGRATE');
-    addLog('SUCCESS', `DataTable "${src.name}" migreret til ${target.name} (${Object.keys(schema.properties || {}).length} kolonner)`, source.name, 'MIGRATE');
+    addLog('SUCCESS', `DataTable "${src.name}" migrated to ${target.name} (${Object.keys(schema.properties || {}).length} columns)`, source.name, 'MIGRATE');
 
     res.json({ ok: true, newTableId: created.data.id, name: src.name, divisionNote });
 
@@ -1723,23 +1723,44 @@ function versionFromFileName(fileName) {
   return m ? parseInt(m[1], 10) : null;
 }
 
+// Hvilken udgave en migrering skal hente. Archys export tager 'latest' som
+// standard, altså den GEMTE kladde — og en kladde er per definition ikke testet.
+// Målt på et rigtigt flow: prods ChatGPT var publiceret som 5.0 og havde sin data
+// action, mens kladden 7.0 havde mistet den. Vagten i /api/migrate/prepare sagde
+// god for flowet, fordi det ER publiceret — og så sendte vi kladden af sted.
+//
+// Kan udgaven ikke slås op, falder vi tilbage på latest frem for at standse:
+// hellere den gamle opførsel end ingen migrering.
+async function publishedVersionFor(customer, flowName, flowType, hvorfor) {
+  try {
+    const { found, published } = await publishedVersionOf(customer, flowName, flowType);
+    if (found && published) return published;
+    if (found) addLog('WARN', `"${flowName}" has no published version in ${customer.name} — exporting the saved draft`, customer.name, hvorfor);
+  } catch (e) {
+    addLog('WARN', `Could not look up the published version of "${flowName}" in ${customer.name}: ${describeApiError(e)}`, customer.name, hvorfor);
+  }
+  return null;
+}
+
 // Eksporterer ét flow og returnerer { yaml, fileName, version }.
-async function exportFlowToYaml(customer, flowName, flowType) {
+// version = null betyder Archys standard, 'latest' — den gemte kladde.
+async function exportFlowToYaml(customer, flowName, flowType, version) {
   const dir = path.join(FLOWS_DIR, sanitizeName(customer.name));
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   const mt = f => { try { return fs.statSync(path.join(dir, f)).mtimeMs; } catch (_) { return 0; } };
   const before = new Map(fs.readdirSync(dir).filter(f => f.endsWith('.yaml')).map(f => [f, mt(f)]));
 
   await runArchy(
-    `export --flowName ${archyArg(flowName, 'Flownavn')} ` +
-    `--flowType ${archyBareArg(String(flowType).toLowerCase(), 'Flowtype')} ` +
-    `--exportType yaml --force --outputDir ${archyArg(dir, 'Mappe')}`,
+    `export --flowName ${archyArg(flowName, 'Flow name')} ` +
+    `--flowType ${archyBareArg(String(flowType).toLowerCase(), 'Flow type')} ` +
+    archyVersionFlag(version) +
+    `--exportType yaml --force --outputDir ${archyArg(dir, 'Directory')}`,
     customer
   );
   const touched = fs.readdirSync(dir).filter(f => f.endsWith('.yaml'))
     .filter(f => !before.has(f) || mt(f) > before.get(f))
     .sort((a, b) => mt(b) - mt(a));
-  if (!touched.length) throw new Error(`Eksporten skrev ingen YAML-fil for "${flowName}"`);
+  if (!touched.length) throw new Error(`The export wrote no YAML file for "${flowName}"`);
   const fileName = touched[0];
   const yaml = fs.readFileSync(path.join(dir, fileName), 'utf8');
   assertYamlIsFlow(yaml, flowName, fileName);
@@ -1777,7 +1798,7 @@ function assertYamlIsFlow(yaml, flowName, fileName) {
   const got = m[1].replace(/^["']|["']$/g, '');
   const norm = x => String(x).trim().toLowerCase();
   if (norm(got) !== norm(flowName))
-    throw new Error(`Eksporten gav det forkerte flow: bad om "${flowName}", filen ${fileName} indeholder "${got}"`);
+    throw new Error(`The export returned the wrong flow: asked for "${flowName}", file ${fileName} contains "${got}"`);
 }
 
 // Hvornår blev flowet sidst publiceret, og af hvem? Det er den oplysning der
@@ -1939,7 +1960,7 @@ async function createOrgManifestTable(customer) {
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
   });
   delete _mfTableCache[customer.id];
-  addLog('SUCCESS', `Manifesttabel "${manifestTableName(customer)}" oprettet`, customer.name, 'MANIFEST');
+  addLog('SUCCESS', `Manifest table "${manifestTableName(customer)}" created`, customer.name, 'MANIFEST');
   return r.data.id;
 }
 
@@ -2011,9 +2032,9 @@ async function recordOrgManifest(source, target, flowName, flowType, info) {
     try {
       const r = await writeOrgManifestRow(env, flowName, flowType, data);
       if (!r.ok && r.reason === 'no-table')
-        addLog('WARN', `${env.name} har ingen manifesttabel — ${hvad} blev ikke bogført. Opret den under Pipeline.`, env.name, 'MANIFEST');
+        addLog('WARN', `${env.name} has no manifest table — ${hvad} was not recorded. Create it from the Pipeline page.`, env.name, 'MANIFEST');
     } catch (e) {
-      addLog('ERROR', `Kunne ikke skrive manifest i ${env.name}: ${describeApiError(e)}`, env.name, 'MANIFEST');
+      addLog('ERROR', `Could not write the manifest in ${env.name}: ${describeApiError(e)}`, env.name, 'MANIFEST');
     }
   };
   // Navnet i rækken er miljøets EGET navn på flowet — nøglen er grundnavnet.
@@ -2021,7 +2042,7 @@ async function recordOrgManifest(source, target, flowName, flowType, info) {
     flowName: target ? withEnvPrefix(flowName, target) : flowName, version: info.targetVersion, publishedAt: info.targetPublishedAt,
     promotedFrom: source ? source.name : null, promotedAt: info.targetPublishedAt,
     sourceVersion: info.sourceVersion, hash: info.hash, kind: info.kind || 'migration'
-  }, 'målet');
+  }, 'the target');
   // Et nulpunkt har ingen kilde — der er ikke flyttet noget, vi noterer blot
   // hvad org'en indeholder lige nu.
   if (!source) return;
@@ -2066,7 +2087,7 @@ app.post('/api/manifest/create', async (req, res) => {
     await createOrgManifestTable(c);
     res.json({ ok: true, created: true });
   } catch (e) {
-    addLog('ERROR', `Kunne ikke oprette manifesttabel: ${describeApiError(e)}`, c.name, 'MANIFEST');
+    addLog('ERROR', `Could not create the manifest table: ${describeApiError(e)}`, c.name, 'MANIFEST');
     res.status(500).json({ error: describeApiError(e) });
   }
 });
@@ -2122,7 +2143,7 @@ function recordManifest(entry) {
     if (i >= 0) all[i] = { ...all[i], ...entry }; else all.push(entry);
     fs.writeFileSync(MANIFEST_FILE, JSON.stringify(all, null, 2));
   } catch (e) {
-    addLog('WARN', `Kunne ikke skrive migreringsmanifest: ${e.message}`, null, 'SYSTEM');
+    addLog('WARN', `Could not write the migration manifest: ${e.message}`, null, 'SYSTEM');
   }
 }
 
@@ -2181,22 +2202,22 @@ app.post('/api/flows/publish', async (req, res) => {
         op.errorCode ? `(${op.errorCode})` : null,
         (op.errorDetails || []).map(d => d.message || d.errorCode).filter(Boolean).join('; ') || null
       ].filter(Boolean).join(' ') || op.actionStatus;
-      addLog('ERROR', `Publicering af "${before.name}" fejlede: ${why}`, customer.name, 'MIGRATE');
+      addLog('ERROR', `Publishing "${before.name}" failed: ${why}`, customer.name, 'MIGRATE');
       return res.status(500).json({ error: `Publicering fejlede: ${why}` });
     }
     if (!nowPublished) {
-      addLog('WARN', `Publicering af "${before.name}" er stadig i gang efter 30 sekunder — tjek i Architect`, customer.name, 'MIGRATE');
+      addLog('WARN', `Publishing "${before.name}" is still running after 30 seconds — check in Architect`, customer.name, 'MIGRATE');
       return res.status(202).json({ pending: true,
         error: `Publiceringen af "${before.name}" er sat i gang men er ikke færdig endnu — tjek status i Architect` });
     }
 
-    addLog('SUCCESS', `"${after.name}" publiceret som v${nowPublished} i ${customer.name}`, customer.name, 'MIGRATE');
+    addLog('SUCCESS', `"${after.name}" published as v${nowPublished} in ${customer.name}`, customer.name, 'MIGRATE');
     res.json({ ok: true, name: after.name, version: nowPublished,
       publishedAt: after.publishedVersion?.dateCheckedIn || null });
 
   } catch (e) {
     const msg = describeApiError(e);
-    addLog('ERROR', `Kunne ikke publicere "${flowName || flowId}": ${msg}`, customer.name, 'MIGRATE');
+    addLog('ERROR', `Could not publish "${flowName || flowId}": ${msg}`, customer.name, 'MIGRATE');
     res.status(500).json({ error: msg });
   }
 });
@@ -2268,10 +2289,10 @@ app.post('/api/flows/baseline', async (req, res) => {
       }
     } catch (e) { orgErr = describeApiError(e); }
 
-    addLog('SUCCESS', `Nulpunkt sat for ${target.name}: ${recorded} flows noteret` +
-      (skipped ? `, ${skipped} sprunget over (allerede migreret med værktøjet)` : '') +
-      (toOrg ? `, ${toOrg} skrevet til org'ens manifesttabel` : '') +
-      (orgErr ? ` — manifesttabellen fejlede: ${orgErr}` : ''), target.name, 'MIGRATE');
+    addLog('SUCCESS', `Baseline set for ${target.name}: ${recorded} flows recorded` +
+      (skipped ? `, ${skipped} skipped (already migrated with this tool)` : '') +
+      (toOrg ? `, ${toOrg} written to the org manifest table` : '') +
+      (orgErr ? ` — the manifest table failed: ${orgErr}` : ''), target.name, 'MIGRATE');
     res.json({ ok: true, recorded, skipped, total: all.length, targetOrgId, toOrg, orgError: orgErr });
 
   } catch (e) {
@@ -2453,7 +2474,7 @@ app.get('/api/pipeline', async (req, res) => {
     try { orgManifests[c.id] = await readOrgManifest(c); }
     catch (e) {
       orgManifests[c.id] = null;
-      addLog('WARN', `Kunne ikke læse manifesttabellen i ${c.name}: ${describeApiError(e)}`, c.name, 'MANIFEST');
+      addLog('WARN', `Could not read the manifest table in ${c.name}: ${describeApiError(e)}`, c.name, 'MANIFEST');
     }
   }
 
@@ -2547,7 +2568,7 @@ app.post('/api/flows/cross-hash', async (req, res) => {
     try {
       if (isDemo(c)) {
         const f = demoFlowsFor(c).find(x => x.name === nameFor(c) && x.type === flowType);
-        if (!f) throw new Error(`"${nameFor(c)}" findes ikke i ${c.name}`);
+        if (!f) throw new Error(`"${nameFor(c)}" does not exist in ${c.name}`);
         results.push({ customerId: c.id, customerName: c.name,
                        version: f.published, hash: flowContentHash(f.content, c) });
         continue;
@@ -2570,11 +2591,11 @@ app.post('/api/flows/cross-hash', async (req, res) => {
                 : hashes.size === 1 ? 'identical' : 'different';
 
   addLog(failed.length ? 'WARN' : 'INFO',
-    `Indholdssammenligning af "${flowName}" hos ${results.length} kunder — ` +
-    (verdict === 'identical'    ? 'identisk'
-     : verdict === 'different'  ? `${hashes.size} forskellige udgaver`
-     : verdict === 'partial'    ? `ufuldstændig: ${failed.length} af ${results.length} kunder kunne ikke eksporteres`
-     : 'for få resultater til en sammenligning'),
+    `Content comparison of "${flowName}" across ${results.length} customers — ` +
+    (verdict === 'identical'    ? 'identical'
+     : verdict === 'different'  ? `${hashes.size} different variants`
+     : verdict === 'partial'    ? `incomplete: ${failed.length} of ${results.length} customers could not be exported`
+     : 'too few results to compare'),
     null, 'MIGRATE');
 
   res.json({ ok: true, flowName, flowType, results, verdict,
@@ -2638,8 +2659,8 @@ app.post('/api/flows/compare', async (req, res) => {
     }
 
     addLog(same ? 'SUCCESS' : 'INFO',
-      `Sammenligning "${flowName}": ${source.name} v${src.version} ↔ ${target.name} v${tgt.version} — ` +
-      (same ? 'identisk indhold' : `${diffCount} forskelle`), target.name, 'MIGRATE');
+      `Comparison "${flowName}": ${source.name} v${src.version} ↔ ${target.name} v${tgt.version} — ` +
+      (same ? 'identical content' : `${diffCount} differences`), target.name, 'MIGRATE');
 
     // Er målet publiceret EFTER vi migrerede det, har nogen rettet direkte i
     // mål-org'en. Det er den situation man ikke opdager ved at kigge på
@@ -2838,13 +2859,13 @@ app.post('/api/prompts/migrate', async (req, res) => {
       }
     }
 
-    addLog('SUCCESS', `Prompt "${promptName}" migreret til ${target.name} — ${ok} sprog` +
-      (audioOk ? `, ${audioOk} med lyd` : '') + (audioFail ? `, ${audioFail} lyd fejlede` : ''), source.name, 'MIGRATE');
+    addLog('SUCCESS', `Prompt "${promptName}" migrated to ${target.name} — ${ok} languages` +
+      (audioOk ? `, ${audioOk} with audio` : '') + (audioFail ? `, ${audioFail} audio failed` : ''), source.name, 'MIGRATE');
     res.json({ ok: true, id: created.id, name: created.name, languages: ok, audioOk, audioFail, trail });
 
   } catch (e) {
     const msg = describeApiError(e);
-    addLog('ERROR', `Prompt "${promptName}" fejlede: ${msg}`, target.name, 'MIGRATE');
+    addLog('ERROR', `Prompt "${promptName}" failed: ${msg}`, target.name, 'MIGRATE');
     res.status(500).json({ error: msg, trail });
   }
 });
@@ -2997,8 +3018,8 @@ try {
 function archyArg(vaerdi, felt) {
   const s = String(vaerdi ?? '');
   if (s.includes('"'))
-    throw new Error(`${felt} må ikke indeholde anførselstegn: Archy kaldes gennem cmd.exe, ` +
-                    `hvor tegnet ikke kan escapes. Omdøb flowet, eller eksportér det manuelt.`);
+    throw new Error(`${felt} must not contain a double quote: Archy is invoked through cmd.exe, ` +
+                    `where the character cannot be escaped. Rename the flow, or export it by hand.`);
   return `"${s}"`;
 }
 
@@ -3007,8 +3028,17 @@ function archyArg(vaerdi, felt) {
 function archyBareArg(vaerdi, felt) {
   const s = String(vaerdi ?? '');
   if (!/^[A-Za-z0-9_.\-]+$/.test(s))
-    throw new Error(`${felt} "${s}" er ikke et gyldigt navn`);
+    throw new Error(`${felt} "${s}" is not a valid name`);
   return s;
+}
+
+// --flowVersion tager formen '5.0'. Tom værdi betyder Archys standard, 'latest'.
+function archyVersionFlag(version) {
+  if (version === null || version === undefined || version === '') return '';
+  const s = String(version).trim();
+  if (!/^\d+(\.\d+)?$/.test(s))
+    throw new Error(`Invalid flow version "${s}" — expected e.g. 5.0`);
+  return `--flowVersion ${archyArg(s.includes('.') ? s : s + '.0', 'Flow version')} `;
 }
 
 // Underkommandoen er ikke en værdi — den er et af tre faste ord. Den kom fra
@@ -3017,7 +3047,7 @@ const ARCHY_VERBS = new Set(['create', 'update', 'publish']);
 function archyVerb(handling) {
   const s = String(handling || 'create');
   if (!ARCHY_VERBS.has(s))
-    throw new Error(`Ukendt handling "${s}" — brug create, update eller publish`);
+    throw new Error(`Unknown action "${s}" — use create, update or publish`);
   return s;
 }
 
@@ -3218,7 +3248,7 @@ function archyErrorReason(out) {
   if (perm && (!summary || /session ended in error/i.test(summary))) {
     const p = perm.match(/'([^']+)'/);
     summary = p
-      ? `OAuth-klienten mangler rettigheden '${p[1]}' i denne org`
+      ? `The OAuth client is missing the '${p[1]}' permission in this org`
       : perm.replace(/\s*--\s*\[.*$/, '');
   }
 
@@ -3229,15 +3259,15 @@ function archyErrorReason(out) {
   if (!summary || /session ended in error/i.test(summary)) {
     const miss = lines.find(l => /find '[^']+' by value of '[^']+'\s*-\s*no matches/i.test(l));
     const m = miss && miss.match(/find '([^']+)' by value of '([^']+)'/i);
-    if (m) summary = `${m[1]} "${m[2]}" findes ikke i mål-org'en`;
+    if (m) summary = `${m[1]} "${m[2]}" does not exist in the target org`;
   }
 
   // Ved TLS-fejl er Archys egen konklusion ("ugyldige credentials") misvisende,
   // så den underliggende certifikatfejl skal frem i stedet.
   if (/UNABLE_TO_VERIFY_LEAF_SIGNATURE|unable to verify the first certificate/i.test(out)) {
-    return 'Archy kunne ikke verificere certifikatkæden (UNABLE_TO_VERIFY_LEAF_SIGNATURE) — typisk ' +
-           'TLS-inspektion fra Norton eller en firmaproxy. Archy køres med --use-system-ca, så ' +
-           'proxyens root-CA skal ligge i Windows\' certifikatlager.' +
+    return 'Archy could not verify the certificate chain (UNABLE_TO_VERIFY_LEAF_SIGNATURE) — typically ' +
+           'TLS inspection by Norton or a corporate proxy. Archy runs with --use-system-ca, so ' +
+           'the proxy root CA must be installed in the Windows certificate store.' +
            (summary ? ` [Archy: ${summary}]` : '');
   }
   return summary;
@@ -3269,9 +3299,9 @@ function ensureArchyCaBundle() {
     const file = path.join(__dirname, '.archy-ca.pem');
     fs.writeFileSync(file, pems.join('\n') + '\n');
     ARCHY_CA_BUNDLE = file;
-    addLog('INFO', `CA-bundle til Archy skrevet (${pems.length} certifikater)`, null, 'SYSTEM');
+    addLog('INFO', `CA bundle for Archy written (${pems.length} certificates)`, null, 'SYSTEM');
   } catch (e) {
-    addLog('WARN', `Kunne ikke bygge CA-bundle til Archy: ${e.message}`, null, 'SYSTEM');
+    addLog('WARN', `Could not build the CA bundle for Archy: ${e.message}`, null, 'SYSTEM');
   }
   return ARCHY_CA_BUNDLE;
 }
@@ -3282,8 +3312,8 @@ function runArchy(args, customer) {
     // demo-miljø nåede helt frem til Archy og fik en uforståelig fejl om at
     // "demo" ikke er en gyldig Genesys-region.
     if (isDemo(customer))
-      return reject(new Error(`"${customer.name}" er et demo-miljø — det findes kun lokalt, ` +
-        `så der er ingen org at køre Archy imod. Brug Pipeline til at prøve forfremmelser af.`));
+      return reject(new Error(`"${customer.name}" is a demo environment — it exists only locally, ` +
+        `so there is no org to run Archy against. Use the Pipeline page to try promotions.`));
     if (!ARCHY_DIR) return reject(new Error('archy not found in PATH'));
     const cmd = `archy ${args} ${archyCredFlags(customer)}`;
     const bundle = ensureArchyCaBundle();
@@ -3307,7 +3337,7 @@ function runArchy(args, customer) {
 
       // redactSecrets: err.message fra exec indeholder hele kommandolinjen,
       // inkl. --clientSecret. Den Error her ender også i svaret til browseren.
-      if (failed)               return reject(new Error(redactSecrets(truncateArchyError(archyErrorReason(combined) || parsed || 'Archy fejlede'))));
+      if (failed)               return reject(new Error(redactSecrets(truncateArchyError(archyErrorReason(combined) || parsed || 'Archy failed'))));
       if (finished || !err)     return resolve(parsed || 'OK');
       reject(new Error(redactSecrets(truncateArchyError(archyErrorReason(combined) || parsed || err.message))));
     });
@@ -3401,9 +3431,9 @@ app.post('/api/export-all', async (req, res) => {
     }
     try {
       await runArchy(
-        `export --flowName ${archyArg(flow.name, 'Flownavn')} ` +
-        `--flowType ${archyBareArg(flow.type.toLowerCase(), 'Flowtype')} ` +
-        `--exportType yaml --force --outputDir ${archyArg(exportDir, 'Mappe')}`,
+        `export --flowName ${archyArg(flow.name, 'Flow name')} ` +
+        `--flowType ${archyBareArg(flow.type.toLowerCase(), 'Flow type')} ` +
+        `--exportType yaml --force --outputDir ${archyArg(exportDir, 'Directory')}`,
         customer
       );
       job.results.push({ name: flow.name, type: flow.type.toLowerCase(), ok: true });
@@ -3580,7 +3610,7 @@ app.post('/api/validate-yaml', async (req, res) => {
     const missing = checks.filter(c => c.ok === false).length;
     addLog(
       missing > 0 ? 'WARN' : 'SUCCESS',
-      `YAML validering mod ${customer.name}: ${checks.length} ressourcer tjekket${missing > 0 ? ', ' + missing + ' mangler' : ' \u2014 alt fundet'}`,
+      `YAML validation against ${customer.name}: ${checks.length} resources checked${missing > 0 ? ', ' + missing + ' missing' : ' \u2014 all found'}`,
       customer.name, 'IMPORT'
     );
     res.json({ ok: missing === 0, checks });
@@ -3618,7 +3648,7 @@ app.post('/api/import', async (req, res) => {
   addLog('INFO', `Importing "${trygtNavn}" to ${customer.name} (action: ${cmd})`, customer.name, 'IMPORT');
 
   try {
-    const out = await runArchy(`${cmd} --file ${archyArg(filePath, 'Filsti')}`, customer);
+    const out = await runArchy(`${cmd} --file ${archyArg(filePath, 'File path')}`, customer);
     addLog('SUCCESS', `Import ok: "${trygtNavn}" → ${customer.name}`, customer.name, 'IMPORT');
     res.json({ ok: true, output: out });
   } catch (e) {
@@ -3649,7 +3679,7 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
   const key = `${flowType}|${flowName}`;
   if (visited.has(key)) return { ok: true, skipped: 'cycle' };
   visited.add(key);
-  if (depth > 5) return { ok: false, error: `For dybt afhængighedstræ ved "${flowName}"` };
+  if (depth > 5) return { ok: false, error: `Dependency tree too deep at "${flowName}"` };
 
   const exportDir = path.join(FLOWS_DIR, sanitizeName(source.name));
   if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir, { recursive: true });
@@ -3657,16 +3687,20 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
   const mtimes = f => { try { return fs.statSync(path.join(exportDir, f)).mtimeMs; } catch (_) { return 0; } };
   const before = new Map(fs.readdirSync(exportDir).filter(f => f.endsWith('.yaml')).map(f => [f, mtimes(f)]));
 
+  // Også for en afhængighed: den udgave der er i drift, ikke nogens kladde.
+  const depVersion = await publishedVersionFor(source, flowName, flowType, 'MIGRATE');
+
   await runArchy(
-    `export --flowName ${archyArg(flowName, 'Flownavn')} ` +
-    `--flowType ${archyBareArg(String(flowType).toLowerCase(), 'Flowtype')} ` +
-    `--exportType yaml --force --outputDir ${archyArg(exportDir, 'Mappe')}`,
+    `export --flowName ${archyArg(flowName, 'Flow name')} ` +
+    `--flowType ${archyBareArg(String(flowType).toLowerCase(), 'Flow type')} ` +
+    archyVersionFlag(depVersion) +
+    `--exportType yaml --force --outputDir ${archyArg(exportDir, 'Directory')}`,
     source
   );
   const touched = fs.readdirSync(exportDir).filter(f => f.endsWith('.yaml'))
     .filter(f => !before.has(f) || mtimes(f) > before.get(f))
     .sort((a, b) => mtimes(b) - mtimes(a));
-  if (!touched.length) return { ok: false, error: `Eksporten skrev ingen YAML-fil for "${flowName}"` };
+  if (!touched.length) return { ok: false, error: `The export wrote no YAML file for "${flowName}"` };
   const filePath = path.join(exportDir, touched[0]);
 
   // Modulets egne afhængigheder først — ellers fejler dets import af samme
@@ -3685,7 +3719,7 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
     let existing;
     try { existing = await lookupExisting(kind, names, tgtToken, tgtBase); }
     catch (e) {
-      const besked = `Kunne ikke slå ${kind} op i "${target.name}": ${describeApiError(e)}`;
+      const besked = `Could not look up ${kind} in "${target.name}": ${describeApiError(e)}`;
       trail.push(`✗ ${besked}`);
       return { ok: false, error: besked };
     }
@@ -3738,7 +3772,7 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
     let existing;
     try { existing = await lookupExisting(kind, names, tgtToken, tgtBase); }
     catch (e) {
-      const besked = `Kunne ikke slå ${kind} op i "${target.name}": ${describeApiError(e)}`;
+      const besked = `Could not look up ${kind} in "${target.name}": ${describeApiError(e)}`;
       trail.push(`✗ ${besked}`);
       return { ok: false, error: besked };
     }
@@ -3758,8 +3792,8 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
 
   // Publicér — et modul skal være publiceret for at kunne refereres af et flow
   try {
-    await runArchy(`publish --file ${archyArg(filePath, 'Filsti')}`, target);
-    addLog('SUCCESS', `Flow-afhængighed "${flowName}" (${flowType}) migreret til ${target.name}`, target.name, 'MIGRATE');
+    await runArchy(`publish --file ${archyArg(filePath, 'File path')}`, target);
+    addLog('SUCCESS', `Flow dependency "${flowName}" (${flowType}) migrated to ${target.name}`, target.name, 'MIGRATE');
     return { ok: true };
   } catch (e) {
     if (/already exists/i.test(e.message || '')) return { ok: true, skipped: 'exists' };
@@ -3781,11 +3815,11 @@ app.post('/api/divisions/create', async (req, res) => {
 
     const r = await axios.post(`${apiBase}/api/v2/authorization/divisions`, { name },
       { headers: { ...H.headers, 'Content-Type': 'application/json' } });
-    addLog('SUCCESS', `Division "${name}" oprettet i ${target.name}`, target.name, 'MIGRATE');
+    addLog('SUCCESS', `Division "${name}" created in ${target.name}`, target.name, 'MIGRATE');
     res.json({ ok: true, id: r.data.id, name });
   } catch (e) {
     const msg = describeApiError(e);
-    addLog('ERROR', `Kunne ikke oprette division "${name}": ${msg}`, target.name, 'MIGRATE');
+    addLog('ERROR', `Could not create division "${name}": ${msg}`, target.name, 'MIGRATE');
     res.status(500).json({ error: msg });
   }
 });
@@ -3820,11 +3854,11 @@ app.post('/api/surveyforms/migrate', async (req, res) => {
       questionGroups: stripFormIds(full.questionGroups || [])
     };
     const r = await axios.post(`${tgtBase}/api/v2/quality/forms/surveys`, body, TH);
-    addLog('SUCCESS', `Survey form "${name}" kopieret til ${target.name}`, target.name, 'MIGRATE');
+    addLog('SUCCESS', `Survey form "${name}" copied to ${target.name}`, target.name, 'MIGRATE');
     res.json({ ok: true, id: r.data.id, name });
   } catch (e) {
     const msg = describeApiError(e);
-    addLog('ERROR', `Kunne ikke kopiere survey form "${name}": ${msg}`, target.name, 'MIGRATE');
+    addLog('ERROR', `Could not copy survey form "${name}": ${msg}`, target.name, 'MIGRATE');
     res.status(500).json({ error: msg });
   }
 });
@@ -3852,12 +3886,12 @@ app.post('/api/flows/migrate-dependency', async (req, res) => {
   try {
     const r = await migrateFlowDependency(source, target, flowName, flowType, new Set(), 0, trail);
     if (!r.ok) {
-      addLog('ERROR', `Flow-afhængighed "${flowName}" fejlede: ${r.error}`, target.name, 'MIGRATE');
+      addLog('ERROR', `Flow dependency "${flowName}" failed: ${r.error}`, target.name, 'MIGRATE');
       return res.status(500).json({ error: r.error, trail });
     }
     res.json({ ok: true, skipped: r.skipped, trail });
   } catch (e) {
-    addLog('ERROR', `Flow-afhængighed "${flowName}" fejlede: ${e.message}`, target.name, 'MIGRATE');
+    addLog('ERROR', `Flow dependency "${flowName}" failed: ${e.message}`, target.name, 'MIGRATE');
     res.status(500).json({ error: e.message, trail });
   }
 });
@@ -3879,18 +3913,25 @@ app.post('/api/migrate/prepare', async (req, res) => {
 
   // Indenfor en gruppe er dette en forfremmelse, og så gælder rækkefølgen:
   // publicér og test i kilden, forfrem derefter.
-  if (sameGroup(source, target)) {
-    try {
-      const { found, published } = await publishedVersionOf(source, flowName, flowType);
-      if (found && !published) {
-        const msg = `"${flowName}" er ikke publiceret i ${source.name}. Publicér og test det dér, før du forfremmer.`;
-        addLog('WARN', `Migration blocked (unpublished-source): ${msg}`, source.name, 'MIGRATE');
-        return res.status(409).json({ code: 'unpublished-source', error: msg });
-      }
-    } catch (e) {
-      // Kan vi ikke slå det op, standser vi ikke migreringen på et gæt.
-      addLog('WARN', `Kunne ikke tjekke publiceringsstatus i ${source.name}: ${describeApiError(e)}`, source.name, 'MIGRATE');
+  //
+  // Samme opslag afgør nu OGSÅ hvilken udgave der eksporteres. Før sagde vagten
+  // god for flowet fordi det var publiceret, mens eksporten tog 'latest' — altså
+  // kladden. Vi lovede ét og sendte noget andet af sted.
+  let kildeVersion = null;
+  try {
+    const { found, published } = await publishedVersionOf(source, flowName, flowType);
+    if (found && !published && sameGroup(source, target)) {
+      const msg = `"${flowName}" er ikke publiceret i ${source.name}. Publicér og test det dér, før du forfremmer.`;
+      // Vejledningen til brugeren står på dansk i svaret; loggen skal være engelsk.
+      addLog('WARN', `Migration blocked (unpublished-source): "${flowName}" is not published in ${source.name}`, source.name, 'MIGRATE');
+      return res.status(409).json({ code: 'unpublished-source', error: msg });
     }
+    kildeVersion = published;
+    if (found && !published)
+      addLog('WARN', `"${flowName}" has no published version in ${source.name} — exporting the saved draft`, source.name, 'MIGRATE');
+  } catch (e) {
+    // Kan vi ikke slå det op, standser vi ikke migreringen på et gæt.
+    addLog('WARN', `Could not check the published version in ${source.name}: ${describeApiError(e)}`, source.name, 'MIGRATE');
   }
 
   const exportDir = path.join(FLOWS_DIR, sanitizeName(source.name));
@@ -3907,9 +3948,10 @@ app.post('/api/migrate/prepare', async (req, res) => {
     const before = new Map(fs.readdirSync(exportDir).filter(f => f.endsWith('.yaml')).map(f => [f, mtimes(f)]));
 
     await runArchy(
-      `export --flowName ${archyArg(flowName, 'Flownavn')} ` +
-      `--flowType ${archyBareArg(String(flowType).toLowerCase(), 'Flowtype')} ` +
-      `--exportType yaml --force --outputDir ${archyArg(exportDir, 'Mappe')}`,
+      `export --flowName ${archyArg(flowName, 'Flow name')} ` +
+      `--flowType ${archyBareArg(String(flowType).toLowerCase(), 'Flow type')} ` +
+      archyVersionFlag(kildeVersion) +
+      `--exportType yaml --force --outputDir ${archyArg(exportDir, 'Directory')}`,
       source
     );
 
@@ -3917,11 +3959,11 @@ app.post('/api/migrate/prepare', async (req, res) => {
       .filter(f => f.endsWith('.yaml'))
       .filter(f => !before.has(f) || mtimes(f) > before.get(f))
       .sort((a, b) => mtimes(b) - mtimes(a));
-    if (!touched.length) throw new Error(`Eksporten skrev ingen YAML-fil for "${flowName}"`);
+    if (!touched.length) throw new Error(`The export wrote no YAML file for "${flowName}"`);
     const yamlFile = touched[0];
     const filePath = path.join(exportDir, yamlFile);
     const yaml = fs.readFileSync(filePath, 'utf8');
-    addLog('SUCCESS', `Eksport ok: ${yamlFile}`, source.name, 'MIGRATE');
+    addLog('SUCCESS', `Export ok: ${yamlFile}`, source.name, 'MIGRATE');
 
     const deps = scanYamlDependencies(yaml);
     const { token: tgtToken, apiBase: tgtBase } = await getToken(target);
@@ -3942,7 +3984,7 @@ app.post('/api/migrate/prepare', async (req, res) => {
       try {
         existing = await lookupExisting(kind, wanted, tgtToken, tgtBase);
       } catch (e) {
-        addLog('WARN', `Kunne ikke tjekke ${kind}: ${describeApiError(e)}`, target.name, 'MIGRATE');
+        addLog('WARN', `Could not check ${kind}: ${describeApiError(e)}`, target.name, 'MIGRATE');
         existing = new Set();
       }
       for (const name of names) {
@@ -4029,14 +4071,14 @@ app.post('/api/migrate/prepare', async (req, res) => {
     const missing = results.filter(r => !r.ok);
     for (const m of missing) {
       addLog('WARN',
-        `Mangler i ${target.name}: ${m.kind} "${m.name}"` +
-        (m.canMigrate ? ' — kan migreres herfra' :
-         m.manualReason === 'function' ? ' — Function Data Action, skal oprettes manuelt (intet API)' :
-         m.manualReason === 'not_in_source' ? ' — findes heller ikke i kilde-org' :
-         ' — skal oprettes manuelt'),
+        `Missing in ${target.name}: ${m.kind} "${m.name}"` +
+        (m.canMigrate ? ' — can be migrated from here' :
+         m.manualReason === 'function' ? ' — Function Data Action, must be created by hand (no API)' :
+         m.manualReason === 'not_in_source' ? ' — does not exist in the source org either' :
+         ' — must be created by hand'),
         target.name, 'MIGRATE');
     }
-    if (!missing.length) addLog('SUCCESS', `Alle afhængigheder for "${flowName}" findes i ${target.name}`, target.name, 'MIGRATE');
+    if (!missing.length) addLog('SUCCESS', `All dependencies for "${flowName}" exist in ${target.name}`, target.name, 'MIGRATE');
 
     res.json({ ok: true, fileName: yamlFile, filePath, yaml, deps: results, dynamicSkills: /FindSkill\(\s*[A-Za-z]/.test(yaml) });
 
@@ -4077,7 +4119,7 @@ app.post('/api/migrate/commit', async (req, res) => {
           from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(["\']?[ \\t]*)$', 'gm');
         const before = yaml;
         yaml = yaml.replace(re, `$1${to}$2`);
-        if (yaml !== before) addLog('INFO', `Division "${from}" → "${to}" i "${flowName}"`, target.name, 'MIGRATE');
+        if (yaml !== before) addLog('INFO', `Division "${from}" → "${to}" in "${flowName}"`, target.name, 'MIGRATE');
       }
       fs.writeFileSync(resolved, yaml, 'utf8');
     }
@@ -4100,17 +4142,17 @@ app.post('/api/migrate/commit', async (req, res) => {
       const gammelDivision = (yaml.match(/^[ \t]{2,}division:[ \t]*(.+?)[ \t]*$/m) || [])[1];
       yaml = setFlowDivisionInYaml(yaml, nyDivision);
       if (gammelDivision && gammelDivision.replace(/^["']|["']$/g, '') !== nyDivision)
-        addLog('INFO', `Division skiftet: ${gammelDivision} → ${nyDivision}`, target.name, 'MIGRATE');
+        addLog('INFO', `Division changed: ${gammelDivision} → ${nyDivision}`, target.name, 'MIGRATE');
       if (nyName !== flowName) {
         yaml = renameFlowInYaml(yaml, nyName);
-        addLog('INFO', `Omdøbes til målmiljøet: "${flowName}" → "${nyName}"`, target.name, 'MIGRATE');
+        addLog('INFO', `Renamed for the target environment: "${flowName}" → "${nyName}"`, target.name, 'MIGRATE');
       }
       // Og de ressourcer flowet peger på. Uden dette ville DEV_-flowet slå op i
       // prods tabel, og de to miljøer ville dele data.
       const dep = prefixDependenciesInYaml(yaml, source, target);
       yaml = dep.yaml;
-      for (const æ of dep.changed)
-        addLog('INFO', `Reference omskrevet: ${æ}`, target.name, 'MIGRATE');
+      for (const omskrevet of dep.changed)
+        addLog('INFO', `Reference rewritten: ${omskrevet}`, target.name, 'MIGRATE');
 
       importFile = path.join(path.dirname(resolved),
         `.import-${sanitizeName(target.name)}-${path.basename(resolved)}`);
@@ -4124,7 +4166,7 @@ app.post('/api/migrate/commit', async (req, res) => {
     // migrering.
     let out;
     try {
-      out = await runArchy(`${cmd} --file ${archyArg(importFile, 'Filsti')}`, target);
+      out = await runArchy(`${cmd} --file ${archyArg(importFile, 'File path')}`, target);
     } finally {
       if (importFile !== resolved) { try { fs.unlinkSync(importFile); } catch (_) {} }
     }
@@ -4326,11 +4368,11 @@ app.post('/api/files/cleanup', (req, res) => {
       if (!insideFlowsDir(resolved)) continue;
       try { fs.unlinkSync(resolved); deleted++; } catch (_) {}
     }
-    addLog('SUCCESS', `Oprydning: ${deleted} gamle YAML-filer slettet (beholdt ${keep} pr. flow, ${Math.round(freed / 1024)} kB frigivet)`, null, 'SYSTEM');
+    addLog('SUCCESS', `Cleanup: ${deleted} old YAML files deleted (kept ${keep} per flow, ${Math.round(freed / 1024)} kB freed)`, null, 'SYSTEM');
     res.json({ ok: true, keep, dryRun: false, deleted, freed, toDelete });
 
   } catch (e) {
-    addLog('ERROR', `Oprydning fejlede: ${e.message}`, null, 'SYSTEM');
+    addLog('ERROR', `Cleanup failed: ${e.message}`, null, 'SYSTEM');
     res.status(500).json({ error: e.message });
   }
 });
@@ -4421,9 +4463,11 @@ module.exports = {
   orgManifestKey, findManifestEntry,
   // Archy og fejltekster
   parseArchyOutput, truncateArchyError, archyErrorReason, describeApiError,
-  archyCredFlags, archyArg, archyBareArg, archyVerb,
+  archyCredFlags, archyArg, archyBareArg, archyVerb, archyVersionFlag,
   // filstier fra klienten
   insideFlowsDir, safeFileName, FLOWS_DIR,
+  // eksport af den rigtige udgave
+  publishedVersionOf, publishedVersionFor, exportFlowToYaml,
   // maskering
   redactSecrets
 };

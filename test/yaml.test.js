@@ -127,7 +127,7 @@ test('assertYamlIsFlow fanger at eksporten gav det forkerte flow', () => {
   // Det var netop denne fejl: valgt "Notify Flow Error", fik "WeekNumber".
   assert.throws(
     () => s.assertYamlIsFlow(DEV_FLOW, 'Notify Flow Error', 'DEV_WeekNumber_v2-0.yaml'),
-    /forkerte flow/
+    /wrong flow/
   );
 });
 
