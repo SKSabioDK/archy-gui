@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.38.2
+# Archy GUI — Flow Manager · v1.39.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.38.2**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.38.2**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.39.0**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.39.0**.
 
 ---
 
@@ -143,7 +143,9 @@ Hver celle viser flowets **navn i netop det miljø**, dets publicerede udgave og
 
 **⇄ Tjek indhold** eksporterer flowet fra hvert miljø og sammenligner hashen — det eneste der kan afgøre om to miljøer er ens. Afviger de, kommer der en **⟵ Hent tilbage**-knap den anden vej, så man kan hente virkeligheden ned og se hvad der blev lavet.
 
-**⭳ Hent som CSV** henter præcis de rækker der vises, med semikolon og UTF-8 BOM så dansk Excel åbner den i kolonner.
+**Filtre.** Fritekst på flownavn, **flowtype** (listen fyldes ud fra de typer gruppen faktisk har, med antal), og *Kun dem der mangler i et senere trin*. De virker sammen.
+
+**⭳ Hent som CSV** henter præcis de rækker der vises — også efter et typefilter — med semikolon og UTF-8 BOM så dansk Excel åbner den i kolonner.
 
 **Vagter, håndhævet på serveren:** migrering på tværs af grupper er spærret; prod kræver en bevidst bekræftelse; kilden skal være publiceret; kilde og mål må ikke være samme miljø.
 
@@ -410,7 +412,9 @@ Each cell shows the flow's **name in that environment**, its published version a
 
 **⇄ Check content** exports the flow from each environment and compares the hash — the only thing that can decide whether two environments are the same. If they differ, a **⟵ Pull back** button appears going the other way, so you can bring reality down and see what was done.
 
-**⭳ Download as CSV** takes exactly the rows shown, semicolon separated with a UTF-8 BOM so Danish Excel opens it in columns.
+**Filters.** Free text on the flow name, **flow type** (the list is built from the types the group actually has, with counts), and *Only those missing in a later stage*. They combine.
+
+**⭳ Download as CSV** takes exactly the rows shown — including after a type filter — semicolon separated with a UTF-8 BOM so Danish Excel opens it in columns.
 
 **Guards, enforced on the server:** migrating across groups is blocked; prod requires a deliberate confirmation; the source must be published; source and target cannot be the same environment.
 

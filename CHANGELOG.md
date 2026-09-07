@@ -5,6 +5,33 @@
 
 ---
 
+### v1.39.0
+---
+**🇩🇰 Dansk**
+
+- **Migrer Flow: "Vis kun valgte".** Har man prikket tolv flows af i en liste på 191, kunne man ikke se hvad man rent faktisk havde valgt, før man trykkede kør. Nu kan listen skrumpes til udvalget.
+
+  Filteret virker sammen med de to andre: på en rigtig org gik listen fra **122 → 3** med *Vis kun valgte*, og videre til **2** da typefilteret også blev sat til WORKFLOW.
+
+  *Vælg alle* tager stadig kun de synlige — med typefilteret på COMMONMODULE valgte den 27, og *Vis kun valgte* viste derefter præcis de 27.
+
+- **Pipeline: filtrér på flowtype.** Som på Flow Browser og Migrer Flow. Listen fyldes ud fra de typer gruppen faktisk har, med antal pr. type — en fast liste ville vise typer gruppen ikke har og mangle dem den har. På Sabio: 120 rækker → 26 common modules, 24 inbound call, 16 workflow. Tallene summerer til 120.
+
+  **CSV-udtrækket følger med**, fordi både tavlen og udtrækket bruger `pipelineRowsShown()`. Efterprøvet: 26 rækker på tavlen, 27 linjer i CSV'en (overskriften med).
+
+  Skifter man gruppe, fyldes listen på ny, og et valg der ikke findes i den nye gruppe falder bort af sig selv.
+
+- **To småting undervejs.** Nøglen et flow kendes på i migreringslisten blev sat sammen i hånden fire steder; nu ét sted, så filteret og afkrydsningen ikke kan komme til at bruge hver sin. Og den tomme liste sagde *"Ingen logposter fundet"* — en tekst lånt fra systemloggen, der intet fortalte. Nu siger den enten *"Ingen flows valgt endnu"* eller *"Ingen flows passer til filteret"*, alt efter hvad der er tilfældet.
+
+Tre nye tekster i alle fem sprog.
+
+**🇬🇧 English**
+- **Migrate Flow: "Show only selected".** With twelve flows ticked in a list of 191 you could not see your own selection before pressing run. On a real org the list went 122 → 3, and on to 2 with the type filter also set. *Select all* still takes only what is visible.
+- **Pipeline: filter by flow type**, as on the other pages. The list is built from the types the group actually has, with counts; 120 rows on Sabio split into 26 common modules, 24 inbound call, 16 workflow. **The CSV export follows** — both the board and the export go through `pipelineRowsShown()`. Switching group rebuilds the list and drops a selection that no longer applies.
+- Two small things on the way: the key a flow is known by in the migration list was assembled by hand in four places and is now in one, so the filter and the tick cannot use different keys; and the empty list said *"No log entries found"* — borrowed from the system log — where it now says whether nothing is selected or nothing matches the filter.
+
+---
+
 ### v1.38.2
 ---
 **🇩🇰 Dansk**

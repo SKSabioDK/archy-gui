@@ -487,7 +487,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.38.2 · Archy GUI</div>
+    <div class="version" id="app-version">v1.39.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -619,7 +619,14 @@
       </div>
       <div class="card" id="pl-filterCard" style="display:none">
         <div class="grid-2">
-          <div><input id="pl-search" oninput="renderPipeline()" placeholder="🔍  Filtrér flows…" data-i18n-placeholder="pl_search" /></div>
+          <div style="display:flex;gap:8px">
+            <input id="pl-search" oninput="renderPipeline()" placeholder="🔍  Filtrér flows…" data-i18n-placeholder="pl_search" />
+            <!-- Fyldes fra de typer tavlen faktisk viser — samme mønster som på
+                 Flow Browser og Migrer Flow. -->
+            <select id="pl-type" style="width:190px" onchange="renderPipeline()">
+              <option value="" data-i18n="opt_all_types">Alle typer</option>
+            </select>
+          </div>
           <div style="display:flex;align-items:center;gap:8px">
             <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin:0">
               <input type="checkbox" id="pl-only-gaps" onchange="renderPipeline()" style="width:auto" />
@@ -736,6 +743,10 @@
           <div style="display:flex;gap:8px">
             <!-- Fyldes fra de typer org'en faktisk har — en hardkodet liste
                  manglede bl.a. COMMONMODULE, INQUEUECALL og VOICESURVEY -->
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin:0;white-space:nowrap">
+              <input type="checkbox" id="m-only-selected" onchange="applyMigrateFilter()" style="width:auto" />
+              <span data-i18n="migrate_only_selected">Vis kun valgte</span>
+            </label>
             <select id="m-type-filter" style="width:170px" onchange="applyMigrateFilter()">
               <option value="" data-i18n="opt_all_types">Alle typer</option>
             </select>
@@ -1570,6 +1581,8 @@ const LANGS = {
     pl_no_groups:'Ingen grupper endnu. Sæt kunde, gruppe og trin på miljøerne under Kunder.',
     pl_search:'🔍  Filtrér flows…',
     pl_only_gaps:'Kun dem der mangler i et senere trin',
+    migrate_only_selected:'Vis kun valgte', migrate_none_selected:'Ingen flows valgt endnu — klik på dem du vil migrere.',
+    migrate_no_match:'Ingen flows passer til filteret.',
     pl_flow:'FLOW',
     pl_missing:'mangler',
     pl_draft:'kladde',
@@ -1989,6 +2002,8 @@ const LANGS = {
     pl_no_groups:'No groups yet. Set customer, group and stage on the environments under Customers.',
     pl_search:'🔍  Filter flows…',
     pl_only_gaps:'Only those missing in a later stage',
+    migrate_only_selected:'Show only selected', migrate_none_selected:'No flows selected yet — click the ones you want to migrate.',
+    migrate_no_match:'No flows match the filter.',
     pl_flow:'FLOW',
     pl_missing:'missing',
     pl_draft:'draft',
@@ -2408,6 +2423,8 @@ const LANGS = {
     pl_no_groups:'Aucun groupe. Renseignez client, groupe et étape sur les environnements sous Clients.',
     pl_search:'🔍  Filtrer les flows…',
     pl_only_gaps:'Uniquement ceux absents d\'une étape ultérieure',
+    migrate_only_selected:'Afficher uniquement la sélection', migrate_none_selected:'Aucun flow sélectionné — cliquez sur ceux à migrer.',
+    migrate_no_match:'Aucun flow ne correspond au filtre.',
     pl_flow:'FLOW',
     pl_missing:'absent',
     pl_draft:'brouillon',
@@ -2827,6 +2844,8 @@ const LANGS = {
     pl_no_groups:'Nog geen groepen. Stel klant, groep en fase in bij de omgevingen onder Klanten.',
     pl_search:'🔍  Flows filteren…',
     pl_only_gaps:'Alleen die ontbreken in een latere fase',
+    migrate_only_selected:'Alleen geselecteerde tonen', migrate_none_selected:'Nog geen flows geselecteerd — klik op wat je wilt migreren.',
+    migrate_no_match:'Geen flows voldoen aan het filter.',
     pl_flow:'FLOW',
     pl_missing:'ontbreekt',
     pl_draft:'concept',
@@ -3246,6 +3265,8 @@ const LANGS = {
     pl_no_groups:'Aún no hay grupos. Defina cliente, grupo y etapa en los entornos en Clientes.',
     pl_search:'🔍  Filtrar flows…',
     pl_only_gaps:'Solo los que faltan en una etapa posterior',
+    migrate_only_selected:'Mostrar solo lo seleccionado', migrate_none_selected:'Ningún flow seleccionado todavía: haga clic en los que quiera migrar.',
+    migrate_no_match:'Ningún flow coincide con el filtro.',
     pl_flow:'FLOW',
     pl_missing:'falta',
     pl_draft:'borrador',
@@ -3948,14 +3969,18 @@ function populateMigrateTypeFilter() {
   if (cur) el.value = cur;
 }
 
-function renderMigrateFlows(flows) {
+function renderMigrateFlows(flows, kunValgte) {
   const el = document.getElementById('m-flowList');
   if (!flows.length) {
-    el.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:10px 0">${t('no_log_entries')}</div>`;
+    // "Ingen logposter fundet" stod her før — teksten var lånt fra systemloggen
+    // og sagde intet om hvorfor listen var tom.
+    const hvorfor = kunValgte && !selectedMigrateFlows.size
+      ? t('migrate_none_selected') : t('migrate_no_match');
+    el.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:10px 0">${escapeHtml(hvorfor)}</div>`;
     return;
   }
   el.innerHTML = flows.map(f => {
-    const key = f.id + '|' + f.name + '|' + f.type;
+    const key = migrateKey(f);
     const sel = selectedMigrateFlows.has(key);
     const versions = [
       f.publishedVersion ? `<span style="color:var(--green)">Pub v${f.publishedVersion}</span>` : '',
@@ -3975,6 +4000,11 @@ function renderMigrateFlows(flows) {
   }).join('');
 }
 
+// Nøglen et flow kendes på i selectedMigrateFlows. Den blev før sat sammen tre
+// steder i hånden; nu ét sted, så "vis kun valgte" ikke kan komme til at bruge
+// en anden nøgle end afkrydsningen.
+const migrateKey = (f) => f.id + '|' + f.name + '|' + f.type;
+
 function toggleMigrateFlow(id, nameEnc, type) {
   const name = decodeURIComponent(nameEnc);
   const key = id + '|' + name + '|' + type;
@@ -3987,20 +4017,23 @@ function toggleMigrateFlow(id, nameEnc, type) {
 function applyMigrateFilter() {
   const q    = (document.getElementById('m-search')?.value || '').toLowerCase();
   const type = (document.getElementById('m-type-filter')?.value || '').toLowerCase();
+  const kunValgte = !!document.getElementById('m-only-selected')?.checked;
   const filtered = migrateFlows.filter(f =>
     (!q    || f.name.toLowerCase().includes(q)) &&
-    (!type || f.type.toLowerCase() === type)
+    (!type || f.type.toLowerCase() === type) &&
+    (!kunValgte || selectedMigrateFlows.has(migrateKey(f)))
   );
-  renderMigrateFlows(filtered);
+  renderMigrateFlows(filtered, kunValgte);
 }
 
 function selectAllMigrateFlows() {
-  // Select only flows currently visible (respects active filter)
+  // Kun dem der er synlige lige nu — "Vælg alle" må ikke tage 191 flows med
+  // når listen viser tre. "Vis kun valgte" er udeladt her: de er jo valgt.
   const q    = (document.getElementById('m-search')?.value || '').toLowerCase();
   const type = (document.getElementById('m-type-filter')?.value || '').toLowerCase();
   migrateFlows
     .filter(f => (!q || f.name.toLowerCase().includes(q)) && (!type || f.type.toLowerCase() === type))
-    .forEach(f => selectedMigrateFlows.add(f.id + '|' + f.name + '|' + f.type));
+    .forEach(f => selectedMigrateFlows.add(migrateKey(f)));
   applyMigrateFilter();
   updateMigrateBtn();
 }
@@ -7392,9 +7425,26 @@ async function loadPipeline() {
   pipelineHashes = {};
   pipelineChecking = {};
   pipelineData = r;
+  fillPipelineTypes();
   document.getElementById('pl-filterCard').style.display = 'block';
   renderPipeline();
   loadManifestStatus();
+}
+
+// Typerne tavlen faktisk viser, med antal — som på Flow Browser og Migrer Flow.
+// En fast liste ville vise typer gruppen ikke har, og mangle dem den har.
+function fillPipelineTypes() {
+  const el = document.getElementById('pl-type');
+  if (!el) return;
+  const foer = el.value;
+  const typer = [...new Set((pipelineData?.rows || []).map(r => r.flowType).filter(Boolean))].sort();
+  el.innerHTML = `<option value="" data-i18n="opt_all_types">${escapeHtml(t('opt_all_types'))}</option>`
+    + typer.map(x => {
+        const n = pipelineData.rows.filter(r => r.flowType === x).length;
+        return `<option value="${escapeHtml(String(x).toLowerCase())}">${escapeHtml(x)} (${n})</option>`;
+      }).join('');
+  // Behold valget hvis typen stadig findes i den nye gruppe.
+  el.value = [...el.options].some(o => o.value === foer) ? foer : '';
 }
 
 // Hvilke rækker er synlige lige nu. Både tavlen og CSV-udtrækket bruger DENNE
@@ -7404,9 +7454,12 @@ function pipelineRowsShown() {
   const d = pipelineData;
   if (!d) return [];
   const q = (document.getElementById('pl-search').value || '').trim().toLowerCase();
+  const type = (document.getElementById('pl-type')?.value || '').toLowerCase();
   const onlyGaps = document.getElementById('pl-only-gaps').checked;
 
-  let rows = d.rows.filter(r => !q || r.flowName.toLowerCase().includes(q));
+  let rows = d.rows.filter(r =>
+    (!q || r.flowName.toLowerCase().includes(q)) &&
+    (!type || String(r.flowType || '').toLowerCase() === type));
   if (onlyGaps) rows = rows.filter(r => {
     // Findes i et trin, men mangler i et senere. Et miljø vi ikke kunne læse
     // tæller ikke som "mangler" — vi ved ikke hvad der er i det.
@@ -7698,7 +7751,7 @@ async function promoteFromBoard(flowName, flowType, fromId, toId) {
   const f = (migrateFlows || []).find(x => x.name === flowName && x.type === flowType);
   if (f) {
     selectedMigrateFlows.clear();
-    selectedMigrateFlows.add(f.id + '|' + f.name + '|' + f.type);
+    selectedMigrateFlows.add(migrateKey(f));
     applyMigrateFilter();
     updateMigrateBtn();
   }
