@@ -487,7 +487,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.37.1 · Archy GUI</div>
+    <div class="version" id="app-version">v1.38.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -3629,8 +3629,8 @@ function renderCustomerGrid() {
     return `
     <div class="customer-card">
       <div class="cc-status"><div class="dot" id="card-dot-${c.id}"></div><span id="card-status-${c.id}">–</span></div>
-      <div class="cc-name">${c.name}</div>
-      <div class="cc-region" style="display:flex;align-items:center;gap:8px">${c.region} ${authBadge}</div>
+      <div class="cc-name">${escapeHtml(c.name)}</div>
+      <div class="cc-region" style="display:flex;align-items:center;gap:8px">${escapeHtml(c.region)} ${authBadge}</div>
       <div style="margin-top:6px;font-size:11px;font-family:var(--mono)">${groupingBadge(c)}</div>
       <div id="grp-${c.id}" style="display:none;margin-top:10px"></div>
       <div id="card-archy-warn-${c.id}" style="display:none;margin-top:8px;padding:6px 10px;background:rgba(241,196,15,.1);border:1px solid rgba(241,196,15,.3);border-radius:5px;font-size:11px;color:var(--yellow);font-family:var(--mono)"></div>
@@ -3770,7 +3770,7 @@ function populateCustomerSelects(ids) {
     if (!el) return;
     const cur = el.value;
     el.innerHTML = `<option value="">${t('opt_select_customer')}</option>` +
-      customers.map(c => `<option value="${c.id}">${c.name} (${c.region})</option>`).join('');
+      customers.map(c => `<option value="${c.id}">${escapeHtml(c.name)} (${escapeHtml(c.region)})</option>`).join('');
     if (cur) el.value = cur;
   });
   // Har man en kunde i fokus, og feltet er tomt, vælges dens tidligste miljø.
@@ -3812,16 +3812,16 @@ function renderFlowTable(flows) {
   const tbody = document.getElementById('flowTableBody');
   tbody.innerHTML = flows.map(f => `
     <tr>
-      <td>${f.name}</td>
-      <td><span class="badge badge-blue">${f.type}</span></td>
+      <td>${escapeHtml(f.name)}</td>
+      <td><span class="badge badge-blue">${escapeHtml(f.type)}</span></td>
       <td>${f.active ? `<span class="badge badge-green">${t('badge_published')}</span>` : `<span class="badge badge-gray">${t('badge_draft')}</span>`}</td>
       <td style="color:var(--muted)">${f.publishedVersion || f.savedVersion
         ? 'v' + (f.publishedVersion || f.savedVersion)
         : (f.checkedOut ? `<span class="badge badge-gray">${t('col_checked_out')}</span>` : '—')}</td>
       <td>
-        <button class="btn btn-secondary btn-sm" onclick="prefillExport('${f.name}','${f.type}')">${t('btn_export_flow')}</button>
-        ${document.getElementById('fb-compare')?.value ? `<button class="btn btn-secondary btn-sm" onclick="compareFlow('${encodeURIComponent(f.name)}','${f.type}')">⇄</button>` : ''}
-        ${!f.active && f.savedVersion ? `<button class="btn btn-blue btn-sm" onclick="publishFlow('${f.id}','${encodeURIComponent(f.name)}','${f.savedVersion}')">${t('fb_publish')}</button>` : ''}
+        <button class="btn btn-secondary btn-sm" onclick="prefillExport(${jsAttr(f.name)},${jsAttr(f.type)})">${t('btn_export_flow')}</button>
+        ${document.getElementById('fb-compare')?.value ? `<button class="btn btn-secondary btn-sm" onclick="compareFlow(${jsAttr(encodeURIComponent(f.name))},${jsAttr(f.type)})">⇄</button>` : ''}
+        ${!f.active && f.savedVersion ? `<button class="btn btn-blue btn-sm" onclick="publishFlow(${jsAttr(f.id)},${jsAttr(encodeURIComponent(f.name))},${jsAttr(f.savedVersion)})">${t('fb_publish')}</button>` : ''}
       </td>
     </tr>`).join('');
 }
@@ -3898,7 +3898,7 @@ function populateMigrateSelects() {
     if (!el) return;
     const cur = el.value;
     el.innerHTML = `<option value="">${t('select_org_ph')}</option>` +
-      customers.map(c => `<option value="${c.id}">${c.name} (${c.region})</option>`).join('');
+      customers.map(c => `<option value="${c.id}">${escapeHtml(c.name)} (${escapeHtml(c.region)})</option>`).join('');
     if (cur) el.value = cur;
   });
   // Har man en kunde i fokus og intet valgt endnu, sættes kilde og mål til
@@ -3926,7 +3926,7 @@ async function onMigrateSourceChange() {
   const res = await fetch('/api/customers/' + id + '/flows');
   const data = await res.json();
   if (data.error) {
-    document.getElementById('m-flowList').innerHTML = `<div style="color:var(--red);font-size:12px">${data.error}</div>`;
+    document.getElementById('m-flowList').innerHTML = `<div style="color:var(--red);font-size:12px">${escapeHtml(data.error)}</div>`;
     return;
   }
   migrateFlows = data;
@@ -3962,9 +3962,9 @@ function renderMigrateFlows(flows) {
       f.savedVersion     ? `<span style="color:var(--muted)">Draft v${f.savedVersion}</span>`    : ''
     ].filter(Boolean).join('<span style="color:var(--border2)"> · </span>');
     return `
-    <div class="migrate-flow-item ${sel ? 'selected' : ''}" onclick="toggleMigrateFlow('${f.id}','${encodeURIComponent(f.name)}','${f.type}')">
+    <div class="migrate-flow-item ${sel ? 'selected' : ''}" onclick="toggleMigrateFlow(${jsAttr(f.id)},${jsAttr(encodeURIComponent(f.name))},${jsAttr(f.type)})">
       <div style="min-width:0">
-        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.name}</div>
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(f.name)}</div>
         <div style="font-size:11px;font-family:var(--mono);margin-top:2px">${f.type}&nbsp;&nbsp;${versions}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
@@ -4190,11 +4190,11 @@ function filterExportFlows(q) {
   if (!matches.length) { dd.style.display = 'none'; return; }
   dd.style.display = 'block';
   dd.innerHTML = matches.map(f => `
-    <div data-fname="${f.name.replace(/"/g,'&quot;')}" data-ftype="${f.type}"
+    <div data-fname="${escapeHtml(f.name)}" data-ftype="${escapeHtml(f.type)}"
          style="padding:9px 14px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center"
          onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background=''">
-      <span style="font-family:var(--mono)">${f.name}</span>
-      <span class="badge badge-blue">${f.type}</span>
+      <span style="font-family:var(--mono)">${escapeHtml(f.name)}</span>
+      <span class="badge badge-blue">${escapeHtml(f.type)}</span>
     </div>`).join('');
   dd.querySelectorAll('[data-fname]').forEach(el => {
     el.addEventListener('click', () => selectExportFlow(el.dataset.fname, el.dataset.ftype));
@@ -4288,7 +4288,7 @@ async function doExportAll() {
     });
     const data = await res.json();
     if (data.error) {
-      logBox.innerHTML = `<span style="color:var(--red)">✗ ${data.error}</span>`;
+      logBox.innerHTML = `<span style="color:var(--red)">✗ ${escapeHtml(data.error)}</span>`;
       showAlert('ex-alert', '✗ ' + data.error, 'err');
       document.getElementById('ex-all-btn').disabled = false;
       return;
@@ -4297,7 +4297,7 @@ async function doExportAll() {
     _exportAllJobId = jobId;
     stopBtn.style.display = 'inline-flex';
   } catch (e) {
-    logBox.innerHTML = `<span style="color:var(--red)">✗ ${e.message}</span>`;
+    logBox.innerHTML = `<span style="color:var(--red)">✗ ${escapeHtml(e.message)}</span>`;
     document.getElementById('ex-all-btn').disabled = false;
     return;
   }
@@ -4327,8 +4327,8 @@ async function doExportAll() {
       if (job.results.length > lastCount) {
         const newLines = job.results.slice(lastCount).map(r =>
           r.ok
-            ? `<span style="color:var(--green)">✓ ${r.name.replace(/</g,'&lt;')} <span style="color:var(--muted)">(${r.type})</span></span>`
-            : `<span style="color:var(--red)">✗ ${r.name.replace(/</g,'&lt;')} — ${(r.error||'').replace(/</g,'&lt;')}</span>`
+            ? `<span style="color:var(--green)">✓ ${escapeHtml(r.name)} <span style="color:var(--muted)">(${escapeHtml(r.type)})</span></span>`
+            : `<span style="color:var(--red)">✗ ${escapeHtml(r.name)} — ${escapeHtml(r.error||'')}</span>`
         ).join('<br>');
         if (lastCount === 0) logBox.innerHTML = '';
         logBox.innerHTML += newLines + '<br>';
@@ -4341,7 +4341,7 @@ async function doExportAll() {
         stopBtn.style.display = 'none';
         _exportAllJobId = null;
         const folderName = job.savedTo.split(/[\\/]/).pop();
-        logBox.innerHTML += `<br><strong>${t('export_saved_in')}: <span style="color:var(--accent)">${job.savedTo}</span></strong>`;
+        logBox.innerHTML += `<br><strong>${t('export_saved_in')}: <span style="color:var(--accent)">${escapeHtml(job.savedTo)}</span></strong>`;
         if (job.status === 'cancelled') {
           showAlert('ex-alert',
             `⏹ Stoppet — ${job.succeeded} flows gemt i "${folderName}"`,
@@ -4434,7 +4434,7 @@ function validateYaml() {
     const icon  = type==='ok' ? '✅' : type==='err' ? '❌' : '⚠️';
     return `<div style="display:flex;gap:8px;margin-bottom:5px;color:${color}">
       <span style="flex-shrink:0">${icon}</span>
-      <span style="white-space:pre-wrap;word-break:break-all">${text.replace(/</g,'&lt;')}</span>
+      <span style="white-space:pre-wrap;word-break:break-all">${escapeHtml(text)}</span>
     </div>`;
   };
 
@@ -4549,7 +4549,7 @@ async function validateYamlVsOrg() {
       const badge = `<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:var(--hover);color:var(--muted);margin-right:6px">${type}</span>`;
       return `<div style="display:flex;gap:8px;margin-bottom:5px;color:${color}">
         <span style="flex-shrink:0">${icon}</span>
-        <span>${badge}${msg.replace(/</g,'&lt;')}</span>
+        <span>${badge}${escapeHtml(msg)}</span>
       </div>`;
     };
 
@@ -4569,7 +4569,7 @@ async function validateYamlVsOrg() {
     }
 
     el.style.display = 'block';
-    el.innerHTML = `<div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">\ud83c\udf10 VALIDERING MOD ORG: ${(customers.find(c=>c.id===customerId)||{}).name||''}</div>`
+    el.innerHTML = `<div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">\ud83c\udf10 VALIDERING MOD ORG: ${escapeHtml((customers.find(c=>c.id===customerId)||{}).name||'')}</div>`
       + summary
       + (rows.length ? `<hr style="border:none;border-top:1px solid var(--border);margin:8px 0">` + rows.join('') : '');
 
@@ -4601,17 +4601,17 @@ async function doImport() {
   if (data.error === 'access_denied') {
     showAlert('im-alert', '⛔ ' + t('err_access_denied'), 'err');
     logEl.style.display = 'block';
-    logEl.innerHTML = `<span class="log-err">${(data.message||'').replace(/</g,'&lt;')}</span>`;
+    logEl.innerHTML = `<span class="log-err">${escapeHtml(data.message||'')}</span>`;
   } else if (data.error === 'already_exists') {
     showAlert('im-alert',
       `✗ ${t('already_exists_err')} ` +
       `<button class="btn btn-primary btn-sm" style="margin-left:8px" ` +
       `onclick="document.getElementById('im-action').value='update';doImport()">🔄 ${t('switch_to_update')}</button>`,
       'err');
-    logEl.innerHTML = `<span class="log-warn">${data.message || 'Flow already exists'}</span>`;
+    logEl.innerHTML = `<span class="log-warn">${escapeHtml(data.message || 'Flow already exists')}</span>`;
   } else if (data.error) {
     showAlert('im-alert', '✗ ' + archyShortMsg(data.error), 'err');
-    logEl.innerHTML = `<span class="log-err">${data.error.replace(/</g,'&lt;')}</span>`;
+    logEl.innerHTML = `<span class="log-err">${escapeHtml(data.error)}</span>`;
   } else {
     showAlert('im-alert', t('import_ok'), 'ok');
     logEl.style.display = 'none';
@@ -4641,7 +4641,7 @@ async function previewCleanup() {
     body: JSON.stringify({ keep, dryRun: true })
   }).then(x => x.json()).catch(e => ({ error: e.message }));
 
-  if (r.error) { body.innerHTML = `<div style="color:var(--red);font-size:13px">${r.error}</div>`; return; }
+  if (r.error) { body.innerHTML = `<div style="color:var(--red);font-size:13px">${escapeHtml(r.error)}</div>`; return; }
 
   clPending = r.toDelete || [];
   if (!clPending.length) {
@@ -4656,8 +4656,8 @@ async function previewCleanup() {
     `⚠ ${clPending.length} ${t('fl_cleanup_will_delete')} (${kb} kB)</div>` +
     clPending.map(f => `
       <div style="display:flex;gap:12px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
-        <span style="color:var(--muted);min-width:150px">${f.customerName}</span>
-        <span style="flex:1;font-family:var(--mono)">${f.fileName}</span>
+        <span style="color:var(--muted);min-width:150px">${escapeHtml(f.customerName)}</span>
+        <span style="flex:1;font-family:var(--mono)">${escapeHtml(f.fileName)}</span>
         <span style="color:var(--muted)">${new Date(f.modified).toLocaleDateString()}</span>
       </div>`).join('');
   btn.textContent = t('fl_cleanup_run').replace('{n}', clPending.length);
@@ -4692,7 +4692,7 @@ async function loadCross() {
   document.getElementById('cx-alert').innerHTML = '';
 
   const r = await fetch('/api/flows/cross-customer').then(x => x.json()).catch(e => ({ error: e.message }));
-  if (r.error) { el.innerHTML = `<div style="color:var(--red);font-size:13px">${r.error}</div>`; return; }
+  if (r.error) { el.innerHTML = `<div style="color:var(--red);font-size:13px">${escapeHtml(r.error)}</div>`; return; }
 
   crossRows = r.rows || [];
   crossCustomers = r.customers || [];
@@ -4700,7 +4700,7 @@ async function loadCross() {
   if ((r.problems || []).length) {
     document.getElementById('cx-alert').innerHTML = (r.problems).map(p =>
       `<div class="card" style="border-color:var(--yellow);color:var(--yellow);font-size:12px;padding:10px 16px;margin-bottom:8px">` +
-      `⚠ ${p.customer}: ${p.error}</div>`).join('');
+      `⚠ ${escapeHtml(p.customer)}: ${escapeHtml(p.error)}</div>`).join('');
   }
 
   const types = [...new Set(crossRows.map(x => x.flowType))].sort();
@@ -4735,7 +4735,7 @@ function renderCross() {
   el.innerHTML = list.map((x, i) => {
     const orgs = x.orgs.map(o => `
       <div style="display:flex;gap:10px;font-size:12px;padding:3px 0">
-        <span style="min-width:190px;color:var(--muted)">${o.customerName}</span>
+        <span style="min-width:190px;color:var(--muted)">${escapeHtml(o.customerName)}</span>
         <span style="font-family:var(--mono);min-width:60px">v${o.publishedVersion || o.checkedInVersion || '?'}</span>
         <span style="color:var(--muted)">${o.active ? t('badge_published') : t('badge_draft')}</span>
         ${o.publishedAt ? `<span style="color:var(--muted)">${new Date(o.publishedAt).toLocaleDateString()}</span>` : ''}
@@ -4744,8 +4744,8 @@ function renderCross() {
     <div class="card" style="padding:14px 20px;margin-bottom:8px">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
         <div style="min-width:0;flex:1">
-          <div style="font-size:13px;font-weight:600">${x.flowName}
-            <span class="badge badge-blue" style="margin-left:8px">${x.flowType}</span>
+          <div style="font-size:13px;font-weight:600">${escapeHtml(x.flowName)}
+            <span class="badge badge-blue" style="margin-left:8px">${escapeHtml(x.flowType)}</span>
             ${x.sameVersion
               ? `<span class="badge badge-green" style="margin-left:4px">${t('cross_same_version')}</span>`
               : `<span class="badge badge-orange" style="margin-left:4px">${t('cross_diff_version')}</span>`}</div>
@@ -4786,7 +4786,7 @@ async function crossHash(i) {
                                      .map(o => [o.customerId, o.flowName])) })
   }).then(x => x.json()).catch(e => ({ error: e.message }));
 
-  if (r.error) { box.innerHTML = `<div style="color:var(--red);font-size:11px">${r.error}</div>`; return; }
+  if (r.error) { box.innerHTML = `<div style="color:var(--red);font-size:11px">${escapeHtml(r.error)}</div>`; return; }
 
   // Kun "identisk" hvis hver eneste org faktisk gav en hash. Fejlede en
   // eksport, ved vi ikke hvad der står i den org.
@@ -4801,8 +4801,8 @@ async function crossHash(i) {
     : `<div style="color:var(--muted);font-size:12px;font-weight:600">${t('cross_insufficient')}</div>`;
   box.innerHTML = head + r.results.map(x => `
     <div style="display:flex;gap:10px;font-size:11px;font-family:var(--mono);padding:2px 0">
-      <span style="min-width:190px;color:var(--muted)">${x.customerName}</span>
-      <span>${x.error ? '✗ ' + x.error.slice(0, 60) : (x.hash || '').slice(0, 16)}</span>
+      <span style="min-width:190px;color:var(--muted)">${escapeHtml(x.customerName)}</span>
+      <span>${escapeHtml(x.error ? '✗ ' + x.error.slice(0, 60) : (x.hash || '').slice(0, 16))}</span>
     </div>`).join('');
 }
 
@@ -4870,20 +4870,20 @@ function renderFiles() {
   el.innerHTML = list.map(f => `
     <div class="card" style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;margin-bottom:8px">
       <div style="min-width:0">
-        <div style="font-size:13px;font-weight:600">${f.flowName || f.fileName}
+        <div style="font-size:13px;font-weight:600">${escapeHtml(f.flowName || f.fileName)}
           ${f.version ? `<span style="color:var(--muted);font-weight:400"> v${f.version}</span>` : ''}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:3px;display:flex;gap:10px;flex-wrap:wrap">
           ${f.flowType ? `<span class="badge badge-blue">${f.flowType}</span>` : ''}
-          <span>${f.customerName}</span>
+          <span>${escapeHtml(f.customerName)}</span>
           <span>${f.isImport ? t('fl_from_import') : t('fl_from_export')}</span>
           ${f.modified ? `<span>${new Date(f.modified).toLocaleString()}</span>` : ''}
           <span>${kb(f.size)}</span>
         </div>
-        <div style="font-size:10px;color:var(--border2);font-family:var(--mono);margin-top:3px">${f.fileName}</div>
+        <div style="font-size:10px;color:var(--border2);font-family:var(--mono);margin-top:3px">${escapeHtml(f.fileName)}</div>
       </div>
       <div style="display:flex;gap:8px;flex-shrink:0">
-        <button class="btn btn-secondary btn-sm" onclick="previewFile('${encodeURIComponent(f.path)}','${f.fileName}')">${t('view_file')}</button>
-        <button class="btn btn-blue btn-sm" onclick="copyFileToImport('${encodeURIComponent(f.path)}','${f.fileName}')">${t('copy_to_import')}</button>
+        <button class="btn btn-secondary btn-sm" onclick="previewFile(${jsAttr(encodeURIComponent(f.path))},${jsAttr(f.fileName)})">${t('view_file')}</button>
+        <button class="btn btn-blue btn-sm" onclick="copyFileToImport(${jsAttr(encodeURIComponent(f.path))},${jsAttr(f.fileName)})">${t('copy_to_import')}</button>
       </div>
     </div>`).join('');
 }
@@ -4892,7 +4892,7 @@ async function previewFile(encodedPath, fileName) {
   const res = await fetch('/api/files/content?filePath=' + encodedPath);
   const data = await res.json();
   const w = window.open('', '_blank');
-  w.document.write(`<pre style="font-family:monospace;background:#0d0f14;color:#e8eaf0;padding:20px;font-size:12px">${data.content.replace(/</g,'&lt;')}</pre>`);
+  w.document.write(`<pre style="font-family:monospace;background:#0d0f14;color:#e8eaf0;padding:20px;font-size:12px">${escapeHtml(data.content)}</pre>`);
 }
 
 async function copyFileToImport(encodedPath, fileName) {
@@ -4978,8 +4978,8 @@ async function loadLog() {
       <td class="log-ts">${ts}</td>
       <td>${LEVEL_BADGE[e.level] || e.level}</td>
       <td>${ACTION_BADGE[e.action] || e.action}</td>
-      <td class="log-customer">${e.customer || '<span style="color:var(--muted)">—</span>'}</td>
-      <td class="log-msg">${e.message.replace(/</g,'&lt;')}</td>
+      <td class="log-customer">${e.customer ? escapeHtml(e.customer) : '<span style="color:var(--muted)">—</span>'}</td>
+      <td class="log-msg">${escapeHtml(e.message)}</td>
     </tr>`;
   }).join('');
 
@@ -5058,7 +5058,7 @@ async function loadReadme() {
     readmeRaw = data.content;
     renderReadme();
   } catch (e) {
-    el.innerHTML = `<div style="color:var(--red)">${e.message}</div>`;
+    el.innerHTML = `<div style="color:var(--red)">${escapeHtml(e.message)}</div>`;
   }
 }
 
@@ -5230,20 +5230,20 @@ function _wizUpdateDatalists() {
   // Populate table datalists for all active data table cards
   (wiz.dataTables || []).forEach((_, i) => {
     const dl = document.getElementById(`wiz-dt-datalist-${i}`);
-    if (dl) dl.innerHTML = _wizDtOptions.map(t => `<option value="${t.name}">`).join('');
+    if (dl) dl.innerHTML = _wizDtOptions.map(t => `<option value="${escapeHtml(t.name)}">`).join('');
   });
   const qdl = document.getElementById('wiz-q-datalist');
-  if (qdl) qdl.innerHTML = _wizQueueOptions.map(q => `<option value="${q.name}">`).join('');
+  if (qdl) qdl.innerHTML = _wizQueueOptions.map(q => `<option value="${escapeHtml(q.name)}">`).join('');
   const udl = document.getElementById('wiz-u-datalist');
-  if (udl) udl.innerHTML = _wizUserOptions.map(u => `<option value="${u.name}">`).join('');
+  if (udl) udl.innerHTML = _wizUserOptions.map(u => `<option value="${escapeHtml(u.name)}">`).join('');
   const gdl = document.getElementById('wiz-g-datalist');
-  if (gdl) gdl.innerHTML = _wizGroupOptions.map(g => `<option value="${g.name}">`).join('');
+  if (gdl) gdl.innerHTML = _wizGroupOptions.map(g => `<option value="${escapeHtml(g.name)}">`).join('');
   const fdl = document.getElementById('wiz-f-datalist');
-  if (fdl) fdl.innerHTML = _wizFlowOptions.map(f => `<option value="${f.name}">`).join('');
+  if (fdl) fdl.innerHTML = _wizFlowOptions.map(f => `<option value="${escapeHtml(f.name)}">`).join('');
   // Populate action datalists for all active data action cards
   (wiz.dataActions || []).forEach((_, i) => {
     const adl = document.getElementById(`wiz-da-datalist-${i}`);
-    if (adl) adl.innerHTML = _wizDaOptions.map(a => `<option value="${a.name}">`).join('');
+    if (adl) adl.innerHTML = _wizDaOptions.map(a => `<option value="${escapeHtml(a.name)}">`).join('');
   });
 }
 
@@ -5319,7 +5319,7 @@ async function wizSearchPrompts(prefix, val) {
   const dlId = prefix === 'ia' ? 'wiz-ia-prompt-datalist' : 'wiz-da-prompt-datalist';
   const dl = document.getElementById(dlId);
   if (dl) dl.innerHTML = (filtered.length ? filtered : _wizPromptOptions)
-    .map(p => `<option value="${p.name}">`).join('');
+    .map(p => `<option value="${escapeHtml(p.name)}">`).join('');
 }
 // Maps wizard flowType to Genesys Cloud API type enum for flow search filtering
 const WIZ_FLOW_TYPE_API = {
@@ -5361,7 +5361,7 @@ function wizSearchActions(val, i) {
     ? _wizDaOptions
     : _wizDaOptions.filter(a => a.name.toLowerCase().includes(q));
   const adl = document.getElementById(`wiz-da-datalist-${i}`);
-  if (adl) adl.innerHTML = filtered.map(a => `<option value="${a.name}">`).join('');
+  if (adl) adl.innerHTML = filtered.map(a => `<option value="${escapeHtml(a.name)}">`).join('');
 
   // Trigger schema fetch when user selects an exact match
   const match = _wizDaOptions.find(a => a.name === val);
@@ -5390,7 +5390,7 @@ function wizSearchTables(i, val) {
     ? _wizDtOptions
     : _wizDtOptions.filter(t => t.name.toLowerCase().includes(q));
   const dl = document.getElementById(`wiz-dt-datalist-${i}`);
-  if (dl) dl.innerHTML = filtered.map(t => `<option value="${t.name}">`).join('');
+  if (dl) dl.innerHTML = filtered.map(t => `<option value="${escapeHtml(t.name)}">`).join('');
   // Trigger key-hint fetch when user selects an exact match
   wizFetchTableKey(i, val);
 }
@@ -5612,7 +5612,7 @@ function _wizS1(body) {
   const lgs = WIZ_GENESYS_LANGS.map(x =>
     `<option value="${x.v}"${x.v===wiz.genesysLang?' selected':''}>${x.l}</option>`).join('');
   const custs = `<option value="">${t('wiz_s1_cust_ph')}</option>` +
-    customers.map(c => `<option value="${c.id}"${c.id===wiz.customerId?' selected':''}>${c.name} (${c.region})</option>`).join('');
+    customers.map(c => `<option value="${c.id}"${c.id===wiz.customerId?' selected':''}>${escapeHtml(c.name)} (${escapeHtml(c.region)})</option>`).join('');
   body.innerHTML = `
     ${_errBox()}
     <div style="grid-column:1/-1;margin-bottom:12px">
@@ -5630,7 +5630,7 @@ function _wizS1(body) {
       </div>
       <div style="grid-column:1/-1">
         <label>${t('wiz_s1_flowname')}</label>
-        <input id="wiz-fn" value="${wiz.flowName.replace(/"/g,'&quot;')}" placeholder="My Flow" autofocus/>
+        <input id="wiz-fn" value="${escapeHtml(wiz.flowName)}" placeholder="My Flow" autofocus/>
       </div>
     </div>
     <div style="margin-top:14px;padding:10px 14px;background:rgba(75,142,241,.07);border:1px solid rgba(75,142,241,.2);border-radius:6px;font-size:12px;color:var(--muted)">
@@ -5664,7 +5664,7 @@ function _wizS2(body) {
         <div class="grid-2" style="gap:10px;margin-bottom:10px">
           <div>
             <label>${t('wiz_dt_name')}</label>
-            <input id="wdt-tbl-${i}" value="${dt.tableName}" placeholder="SystemConfig"
+            <input id="wdt-tbl-${i}" value="${escapeHtml(dt.tableName)}" placeholder="SystemConfig"
               list="wiz-dt-datalist-${i}" autocomplete="off"
               oninput="wizSearchTables(${i}, this.value)"/>
             <div id="wdt-key-hint-${i}" style="font-size:11px;color:var(--muted);margin-top:3px">
@@ -5673,7 +5673,7 @@ function _wizS2(body) {
           </div>
           <div>
             <label>${t('wiz_dt_resultvar')}</label>
-            <input id="wdt-rv-${i}" value="${dt.resultVar}" placeholder="State.dt_s_result"/>
+            <input id="wdt-rv-${i}" value="${escapeHtml(dt.resultVar)}" placeholder="State.dt_s_result"/>
           </div>
           <div>
             <label>${t('wiz_dt_lookuptype')}</label>
@@ -5684,8 +5684,8 @@ function _wizS2(body) {
           </div>
           <div>
             <label>${t('wiz_dt_lookupval')}</label>
-            <input id="wdt-lv-${i}" value="${dt.lookupValue}"
-              placeholder="${dt.lookupType==='var'?'State.s_key':dt.tableKeyTitle||dt.tableName||'SystemConfig'}"/>
+            <input id="wdt-lv-${i}" value="${escapeHtml(dt.lookupValue)}"
+              placeholder="${escapeHtml(dt.lookupType==='var'?'State.s_key':dt.tableKeyTitle||dt.tableName||'SystemConfig')}"/>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:16px;padding:9px 14px;background:var(--hover);
@@ -5708,7 +5708,7 @@ function _wizS2(body) {
           </label>
           <div id="wdt-jv-wrap-${i}" style="display:${dt.parseJson?'flex':'none'};align-items:center;gap:6px;margin-left:auto">
             <label style="margin:0;font-size:11px;white-space:nowrap">${t('wiz_dt_jsonvar')}</label>
-            <input id="wdt-jv-${i}" value="${dt.jsonVar}" placeholder="State.dt_j_result" style="width:190px"/>
+            <input id="wdt-jv-${i}" value="${escapeHtml(dt.jsonVar)}" placeholder="State.dt_j_result" style="width:190px"/>
           </div>
         </div>
 
@@ -5732,12 +5732,12 @@ function _wizS2(body) {
               <div style="display:grid;grid-template-columns:1fr 1fr auto 1fr auto;gap:6px;align-items:${j===0?'flex-end':'center'};margin-bottom:6px">
                 <div>
                   ${j===0?`<label style="font-size:10px">${dt.isJsonTable!==false?t('wiz_dt_jsonkey'):t('wiz_dt_column')}</label>`:''}
-                  <input id="wdt-fk-${i}-${j}" value="${f.key}" placeholder="FlowId"
+                  <input id="wdt-fk-${i}-${j}" value="${escapeHtml(f.key)}" placeholder="FlowId"
                     oninput="wizAutoVarName(${i},${j})"/>
                 </div>
                 <div>
                   ${j===0?`<label style="font-size:10px">${t('wiz_dt_varname')}</label>`:''}
-                  <input id="wdt-fv-${i}-${j}" value="${f.varName}" placeholder="State.s_FlowId"
+                  <input id="wdt-fv-${i}-${j}" value="${escapeHtml(f.varName)}" placeholder="State.s_FlowId"
                     oninput="this.dataset.manual='1'"/>
                 </div>
                 <div ${j===0?'style="padding-top:18px"':''}>
@@ -5776,7 +5776,7 @@ function _wizS2(body) {
         <div class="grid-2" style="gap:10px;margin-bottom:8px">
           <div>
             <label>${t('wiz_da_name')}</label>
-            <input id="wda-name-${i}" value="${da.actionName.replace(/"/g,'&quot;')}"
+            <input id="wda-name-${i}" value="${escapeHtml(da.actionName)}"
               list="wiz-da-datalist-${i}" autocomplete="off"
               placeholder="${t('wiz_da_search_ph')}"
               oninput="wizSearchActions(this.value,${i})"/>
@@ -5800,7 +5800,7 @@ function _wizS2(body) {
             <div>
               ${j===0?`<label style="font-size:10px">${t('wiz_da_param')}</label>`:''}
               <div style="padding:6px 10px;background:var(--hover);border-radius:4px;font-size:12px;font-family:monospace">
-                ${inp.name}${inp.required?' <span style="color:var(--red)">*</span>':''}
+                ${escapeHtml(inp.name)}${inp.required?' <span style="color:var(--red)">*</span>':''}
               </div>
             </div>
             <div>
@@ -5813,7 +5813,7 @@ function _wizS2(body) {
             </div>
             <div>
               ${j===0?`<label style="font-size:10px">${t('wiz_da_value')}</label>`:''}
-              <input id="wda-iv-${i}-${j}" value="${(inp.value||'').replace(/"/g,'&quot;')}"
+              <input id="wda-iv-${i}-${j}" value="${escapeHtml(inp.value||'')}"
                 placeholder="${inp.valueType==='exp'?'Flow.s_myVar':'tekst eller tal'}"/>
             </div>
           </div>`).join('')}
@@ -5835,7 +5835,7 @@ function _wizS2(body) {
             </div>
             <div>
               ${j===0?`<label style="font-size:10px">${t('wiz_dt_varname')}</label>`:''}
-              <input id="wda-ov-${i}-${j}" value="${(out.varName||'').replace(/"/g,'&quot;')}"
+              <input id="wda-ov-${i}-${j}" value="${escapeHtml(out.varName||'')}"
                 placeholder="Flow.s_output" ${out.use?'':'disabled style="opacity:0.4"'}/>
             </div>
             <div>
@@ -5853,7 +5853,7 @@ function _wizS2(body) {
     ${_errBox()}
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <div style="font-size:13px;color:var(--muted)">
-        ${t('wiz_s2_desc')} <strong style="color:var(--text)">${wiz.flowName||'…'}</strong>
+        ${t('wiz_s2_desc')} <strong style="color:var(--text)">${escapeHtml(wiz.flowName||'…')}</strong>
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-secondary btn-sm" onclick="wizAddTable()">${t('wiz_add_table')}</button>
@@ -5903,7 +5903,7 @@ function _wizS3(body) {
         <div class="card-title">${t('wiz_s3_extra_yaml_title')}</div>
         <div style="font-size:11px;color:var(--muted);margin-bottom:10px">${t('wiz_s3_extra_yaml_hint')}</div>
         <textarea id="wiz-extra-yaml" style="height:140px;font-size:11px;font-family:var(--mono)"
-          placeholder="${t('wiz_s3_extra_yaml_ph')}">${(wiz.extraYaml||'').replace(/</g,'&lt;')}</textarea>
+          placeholder="${t('wiz_s3_extra_yaml_ph')}">${escapeHtml(wiz.extraYaml||'')}</textarea>
       </div>`;
     return;
   }
@@ -5955,11 +5955,11 @@ function _wizS3(body) {
         ${audioTypeRow('ia', iaType)}
         ${iaType==='tts' ? `
         <label>${t('wiz_s3_tts')}</label>
-        <input id="wiz-ia-tts" value="${(wiz.initialAudioTts||'').replace(/"/g,'&quot;')}"
+        <input id="wiz-ia-tts" value="${escapeHtml(wiz.initialAudioTts||'')}"
           placeholder="Welcome. Please hold while we find the right department..."/>
         ` : `
         <label>${t('wiz_prompt_name')}</label>
-        <input id="wiz-ia-prompt" value="${(wiz.initialAudioPrompt||'').replace(/"/g,'&quot;')}"
+        <input id="wiz-ia-prompt" value="${escapeHtml(wiz.initialAudioPrompt||'')}"
           list="wiz-ia-prompt-datalist" autocomplete="off"
           placeholder="${t('wiz_prompt_search_ph')}"
           oninput="wizSearchPrompts('ia', this.value)"/>
@@ -5976,22 +5976,22 @@ function _wizS3(body) {
       <select id="wiz-tt" onchange="_wizOnTransferChange(this)">${transferOpts}</select>
       ${showQueue ? `
       <label style="margin-top:10px">${t('wiz_s3_queuename')}</label>
-      <input id="wiz-tq" value="${(wiz.transferQueue||'').replace(/"/g,'&quot;')}"
+      <input id="wiz-tq" value="${escapeHtml(wiz.transferQueue||'')}"
         list="wiz-q-datalist" autocomplete="off" placeholder="${t('wiz_s3_queues_ph')}"
         oninput="wizSearchQueues(this.value)"/>` : ''}
       ${tt === 'user' ? `
       <label style="margin-top:10px">${t('wiz_s3_user')}</label>
-      <input id="wiz-tv" value="${(wiz.transferValue||'').replace(/"/g,'&quot;')}"
+      <input id="wiz-tv" value="${escapeHtml(wiz.transferValue||'')}"
         list="wiz-u-datalist" autocomplete="off" placeholder="${t('wiz_s3_users_ph')}"
         oninput="wizSearchUsers(this.value)"/>` : ''}
       ${tt === 'group' ? `
       <label style="margin-top:10px">${t('wiz_s3_group')}</label>
-      <input id="wiz-tv" value="${(wiz.transferValue||'').replace(/"/g,'&quot;')}"
+      <input id="wiz-tv" value="${escapeHtml(wiz.transferValue||'')}"
         list="wiz-g-datalist" autocomplete="off" placeholder="${t('wiz_s3_groups_ph')}"
         oninput="wizSearchGroups(this.value)"/>` : ''}
       ${tt === 'flow' ? `
       <label style="margin-top:10px">${t('wiz_s3_flowname')}</label>
-      <input id="wiz-tv" value="${(wiz.transferValue||'').replace(/"/g,'&quot;')}"
+      <input id="wiz-tv" value="${escapeHtml(wiz.transferValue||'')}"
         list="wiz-f-datalist" autocomplete="off" placeholder="${t('wiz_s3_flows_ph')}"
         oninput="wizSearchFlows(this.value)"/>
       <div style="font-size:11px;color:var(--muted);margin-top:4px">
@@ -5999,7 +5999,7 @@ function _wizS3(body) {
       </div>` : ''}
       ${showNumber ? `
       <label style="margin-top:10px">${t('wiz_s3_phone')}</label>
-      <input id="wiz-tv" value="${(wiz.transferValue||'').replace(/"/g,'&quot;')}"
+      <input id="wiz-tv" value="${escapeHtml(wiz.transferValue||'')}"
         placeholder="+4512345678"/>` : ''}
       ${hasAudio ? `
       <div style="margin-top:14px;border-top:1px solid var(--border1);padding-top:12px">
@@ -6015,11 +6015,11 @@ function _wizS3(body) {
           ${audioTypeRow('da', daType)}
           ${daType==='tts' ? `
           <label>${t('wiz_s3_tts')}</label>
-          <input id="wiz-d-tts" value="${(wiz.disconnectTts||'').replace(/"/g,'&quot;')}"
+          <input id="wiz-d-tts" value="${escapeHtml(wiz.disconnectTts||'')}"
             placeholder="Goodbye and thank you for calling."/>
           ` : `
           <label>${t('wiz_prompt_name')}</label>
-          <input id="wiz-d-prompt" value="${(wiz.disconnectPrompt||'').replace(/"/g,'&quot;')}"
+          <input id="wiz-d-prompt" value="${escapeHtml(wiz.disconnectPrompt||'')}"
             list="wiz-da-prompt-datalist" autocomplete="off"
             placeholder="${t('wiz_prompt_search_ph')}"
             oninput="wizSearchPrompts('da', this.value)"/>
@@ -6031,7 +6031,7 @@ function _wizS3(body) {
       <div class="card-title">${t('wiz_s3_extra_yaml_title')}</div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:10px">${t('wiz_s3_extra_yaml_hint')}</div>
       <textarea id="wiz-extra-yaml" style="height:140px;font-size:11px;font-family:var(--mono)"
-        placeholder="${t('wiz_s3_extra_yaml_ph')}">${(wiz.extraYaml||'').replace(/</g,'&lt;')}</textarea>
+        placeholder="${t('wiz_s3_extra_yaml_ph')}">${escapeHtml(wiz.extraYaml||'')}</textarea>
     </div>`;
 
   _wizUpdateDatalists();
@@ -6051,7 +6051,7 @@ function _wizS4(body) {
     </div>
     <pre id="wiz-out" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;
       padding:16px;font-family:var(--mono);font-size:11px;line-height:1.65;max-height:460px;
-      overflow-y:auto;white-space:pre;color:var(--text)">${yaml.replace(/</g,'&lt;')}</pre>`;
+      overflow-y:auto;white-space:pre;color:var(--text)">${escapeHtml(yaml)}</pre>`;
 }
 
 function wizUseYaml() {
@@ -6219,7 +6219,7 @@ function _genYaml() {
       p(a,   `- dataTableLookup:`);
       p(a+2, `name: Data Table Lookup ${dt.tableName}`);
       p(a+2, `lookupValue:`);
-      dt.lookupType === 'var' ? p(a+3,`exp: ${dt.lookupValue}`) : p(a+3,`lit: ${dt.lookupValue}`);
+      dt.lookupType === 'var' ? p(a+3,`exp: ${escapeHtml(dt.lookupValue)}`) : p(a+3,`lit: ${escapeHtml(dt.lookupValue)}`);
       p(a+2, `dataTable:`);
       p(a+3, `${dt.tableName}:`);
       p(a+4, `foundOutputs:`);
@@ -6227,7 +6227,7 @@ function _genYaml() {
         p(a+5, `Value:`); p(a+6, `var: ${nR}`);
       } else {
         dt.fields.filter(f => f.key && f.varName).forEach(f => {
-          p(a+5, `${f.key}:`); p(a+6, `var: ${normVar(f.varName)}`);
+          p(a+5, `${escapeHtml(f.key)}:`); p(a+6, `var: ${normVar(f.varName)}`);
         });
       }
       p(a+4, `failureOutputs:`);
@@ -6257,13 +6257,13 @@ function _genYaml() {
             const nV = normVar(f.varName);
             const src = dt.parseJson && dt.jsonVar ? nJ : nR;
             const exp =
-              f.varType==='splitstr' ? `split(ToString(GetJsonObjectProperty(${src},"${f.key}")),",")` :
-              f.varType==='integer'  ? `ToInt(GetJsonObjectProperty(${src},"${f.key}"))` :
-              f.varType==='decimal'  ? `ToDecimal(GetJsonObjectProperty(${src},"${f.key}"))` :
-              f.varType==='boolean'  ? `ToBool(GetJsonObjectProperty(${src},"${f.key}"))` :
-              f.varType==='json'     ? `GetJsonObjectProperty(${src},"${f.key}")` :
-              f.varType==='dateTime' ? `ToDate(ToString(GetJsonObjectProperty(${src},"${f.key}")))` :
-                                       `ToString(GetJsonObjectProperty(${src},"${f.key}"))`;
+              f.varType==='splitstr' ? `split(ToString(GetJsonObjectProperty(${src},"${escapeHtml(f.key)}")),",")` :
+              f.varType==='integer'  ? `ToInt(GetJsonObjectProperty(${src},"${escapeHtml(f.key)}"))` :
+              f.varType==='decimal'  ? `ToDecimal(GetJsonObjectProperty(${src},"${escapeHtml(f.key)}"))` :
+              f.varType==='boolean'  ? `ToBool(GetJsonObjectProperty(${src},"${escapeHtml(f.key)}"))` :
+              f.varType==='json'     ? `GetJsonObjectProperty(${src},"${escapeHtml(f.key)}")` :
+              f.varType==='dateTime' ? `ToDate(ToString(GetJsonObjectProperty(${src},"${escapeHtml(f.key)}")))` :
+                                       `ToString(GetJsonObjectProperty(${src},"${escapeHtml(f.key)}"))`;
             const st = f.varType==='integer'?'integer':f.varType==='decimal'?'decimal':
                        f.varType==='boolean'?'boolean':f.varType==='json'?'json':'string';
             p(a+8, `- ${st}:`);
@@ -6300,7 +6300,7 @@ function _genYaml() {
         p(a+6, `inputs:`);
         da.inputs.forEach(inp => {
           if (inp.valueType === 'none') return;
-          p(a+7, `${inp.name}:`);
+          p(a+7, `${escapeHtml(inp.name)}:`);
           if (inp.valueType === 'exp') p(a+8, `exp: ${inp.value || 'noValue: true'}`);
           else p(a+8, `lit: "${inp.value}"`);
         });
@@ -6443,7 +6443,7 @@ function daInit() {
     if (!el) return;
     const cur = el.value;
     el.innerHTML = `<option value="">${t('da_choose_org')}</option>` +
-      customers.map(c => `<option value="${c.id}">${c.name} (${c.region})</option>`).join('');
+      customers.map(c => `<option value="${c.id}">${escapeHtml(c.name)} (${escapeHtml(c.region)})</option>`).join('');
     if (cur) el.value = cur;
   });
 }
@@ -6464,7 +6464,7 @@ async function daLoadActions() {
   const data = await res.json();
   if (data.error) {
     document.getElementById('da-list').innerHTML =
-      `<div style="color:var(--red);font-size:12px">${data.error}</div>`;
+      `<div style="color:var(--red);font-size:12px">${escapeHtml(data.error)}</div>`;
     return;
   }
 
@@ -6483,7 +6483,7 @@ async function daLoadActions() {
 
   const si = document.getElementById('da-source-int');
   si.innerHTML = `<option value="">${t('da_choose_int')}</option>` +
-    daSourceInts.map(i => `<option value="${i.id}">${i.name} (${i.n})</option>`).join('');
+    daSourceInts.map(i => `<option value="${i.id}">${escapeHtml(i.name)} (${i.n})</option>`).join('');
   document.getElementById('da-source-int-wrap').style.display = 'block';
 
   daSourceIntChanged();
@@ -6523,7 +6523,7 @@ async function daLoadTargetIntegrations() {
     const daInts = (data || []).filter(i => /data-actions|rest-actions/.test(i.integrationType || ''));
     daTargetInts = daInts.length ? daInts : (data || []);
     sel.innerHTML = `<option value="">${t('da_choose_int')}</option>` +
-      daTargetInts.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
+      daTargetInts.map(i => `<option value="${i.id}">${escapeHtml(i.name)}</option>`).join('');
     wrap.style.display = 'block';
     daMatchTargetInt();
   } catch (_) { daUpdateReady(); }
@@ -6584,8 +6584,8 @@ function daRender(actions) {
     return `
     <div class="migrate-flow-item ${sel ? 'selected' : ''}" onclick="daToggle('${a.id}')">
       <div style="min-width:0">
-        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.name}</div>
-        <div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-top:2px">${a.category || ''}</div>
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(a.name)}</div>
+        <div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-top:2px">${escapeHtml(a.category || '')}</div>
       </div>
       <span style="color:var(--accent);font-size:16px;width:18px;text-align:center;flex-shrink:0">${sel ? '✓' : ''}</span>
     </div>`;
@@ -6767,12 +6767,12 @@ async function compareFlow(nameEnc, type) {
     }).then(x => x.json());
     document.getElementById('cmp-body').innerHTML = renderCompare(r);
   } catch (e) {
-    document.getElementById('cmp-body').innerHTML = `<div style="color:var(--red)">${e.message}</div>`;
+    document.getElementById('cmp-body').innerHTML = `<div style="color:var(--red)">${escapeHtml(e.message)}</div>`;
   }
 }
 
 function renderCompare(r) {
-  if (r.error) return `<div style="color:var(--red);font-size:13px">${r.error}</div>`;
+  if (r.error) return `<div style="color:var(--red);font-size:13px">${escapeHtml(r.error)}</div>`;
 
   const row = (k, v) =>
     `<div style="display:flex;gap:12px;padding:4px 0;font-size:12px">` +
@@ -6897,9 +6897,9 @@ function showDepModal(flowName, missing, dynamicSkills) {
     html += `<div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--green);margin-bottom:8px">${t('dep_can_migrate')}</div>`;
     html += auto.map(d => `
       <label style="display:flex;align-items:center;gap:10px;padding:7px 0;cursor:pointer;font-size:13px">
-        <input type="checkbox" checked style="width:auto" data-dep='${JSON.stringify(d).replace(/'/g, "&apos;")}'/>
+        <input type="checkbox" checked style="width:auto" data-dep='${escapeHtml(JSON.stringify(d))}'/>
         <span style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:78px">${d.kind}</span>
-        <span>${d.name}${depTargetName(d)}</span>
+        <span>${escapeHtml(d.name)}${depTargetName(d)}</span>
       </label>`).join('');
   }
   if (choice.length) {
@@ -6910,8 +6910,8 @@ function showDepModal(flowName, missing, dynamicSkills) {
       return `
       <div style="display:flex;align-items:center;gap:10px;padding:7px 0;font-size:13px">
         <span style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:78px">${d.kind}</span>
-        <span style="flex:1">${d.name}${depTargetName(d)}</span>
-        <select style="width:auto;min-width:150px" data-choice='${JSON.stringify(d).replace(/'/g, "&apos;")}'>${opts}</select>
+        <span style="flex:1">${escapeHtml(d.name)}${depTargetName(d)}</span>
+        <select style="width:auto;min-width:150px" data-choice='${escapeHtml(JSON.stringify(d))}'>${opts}</select>
       </div>`;
     }).join('');
   }
@@ -6920,7 +6920,7 @@ function showDepModal(flowName, missing, dynamicSkills) {
     html += manual.map(d => `
       <div style="display:flex;align-items:baseline;gap:10px;padding:7px 0;font-size:13px">
         <span style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:78px">${d.kind}</span>
-        <span>${d.name}${depTargetName(d)}</span>
+        <span>${escapeHtml(d.name)}${depTargetName(d)}</span>
         <span style="font-size:11px;color:var(--yellow);margin-left:auto">${reason(d)}</span>
       </div>`).join('');
   }
@@ -6988,11 +6988,11 @@ async function prLoadPrompts() {
     `<div style="color:var(--muted);font-size:12px"><span class="spin"></span> ${t('pr_loading')}</div>`;
   try {
     const data = await fetch(`/api/customers/${id}/prompts`).then(r => r.json());
-    if (data.error) { document.getElementById('pr-list').innerHTML = `<div style="color:var(--red);font-size:12px">${data.error}</div>`; return; }
+    if (data.error) { document.getElementById('pr-list').innerHTML = `<div style="color:var(--red);font-size:12px">${escapeHtml(data.error)}</div>`; return; }
     prAll = data;
     prFilter();
   } catch (e) {
-    document.getElementById('pr-list').innerHTML = `<div style="color:var(--red);font-size:12px">${e.message}</div>`;
+    document.getElementById('pr-list').innerHTML = `<div style="color:var(--red);font-size:12px">${escapeHtml(e.message)}</div>`;
   }
 }
 
@@ -7019,7 +7019,7 @@ function prRender(prompts) {
       return `
       <div class="migrate-flow-item ${sel ? 'selected' : ''}" onclick="prToggle('${p.id}')">
         <div style="min-width:0">
-          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(p.name)}</div>
           <div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-top:2px">${langs}${audio}</div>
         </div>
         <span style="color:var(--accent);font-size:16px;width:18px;text-align:center;flex-shrink:0">${sel ? '\u2713' : ''}</span>
@@ -7125,13 +7125,13 @@ async function dtLoadTables() {
   try {
     const data = await fetch(`/api/customers/${id}/datatables`).then(r => r.json());
     if (data.error) {
-      document.getElementById('dt-list').innerHTML = `<div style="color:var(--red);font-size:12px">${data.error}</div>`;
+      document.getElementById('dt-list').innerHTML = `<div style="color:var(--red);font-size:12px">${escapeHtml(data.error)}</div>`;
       return;
     }
     dtAll = data;
     dtFilter();
   } catch (e) {
-    document.getElementById('dt-list').innerHTML = `<div style="color:var(--red);font-size:12px">${e.message}</div>`;
+    document.getElementById('dt-list').innerHTML = `<div style="color:var(--red);font-size:12px">${escapeHtml(e.message)}</div>`;
   }
 }
 
@@ -7158,7 +7158,7 @@ function dtRender(tables) {
       return `
       <div class="migrate-flow-item ${sel ? 'selected' : ''}" onclick="dtToggle('${x.id}')">
         <div style="min-width:0">
-          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${x.name}</div>
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(x.name)}</div>
           <div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-top:2px">${cols} ${t('dt_columns')}${div}</div>
         </div>
         <span style="color:var(--accent);font-size:16px;width:18px;text-align:center;flex-shrink:0">${sel ? '\u2713' : ''}</span>
@@ -7254,6 +7254,18 @@ function fillGroupingDatalists() {
   };
   put('tenantList', tenants);
   put('groupList', groups);
+}
+
+// En værdi der skal ind i JavaScript inde i en HTML-attribut, fx
+// onclick="fn(...)". escapeHtml alene rækker ikke: HTML-parseren afkoder
+// &#39; tilbage til ' før JS overhovedet ser strengen, og så er man ude af
+// strengen igen. JSON.stringify sætter anførselstegnene og escaper indholdet
+// som JS; escapeHtml gør resultatet trygt som attributværdi.
+//
+//   navn = Kunde's flow
+//   → onclick="fn(&quot;Kunde's flow&quot;)"  → fn("Kunde's flow")
+function jsAttr(x) {
+  return escapeHtml(JSON.stringify(x == null ? '' : String(x)));
 }
 
 function escapeHtml(x) {

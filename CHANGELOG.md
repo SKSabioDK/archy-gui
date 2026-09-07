@@ -5,6 +5,51 @@
 
 ---
 
+### v1.38.0
+---
+**🇩🇰 Dansk**
+
+- **Navne fra en org escapes nu overalt, før de tegnes.** Et flow der hedder `<img src=x onerror=…>` blev sat direkte ind i `innerHTML` femten steder. Vinduet kan kalde hele API'et — herunder `/api/customers` og `/api/files/content` — så det er ikke bare en gættet risiko.
+
+  Målt først: **0 af 517 rigtige flownavne i fire orgs indeholder `' " < > &`.** Det bider altså ikke i dag. Det er et hul der lukkes, ikke en fejl der rettes.
+
+  **`escapeHtml` fandtes allerede** — den blev bare brugt 34 steder og ikke 133. Nu er den konsekvent.
+
+- **`jsAttr` til JavaScript inde i en attribut.** `escapeHtml` alene rækker ikke i `onclick="fn('${navn}')"`: HTML-parseren afkoder `&#39;` tilbage til `'` **før** JS ser strengen, og så er man ude af strengen igen. `jsAttr` JSON-koder først og escaper derefter:
+
+  ```
+  navn = Kunde's flow
+  → onclick="fn(&quot;Kunde&#39;s flow&quot;)"   →   fn("Kunde's flow")
+  ```
+
+  Seks `onclick`-steder er lagt om. **Det retter samtidig en almindelig fejl**: et flow der hedder `Kunde's flow` brød sin egen Export-knap med en syntaksfejl, helt uden ondsindet hensigt.
+
+- **Seks slags hjemmelavede escapes er væk.** Der stod `.replace(/</g,'&lt;')` ét sted, `.replace(/"/g,'&quot;')` et andet og `&apos;` et tredje — hver dækkede ét tegn, og hvilket ét afhang af hvem der skrev linjen. `escapeHtml` dækker `& < > " '` alle steder.
+
+  **Efterprøvet i brugerfladen** med navne der ville køre kode:
+
+  | Flownavn | Resultat |
+  |---|---|
+  | `<img src=x onerror="…">` | vist som tekst, **0** `<img>`-elementer oprettet |
+  | `</script><script>…</script>` | vist som tekst |
+  | `a" onclick="…` | vist som tekst |
+  | `Kunde's flow` | vist som tekst — og knappen virker nu |
+
+  Ingen af dem kørte. Og lige så vigtigt: **alle fire navne når uskadte frem til funktionen** når man trykker på knappen — escaping skal beskytte OG bevare.
+
+**6 nye tests**, i alt 121. `test/escape.test.js` scanner `index.html` og fælder hvis et utrygt felt går uescapet ind i HTML eller i en `onclick`. Den henter `escapeHtml` og `jsAttr` **ud af index.html** og kører dem som de er — en kopi i testfilen ville bestå selvom nogen ændrede den rigtige, hvilket en mutationskørsel viste. Efterprøvet ved at genindføre hver af de fire fejl: alle fire blev fanget.
+
+**🇬🇧 English**
+- **Names from an org are now escaped everywhere before rendering.** A flow named `<img src=x onerror=…>` went straight into `innerHTML` in fifteen places, and the window can call the whole API. Measured first: **0 of 517 real flow names contain `' " < > &`**, so this closes a hole rather than fixing a live bug. `escapeHtml` already existed — it was used in 34 places, now 133.
+- **`jsAttr` for JavaScript inside an attribute.** `escapeHtml` is not enough there: the HTML parser decodes `&#39;` back to `'` before JS sees the string. `jsAttr` JSON-encodes first, then escapes. Six `onclick` sites converted — which also fixes a plain bug: a flow named `Kunde's flow` used to break its own Export button.
+- **Six kinds of hand-rolled escaping are gone**, each covering a single character depending on who wrote the line.
+
+  Verified in the UI with names that would otherwise run code: nothing executed, no `<img>` element created, and all four names still arrive intact at the handler when the button is clicked.
+
+**6 new tests**, 121 in total. `test/escape.test.js` scans `index.html` and pulls `escapeHtml` and `jsAttr` out of it to exercise them directly.
+
+---
+
 ### v1.37.1
 ---
 **🇩🇰 Dansk**
