@@ -5,6 +5,38 @@
 
 ---
 
+### v1.38.1
+---
+**🇩🇰 Dansk**
+
+- **`/api/export` siger nu hvad der mangler.** Feltet `flowType` blev brugt før nogen havde set efter om det var der:
+
+  | | |
+  |---|---|
+  | Før | `500 {"error":"Cannot read properties of undefined (reading 'toLowerCase')"}` |
+  | Nu | `400 {"error":"Missing or empty field: flowType"}` |
+
+  Den gamle besked siger hvad koden snublede over, ikke hvad man selv har glemt at sende. Mangler begge felter, navngives de begge — ikke bare det første. Er felterne der men kunden ikke, er det stadig kunden der meldes.
+
+  En værdi som `' WORKFLOW '` med slør på bliver trimmet i stedet for at ende hos `archyBareArg` som *"is not a valid name"* — en besked der ville pege på det forkerte.
+
+- **Jeg ledte efter flere af samme slags.** En scanning af alle 30 skrivende ruter for mønstret *"felt fra `req.body` brugt med et metodekald, uden at nogen har tjekket at det findes"* gav **ét** hit: `/api/export`. Scanningen er nu en test, så den næste af slagsen fældes med det samme.
+
+- **To demo-ruter sagde `"undefined"`.** `/api/demo/promote` og `/api/demo/publish` svarede `"undefined" findes ikke i Demo A/S — DEV` når flownavnet manglede. Forståeligt, men `undefined` er en programmeringsfejl der lækker ud i en besked til brugeren. De bruger nu samme validering.
+
+  Alle 17 skrivende ruter blev derefter prøvet af med en mangelfuld krop: **ingen lækker en Node-fejl** længere.
+
+**10 nye tests**, i alt 131. Efterprøvet ved at genindføre hver af de fire fejl: alle fire blev fanget — den ene først efter at testen blev skrevet om, fordi `.trim()` ikke var observerbar uden en værdi der både er gyldig og har mellemrum omkring sig.
+
+**🇬🇧 English**
+- **`/api/export` now says what is missing.** `flowType` was used before anything checked it, so a missing field came out as `500 Cannot read properties of undefined (reading 'toLowerCase')` — a message about what the code tripped over, not about what you forgot to send. Now `400 Missing or empty field: flowType`, naming every missing field rather than just the first.
+- **I looked for more of the same.** Scanning all 30 writing routes for the pattern gave exactly one hit. The scan is now a test.
+- **Two demo routes answered `"undefined"`** when the flow name was missing; they use the same validation now. All 17 writing routes were then probed with an incomplete body: none leaks a Node error.
+
+**10 new tests**, 131 in total.
+
+---
+
 ### v1.38.0
 ---
 **🇩🇰 Dansk**

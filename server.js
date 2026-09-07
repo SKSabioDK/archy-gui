@@ -555,6 +555,9 @@ function promotionName(currentName, sourcePublishedVersion) {
 // navn reglen giver. Ingen Archy, ingen Genesys — kun den lokale demofil.
 app.post('/api/demo/promote', async (req, res) => {
   const { sourceId, targetId, flowName, flowType } = req.body;
+  const mangler = missingFields(req.body, ['flowName', 'flowType']);
+  if (mangler) return res.status(400).json({ error: mangler });
+
   const all = loadCustomers();
   const source = all.find(c => c.id === sourceId);
   const target = all.find(c => c.id === targetId);
@@ -650,6 +653,9 @@ app.post('/api/demo/promote', async (req, res) => {
 // at fortælle hvilken udgave der sidst blev skubbet videre.
 app.post('/api/demo/publish', (req, res) => {
   const { envId, flowName, flowType, times } = req.body;
+  const mangler = missingFields(req.body, ['flowName', 'flowType']);
+  if (mangler) return res.status(400).json({ error: mangler });
+
   const env = loadCustomers().find(c => c.id === envId);
   if (!env || !isDemo(env)) return res.status(400).json({ error: 'Kun demo-miljøer' });
 
@@ -2964,6 +2970,27 @@ function sanitizeName(name) {
   return name.replace(/[<>:"/\\|?*]/g, '_').trim() || 'unknown';
 }
 
+// ── Felter fra klienten ──────────────────────────────────────────────────────
+
+// Et manglende felt skal give en besked man kan handle på. Uden dette kom
+// /api/export ud som
+//
+//     500 Cannot read properties of undefined (reading 'toLowerCase')
+//
+// fordi flowType blev brugt før nogen havde set efter om den var der. Det er en
+// Node-fejl, ikke en forklaring: den siger hvad koden snublede over, ikke hvad
+// man selv har glemt at sende.
+//
+// Returnerer null når alt er der, ellers en besked der navngiver de felter der
+// mangler.
+function missingFields(body, felter) {
+  const mangler = felter.filter(f => typeof body?.[f] !== 'string' || !body[f].trim());
+  if (!mangler.length) return null;
+  return mangler.length === 1
+    ? `Missing or empty field: ${mangler[0]}`
+    : `Missing or empty fields: ${mangler.join(', ')}`;
+}
+
 // ── Filstier fra klienten ────────────────────────────────────────────────────
 
 // Ligger stien inden for FLOWS_DIR? path.resolve SKAL med: uden den slipper
@@ -3348,13 +3375,16 @@ function runArchy(args, customer) {
 
 app.post('/api/export', async (req, res) => {
   const { customerId, flowName, flowType } = req.body;
+  const mangler = missingFields(req.body, ['flowName', 'flowType']);
+  if (mangler) return res.status(400).json({ error: mangler });
+
   const customer = loadCustomers().find(c => c.id === customerId);
   if (!customer) return res.status(404).json({ error: 'Customer not found' });
 
   const exportDir = path.join(FLOWS_DIR, sanitizeName(customer.name));
   if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir, { recursive: true });
 
-  const flowTypeLower = flowType.toLowerCase();
+  const flowTypeLower = flowType.trim().toLowerCase();
   addLog('INFO', `Exporting flow "${flowName}" (${flowTypeLower}) from ${customer.name}`, customer.name, 'EXPORT');
 
   try {
@@ -4465,7 +4495,7 @@ module.exports = {
   parseArchyOutput, truncateArchyError, archyErrorReason, describeApiError,
   archyCredFlags, archyArg, archyBareArg, archyVerb, archyVersionFlag,
   // filstier fra klienten
-  insideFlowsDir, safeFileName, FLOWS_DIR,
+  insideFlowsDir, safeFileName, missingFields, FLOWS_DIR,
   // eksport af den rigtige udgave
   publishedVersionOf, publishedVersionFor, exportFlowToYaml,
   // maskering
