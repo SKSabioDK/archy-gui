@@ -938,6 +938,14 @@ app.get('/api/auth/status/:id', (req, res) => {
 // ── Token helper ────────────────────────────────────────────────────────────
 
 async function getToken(customer) {
+  // Et demo-miljø har ingen org. Uden denne vagt endte hvert eneste opslag
+  // som "getaddrinfo ENOTFOUND login.demo" — en netværksfejl der intet
+  // fortalte om hvorfor. Nu siger den hvad der faktisk er på færde.
+  // Det demoen KAN, har sine egne veje; alt andet lander her.
+  if (isDemo(customer))
+    throw new Error(`"${customer.name}" er et demo-miljø — det findes kun lokalt, ` +
+                    `så denne funktion har ingen org at spørge. Brug Pipeline til at prøve forfremmelser af.`);
+
   const apiBase = REGION_MAP[customer.region] || `https://api.${customer.region}`;
 
   // OAuth (PKCE) customers — use stored token
@@ -968,6 +976,16 @@ app.post('/api/customers/:id/test', async (req, res) => {
   const customer = loadCustomers().find(c => c.id === req.params.id);
   if (!customer) return res.status(404).json({ error: 'Not found' });
   addLog('INFO', `Testing connection to ${customer.name} (${customer.region})`, customer.name, 'TEST');
+
+  // Der er ingen forbindelse at afprøve til et demo-miljø — det ligger her på
+  // maskinen. Det svarer vi ærligt frem for at melde en forbindelsesfejl.
+  if (isDemo(customer)) {
+    const antal = demoFlowsFor(customer).length;
+    return res.json({ ok: true, demo: true, name: customer.name, orgName: 'demo (lokal)',
+                      archyReady: true, archyFlowReady: true,
+                      note: `Demo-miljø — ingen forbindelse nødvendig. ${antal} flows lokalt.` });
+  }
+
   try {
     const { token, apiBase } = await getToken(customer);
     // /users/me requires a user-context token (PKCE). For Client Credentials we
@@ -1153,6 +1171,25 @@ app.get('/api/customers/:id/flows', async (req, res) => {
   const nameFilter = (req.query.name || '').trim();
   const typeFilter = (req.query.type || '').trim();
   addLog('INFO', `Fetching flows for ${customer.name}`, customer.name, 'FLOWS');
+
+  // Demo-miljøer har ingen org at spørge. Flowlisten er kernen i både Flow
+  // Browser, Migrer Flow og Export, så den skal virke i demoen — resten af
+  // opslagene findes ikke og siger det.
+  if (isDemo(customer)) {
+    const soeskende = loadCustomers().filter(x => orgKeyOf(x) === orgKeyOf(customer));
+    const flows = demoFlowsFor(customer)
+      .filter(f => belongsToEnv(f.name, customer, soeskende))
+      .filter(f => !nameFilter || f.name.toLowerCase().includes(nameFilter.toLowerCase()))
+      .filter(f => !typeFilter || String(f.type).toLowerCase() === typeFilter.toLowerCase())
+      .map(f => ({
+        id: `${customer.id}:${f.name}`, name: f.name, type: f.type,
+        publishedVersion: f.published || null,
+        savedVersion: f.published || null,
+        checkedOut: false, active: !!f.published
+      }));
+    return res.json(flows);
+  }
+
   try {
     const { token, apiBase } = await getToken(customer);
     // When name filter is given, do a single-page search instead of full pagination

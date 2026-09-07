@@ -5,6 +5,33 @@
 
 ---
 
+### v1.32.2
+---
+**🇩🇰 Dansk**
+- **`getaddrinfo ENOTFOUND login.demo` er væk overalt, ikke bare ét sted.** Sidste rettelse tog kun "På tværs af kunder". Femten kode-veje kalder `getToken()`, og hver eneste af dem forsøgte at logge ind på `login.demo` for et demo-miljø.
+
+  Vagten ligger nu i **`getToken()` selv**, så ingen ny vej kan lave fejlen igen. I stedet for en netværksfejl står der hvad der faktisk er på færde:
+
+  > *"Demo A/S — DEV" er et demo-miljø — det findes kun lokalt, så denne funktion har ingen org at spørge. Brug Pipeline til at prøve forfremmelser af.*
+
+- **Flowlisten virker nu i demoen.** Den er kernen i Flow Browser, Migrer Flow og Export, så den læser fra demolageret — med præfiks-filtrering, så et `DEV_`-miljø kun ser sine egne. Før stod Flow Browser med en rød DNS-fejl.
+- **Test-knappen svarer ærligt:** *"Demo-miljø — ingen forbindelse nødvendig. 3 flows lokalt."* Der er ingen forbindelse at afprøve.
+- Køer, prompts, datatabeller, integrationer og Archy-vejene findes ikke i demoen og siger det nu klart, i stedet for at fejle på DNS.
+
+---
+**🇬🇧 English**
+- **`getaddrinfo ENOTFOUND login.demo` is gone everywhere, not just in one place.** The last fix only covered "Across customers". Fifteen code paths call `getToken()`, and every one of them tried to sign in to `login.demo` for a demo environment.
+
+  The guard now sits in **`getToken()` itself**, so no new path can reproduce it. Instead of a network error it says what is actually going on:
+
+  > *"Demo A/S — DEV" is a demo environment — it exists only locally, so this function has no org to ask. Use Pipeline to try promotions out.*
+
+- **The flow list now works in the demo.** It is the core of Flow Browser, Migrate Flow and Export, so it reads from the demo store — with prefix filtering, so a `DEV_` environment sees only its own. Flow Browser previously showed a red DNS error.
+- **The Test button answers honestly:** *"Demo environment — no connection needed. 3 flows locally."* There is no connection to test.
+- Queues, prompts, datatables, integrations and the Archy paths do not exist in the demo and now say so plainly, instead of failing on DNS.
+
+---
+
 ### v1.32.1
 ---
 **🇩🇰 Dansk**
