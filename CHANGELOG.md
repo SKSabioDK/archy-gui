@@ -5,6 +5,49 @@
 
 ---
 
+### v1.32.0
+---
+**🇩🇰 Dansk**
+- **Division pr. miljø.** Divisionen hører til miljøet, ikke til flowet: opretter man i division DEV og forfremmer til UAT, flytter flowet og tabellen med. Er der ingen sat, bruges Home.
+
+  Den vælges fra en **rulleliste med orgens egne divisioner** — et frit tekstfelt ville før eller siden give en stavefejl der først viser sig som en mislykket import. Kan listen ikke hentes, siges det, og den nuværende værdi bevares, så et miljø ikke stiltiende mister sin division.
+
+  Kun flowets **egen** division skrives om; udtryk som `Task.division` længere nede står urørt. Datatabeller oprettes i målmiljøets division.
+
+- **Sammenligningen ser bort fra divisionen**, ligesom fra præfikset. Divisionen *skal* være forskellig mellem miljøerne, så uden dette ville en fejlfri forfremmelse fra DEV til UAT altid melde "afviger" på netop den linje. Afprøvet: samme flow i DEV og UAT med forskellig division **og** forskelligt præfiks melder nu *i trit*, mens én ændret værdi stadig melder *afviger*.
+
+- **Kunden bliver i fokus når man skifter fane.** Arbejder man med Kunde 2 i pipelinen og går til Migrer Flow, landede man før på demoen — den stod bare først i listen. Pipelinen husker nu hvilken kunde og gruppe man er i gang med, og Migrer Flow forudfylder kilde og mål med kundens to tidligste trin. Det overlever en genindlæsning.
+
+- **Prod publiceres ikke som standard.** Alt andet publiceres ved ankomst, så det er i drift med det samme; prod lægges som kladde nogen selv skal publicere. Handlingsvalget skriver hvad det gør og hvorfor.
+
+- **Kunderne i sidebjælken er nu et træ.** Ti kunder á fire miljøer gav fyrre punkter under hinanden uden at man kunne se hvad der hørte sammen. Nu ses kunderne med antal miljøer, og et klik folder dem ud. Hvad der er foldet ud huskes.
+
+- **Hjælp til hvert område.** En `?`-knap ved hver sides titel — og ved Flow Builder — åbner en forklaring af hvad siden gør og hvordan man bruger den. Elleve områder, på alle fem sprog.
+
+  > Knappen ligger **ved siden af** overskriften, ikke inde i den: `applyLang()` sætter `textContent` på alt med `data-i18n`, og et barn-element ville blive slettet ved første sprogskift. Det skete faktisk, og ti af elleve knapper forsvandt.
+
+---
+**🇬🇧 English**
+- **Division per environment.** The division belongs to the environment, not the flow: create in division DEV and promote to UAT, and the flow and table move with it. If none is set, Home is used.
+
+  It is chosen from a **dropdown of the org's own divisions** — a free text field would eventually produce a typo that only surfaces as a failed import. If the list cannot be fetched, it says so and keeps the current value, so an environment does not quietly lose its division.
+
+  Only the flow's **own** division is rewritten; expressions such as `Task.division` further down are left alone. Datatables are created in the target environment's division.
+
+- **The comparison ignores the division**, as it already did the prefix. The division *must* differ between environments, so without this a flawless promotion from DEV to UAT would always report "differs" on that one line. Tested: the same flow in DEV and UAT with a different division **and** a different prefix now reports *in step*, while a single changed value still reports *differs*.
+
+- **The customer stays in focus across tabs.** Work on Kunde 2 in the pipeline, go to Migrate Flow, and you used to land on the demo — it simply came first in the list. The pipeline now remembers which customer and group you are working on, and Migrate Flow prefills source and target with that customer's two earliest stages. It survives a reload.
+
+- **Prod is not published by default.** Everything else is published on arrival so it is live straight away; prod is left as a draft for someone to publish. The action selector says what it is doing and why.
+
+- **The customers in the sidebar are now a tree.** Ten customers with four environments each gave forty entries in a row with no way to see what belonged together. Now you see the customers with a count, and a click expands them. What is expanded is remembered.
+
+- **Help for each area.** A `?` button beside each page title — and beside Flow Builder — opens an explanation of what the page does and how to use it. Eleven areas, in all five languages.
+
+  > The button sits **beside** the heading, not inside it: `applyLang()` sets `textContent` on everything with `data-i18n`, and a child element would be wiped on the first language change. That actually happened, and ten of eleven buttons vanished.
+
+---
+
 ### v1.31.0
 ---
 **🇩🇰 Dansk**
