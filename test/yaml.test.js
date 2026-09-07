@@ -8,7 +8,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const s = require('../server.js');
-const { DEV_FLOW, PROD_FLOW, KUNDE } = require('./fixtures.js');
+const { DEV_FLOW, PROD_FLOW, MODUL_FLOW, KUNDE } = require('./fixtures.js');
 
 const linje = (yaml, tekst) => yaml.split('\n').find(l => l.includes(tekst));
 
@@ -71,6 +71,38 @@ test('på vej til prod tages præfikset helt af referencerne', () => {
   const { yaml } = s.prefixDependenciesInYaml(DEV_FLOW, KUNDE.dev, KUNDE.prod);
   assert.ok(yaml.includes('By Week Routing:'));
   assert.ok(!yaml.includes('DEV_By Week Routing:'));
+});
+
+test('et common module mister ikke sit navn når det forfremmes', () => {
+  // Fejlen: 'commonModule:' på indrykning 0 er flowets EGEN type, ikke en
+  // reference. Uden kravet om indrykning blev navnefeltet under det læst som en
+  // afhængighed, så "  name:" blev til "  DEV_name:". Flowet havde derefter
+  // intet navn, og Archy afviste importen med
+  //     the flow name 'undefined' is invalid.
+  const { yaml } = s.prefixDependenciesInYaml(MODUL_FLOW, KUNDE.prod, KUNDE.dev);
+  assert.ok(!/DEV_name:/.test(yaml), 'navnefeltet blev omdøbt');
+  assert.match(yaml, /^ {2}name: Create Logitems$/m, 'navnelinjen skal stå urørt');
+});
+
+test('modulets INDRYKKEDE referencer skrives stadig om', () => {
+  // Rettelsen må ikke tage det funktionen er til for.
+  const { yaml, changed } = s.prefixDependenciesInYaml(MODUL_FLOW, KUNDE.prod, KUNDE.dev);
+  assert.ok(yaml.includes('DEV_NRD_SplitDate:'), 'det refererede modul blev ikke præfikset');
+  assert.ok(yaml.includes('DEV_By Week Routing:'), 'tabellen blev ikke præfikset');
+  assert.deepEqual(changed.sort(), [
+    'By Week Routing → DEV_By Week Routing',
+    'NRD_SplitDate → DEV_NRD_SplitDate'
+  ]);
+});
+
+test('et common module kan omdøbes og beholder sit navnefelt', () => {
+  // Hele kæden som /api/migrate/commit kører den.
+  let yaml = s.setFlowDivisionInYaml(MODUL_FLOW, s.divisionOf(KUNDE.dev));
+  yaml = s.renameFlowInYaml(yaml, s.targetFlowName('Create Logitems', KUNDE.prod, KUNDE.dev));
+  yaml = s.prefixDependenciesInYaml(yaml, KUNDE.prod, KUNDE.dev).yaml;
+  assert.match(yaml, /^ {2}name: DEV_Create Logitems$/m);
+  assert.match(yaml, /^ {2}division: DEV$/m);
+  assert.ok(!/undefined/.test(yaml));
 });
 
 test('to miljøer med samme præfiks får YAML\'en urørt', () => {

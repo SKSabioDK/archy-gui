@@ -308,7 +308,17 @@ function prefixDependenciesInYaml(yaml, source, target) {
   const changed = [];
   let out = String(yaml);
   for (const tag of ['dataTable', 'commonModule']) {
-    const re = new RegExp(`(^[ \\t]*${tag}:[ \\t]*\\r?\\n[ \\t]+)([^\\r\\n:]+)(:)`, 'gm');
+    // INDRYKNING KRÆVES. På indrykning 0 er 'commonModule:' ikke en reference
+    // til et andet modul — det er flowets EGEN type, og linjen under er dets
+    // navnefelt. Uden kravet blev
+    //
+    //     commonModule:
+    //       name: Create Logitems
+    //
+    // til "DEV_name:", flowet mistede sit navn, og Archy afviste importen med
+    // "the flow name 'undefined' is invalid". scanYamlDependencies har haft
+    // kravet hele tiden — her manglede det.
+    const re = new RegExp(`(^[ \\t]+${tag}:[ \\t]*\\r?\\n[ \\t]+)([^\\r\\n:]+)(:)`, 'gm');
     out = out.replace(re, (hele, hoved, navn, hale) => {
       const rent = navn.trim();
       const ny = withEnvPrefix(stripEnvPrefix(rent, source), target);

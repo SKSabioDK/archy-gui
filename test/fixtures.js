@@ -50,6 +50,39 @@ const PROD_FLOW = DEV_FLOW
   .replace('DEV_By Week Routing:', 'By Week Routing:')
   .replace('DEV_Faelles logning:', 'Faelles logning:');
 
+// Et common module. Formen er fra flows/Sabio APS - PROD/Create Logitems_v3-0.yaml.
+//
+// Det afgørende er at 'commonModule:' står på INDRYKNING 0 — dér er det flowets
+// egen type, ikke en reference til et andet modul — og at linjen under er
+// flowets navnefelt. Det var netop dét prefixDependenciesInYaml forvekslede
+// med en afhængighed, så 'name:' blev til 'DEV_name:'.
+const MODUL_FLOW = `commonModule:
+  name: Create Logitems
+  division: Home
+  supportedLanguages:
+    da-dk:
+      none: true
+  variables:
+    - integerVariable:
+        name: Common.i_log_Index
+        initialValue:
+          lit: 0
+  tasks:
+    - task:
+        name: Log
+        actions:
+          - callCommonModule:
+              commonModule:
+                NRD_SplitDate:
+                  ver_latestPublished: true
+          - dataTableLookup:
+              dataTable:
+                By Week Routing:
+                  foundOutputs:
+                    x:
+                      var: Task.x
+`;
+
 // Fire miljøer i én gruppe — den opsætning pipelinen er bygget til.
 const KUNDE = {
   dev:  { id: 'k-dev',  name: 'Kunde DEV',  tenant: 'Kunde A/S', group: 'DK', stage: 'dev',  prefix: 'DEV_',  division: 'DEV',  clientId: 'cid', region: 'mypurecloud.de' },
@@ -66,4 +99,4 @@ const ANDEN = { id: 'a-dev', name: 'Anden DEV', tenant: 'Anden A/S', group: 'SE'
 // et andet miljø uden opsætning.
 const LOES = { id: 'loes', name: 'Løs org' };
 
-module.exports = { DEV_FLOW, PROD_FLOW, KUNDE, ANDEN, LOES };
+module.exports = { DEV_FLOW, PROD_FLOW, MODUL_FLOW, KUNDE, ANDEN, LOES };

@@ -5,6 +5,48 @@
 
 ---
 
+### v1.38.2
+---
+**🇩🇰 Dansk**
+
+- **Et common module mistede sit navn når det blev forfremmet til et præfikset miljø.** Migreringen fejlede med
+
+  ```
+  the flow name 'undefined' is invalid.  It must be a non-blank string
+  with no leading or trailing spaces. ('name' i '/commonModule')
+  ```
+
+  Årsagen: `prefixDependenciesInYaml` ledte efter `commonModule:` **uden krav om indrykning**. På indrykning 0 er `commonModule:` ikke en reference til et andet modul — det er flowets EGEN type, og linjen under er dets navnefelt. Omskrivningen ramte altså selve nøglen:
+
+  ```
+  commonModule:                        commonModule:
+    name: DEV_Create Logitems    →      DEV_name: DEV_Create Logitems
+  ```
+
+  Flowet havde derefter intet navn, og Archy afviste importen. `scanYamlDependencies` har haft kravet om indrykning hele tiden — kommentaren dér forklarer endda hvorfor. Det manglede kun her.
+
+  **Efterprøvet på den rigtige fil** ved at eksportere `Create Logitems` fra prod (læsende) og køre nøjagtig de omskrivninger commit laver:
+
+  | | Før | Nu |
+  |---|---|---|
+  | Navnelinje | `DEV_name: DEV_Create Logitems` | `name: DEV_Create Logitems` |
+  | `changed` | `name → DEV_name` | `(ingen)` |
+
+  Og rettelsen tager ikke det funktionen er til for: `Personal menu` får stadig sine tre indrykkede referencer skrevet om (`PersonalMenu`, `NRD_AbsentCode`, `NRD_SplitDate`), og navnelinjen står urørt.
+
+  **Intet nåede ud i en org.** Importen fejlede, så der ligger ingen halvfærdig kopi — efterset: 26 common modules i mål-org'en, ingen med et mistænkeligt navn.
+
+**3 nye tests**, i alt 134. Efterprøvet ved at fjerne indrykningskravet igen: fejlen blev fanget.
+
+**🇬🇧 English**
+- **A common module lost its name when promoted into a prefixed environment**, and Archy rejected the import with `the flow name 'undefined' is invalid`. `prefixDependenciesInYaml` looked for `commonModule:` without requiring indentation — but at indentation 0 that is the flow's own type, not a reference, and the line below it is the name field. So `name:` was rewritten to `DEV_name:`. `scanYamlDependencies` has always required the indentation; only this function did not.
+
+  Verified on the real exported file: the name line is now untouched, and the three genuinely nested references in `Personal menu` are still rewritten. Nothing reached an org — the import failed, and the target org has no half-written copy.
+
+**3 new tests**, 134 in total.
+
+---
+
 ### v1.38.1
 ---
 **🇩🇰 Dansk**
