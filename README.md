@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.37.0
+# Archy GUI — Flow Manager · v1.37.1
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.37.0**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.37.0**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.37.1**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.37.1**.
 
 ---
 

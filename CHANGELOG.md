@@ -5,6 +5,30 @@
 
 ---
 
+### v1.37.1
+---
+**🇩🇰 Dansk**
+- **`npm audit fix`: 5 sårbarheder → 0.** Alle sad i `axios`, som er hoppet fra 1.14.0 til 1.20.0 — inden for `^1.14.0`, så `package.json` er urørt og kun låsefilen har ændret sig. Følgepakkerne fulgte med: `body-parser` 2.2.2 → 2.3.0, `follow-redirects` 1.15.11 → 1.16.0, `form-data` 4.0.5 → 4.0.6, `qs` 6.15.0 → 6.16.0. Fire transitive pakker kom til (`agent-base`, `https-proxy-agent` og to indlejrede `content-type`), ingen forsvandt.
+
+  De to høje var SSRF via `NO_PROXY` og prototype pollution i axios' konfigurations-fletning. Ingen af dem var nærliggende her — URL'erne bygges af programmet selv, ikke af noget udefra — men rettelsen var gratis.
+
+  **Efterprøvet mod de rigtige orgs bagefter**, ikke bare med `npm audit`:
+
+  | Hvad | Resultat |
+  |---|---|
+  | 115 tests | alle grønne |
+  | Flowliste (axios + OAuth-token) | 121 flows |
+  | Divisioner (axios med `params`) | 3 fundet |
+  | Datatabeller (paginering) | 41 fundet |
+  | Archy-eksport | `Notify Flow Error_v2-0.yaml`, rigtigt navn i YAML'en |
+  | `migrate/prepare` | `ChatGPT_v5-0.yaml` — stadig den publicerede udgave |
+  | Brugerfladen | 11 sider × 5 sprog, ingen konsolfejl |
+
+**🇬🇧 English**
+- **`npm audit fix`: 5 vulnerabilities → 0.** All of them in `axios`, bumped 1.14.0 → 1.20.0 — within `^1.14.0`, so `package.json` is untouched and only the lockfile changed. Verified against the real orgs afterwards, not just with `npm audit`: 115 tests green, flow list, divisions, datatables, an Archy export and a `migrate/prepare` all behave exactly as before.
+
+---
+
 ### v1.37.0
 ---
 **🇩🇰 Dansk**
