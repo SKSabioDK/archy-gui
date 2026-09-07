@@ -34,6 +34,147 @@ test('archyErrorReason tager overskriften, ikke detaljelinjen under den', () => 
   assert.match(ud, /supportedLanguages/);
 });
 
+// Uddraget herunder er Archys RIGTIGE udskrift fra en migrering der fejlede —
+// forkortet, men linjerne står som de kom. Fejlen var at brugeren fik
+// "the flow has 14 warning(s)" og ikke den ene sætning der forklarede noget.
+const VALIDERING_MISLYKKEDES = arkiv(
+  'validating flow \'DEV_ChatGPT\'',
+  '- ERROR! Validation Summary',
+  '  [Type:\'ArchValidationIssue\', ErrorCount:1, ArchObject:[TrackingID:12, Name:\'Call Data Action\', Type:\'ArchActionCallData\']]',
+  'A data action must be selected.',
+  'setting the Archy exit code to 123',
+  '------------------',
+  'Validation Results',
+  '------------------',
+  '1 -> [Type:\'ArchValidationIssue\', ErrorCount:1, ArchObject:[TrackingID:12, Name:\'Call Data Action\', Type:\'ArchActionCallData\']]',
+  'A data action must be selected.',
+  '    ___ Yaml Info ___',
+  '    ref path: /inboundEmail/states/state[Initial State_11]/actions/callData[_^_archy_callData_1__]',
+  '',
+  '2 -> [Type:\'ArchValidationIssue\', WarningCount:1, ArchObject:[Type:\'ArchVariableString\', Name:\'Flow.emailResponse\']]',
+  'The variable \'Flow.emailResponse\' is not used.',
+  '',
+  '16 -> [Type:\'ArchValidationIssue\', RollupErrorCount:1, ArchObject:[TrackingID:11, Name:\'Initial State\', Type:\'ArchState\']]',
+  'There is one action in error within this task',
+  '    ___ Yaml Info ___',
+  '        name: Initial State',
+  '    ref path: /inboundEmail/states/state[Initial State_11]',
+  '',
+  '     Archy - Architect Yaml Flow Processor ver. 2.42.2 - Failure',
+  'DateTime: Mon Sep 07 2026 13:04:40 GMT+0200',
+  'Summary',
+  'Command: \'publish\'',
+  'Flow Name: \'DEV_ChatGPT\'',
+  'ERROR - the flow has 1 error(s). (see above)',
+  '',
+  'WARNING - the flow has 14 warning(s). (see above)',
+  '',
+  'Error(s) and warning(s) encountered.'
+);
+
+test('archyErrorReason siger HVAD der er galt, ikke hvor mange advarsler der var', () => {
+  // Opsummeringen sætter warnings efter errors, så baglænssøgningen ramte
+  // "the flow has 14 warning(s)" og skjulte fejlen helt.
+  const ud = s.archyErrorReason(VALIDERING_MISLYKKEDES);
+  assert.match(ud, /A data action must be selected/);
+  assert.ok(!/14 warning/.test(ud), 'advarselstallet må ikke stå i stedet for fejlen');
+});
+
+test('archyErrorReason tager navnet og stien fra selve valideringsfejlen', () => {
+  const ud = s.archyErrorReason(VALIDERING_MISLYKKEDES);
+  assert.match(ud, /Call Data Action/);
+  assert.match(ud, /callData\[_\^_archy_callData_1__\]/);
+});
+
+test('archyErrorReason tæller ikke rollup-fejlen med som en fejl mere', () => {
+  // "There is one action in error within this task" er den SAMME fejl talt op
+  // et niveau oppe. Tages den med, står hver fejl to gange.
+  const ud = s.archyErrorReason(VALIDERING_MISLYKKEDES);
+  assert.ok(!/There is one action in error/.test(ud));
+});
+
+test('archyErrorReason hægter ikke en tilfældig sti på en valideringsfejl', () => {
+  // Property name:/Path: blev fundet med find() — altså den FØRSTE forekomst i
+  // hele udskriften. I et stort flow er det en linje om variabelbehandling,
+  // og brugeren fik "('stringVariable' i '/inboundEmail/variables/stringVariable')"
+  // hægtet på en fejl den intet havde med at gøre.
+  const medStoej = arkiv(
+    'adding variable type of \'stringVariable\' to \'ArchFlowInboundEmail\'',
+    "    Path: '/inboundEmail/variables/stringVariable'",
+    "    Property name: 'stringVariable'",
+    VALIDERING_MISLYKKEDES
+  );
+  const ud = s.archyErrorReason(medStoej);
+  assert.match(ud, /A data action must be selected/);
+  assert.ok(!/stringVariable/.test(ud), 'en urelateret sti blev hægtet på');
+});
+
+test('Path og Property name tages fra linjerne UNDER årsagen, ikke fra toppen', () => {
+  // Målt på en rigtig udskrift: fejlen var en tvetydig data action, men
+  // beskeden bar "('stringVariable' i '/inboundEmail/variables/stringVariable')"
+  // fra en variabellinje hundrede linjer tidligere.
+  const medStoej = arkiv(
+    "adding variable type of 'stringVariable' to 'ArchFlowInboundEmail'",
+    "    Path: '/inboundEmail/variables/stringVariable'",
+    "    Property name: 'stringVariable'",
+    'processing flow configuration',
+    'Summary',
+    "Flow Name: 'ChatGPT'",
+    "item[1] - value 'Chat GPT Integration v12' - is another case sensitive match - unable to disambiguate network results.",
+    'Error(s) encountered.'
+  );
+  const ud = s.archyErrorReason(medStoej);
+  assert.match(ud, /unable to disambiguate/);
+  assert.ok(!/stringVariable/.test(ud), 'en sti fra toppen af udskriften blev hægtet på');
+});
+
+test('den rigtige Path og Property name følger stadig med', () => {
+  // Samme mekanisme skal stadig virke når detaljerne FAKTISK hører til fejlen.
+  const ud = s.archyErrorReason(arkiv(
+    "adding variable type of 'stringVariable'",
+    "    Path: '/et/andet/sted'",
+    "    Property name: 'noget-andet'",
+    'Summary',
+    "did not find a text to speech voice with the name 'da-DK-Standard-C'",
+    "    Path: '/inboundCall/supportedLanguages/textToSpeech'",
+    "    Property name: 'voice'",
+    'Error(s) encountered.'
+  ));
+  assert.match(ud, /did not find a text to speech voice/);
+  assert.match(ud, /'voice'/);
+  assert.match(ud, /supportedLanguages/);
+  assert.ok(!/noget-andet/.test(ud));
+});
+
+test('uden en valideringsliste vinder ERROR-linjen stadig over WARNING-linjen', () => {
+  // Nogle Archy-kommandoer opsummerer uden at skrive listen ud. Så er tallene
+  // det eneste vi har — men fejlen er stadig grunden til at det mislykkedes,
+  // og den står FØR advarslerne, altså længst væk baglæns.
+  const udenListe = arkiv(
+    'Summary',
+    'Command: \'publish\'',
+    'Flow Name: \'DEV_ChatGPT\'',
+    'ERROR - the flow has 1 error(s). (see above)',
+    '',
+    'WARNING - the flow has 14 warning(s). (see above)',
+    '',
+    'Error(s) and warning(s) encountered.'
+  );
+  const ud = s.archyErrorReason(udenListe);
+  assert.match(ud, /1 error/);
+  assert.ok(!/14 warning/.test(ud), 'advarselslinjen vandt over fejllinjen');
+});
+
+test('kun advarsler: så er advarselslinjen stadig det bedste svar', () => {
+  const kunAdvarsler = arkiv(
+    'Summary',
+    'Flow Name: \'X\'',
+    'WARNING - the flow has 3 warning(s). (see above)',
+    'Error(s) and warning(s) encountered.'
+  );
+  assert.match(s.archyErrorReason(kunAdvarsler), /3 warning/);
+});
+
 test('archyErrorReason foretrækker den manglende ressource frem for "code: 99"', () => {
   // "Architect Scripting session ended in error ( code: 99 )" siger ingenting.
   const ud = s.archyErrorReason(arkiv(

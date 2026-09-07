@@ -3080,6 +3080,47 @@ function truncateArchyError(raw) {
   return `[... ${lines.length - ARCHY_LOG_TAIL} linjer skjult — viser de sidste ${ARCHY_LOG_TAIL} ...]\n` + tail.join('\n');
 }
 
+// Fejler et flow valideringen, står den brugbare tekst i "Validation Results"
+// — ikke i opsummeringen, som kun TÆLLER. Og opsummeringen sætter warnings
+// sidst:
+//
+//     ERROR - the flow has 1 error(s). (see above)
+//     WARNING - the flow has 14 warning(s). (see above)
+//     Error(s) and warning(s) encountered.
+//
+// Baglænssøgningen ramte derfor WARNING-linjen og skjulte fejlen helt. Brugeren
+// fik "the flow has 14 warning(s)" og kunne intet stille op med det, mens den
+// eneste sætning der forklarede noget — "A data action must be selected." —
+// stod hundrede linjer længere oppe.
+//
+// Blokken ser sådan ud, og både navnet og stien hører med:
+//
+//     1 -> [Type:'ArchValidationIssue', ErrorCount:1, ArchObject:[…, Name:'Call Data Action', …]]
+//     A data action must be selected.
+//         ___ Yaml Info ___
+//         ref path: /inboundEmail/states/state[Initial State_11]/actions/callData[…]
+//
+// RollupErrorCount er en optælling af de samme fejl et niveau oppe ("There is
+// one action in error within this task") og tages ikke med — den ville
+// fordoble hver fejl.
+function archyValidationIssues(lines) {
+  const start = lines.findIndex(l => /^Validation Results$/i.test(l));
+  if (start === -1) return [];
+  const ud = [];
+  for (let i = start; i < lines.length; i++) {
+    const h = lines[i].match(/^\d+\s*->\s*\[Type:'ArchValidationIssue',\s*ErrorCount:\d+/);
+    if (!h) continue;
+    const navn = (lines[i].match(/Name:'([^']*)'/) || [])[1];
+    const efter = lines.slice(i + 1, i + 8);
+    const besked = efter.find(x => x && !/^_+\s*Yaml Info|^ref path:|^name:/i.test(x));
+    if (!besked) continue;
+    const sti = (efter.find(x => /^ref path:/i.test(x)) || '').replace(/^ref path:\s*/i, '').trim();
+    const hvor = [navn, sti].filter(Boolean).join(' i ');
+    ud.push(hvor ? `${besked} (${hvor})` : besked);
+  }
+  return ud;
+}
+
 // Trækker den forklarende årsag ud af Archys output. Ved TLS-fejl er Archys
 // egen konklusion ("ugyldige credentials") misvisende, så den underliggende
 // certifikatfejl tages med i stedet.
@@ -3090,20 +3131,43 @@ function archyErrorReason(out) {
     .map(l => l.trim());
 
   let summary = '';
+  // Hvor i udskriften årsagen blev fundet. Path: og Property name: står som
+  // indrykkede detaljelinjer LIGE UNDER deres overskrift, så de skal hentes
+  // dér — ikke med find() gennem hele udskriften. Målt: i et flow med mange
+  // variabler blev den første forekomst grebet, og brugeren fik
+  // "('stringVariable' i '/inboundEmail/variables/stringVariable')" hængt på en
+  // fejl den intet havde med at gøre.
+  let summaryIndex = -1;
+  // -1 og samtidig et summary betyder: årsagen bærer allerede sin egen sti.
+  let harEgenSti = false;
+
+  // Detaljelinjerne der hører til overskriften på linje i.
+  const detaljer = (i) => {
+    const nær = i >= 0 ? lines.slice(i + 1, i + 4) : [];
+    const hent = (re) => (nær.find(l => re.test(l)) || '').replace(re, '').trim();
+    return { prop: hent(/^Property name:\s*/i), sti: hent(/^Path:\s*/i) };
+  };
+
+  const valideringsfejl = archyValidationIssues(lines);
+  if (valideringsfejl.length) {
+    summary = valideringsfejl.slice(0, 3).join(' · ');
+    if (valideringsfejl.length > 3) summary += ` (+${valideringsfejl.length - 3} flere)`;
+    harEgenSti = true;
+  }
 
   // Ved YAML-/importfejl lægger Archy den egentlige årsag i en "Exception:"-linje
   // langt over sin afsluttende opsummering. Den er langt mere brugbar end det
   // der står lige før terminatoren (typisk "Flow Name: '…'").
-  const exc = lines.find(l => /^Exception:/i.test(l));
-  if (exc) {
-    summary = exc
+  const excIndex = summary ? -1 : lines.findIndex(l => /^Exception:/i.test(l));
+  if (excIndex >= 0) {
+    summaryIndex = excIndex;
+    summary = lines[excIndex]
       .replace(/^Exception:\s*-?\s*(ERROR!\s*)?/i, '')
       .replace(/\s*--\s*\[.*$/, '')          // metadata-halen
       .trim();
     // Tag den ramte property og sti med — det er dem man skal rette i YAML'en
-    const prop = lines.find(l => /^Property name:/i.test(l))?.replace(/^Property name:\s*/i, '');
-    const at   = lines.find(l => /^Path:/i.test(l))?.replace(/^Path:\s*/i, '');
-    if (prop) summary += ` (${prop}${at ? ' i ' + at : ''})`;
+    const { prop, sti } = detaljer(excIndex);
+    if (prop) summary += ` (${prop}${sti ? ' i ' + sti : ''})`;
   }
 
   // Ellers: Archys egen konklusion lige før "Error(s) [and warning(s)] encountered."
@@ -3122,19 +3186,29 @@ function archyErrorReason(out) {
     const noise = /^(\*+|DateTime:|Summary$|Command:|Log:|Flow Name:|Input YAML File:|Path:|Property name:|Value:|Line:|\||└|┌|-\s*Architect Scripting|An error occurred)/i;
     const end = lines.findIndex(l => /^Error\(s\)(\s+and\s+warning\(s\))?\s+encountered\.?$/i.test(l));
     if (end > 0) {
-      for (let i = end - 1; i >= 0 && end - i < 12; i--) {
+      // Opsummeringen sætter warnings EFTER errors, så den første linje man
+      // møder baglæns er warning-linjen. Har Archy også talt fejl, er det dem
+      // der gør at kommandoen mislykkedes — de vinder.
+      const fejlLinje = lines.slice(Math.max(0, end - 12), end)
+        .find(l => /^ERROR\s*-\s*the flow has/i.test(l));
+      if (fejlLinje) summary = fejlLinje;
+
+      for (let i = end - 1; !summary && i >= 0 && end - i < 12; i--) {
         const l = lines[i];
-        if (l && !noise.test(l) && !/Architect Yaml Flow Processor/i.test(l)) { summary = l; break; }
+        if (l && !noise.test(l) && !/Architect Yaml Flow Processor/i.test(l)) {
+          summary = l; summaryIndex = i; break;
+        }
       }
     }
   }
 
-  // Sti og property hører til uanset hvilken af de to veje der fandt fejlen —
-  // det er dem man skal rette i YAML'en.
-  if (summary && !/\($/.test(summary)) {
-    const prop = lines.find(l => /^Property name:/i.test(l))?.replace(/^Property name:\s*/i, '');
-    const at   = lines.find(l => /^Path:/i.test(l))?.replace(/^Path:\s*/i, '');
-    if (prop && !summary.includes(prop)) summary += ` (${prop}${at ? ' i ' + at : ''})`;
+  // Sti og property hører til — det er dem man skal rette i YAML'en. Men kun
+  // DEM DER STÅR UNDER den overskrift vi valgte. Tidligere blev de hentet med
+  // find() gennem hele udskriften, og så fulgte der en sti med der intet havde
+  // med fejlen at gøre.
+  if (summary && !harEgenSti && !/\($/.test(summary)) {
+    const { prop, sti } = detaljer(summaryIndex);
+    if (prop && !summary.includes(prop)) summary += ` (${prop}${sti ? ' i ' + sti : ''})`;
   }
 
   // Manglende Genesys-rettigheder ender også som den generiske "session ended

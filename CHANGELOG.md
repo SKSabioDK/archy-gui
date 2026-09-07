@@ -5,6 +5,48 @@
 
 ---
 
+### v1.36.1
+---
+**🇩🇰 Dansk**
+
+En migrering fejlede med **"WARNING - the flow has 14 warning(s). (see above)"** — et advarselstal, ikke en fejl man kan gøre noget ved. Den egentlige årsag stod i udskriften, men blev ikke vist.
+
+- **Advarsler vandt over fejl.** Archy afslutter sådan her:
+
+  ```
+  ERROR - the flow has 1 error(s). (see above)
+
+  WARNING - the flow has 14 warning(s). (see above)
+
+  Error(s) and warning(s) encountered.
+  ```
+
+  Vi leder baglæns fra terminatoren, og warnings står **sidst** — så vi ramte dem hver gang og skjulte fejlen lige over. En `ERROR`-linje vinder nu over en `WARNING`-linje.
+
+- **Men tallene siger stadig ingenting.** Den brugbare tekst står i Archys `Validation Results` længere oppe, sammen med hvilket objekt og hvilken sti det drejer sig om. Den læses nu i stedet:
+
+  | | |
+  |---|---|
+  | Før | `WARNING - the flow has 14 warning(s). (see above) ('stringVariable' i '/inboundEmail/variables/stringVariable')` |
+  | Nu | `A data action must be selected. (Call Data Action i /inboundEmail/states/state[Initial State_11]/actions/callData[…])` |
+
+  `RollupErrorCount` springes over — det er de samme fejl talt op et niveau højere ("There is one action in error within this task") og ville fordoble hver linje.
+
+- **Stien der blev hægtet på, hørte ikke til fejlen.** `Path:` og `Property name:` blev fundet med `find()` gennem hele udskriften — altså den **første** forekomst. I et flow med mange variabler er det en linje om variabelbehandling hundrede linjer tidligere. Archy skriver dem som indrykkede detaljer *lige under* deres overskrift, og de hentes nu kun dér.
+
+  Målt på en anden rigtig udskrift forsvandt `('stringVariable' i '/inboundEmail/variables/stringVariable')` fra en fejl om en tvetydig data action, som den intet havde med at gøre.
+
+**8 nye tests**, bygget på Archys rigtige udskrifter fra de to migreringer. Efterprøvet ved at genindføre hver af de seks fejl én ad gangen: **alle seks blev fanget.**
+
+**🇬🇧 English**
+- **Warnings won over errors.** Archy prints the warning summary *after* the error summary, and the backwards search from the terminator hit it every time. An `ERROR` line now wins over a `WARNING` line.
+- **The counts say nothing anyway.** The usable text is in Archy's `Validation Results` block, together with the object and the ref path; that is now read instead. `A data action must be selected. (Call Data Action i /inboundEmail/…/callData[…])` rather than `the flow has 14 warning(s)`.
+- **The attached path did not belong to the error.** `Path:` and `Property name:` were found with `find()` across the whole output — the first occurrence anywhere. They are now taken only from the indented detail lines directly beneath the chosen headline.
+
+**8 new tests**, built from Archy's real output. Verified by reintroducing each of the six bugs one at a time: all six were caught.
+
+---
+
 ### v1.36.0
 ---
 **🇩🇰 Dansk**
