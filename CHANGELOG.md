@@ -5,6 +5,61 @@
 
 ---
 
+### v1.33.0
+---
+**🇩🇰 Dansk**
+- **Serveren lytter kun på maskinen selv.** `app.listen(PORT, …)` uden vært binder til `0.0.0.0`, så programmet var åbent for hele netværket — uden nogen form for adgangskontrol. Enhver der kunne nå port 3737 kunne liste kunderne, se deres client-id'er og migrere til produktion.
+
+  Målt før og efter:
+
+  ```
+  før:  TCP 0.0.0.0:3737    LISTENING     via 192.168.1.209 → svarede
+  nu:   TCP 127.0.0.1:3737  LISTENING     via 192.168.1.209 → afvist
+  ```
+
+  Sæt `HOST` hvis den bevidst skal nås udefra — men så bør der komme adgangskontrol foran først.
+
+- **Store flows kan importeres igen.** `express.json()` bruger 100 KB som standard, og **ni af de 153 eksporterede YAML-filer her er over den grænse** — `Main flow` på 626 KB, `DEV_Main flow` på 594 KB, den største på 800 KB. De svarede `413` uden nogen forklaring. Grænsen er nu 25 MB, og den 800 KB store fil kommer hele vejen igennem.
+
+- **Fejl kommer tilbage som JSON.** Der var ingen fejl-middleware, så Express svarede med sin egen HTML-side — mens hele brugerfladen kalder `.json()`. En fejl blev derfor vist som `Unexpected token '<'` i stedet for det der gik galt.
+
+  | Situation | Før | Nu |
+  |---|---|---|
+  | Ukendt `/api`-sti | HTML | `404 {"error":"Ukendt endpoint: GET /api/…"}` |
+  | Ugyldig JSON i kroppen | HTML | `400` med parserens egen besked |
+  | Krop over grænsen | HTML | `413 {"error":"Indholdet er for stort…"}` |
+  | Uventet fejl | HTML | `500` med beskeden, og en linje i systemloggen |
+
+- **To ting mere, fundet undervejs:** `/api/import` tjekkede ikke sit input, så et manglende felt kom ud som Node's `The "data" argument must be of type string`. Og Archy-vejene gik ikke gennem `getToken`, så et demo-miljø nåede helt frem til Archy og fik en uforståelig fejl om at `demo` ikke er en gyldig Genesys-region. Begge siger nu hvad der er galt.
+
+---
+**🇬🇧 English**
+- **The server now listens only on the machine itself.** `app.listen(PORT, …)` without a host binds to `0.0.0.0`, so the program was open to the whole network — with no access control of any kind. Anyone who could reach port 3737 could list the customers, see their client ids, and migrate to production.
+
+  Measured before and after:
+
+  ```
+  before:  TCP 0.0.0.0:3737    LISTENING     via 192.168.1.209 → answered
+  now:     TCP 127.0.0.1:3737  LISTENING     via 192.168.1.209 → refused
+  ```
+
+  Set `HOST` if it is deliberately meant to be reachable from outside — but access control should come first.
+
+- **Large flows can be imported again.** `express.json()` defaults to 100 KB, and **nine of the 153 exported YAML files here exceed it** — `Main flow` at 626 KB, `DEV_Main flow` at 594 KB, the largest at 800 KB. They answered `413` with no explanation. The limit is now 25 MB, and the 800 KB file goes all the way through.
+
+- **Errors come back as JSON.** There was no error middleware, so Express replied with its own HTML page — while the entire UI calls `.json()`. An error therefore appeared as `Unexpected token '<'` instead of what went wrong.
+
+  | Situation | Before | Now |
+  |---|---|---|
+  | Unknown `/api` path | HTML | `404 {"error":"Unknown endpoint: GET /api/…"}` |
+  | Invalid JSON body | HTML | `400` with the parser's own message |
+  | Body over the limit | HTML | `413 {"error":"The content is too large…"}` |
+  | Unexpected error | HTML | `500` with the message, and a line in the system log |
+
+- **Two more, found along the way:** `/api/import` did not validate its input, so a missing field surfaced as Node's `The "data" argument must be of type string`. And the Archy paths did not go through `getToken`, so a demo environment reached Archy and got an incomprehensible error about `demo` not being a valid Genesys region. Both now say what is wrong.
+
+---
+
 ### v1.32.2
 ---
 **🇩🇰 Dansk**

@@ -9,7 +9,11 @@ const crypto = require('crypto');
 const CURRENT_VERSION = require('./package.json').version;
 
 const app = express();
-app.use(express.json());
+
+// Standardgrænsen er 100 KB, og et rigtigt Genesys-flow er større end det:
+// af de 153 eksporterede YAML-filer her er ni over grænsen, den største på
+// 800 KB. Import af dem svarede 413 uden nogen forklaring.
+app.use(express.json({ limit: '25mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const CUSTOMERS_FILE = path.join(__dirname, 'customers.json');
@@ -3089,6 +3093,12 @@ function ensureArchyCaBundle() {
 
 function runArchy(args, customer) {
   return new Promise((resolve, reject) => {
+    // Samme vagt som i getToken. Archy-vejene går ikke gennem getToken, så et
+    // demo-miljø nåede helt frem til Archy og fik en uforståelig fejl om at
+    // "demo" ikke er en gyldig Genesys-region.
+    if (isDemo(customer))
+      return reject(new Error(`"${customer.name}" er et demo-miljø — det findes kun lokalt, ` +
+        `så der er ingen org at køre Archy imod. Brug Pipeline til at prøve forfremmelser af.`));
     if (!ARCHY_DIR) return reject(new Error('archy not found in PATH'));
     const cmd = `archy ${args} ${archyCredFlags(customer)}`;
     const bundle = ensureArchyCaBundle();
@@ -3398,6 +3408,11 @@ app.post('/api/import', async (req, res) => {
   // action: 'create' | 'update' | 'publish'
   const customer = loadCustomers().find(c => c.id === customerId);
   if (!customer) return res.status(404).json({ error: 'Customer not found' });
+  // Uden dette faldt et manglende felt igennem til fs.writeFileSync og kom ud
+  // som 'The "data" argument must be of type string' — en Node-fejl der intet
+  // fortæller den der skal rette noget.
+  if (typeof yamlContent !== 'string' || !yamlContent.trim())
+    return res.status(400).json({ error: 'Ingen YAML at importere' });
 
   const importDir = path.join(FLOWS_DIR, `import_${customer.id}`);
   if (!fs.existsSync(importDir)) fs.mkdirSync(importDir, { recursive: true });
@@ -4124,10 +4139,35 @@ app.get('/api/readme', (req, res) => {
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 
+// ── Fejl som JSON ────────────────────────────────────────────────────────────
+// Skal stå EFTER alle ruter. Uden dette svarede Express med sin egen HTML-side,
+// mens hele brugerfladen kalder .json() — så en fejl blev vist som
+// "Unexpected token '<'" i stedet for det der gik galt.
+app.use('/api', (req, res) => {
+  res.status(404).json({ error: `Ukendt endpoint: ${req.method} /api${req.path}` });
+});
+
+// Fire parametre: sådan genkender Express en fejlhåndterer.
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  // For stor krop har sin egen kode og fortjener en forklaring man kan handle på
+  const forStor = err.type === 'entity.too.large' || err.status === 413;
+  const status = forStor ? 413 : (err.status || err.statusCode || 500);
+  const besked = forStor
+    ? 'Indholdet er for stort til at sendes til serveren.'
+    : (err.message || 'Ukendt serverfejl');
+  addLog('ERROR', `${req.method} ${req.originalUrl}: ${besked}`, null, 'SYSTEM');
+  res.status(status).json({ error: besked });
+});
+
 const PORT = process.env.PORT || 3737;
-app.listen(PORT, () => {
-  console.log(`Archy GUI running on http://localhost:${PORT}`);
-  addLog('INFO', `Archy GUI started on port ${PORT}`, null, 'SYSTEM');
+// Bind til loopback. Uden vært binder Express til 0.0.0.0, og så kunne enhver
+// på netværket liste kunderne og migrere til produktion — der er ingen
+// adgangskontrol foran. Sæt HOST hvis den bevidst skal nås udefra.
+const HOST = process.env.HOST || '127.0.0.1';
+app.listen(PORT, HOST, () => {
+  console.log(`Archy GUI running on http://${HOST === '127.0.0.1' ? 'localhost' : HOST}:${PORT}`);
+  addLog('INFO', `Archy GUI started on ${HOST}:${PORT}`, null, 'SYSTEM');
   // Check for updates on startup, then once every 24 hours
   checkForUpdate();
   setInterval(checkForUpdate, 24 * 60 * 60 * 1000);
