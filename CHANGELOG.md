@@ -5,6 +5,27 @@
 
 ---
 
+### v1.32.1
+---
+**🇩🇰 Dansk**
+- **Rettet: "På tværs af kunder" forsøgte at logge ind på demo-miljøerne.** Siden løb alle kunder igennem og hentede en token — men demo-miljøer har region `demo` og ingen credentials, så den fyldte listen med `getaddrinfo ENOTFOUND login.demo`, én linje pr. demo-miljø. Den læser nu fra demolageret, ligesom pipelinen gør. Otte advarsler blev til nul.
+- **Siden parrer nu på grundnavnet.** `DEV_Ordreflow` og `Ordreflow` tælles som det samme flow, og hver org viser sit eget navn. Sammenligningen slår hvert miljø op under **dets** navn — før ledte den efter `Ordreflow` i et miljø hvor flowet hedder `DEV_Ordreflow`.
+
+- **Rettet: en nulstilling af demo 1 slettede demo 2.** `seedDemo()` skrev hele demofilen på én gang, så demo 2's flows og begge demoers manifester forsvandt. Den fletter nu ind i det der allerede ligger og rører kun sine egne nøgler. Samme oprydning i demo 2, så en nulstilling giver en ren tavle uden at ramme naboen.
+
+  Det var også derfor demo 2's flows manglede på tværs-siden: de var væk fra filen, ikke filtreret fra.
+
+---
+**🇬🇧 English**
+- **Fixed: "Across customers" tried to sign in to the demo environments.** The page walked every customer and fetched a token — but demo environments have region `demo` and no credentials, so it filled the list with `getaddrinfo ENOTFOUND login.demo`, one line per demo environment. It now reads from the demo store, as the pipeline does. Eight warnings became none.
+- **The page now pairs on the base name.** `DEV_Ordreflow` and `Ordreflow` count as the same flow, and each org shows its own name. The comparison looks each environment up under **its** name — previously it searched for `Ordreflow` in an environment where the flow is called `DEV_Ordreflow`.
+
+- **Fixed: resetting demo 1 deleted demo 2.** `seedDemo()` wrote the whole demo file at once, so demo 2's flows and both demos' manifests disappeared. It now merges into what is already there and touches only its own keys. The same tidy-up in demo 2, so a reset gives a clean slate without hitting the neighbour.
+
+  That was also why demo 2's flows were missing from the across-customers page: they were gone from the file, not filtered out.
+
+---
+
 ### v1.32.0
 ---
 **🇩🇰 Dansk**

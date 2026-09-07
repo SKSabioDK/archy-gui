@@ -422,7 +422,14 @@ function seedDemo() {
         : 'stil om til kundeservice')
     });
   }
-  saveDemo({ flows, seededAt: now });
+  // Flet ind i det der allerede ligger. Skrev vi hele filen, ville en
+  // nulstilling af demo 1 slette demo 2's flows og begge demoers manifester —
+  // og de to skal ikke kunne røre hinanden.
+  const d = loadDemo();
+  d.flows = { ...(d.flows || {}), ...flows };
+  d.seededAt = now;
+  if (d.manifest) for (const e of DEMO_ENVS) delete d.manifest[demoEnvId(e.suffix)];
+  saveDemo(d);
 }
 
 // Flowene ligger under den ORG miljøet hører til. For demo 1 er org og miljø
@@ -471,6 +478,10 @@ function seedDemo2() {
 
   d.flows[DEMO2_ORG_A] = A;
   d.flows[DEMO2_ORG_B] = B;
+  // Nulstilling giver en ren tavle: demo 2's egne manifestrækker ryddes, og
+  // kun dem — demo 1 skal ikke mærke det.
+  if (d.manifest) for (const k of Object.keys(d.manifest))
+    if (k.startsWith('demo2-')) delete d.manifest[k];
   saveDemo(d);
 }
 
@@ -2197,6 +2208,24 @@ app.get('/api/flows/cross-customer', async (req, res) => {
   const problems = [];
 
   for (const c of customers) {
+    // Demo-miljøer har ingen credentials og region "demo". Uden denne gren
+    // forsøgte siden at logge ind på login.demo og fyldte listen med
+    // "getaddrinfo ENOTFOUND login.demo" — én linje pr. demo-miljø.
+    if (isDemo(c)) {
+      const soeskende = customers.filter(x => orgKeyOf(x) === orgKeyOf(c));
+      for (const f of demoFlowsFor(c)) {
+        if (!belongsToEnv(f.name, c, soeskende)) continue;
+        const key = `${baseFlowName(stripEnvPrefix(f.name, c))}|${f.type}`;
+        if (!byFlow.has(key)) byFlow.set(key, []);
+        byFlow.get(key).push({
+          customerId: c.id, customerName: c.name,
+          flowId: `${c.id}:${f.name}`, flowName: f.name,
+          publishedVersion: f.published || null, checkedInVersion: null,
+          publishedAt: f.publishedAt || null, active: true
+        });
+      }
+      continue;
+    }
     try {
       const { token, apiBase } = await getToken(c);
       let page = 1;
@@ -2207,11 +2236,13 @@ app.get('/api/flows/cross-customer', async (req, res) => {
         });
         const e = r.data.entities || [];
         for (const f of e) {
-          const key = `${f.name}|${f.type}`;
+          // Samme nøgle som pipelinen: grundnavnet uden miljøpræfiks, så
+          // "DEV_Ordreflow" og "Ordreflow" tæller som det samme flow.
+          const key = `${baseFlowName(stripEnvPrefix(f.name, c))}|${f.type}`;
           if (!byFlow.has(key)) byFlow.set(key, []);
           byFlow.get(key).push({
             customerId: c.id, customerName: c.name,
-            flowId: f.id,
+            flowId: f.id, flowName: f.name,
             publishedVersion: f.publishedVersion?.name || f.publishedVersion?.commitVersion || null,
             checkedInVersion: f.checkedInVersion?.name || f.checkedInVersion?.commitVersion || null,
             publishedAt: f.publishedVersion?.dateCheckedIn || f.publishedVersion?.dateCreated || null,

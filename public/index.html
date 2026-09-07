@@ -483,7 +483,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.32.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.32.1 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -4741,8 +4741,14 @@ async function crossHash(i) {
 
   const r = await fetch('/api/flows/cross-hash', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
+    // Rækken er grundnavnet; hver org kan have sit eget præfiksede navn, og
+    // det er DET vi skal eksportere hos den. Uden dette ledte vi efter
+    // "Ordreflow" i et miljø hvor flowet hedder "DEV_Ordreflow".
     body: JSON.stringify({ flowName: row.flowName, flowType: row.flowType,
-                           customerIds: row.orgs.map(o => o.customerId) })
+                           customerIds: row.orgs.map(o => o.customerId),
+                           namesByCustomer: Object.fromEntries(
+                             row.orgs.filter(o => o.flowName)
+                                     .map(o => [o.customerId, o.flowName])) })
   }).then(x => x.json()).catch(e => ({ error: e.message }));
 
   if (r.error) { box.innerHTML = `<div style="color:var(--red);font-size:11px">${r.error}</div>`; return; }
