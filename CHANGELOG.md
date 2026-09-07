@@ -5,6 +5,31 @@
 
 ---
 
+### v1.35.1
+---
+**🇩🇰 Dansk**
+- **`cors` fjernet fra afhængighederne.** Pakken har aldrig været `require`'et — hverken i `server.js` eller andre steder. Den lå i `package.json` og blev hentet ved hver `npm install` uden at gøre noget. Serveren lytter kun på loopback og har ingen anden oprindelse at tale med, så der er heller ikke brug for den.
+
+- **Tre døde funktioner fjernet fra klienten:**
+
+  | Funktion | Hvorfor den var død |
+  |---|---|
+  | `toggleTheme()` | Temaet skiftes af rullelisten `themeSelect`, som kalder `setTheme(this.value)`. Der findes ingen knap der skifter frem og tilbage |
+  | `filterFlows()` | Alias "bevaret for ældre kald" — alle fem kald i Flow Browser går direkte til `applyFlowFilter()` |
+  | `filterMigrateFlows()` | Samme historie: syv kald, alle til `applyMigrateFilter()` |
+
+  Bekræftet før sletning: hver af de tre optrådte **kun** på sin egen definitionslinje i hele projektet, og der er ingen dynamiske kald (`window[...]`, `eval`) der kunne have ramt dem. Efter oprydningen har `index.html` 184 funktioner og **ingen** uden kald.
+
+  Efterprøvet i brugerfladen: alle fire temaer skifter stadig gennem rullelisten, og begge filtre virker — Flow Browser går fra 121 til 14 rækker på "bot" og til 11 på typen `BOT`, og migreringslisten går fra 121 til 14 og tilbage igen. Alle 11 sider og alle fem sprog uden konsolfejl.
+
+**🇬🇧 English**
+- **`cors` removed from the dependencies.** It was never required anywhere. The server listens on loopback only and has no other origin to talk to.
+- **Three dead client functions removed:** `toggleTheme()` (the theme is changed by the `themeSelect` dropdown), and the `filterFlows()` / `filterMigrateFlows()` aliases kept for callers that no longer exist. Each appeared only on its own definition line in the whole project. `index.html` now has 184 functions and none without callers.
+
+  Verified in the UI: all four themes still switch, both filters still narrow and reset correctly, all 11 pages and five languages with no console errors.
+
+---
+
 ### v1.35.0
 ---
 **🇩🇰 Dansk**
