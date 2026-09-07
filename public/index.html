@@ -536,6 +536,12 @@
             <input id="c-orgLabel" placeholder="Fælles non-prod org" />
           </div>
           <div>
+            <label data-i18n="label_division">Division</label>
+            <select id="c-division">
+              <option value="" data-i18n="division_home">Home (standard)</option>
+            </select>
+          </div>
+          <div>
             <label data-i18n="label_stage">Trin</label>
             <select id="c-stage">
               <option value="" data-i18n="stage_none">— intet trin —</option>
@@ -547,6 +553,7 @@
           </div>
         </div>
         <div style="margin-bottom:6px;font-size:11px;color:var(--muted)" data-i18n="hint_grouping">Kunde + gruppe afgør hvad der må migreres indbyrdes.</div>
+        <div style="margin-bottom:6px;font-size:11px;color:var(--muted)" data-i18n="hint_division">Divisionen hører til miljøet.</div>
         <div style="margin-bottom:12px;font-size:11px;color:var(--muted)" data-i18n="hint_prefix">Præfiks bruges kun når flere miljøer deler den samme org.</div>
         <button class="btn btn-primary" onclick="addCustomer()" data-i18n="btn_add_customer">+ Tilføj Kunde</button>
       </div>
@@ -683,7 +690,7 @@
           </div>
           <div>
             <label data-i18n="label_target">Mål (importer til)</label>
-            <select id="m-target" onchange="updateMigrateAuthStatus()"></select>
+            <select id="m-target" onchange="updateMigrateAuthStatus(); defaultActionForTarget();"></select>
             <div id="m-target-auth" style="margin-top:6px;min-height:18px"></div>
           </div>
         </div>
@@ -720,6 +727,7 @@
             <option value="update" data-i18n="migrate_action_update">update (opdater)</option>
             <option value="publish" data-i18n="migrate_action_publish">publish (opret+publish)</option>
           </select>
+          <span id="m-action-note" style="font-size:11px;color:var(--muted)"></span>
           <button class="btn btn-primary" id="m-runBtn" onclick="runMigration()" disabled data-i18n="btn_run_migration">🚀 Kør Migration</button>
         </div>
       </div>
@@ -1570,6 +1578,13 @@ const LANGS = {
     demo2_desc:'DEV_, TEST_ og UAT_ deler én org; prod har sin egen og intet præfiks.',
     pl_pull_here:'⟵ Hent hertil',
     pl_pull_here_title:'Hent flowet fra det nærmeste senere trin ned i dette miljø. Har miljøet et præfiks, får flowet det på undervejs.',
+    label_division:'Division',
+    division_home:'Home (standard)',
+    division_need_org:'Vælg region og indtast credentials først — så hentes divisionerne fra org\'en',
+    division_load_failed:'Kunne ikke hente divisioner',
+    hint_division:'Divisionen hører til miljøet. Forfremmer man fra DEV til UAT, skifter flowet og tabellen med. Er der ingen sat, bruges Home.',
+    action_default_note:'publiceres som standard — flowet er i drift med det samme',
+    action_prod_note:'prod: publiceres IKKE som standard — lægges som kladde du selv publicerer',
   },
   en: {
     nav_customers:'Customers', nav_flows:'Flow Browser', nav_migrate:'Migrate Flow',
@@ -1967,6 +1982,13 @@ const LANGS = {
     demo2_desc:'DEV_, TEST_ and UAT_ share one org; prod has its own and no prefix.',
     pl_pull_here:'⟵ Bring here',
     pl_pull_here_title:'Bring the flow from the nearest later stage down into this environment. If the environment has a prefix, the flow gets it on the way.',
+    label_division:'Division',
+    division_home:'Home (default)',
+    division_need_org:'Pick a region and enter credentials first — the divisions are then fetched from the org',
+    division_load_failed:'Could not fetch divisions',
+    hint_division:'The division belongs to the environment. Promote from DEV to UAT and the flow and table move with it. If none is set, Home is used.',
+    action_default_note:'published by default — the flow is live straight away',
+    action_prod_note:'prod: NOT published by default — left as a draft for you to publish',
   },
   fr: {
     nav_customers:'Clients', nav_flows:'Flow Browser', nav_migrate:'Migrer un Flow',
@@ -2364,6 +2386,13 @@ const LANGS = {
     demo2_desc:'DEV_, TEST_ et UAT_ partagent une org ; la prod a la sienne, sans préfixe.',
     pl_pull_here:'⟵ Rapatrier ici',
     pl_pull_here_title:'Rapatrier le flow depuis l\'étape ultérieure la plus proche vers cet environnement. Si l\'environnement a un préfixe, le flow le reçoit au passage.',
+    label_division:'Division',
+    division_home:'Home (par défaut)',
+    division_need_org:'Choisissez d\'abord une région et saisissez les identifiants — les divisions seront récupérées de l\'org',
+    division_load_failed:'Impossible de récupérer les divisions',
+    hint_division:'La division appartient à l\'environnement. Une promotion de DEV vers UAT y déplace le flow et la table. Sans division définie, Home est utilisé.',
+    action_default_note:'publié par défaut — le flow est actif immédiatement',
+    action_prod_note:'prod : NON publié par défaut — laissé en brouillon à publier vous-même',
   },
   nl: {
     nav_customers:'Klanten', nav_flows:'Flow Browser', nav_migrate:'Flow migreren',
@@ -2761,6 +2790,13 @@ const LANGS = {
     demo2_desc:'DEV_, TEST_ en UAT_ delen één org; prod heeft een eigen org en geen prefix.',
     pl_pull_here:'⟵ Hierheen halen',
     pl_pull_here_title:'Haal de flow uit de dichtstbijzijnde latere fase naar deze omgeving. Heeft de omgeving een prefix, dan krijgt de flow die onderweg.',
+    label_division:'Divisie',
+    division_home:'Home (standaard)',
+    division_need_org:'Kies eerst een regio en voer credentials in — de divisies worden dan uit de org gehaald',
+    division_load_failed:'Kon divisies niet ophalen',
+    hint_division:'De divisie hoort bij de omgeving. Promoveer je van DEV naar UAT, dan verhuizen flow en tabel mee. Is er geen ingesteld, dan wordt Home gebruikt.',
+    action_default_note:'standaard gepubliceerd — de flow is meteen live',
+    action_prod_note:'prod: standaard NIET gepubliceerd — blijft een concept dat je zelf publiceert',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -3158,6 +3194,13 @@ const LANGS = {
     demo2_desc:'DEV_, TEST_ y UAT_ comparten una org; prod tiene la suya y sin prefijo.',
     pl_pull_here:'⟵ Traer aquí',
     pl_pull_here_title:'Traiga el flow desde la etapa posterior más cercana a este entorno. Si el entorno tiene prefijo, el flow lo recibe por el camino.',
+    label_division:'División',
+    division_home:'Home (por defecto)',
+    division_need_org:'Elija primero una región e introduzca las credenciales: las divisiones se obtienen de la org',
+    division_load_failed:'No se pudieron obtener las divisiones',
+    hint_division:'La división pertenece al entorno. Al promover de DEV a UAT, el flow y la tabla se mueven con ella. Si no se define ninguna, se usa Home.',
+    action_default_note:'publicado por defecto: el flow está activo de inmediato',
+    action_prod_note:'prod: NO se publica por defecto: queda como borrador para que lo publique usted',
   }
 };
 
@@ -3329,7 +3372,7 @@ function nav(el) {
   const page = el.dataset.page;
   document.getElementById('page-' + page).classList.add('active');
   if (page === 'flows') populateCustomerSelects();
-  if (page === 'migrate') { populateMigrateSelects(); updateMigrateAuthStatus(); }
+  if (page === 'migrate') { populateMigrateSelects(); updateMigrateAuthStatus(); defaultActionForTarget(); }
   if (page === 'export') populateCustomerSelects(['ex-customer']);
   if (page === 'import') populateCustomerSelects(['im-customer']);
   if (page === 'files') loadFiles();
@@ -3342,6 +3385,7 @@ function nav(el) {
 
 // ── Customers ─────────────────────────────────────────────────────────────────
 async function refreshCustomers() {
+  loadFocus();
   const res = await fetch('/api/customers');
   customers = await res.json();
   await loadHierarchy();
@@ -3435,13 +3479,14 @@ async function addCustomer() {
   const stage        = document.getElementById('c-stage').value;
   const prefix       = document.getElementById('c-prefix').value.trim();
   const orgLabel     = document.getElementById('c-orgLabel').value.trim();
+  const division     = document.getElementById('c-division').value;
   const isOAuth      = authType === 'oauth';
   showAlert('customerAlert', '');
   if (!name || !clientId || (!isOAuth && !clientSecret))
     return showAlert('customerAlert', t('err_fields_required'), 'err');
   const res = await fetch('/api/customers', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({name, region, clientId, clientSecret, authType, tenant, group, stage, prefix, orgLabel})
+    body: JSON.stringify({name, region, clientId, clientSecret, authType, tenant, group, stage, prefix, orgLabel, division})
   });
   const data = await res.json();
   if (data.error) return showAlert('customerAlert', data.error, 'err');
@@ -3541,6 +3586,12 @@ function populateCustomerSelects(ids) {
       customers.map(c => `<option value="${c.id}">${c.name} (${c.region})</option>`).join('');
     if (cur) el.value = cur;
   });
+  // Har man en kunde i fokus, og feltet er tomt, vælges dens tidligste miljø.
+  const env0 = focusEnvironments()[0];
+  if (env0) selects.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el.value) el.value = env0.id;
+  });
 }
 
 async function loadFlows() {
@@ -3628,6 +3679,38 @@ async function quickViewFlows(customerId) {
 // ── Migrate ───────────────────────────────────────────────────────────────────
 let migrateFlows = [];
 
+// Den kunde man arbejder med. Skifter man fane, skal man ikke starte forfra —
+// og slet ikke lande på demoen, fordi den tilfældigvis står først i listen.
+let focusTenant = null;   // kundenavn
+let focusGroup  = null;   // gruppe
+
+function setFocus(tenant, group) {
+  if (!tenant) return;
+  focusTenant = tenant;
+  focusGroup  = group || null;
+  try { localStorage.setItem('focus', JSON.stringify({ t: tenant, g: group || '' })); } catch (_) {}
+}
+
+function loadFocus() {
+  try {
+    const f = JSON.parse(localStorage.getItem('focus') || 'null');
+    if (f && f.t) { focusTenant = f.t; focusGroup = f.g || null; }
+  } catch (_) {}
+}
+
+// Miljøerne i den kunde man arbejder med — i trin-rækkefølge, så kilden bliver
+// det tidligste og målet det næste, hvilket er den almindelige vej.
+function focusEnvironments() {
+  if (!focusTenant) return [];
+  return customers
+    .filter(c => (c.tenant || '') === focusTenant &&
+                 (!focusGroup || (c.group || '') === focusGroup))
+    .sort((a, b) => {
+      const o = x => ['dev','test','uat','prod'].indexOf(String(x.stage||'').toLowerCase());
+      return (o(a) < 0 ? 99 : o(a)) - (o(b) < 0 ? 99 : o(b));
+    });
+}
+
 function populateMigrateSelects() {
   ['m-source','m-target'].forEach(id => {
     const el = document.getElementById(id);
@@ -3637,6 +3720,17 @@ function populateMigrateSelects() {
       customers.map(c => `<option value="${c.id}">${c.name} (${c.region})</option>`).join('');
     if (cur) el.value = cur;
   });
+  // Har man en kunde i fokus og intet valgt endnu, sættes kilde og mål til
+  // dens to tidligste trin. Ellers stod man med demoen, fordi den kom først i
+  // listen — og det er sjældent den man lige har arbejdet med.
+  const envs = focusEnvironments();
+  if (envs.length) {
+    const src = document.getElementById('m-source');
+    const tgt = document.getElementById('m-target');
+    if (src && !src.value) src.value = envs[0].id;
+    if (tgt && !tgt.value && envs[1]) tgt.value = envs[1].id;
+    if (tgt && tgt.value) defaultActionForTarget();
+  }
 }
 
 async function onMigrateSourceChange() {
@@ -3779,6 +3873,22 @@ async function _checkMigrateAuth(elId, customerId) {
     }
   } catch (_) {
     el.innerHTML = '';
+  }
+}
+
+// Import-handlingen følger målet: alt andet end prod publiceres som standard,
+// så det er i drift med det samme. Prod gør det ikke — dér skal nogen tage
+// stilling, og flowet lægges som kladde man selv publicerer.
+function defaultActionForTarget() {
+  const sel = document.getElementById('m-action');
+  const tgt = customers.find(c => c.id === document.getElementById('m-target').value);
+  if (!sel || !tgt) return;
+  const erProd = String(tgt.stage || '').toLowerCase() === 'prod';
+  sel.value = erProd ? 'create' : 'publish';
+  const note = document.getElementById('m-action-note');
+  if (note) {
+    note.textContent = erProd ? t('action_prod_note') : t('action_default_note');
+    note.style.color = erProd ? 'var(--yellow)' : 'var(--muted)';
   }
 }
 
@@ -6989,8 +7099,36 @@ function toggleGrouping(id) {
     <input id="grp-group-${id}"  list="groupList"  placeholder="${t('label_group')}"  value="${escapeHtml(c.group  || '')}" style="margin-bottom:6px" />
     <select id="grp-stage-${id}" style="margin-bottom:6px">${['', 'dev', 'test', 'uat', 'prod'].map(opt).join('')}</select>
     <input id="grp-prefix-${id}" placeholder="${t('label_prefix')} (DEV_)" value="${escapeHtml(c.prefix || '')}" style="margin-bottom:6px" />
-    <input id="grp-orglabel-${id}" placeholder="${t('label_orglabel')}" value="${escapeHtml(c.orgLabel || '')}" style="margin-bottom:8px" />
+    <input id="grp-orglabel-${id}" placeholder="${t('label_orglabel')}" value="${escapeHtml(c.orgLabel || '')}" style="margin-bottom:6px" />
+    <select id="grp-division-${id}" style="margin-bottom:8px">
+      <option value="">${t('division_home')}</option>
+    </select>
     <button class="btn btn-primary btn-sm" onclick="saveGrouping('${id}')">${t('btn_save_grouping')}</button>`;
+  fillDivisions('grp-division-' + id, id, c.division || '');
+}
+
+// Rullelisten fyldes fra org'en, så man kun kan vælge noget der findes. Kan
+// den ikke hentes, siges det — og den nuværende værdi bevares, så et miljø
+// ikke stiltiende mister sin division fordi opslaget fejlede.
+async function fillDivisions(selectId, envId, valgt) {
+  const el = document.getElementById(selectId);
+  if (!el) return;
+  const behold = `<option value="">${t('division_home')}</option>`;
+  try {
+    const r = await fetch('/api/customers/' + envId + '/divisions').then(x => x.json());
+    if (r.error) throw new Error(r.error);
+    el.innerHTML = behold + (r.divisions || [])
+      .filter(d => d !== 'Home')
+      .map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+    if (valgt && !(r.divisions || []).includes(valgt))
+      el.innerHTML += `<option value="${escapeHtml(valgt)}">${escapeHtml(valgt)} (findes ikke i org'en)</option>`;
+    el.value = valgt || '';
+  } catch (e) {
+    el.innerHTML = behold +
+      (valgt ? `<option value="${escapeHtml(valgt)}" selected>${escapeHtml(valgt)}</option>` : '') +
+      `<option disabled>${t('division_load_failed')}: ${escapeHtml(e.message)}</option>`;
+    el.value = valgt || '';
+  }
 }
 
 async function saveGrouping(id) {
@@ -6999,7 +7137,8 @@ async function saveGrouping(id) {
     group:  document.getElementById('grp-group-'  + id).value.trim(),
     stage:  document.getElementById('grp-stage-'  + id).value,
     prefix:   document.getElementById('grp-prefix-'   + id).value.trim(),
-    orgLabel: document.getElementById('grp-orglabel-' + id).value.trim()
+    orgLabel: document.getElementById('grp-orglabel-' + id).value.trim(),
+    division: document.getElementById('grp-division-' + id).value
   };
   const r = await fetch('/api/customers/' + id, {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -7022,7 +7161,12 @@ function pipelineInit() {
     return;
   }
   sel.innerHTML = named.map(x => `<option value="${escapeHtml(x.tenant)}">${escapeHtml(x.tenant)}</option>`).join('');
+  if (focusTenant && named.some(x => x.tenant === focusTenant)) sel.value = focusTenant;
   onPipelineTenant();
+  if (focusGroup) {
+    const g = document.getElementById('pl-group');
+    if (g && [...g.options].some(o => o.value === focusGroup)) g.value = focusGroup;
+  }
 }
 
 function onPipelineTenant() {
@@ -7040,6 +7184,7 @@ async function loadPipeline() {
   const tenant = document.getElementById('pl-tenant').value;
   const group  = document.getElementById('pl-group').value;
   if (!tenant || !group) return;
+  setFocus(tenant, group);
   const board = document.getElementById('pipelineBoard');
   document.getElementById('pl-filterCard').style.display = 'none';
   board.innerHTML = `<div class="card" style="color:var(--muted);font-size:12px"><span class="spin"></span> ${t('pl_loading')}</div>`;
@@ -7348,6 +7493,8 @@ async function promoteFromBoard(flowName, flowType, fromId, toId) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelector('[data-page=migrate]').classList.add('active');
   document.getElementById('page-migrate').classList.add('active');
+  const fEnv = customers.find(c => c.id === fromId);
+  if (fEnv) setFocus(fEnv.tenant || '', fEnv.group || '');
   populateMigrateSelects();
   document.getElementById('m-source').value = fromId;
   document.getElementById('m-target').value = toId;

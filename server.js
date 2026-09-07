@@ -248,6 +248,26 @@ function depNameIn(kind, name, env, source) {
 // Inde i et præfikset miljø peger flowet på de præfiksede ressourcer. Uden
 // denne omskrivning ville DEV_-flowet pege tilbage på prods tabel — og så
 // ville dev og prod dele data, hvilket er lige præcis dét man ville undgå.
+// Divisionen hører til miljøet, ikke til flowet. Opretter man i division DEV og
+// forfremmer til UAT, skal flowet skifte med — ellers ville UAT-udgaven ligge i
+// dev's division. Er der ingen division sat på målet, bruges Home.
+const divisionOf = c => (c && String(c.division || '').trim()) || 'Home';
+
+// Kun flowets EGEN division (øverste niveau) skrives om. Længere nede kan der
+// stå udtryk som Task.division, og de skal stå urørt.
+function setFlowDivisionInYaml(yaml, division) {
+  let done = false;
+  const eol = /\r\n/.test(yaml) ? '\r\n' : '\n';
+  return String(yaml).split(/\r?\n/).map(l => {
+    if (done) return l;
+    const m = l.match(/^([ \t]{2,})division:([ \t]*)(.*)$/);
+    if (!m) return l;
+    done = true;
+    const varQuoted = /^".*"$|^'.*'$/.test(m[3].trim());
+    return `${m[1]}division:${m[2] || ' '}${varQuoted ? JSON.stringify(division) : division}`;
+  }).join(eol);
+}
+
 function prefixDependenciesInYaml(yaml, source, target) {
   if (prefixOf(source) === prefixOf(target)) return { yaml: String(yaml), changed: [] };
   const changed = [];
@@ -358,6 +378,9 @@ const DEMO2_ENVS = [
   { suffix: 'prod', stage: 'prod', prefix: '',      org: DEMO2_ORG_B, orgLabel: 'Prod-org' }
 ];
 const demo2EnvId = suffix => 'demo2-' + suffix;
+
+// Demoen har sine egne divisioner, så rullelisten kan prøves af uden en org.
+const DEMO_DIVISIONS = ['Home', 'DEV', 'TEST', 'UAT', 'PROD'];
 
 
 // Et flows indhold er bare en tekst her — nok til at hashe og sammenligne.
@@ -670,6 +693,24 @@ app.delete('/api/demo', (req, res) => {
   res.json({ ok: true });
 });
 
+// Divisionerne i en org. Bruges til rullelisten, så man kun kan vælge en
+// division der faktisk findes — et frit tekstfelt ville før eller siden give
+// en stavefejl der først viser sig som en mislykket import.
+app.get('/api/customers/:id/divisions', async (req, res) => {
+  const c = loadCustomers().find(x => x.id === req.params.id);
+  if (!c) return res.status(404).json({ error: 'Ukendt miljø' });
+  if (isDemo(c)) return res.json({ ok: true, divisions: DEMO_DIVISIONS });
+  try {
+    const { token, apiBase } = await getToken(c);
+    const r = await axios.get(`${apiBase}/api/v2/authorization/divisions`, {
+      headers: { Authorization: `Bearer ${token}` }, params: { pageSize: 200 }
+    });
+    res.json({ ok: true, divisions: (r.data.entities || []).map(d => d.name).sort() });
+  } catch (e) {
+    res.status(500).json({ error: describeApiError(e) });
+  }
+});
+
 app.get('/api/hierarchy', (req, res) => {
   res.json({ ok: true, stages: STAGES, tenants: buildHierarchy(loadCustomers()) });
 });
@@ -719,7 +760,7 @@ app.get('/api/customers', (req, res) => {
 
 app.post('/api/customers', (req, res) => {
   const { name, clientId, clientSecret, region, authType, tenant, group, stage,
-          prefix, orgLabel } = req.body;
+          prefix, orgLabel, division } = req.body;
   const isOAuth = authType === 'oauth';
   if (!name || !clientId || !region || (!isOAuth && !clientSecret))
     return res.status(400).json({ error: isOAuth ? 'Name, Client ID and Region required' : 'All fields required' });
@@ -736,7 +777,8 @@ app.post('/api/customers', (req, res) => {
     group:  (group  || '').trim(),
     stage:  String(stage || '').toLowerCase() || '',
     prefix:   (prefix   || '').trim(),
-    orgLabel: (orgLabel || '').trim()
+    orgLabel: (orgLabel || '').trim(),
+    division: (division || '').trim()
   };
   customers.push(customer);
   saveCustomers(customers);
@@ -765,7 +807,7 @@ app.put('/api/customers/:id', (req, res) => {
       return res.status(400).json({ error: `Ukendt trin "${patch.stage}" — vælg et af: ${STAGES.join(', ')}` });
     patch.stage = s;
   }
-  for (const k of ['tenant', 'group', 'prefix', 'orgLabel'])
+  for (const k of ['tenant', 'group', 'prefix', 'orgLabel', 'division'])
     if (patch[k] !== undefined) patch[k] = String(patch[k] || '').trim();
 
   const updated = { ...customers[idx], ...patch };
@@ -1477,16 +1519,20 @@ app.post('/api/datatables/migrate', async (req, res) => {
 
     // 3. Match division på navn. Findes den ikke, oprettes tabellen i orgens
     // standarddivision — det er bedre end at fejle, men skal siges højt.
+    // Divisionen følger MILJØET, ikke kildetabellen. Er der sat en division på
+    // målmiljøet, er det den der gælder; ellers falder vi tilbage på kildens
+    // navn, så opførslen er uændret for de miljøer der ikke har sat noget.
+    const oensketDivision = String(target.division || '').trim() || src.division?.name || null;
     let divisionId = null, divisionNote = null;
-    if (src.division?.name) {
+    if (oensketDivision) {
       try {
         const dv = await axios.get(`${tgtBase}/api/v2/authorization/divisions`, {
           headers: { Authorization: `Bearer ${tgtToken}` },
           params: { pageSize: 200 }
         });
-        const match = (dv.data.entities || []).find(d => d.name === src.division.name);
+        const match = (dv.data.entities || []).find(d => d.name === oensketDivision);
         if (match) divisionId = match.id;
-        else divisionNote = `Division "${src.division.name}" findes ikke i ${target.name} — tabellen oprettes i standarddivisionen`;
+        else divisionNote = `Division "${oensketDivision}" findes ikke i ${target.name} — tabellen oprettes i standarddivisionen`;
       } catch (e) {
         divisionNote = `Kunne ikke slå divisioner op: ${describeApiError(e)}`;
       }
@@ -1552,12 +1598,18 @@ function normalizeFlowYaml(yaml) {
 // altid melde "afviger", og indholdstjekket ville være ubrugeligt netop dér
 // hvor man har mest brug for det.
 function stripEnvPrefixesInYaml(yaml, env) {
+  // Divisionen SKAL være forskellig mellem miljøerne — den hører til miljøet,
+  // ikke til flowet. Uden dette ville en fejlfri forfremmelse fra DEV til UAT
+  // altid melde "afviger" på netop den linje. Den sættes til en fast værdi i
+  // begge sider, så den ikke tæller med, men heller ikke forsvinder.
+  let out = setFlowDivisionInYaml(String(yaml), '<miljøets division>');
+
   const p = prefixOf(env);
-  if (!p) return String(yaml);
+  if (!p) return out;
   const esc = p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
   let done = false;
-  let out = String(yaml).split(/\r?\n/).map(l => {
+  out = out.split(/\r?\n/).map(l => {
     if (done) return l;
     const m = l.match(/^([ \t]{2,})name:([ \t]*)(.*)$/);
     if (!m) return l;
@@ -3742,8 +3794,16 @@ app.post('/api/migrate/commit', async (req, res) => {
     // stille og roligt blive til noget andet.
     let importFile = resolved;
     const nyName = targetFlowName(flowName, source, target);
-    if (prefixOf(source) !== prefixOf(target)) {
+    const nyDivision = divisionOf(target);
+    const skalOmskrives = prefixOf(source) !== prefixOf(target) ||
+                          divisionOf(source) !== nyDivision;
+    if (skalOmskrives) {
       let yaml = fs.readFileSync(resolved, 'utf8');
+      // Divisionen følger miljøet. Er der ingen sat på målet, er det Home.
+      const gammelDivision = (yaml.match(/^[ \t]{2,}division:[ \t]*(.+?)[ \t]*$/m) || [])[1];
+      yaml = setFlowDivisionInYaml(yaml, nyDivision);
+      if (gammelDivision && gammelDivision.replace(/^["']|["']$/g, '') !== nyDivision)
+        addLog('INFO', `Division skiftet: ${gammelDivision} → ${nyDivision}`, target.name, 'MIGRATE');
       if (nyName !== flowName) {
         yaml = renameFlowInYaml(yaml, nyName);
         addLog('INFO', `Omdøbes til målmiljøet: "${flowName}" → "${nyName}"`, target.name, 'MIGRATE');
