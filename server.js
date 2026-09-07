@@ -2633,6 +2633,13 @@ app.post('/api/flows/compare', async (req, res) => {
 
 // ── Afhængigheder i et flow ───────────────────────────────────────────────────
 
+// Tegnene et ressourcenavn må bestå af. \w dækker kun ASCII, og danske navne
+// gør ikke: "Åbningstider" blev læst som ingenting, og et flow der slår op i
+// den tabel fremstod dermed uden afhængigheder — både i rapporten og når
+// migreringen skulle tage dem med. Latin-1's bogstaver dækker æ, ø og å samt
+// resten af de vesteuropæiske sprog.
+const ORD = '\\wÀ-ÖØ-öø-ÿ';
+
 // Finder de ressourcer et flow-YAML refererer til. Regexerne er skrevet mod
 // den form Archy faktisk eksporterer — se README for eksempler.
 function scanYamlDependencies(yaml) {
@@ -2642,17 +2649,17 @@ function scanYamlDependencies(yaml) {
   return {
     division:   grab(/^[ \t]*division:[ \t]*["']?([^'"\n]+)["']?/gm),
     queue:      grab(/targetQueue:[\s\S]{0,60}?name:[ \t]*["']?([^'"\n]+)["']?/gm),
-    datatable:  grab(/dataTable:\s*\n\s+([\w][\w _\-]+):/gm)
+    datatable:  grab(new RegExp(`dataTable:\\s*\\n\\s+([${ORD}][${ORD} _\\-]+):`, 'gm'))
                   .filter(n => !['foundOutputs', 'failureOutputs', 'outputs'].includes(n)),
-    dataaction: grab(/dataAction:\s*\n\s+([\w][\w _\-()]+):/gm),
+    dataaction: grab(new RegExp(`dataAction:\\s*\\n\\s+([${ORD}][${ORD} _\\-()]+):`, 'gm')),
     // PromptSystem.* er Genesys' indbyggede systemprompts. De ligger ikke i
     // orgens promptliste og ville derfor altid fremstå som manglende.
-    prompt:     grab(/prompt:[ \t]+["']?(?:Prompt\.)?([\w_\-. ]+)["']?/gm)
+    prompt:     grab(new RegExp(`prompt:[ \\t]+["']?(?:Prompt\\.)?([${ORD}_\\-. ]+)["']?`, 'gm'))
                   .filter(n => !/^PromptSystem\./i.test(n)),
     // wrapupCode: \n lit: \n name: X
     wrapupcode: grab(/wrapupCode:\s*\n\s*lit:\s*\n\s*name:[ \t]*["']?([^'"\n]+)["']?/gmi),
     // screenPopScript: \n <ScriptNavn>:
-    script:     grab(/screenPopScript:\s*\n\s+([\w][\w _\-]+):/gm),
+    script:     grab(new RegExp(`screenPopScript:\\s*\\n\\s+([${ORD}][${ORD} _\\-]+):`, 'gm')),
     // Kun statiske skill-navne. FindSkill(Task.Skills) slås op på kørselstidspunktet
     // og kan ikke tjekkes her — det siges eksplicit i rapporten.
     skill:      grab(/FindSkill\(\s*["']([^"']+)["']\s*\)/gm),
@@ -2662,8 +2669,8 @@ function scanYamlDependencies(yaml) {
     // ── Referencer til ANDRE flows ────────────────────────────────────────
     // Bemærk kravet om indrykning (^\s+): på indrykning 0 er 'commonModule:'
     // og 'botFlow:' flowets EGEN type, ikke en reference til et andet flow.
-    commonmodule: grab(/^\s+commonModule:\s*\n\s+([\w][\w .\-()]*):/gm).filter(notMeta),
-    botflow:      grab(/^\s+botFlow:\s*\n\s+([\w][\w .\-()]*):/gm).filter(notMeta),
+    commonmodule: grab(new RegExp(`^\\s+commonModule:\\s*\\n\\s+([${ORD}][${ORD} .\\-()]*):`, 'gm')).filter(notMeta),
+    botflow:      grab(new RegExp(`^\\s+botFlow:\\s*\\n\\s+([${ORD}][${ORD} .\\-()]*):`, 'gm')).filter(notMeta),
     targetflow:   grab(/targetFlow:\s*\n\s*(?:lit:\s*\n\s*)?name:\s*["']?([^'"\n]+)["']?/gm),
 
     // ── Åbningstider ──────────────────────────────────────────────────────
@@ -4165,10 +4172,43 @@ const PORT = process.env.PORT || 3737;
 // på netværket liste kunderne og migrere til produktion — der er ingen
 // adgangskontrol foran. Sæt HOST hvis den bevidst skal nås udefra.
 const HOST = process.env.HOST || '127.0.0.1';
-app.listen(PORT, HOST, () => {
-  console.log(`Archy GUI running on http://${HOST === '127.0.0.1' ? 'localhost' : HOST}:${PORT}`);
-  addLog('INFO', `Archy GUI started on ${HOST}:${PORT}`, null, 'SYSTEM');
-  // Check for updates on startup, then once every 24 hours
-  checkForUpdate();
-  setInterval(checkForUpdate, 24 * 60 * 60 * 1000);
-});
+
+// Kun når filen KØRES. Bliver den i stedet indlæst med require — det gør
+// testene — må den hverken lytte på porten eller sætte et døgn-interval i gang;
+// så ville `node --test` aldrig afslutte af sig selv.
+if (require.main === module) {
+  app.listen(PORT, HOST, () => {
+    console.log(`Archy GUI running on http://${HOST === '127.0.0.1' ? 'localhost' : HOST}:${PORT}`);
+    addLog('INFO', `Archy GUI started on ${HOST}:${PORT}`, null, 'SYSTEM');
+    // Check for updates on startup, then once every 24 hours
+    checkForUpdate();
+    setInterval(checkForUpdate, 24 * 60 * 60 * 1000);
+  });
+}
+
+// ── Til testene ──────────────────────────────────────────────────────────────
+// De rene funktioner — dem uden netværk, uden disk og uden Archy. De har hver
+// især haft mindst én fejl der nåede ud til brugeren, og de er samtidig de
+// eneste der kan efterprøves uden en rigtig org. Se test/*.test.js.
+module.exports = {
+  app, tokenStore,
+  // navne og versioner
+  compareVersions, baseFlowName, promotionName, versionFromFileName,
+  parseFlowFileName, versionLabel, sanitizeName, normType,
+  // miljøer og præfikser
+  prefixOf, orgKeyOf, belongsToEnv, stripEnvPrefix, withEnvPrefix, depNameIn,
+  targetFlowName, prefixDependenciesInYaml, divisionOf,
+  // hierarki og vagt
+  tenantOf, groupOf, stageOf, stageOrder, sameGroup, buildHierarchy, migrationGuard,
+  // YAML
+  renameFlowInYaml, setFlowDivisionInYaml, assertYamlIsFlow, normalizeFlowYaml,
+  stripEnvPrefixesInYaml, flowContentHash, scanYamlDependencies, notMeta,
+  stripFormIds, stripSchemaUris,
+  // manifest
+  orgManifestKey, findManifestEntry,
+  // Archy og fejltekster
+  parseArchyOutput, truncateArchyError, archyErrorReason, describeApiError,
+  archyCredFlags,
+  // maskering
+  redactSecrets
+};

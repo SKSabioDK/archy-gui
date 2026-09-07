@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.33.0
+# Archy GUI — Flow Manager · v1.34.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.33.0**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.33.0**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.34.0**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.34.0**.
 
 ---
 
@@ -37,6 +37,16 @@ Dobbeltklik på **`start.bat`** — den:
 4. Åbner automatisk **http://localhost:3737** i browseren
 
 Alternativt manuelt: `node server.js`
+
+### Test
+
+```bash
+npm test
+```
+
+74 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+
+Testene ligger i `test/` og kræver ingen pakker ud over Node selv (`node --test`, Node 18+).
 
 ---
 
@@ -265,6 +275,8 @@ Archy-gui/
 │       └── *.yaml
 ├── public/
 │   └── index.html     # Frontend SPA
+├── test/              # Enhedstests (npm test)
+│   └── *.test.js
 └── package.json
 ```
 
@@ -292,6 +304,16 @@ npm install
 ### Starting the app
 
 Double-click **`start.bat`** or run `node server.js` manually.
+
+### Tests
+
+```bash
+npm test
+```
+
+74 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+
+The tests live in `test/` and need nothing beyond Node itself (`node --test`, Node 18+).
 
 ---
 
@@ -505,5 +527,7 @@ Archy-gui/
 │       └── *.yaml
 ├── public/
 │   └── index.html     # Frontend SPA
+├── test/              # Unit tests (npm test)
+│   └── *.test.js
 └── package.json
 ```

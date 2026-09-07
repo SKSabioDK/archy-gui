@@ -5,6 +5,41 @@
 
 ---
 
+### v1.34.0
+---
+**🇩🇰 Dansk**
+- **74 enhedstests af de rene funktioner.** `npm test`. Programmet havde nul tests, og netop de funktioner der her er dækket, har hver især haft mindst én fejl der nåede ud til brugeren. Testene er derfor skrevet som spærringer mod de fejl vi allerede har haft — ikke som dokumentation af hvad koden gør:
+
+  | Område | Spærrer mod |
+  |---|---|
+  | Navne og versioner | `testest_v10_v15` efter to forfremmelser; rækken i manifestet der blev forældreløs ved hver omdøbning; Genesys' interne kladde-id vist som et versionsnummer |
+  | Miljøer og præfikser | at prod ser hele org'en, dev og test inklusive; at køer og skills bliver præfikset selvom de er fælles |
+  | Grupper og vagten | migrering på tværs af kunder; publicering til prod uden bekræftelse; to uopsatte miljøer der læses som "hører sammen" |
+  | YAML | omdøbning der rammer et task-navn i stedet for flowets eget; DEV-flowet der peger tilbage på prods datatabel; en fejlfri kopi meldt som afvigende |
+  | Fejltekster | `Property name: 'voice'` i stedet for den sætning man kan handle på; "ugyldige credentials" ved en certifikatfejl; `Bad Request` uden årsagen fra `details[]` |
+  | Maskering | at et client secret slipper ud i `server.log` eller systemloggen |
+
+  Testene kræver ingen pakker ud over Node selv (`node --test`), og de rører hverken en Genesys-org, en fil eller Archy.
+
+  **Efterprøvet:** hver af de otte gamle fejl blev genindført i `server.js` én ad gangen, testene kørt, og filen sat tilbage. Alle otte blev fanget. En test der ikke fælder sin egen fejl er værdiløs, og det er den eneste måde at vide det på.
+
+- **Danske ressourcenavne blev ikke fundet i afhængighedsscanningen.** Fundet af testene. Regexerne brugte `\w`, som kun dækker ASCII, så en tabel ved navn `Åbningstider` eller et common module ved navn `Fælles logning` blev læst som **ingenting** — flowet fremstod uden afhængigheder, både i rapporten og når migreringen skulle tage dem med. Tegnklassen dækker nu også æ, ø, å og resten af Latin-1.
+
+  Målt på alle 155 eksporterede YAML-filer: **0 forskelle** — ingen af dem bruger tilfældigvis de bogstaver i en referenceposition, så intet eksisterende svar ændrer sig. Hullet er lukket før nogen faldt i det.
+
+- **`server.js` kan indlæses uden at starte serveren.** `app.listen` og døgn-intervallet kører nu kun når filen KØRES (`require.main === module`). Uden det ville `npm test` binde port 3737 og aldrig afslutte af sig selv. De rene funktioner eksporteres til sidst i filen.
+
+**🇬🇧 English**
+- **74 unit tests of the pure functions.** `npm test`. The app had zero tests, and each of the functions covered here has had at least one bug that reached the user. The tests are therefore written as guards against the bugs we have already had — not as documentation of what the code does. They cover promotion naming, environment prefixes, the group and prod guards, YAML rewriting and comparison, Archy and Genesys error messages, and client-secret redaction. No packages beyond Node itself (`node --test`), and nothing touches a Genesys org, a file, or Archy.
+
+  **Verified:** each of eight past bugs was reintroduced into `server.js` one at a time, the tests run, and the file restored. All eight were caught.
+
+- **Nordic resource names were invisible to the dependency scan.** Found by the tests. The regexes used `\w`, which is ASCII only, so a table named `Åbningstider` or a common module named `Fælles logning` was read as nothing — the flow appeared to have no dependencies, both in the report and when the migration was meant to carry them along. The character class now covers æ, ø, å and the rest of Latin-1. Measured across all 155 exported YAML files: **0 differences**, so no existing answer changes.
+
+- **`server.js` can be required without starting the server.** `app.listen` and the daily interval now run only when the file is executed (`require.main === module`); otherwise `npm test` would bind port 3737 and never exit.
+
+---
+
 ### v1.33.0
 ---
 **🇩🇰 Dansk**
