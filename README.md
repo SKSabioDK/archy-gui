@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.35.1
+# Archy GUI — Flow Manager · v1.36.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.35.1**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.35.1**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.36.0**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.36.0**.
 
 ---
 
@@ -44,9 +44,11 @@ Alternativt manuelt: `node server.js`
 npm test
 ```
 
-81 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+101 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
+
+`test/sikkerhed.test.js` spærrer for tre huller der har været åbne: læsning uden for `flows/`, skrivning uden for `flows/`, og kommandoindsprøjtning gennem et flownavn. De er skrevet mod de angreb der faktisk virkede.
 
 Testene ligger i `test/` og kræver ingen pakker ud over Node selv (`node --test`, Node 18+).
 
@@ -261,9 +263,11 @@ Tekniske betegnelser oversættes ikke — flow-typer (`InboundCall`, `Workflow` 
 | Canada | `cac1.pure.cloud` |
 
 ### Sikkerhed
-- Client Secrets vises aldrig i GUI efter gemning
+- Client Secrets vises aldrig i GUI efter gemning, og maskeres i logfil og systemlog
 - OAuth PKCE: ingen secret gemmes — token lever kun i serverens hukommelse
-- Serveren er kun tilgængelig på `localhost`
+- Serveren binder til `127.0.0.1`. Sæt `HOST` hvis den bevidst skal nås udefra — men der er ingen adgangskontrol foran, så det bør ikke gøres uden
+- Filstier fra brugerfladen holdes inden for `flows/`, både ved læsning og skrivning
+- Værdier på Archys kommandolinje citeres, og et flownavn med et anførselstegn afvises: Archy kaldes gennem `cmd.exe`, hvor tegnet ikke kan escapes
 
 ### Filer
 ```
@@ -313,9 +317,11 @@ Double-click **`start.bat`** or run `node server.js` manually.
 npm test
 ```
 
-81 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+101 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
+
+`test/sikkerhed.test.js` guards three holes that were open: reading outside `flows/`, writing outside `flows/`, and command injection through a flow name. They are written against the attacks that actually worked.
 
 The tests live in `test/` and need nothing beyond Node itself (`node --test`, Node 18+).
 
@@ -515,9 +521,11 @@ Technical identifiers are not translated — flow types (`InboundCall`, `Workflo
 | Canada | `cac1.pure.cloud` |
 
 ### Security
-- Client Secrets never shown in the GUI after saving
+- Client Secrets never shown in the GUI after saving, and redacted in the log file and system log
 - OAuth PKCE: no secret stored — token lives only in server memory
-- Server only listens on `localhost`
+- The server binds to `127.0.0.1`. Set `HOST` to expose it deliberately — but there is no access control in front of it
+- File paths from the UI are confined to `flows/`, for both reading and writing
+- Values on Archy's command line are quoted, and a flow name containing a double quote is rejected: Archy is invoked through `cmd.exe`, where the character cannot be escaped
 
 ### File structure
 ```

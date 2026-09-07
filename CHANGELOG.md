@@ -5,6 +5,60 @@
 
 ---
 
+### v1.36.0
+---
+**🇩🇰 Dansk**
+
+Tre huller lukket. Alle tre blev **efterprøvet åbne først** — det er derfor de står beskrevet med hvad de faktisk gjorde og ikke med hvad de kunne have gjort.
+
+- **`/api/files/content` udleverede hele `customers.json`.** Tjekket var `filePath.startsWith(FLOWS_DIR)` på den rå streng, uden `path.resolve`. En sti som `…\flows\..\customers.json` *begynder* rigtigt og pegede alligevel ud af mappen:
+
+  ```
+  før: GET /api/files/content?filePath=…\flows\..\customers.json
+       → 200, 12 kunder med clientId og clientSecret
+  nu:  → 400 {"error":"Ugyldig filsti — kun filer under flows/"}
+  ```
+
+  Den rigtige kode stod allerede i samme fil ved `/api/migrate/commit`. Nu bruger begge — og oprydningen — den samme `insideFlowsDir()`.
+
+- **`/api/import` kunne skrive hvor som helst.** `fileName` kom fra klienten og gik direkte i `path.join(importDir, fileName)`. Målt: `../../../BEVIS-traversal.yaml` landede i `C:\Tools\` — tre niveauer over `flows/`. Skrivningen skete *før* demo-vagten, så den ramte uanset miljø, og kunne have overskrevet `customers.json`, `server.js` eller `start.bat`.
+
+  `safeFileName()` skræller nu mapper og `..` af og beholder kun selve navnet. Prøvet igen bagefter: filen lander i importmappen, og der er ingen fil uden for `flows/`.
+
+- **Et anførselstegn i et flownavn kunne køre kommandoer.** `runArchy` kalder `exec` med `shell: 'cmd.exe'`, og inde i en citeret streng kan `"` ikke escapes i cmd — det *afslutter* citatet. Målt med nyttelasten
+
+  ```
+  uskyldigt" & echo naaet-igennem> "fil.txt" & rem
+  ```
+
+  at det indsatte `echo` kørte. Værdien kom fra `req.body`, så enhver der kunne nå serveren kunne køre kommandoer.
+
+  Der findes ingen escape der virker i cmd, så værdien afvises i stedet — målt på **517 rigtige flownavne i fire orgs indeholder ingen et anførselstegn**. Tre steder var åbne, ikke ét:
+
+  | Sted | Før | Nu |
+  |---|---|---|
+  | `--flowName` | `"${flowName}"` | `archyArg()` — citerer, afviser `"` |
+  | `--flowType` | helt uciteret | `archyBareArg()` — kun `[A-Za-z0-9_.-]` |
+  | Underkommandoen | `action \|\| 'create'` fra `req.body` | `archyVerb()` — kun create, update, publish |
+
+  `archyCredFlags` erstattede `"` med `\"`. Den escape virker i en POSIX-skal, ikke i cmd, så et client secret med et anførselstegn ville være brudt ud på samme måde. Den bruger nu `archyArg` som alt andet.
+
+- **Et mislykket opslag i mål-org'en blev læst som "alt mangler".** `try { existing = await lookupExisting(…) } catch (_) {}` gav en tom mængde, og så oprettede migreringen datatabeller og data actions i mål-org'en **som allerede lå der**. Et udløbet token eller en manglende rettighed var nok: opslaget svarer 401 og kaster — det målte jeg mod det rigtige API. Uvished er ikke fravær, så fejlen kommer nu frem med `describeApiError` og migreringen stopper i stedet for at skrive i blinde. To steder.
+
+**20 nye tests.** Skrevet mod de angreb der virkede, ikke mod en teori. Efterprøvet ved at genindføre hver af de syv fejl i `server.js` én ad gangen: **alle syv blev fanget.** To af dem slap forbi den første udgave af testene — en test af `safeFileName` alene fælder ikke nogen der fjerner *kaldet* — så der kom tests til der rammer selve ruten.
+
+Efter rettelserne: en rigtig eksport fra en rigtig org virker uændret (`Notify Flow Error_v2-0.yaml`, 4.290 tegn, rigtigt navn i YAML'en), YAML Filer viser og åbner sine 147 filer, og alle 11 sider i fem sprog kører uden konsolfejl.
+
+**🇬🇧 English**
+- **`/api/files/content` served the whole of `customers.json`.** The check was a raw `startsWith` without `path.resolve`, so `…\flows\..\customers.json` passed. Now `insideFlowsDir()`, shared with the other two path checks.
+- **`/api/import` could write anywhere.** `fileName` went straight into `path.join`; measured, `../../../BEVIS-traversal.yaml` landed in `C:\Tools\`. `safeFileName()` now keeps only the name itself.
+- **A double quote in a flow name could run commands.** `exec` runs through `cmd.exe`, where `"` cannot be escaped inside a quoted string — measured, the injected command ran. Three interpolation points were open (`--flowName`, the unquoted `--flowType`, and the subcommand from `req.body.action`); all three now go through `archyArg` / `archyBareArg` / `archyVerb`. `archyCredFlags` used a POSIX-style `\"` escape that cmd does not honour, and now uses the same helper.
+- **A failed lookup in the target org read as "everything is missing"** — the migration then created datatables and data actions that were already there. The error now surfaces and the migration stops.
+
+**20 new tests**, written against the attacks that worked. Verified by reintroducing each of the seven bugs one at a time: all seven were caught. A real export from a real org still works unchanged.
+
+---
+
 ### v1.35.1
 ---
 **🇩🇰 Dansk**

@@ -1731,7 +1731,9 @@ async function exportFlowToYaml(customer, flowName, flowType) {
   const before = new Map(fs.readdirSync(dir).filter(f => f.endsWith('.yaml')).map(f => [f, mt(f)]));
 
   await runArchy(
-    `export --flowName "${flowName}" --flowType ${String(flowType).toLowerCase()} --exportType yaml --force --outputDir "${dir}"`,
+    `export --flowName ${archyArg(flowName, 'Flownavn')} ` +
+    `--flowType ${archyBareArg(String(flowType).toLowerCase(), 'Flowtype')} ` +
+    `--exportType yaml --force --outputDir ${archyArg(dir, 'Mappe')}`,
     customer
   );
   const touched = fs.readdirSync(dir).filter(f => f.endsWith('.yaml'))
@@ -2941,6 +2943,30 @@ function sanitizeName(name) {
   return name.replace(/[<>:"/\\|?*]/g, '_').trim() || 'unknown';
 }
 
+// ── Filstier fra klienten ────────────────────────────────────────────────────
+
+// Ligger stien inden for FLOWS_DIR? path.resolve SKAL med: uden den slipper
+// "…\flows\..\customers.json" igennem, fordi strengen jo begynder rigtigt.
+// Målt før rettelsen: /api/files/content udleverede hele customers.json med
+// alle kunders credentials på den måde.
+function insideFlowsDir(p) {
+  if (!p) return false;
+  const rod = path.resolve(FLOWS_DIR);
+  const sti = path.resolve(String(p));
+  return sti === rod || sti.startsWith(rod + path.sep);
+}
+
+// Et filnavn fra klienten må ikke kunne pege ud af den mappe det hører til.
+// path.join(importDir, "../../../fil.yaml") lander uden for FLOWS_DIR, og
+// /api/import skrev dér uden at spørge — målt landede filen i C:\Tools\.
+// Vi tager derfor kun selve navnet, uden mapper, og renser det. Så er der
+// ingenting tilbage at navigere med.
+function safeFileName(navn, standard) {
+  const kun = path.basename(String(navn || '').replace(/\\/g, '/'));
+  const rent = sanitizeName(kun).replace(/^[.\s]+/, '').trim();
+  return rent && rent !== 'unknown' ? rent : standard;
+}
+
 // ── Archy helpers ────────────────────────────────────────────────────────────
 
 // Find archy's own directory at startup (archy.bat uses relative paths so must
@@ -2956,20 +2982,61 @@ try {
   console.warn('[archy] Not found in PATH:', e.message);
 }
 
+// ── Værdier på Archys kommandolinje ──────────────────────────────────────────
+// runArchy kalder exec med shell: 'cmd.exe'. Inde i en citeret streng kan et
+// anførselstegn IKKE escapes i cmd — det afslutter citatet, og resten af
+// værdien læses som kommandoer. Målt: et flownavn som
+//
+//     uskyldigt" & echo naaet-igennem> "fil.txt" & rem
+//
+// fik echo'et til at køre. Værdien kom fra req.body, så enhver der kunne nå
+// serveren kunne køre kommandoer på maskinen.
+//
+// Der findes ingen escape der virker, så værdien afvises i stedet. Målt på 517
+// rigtige flownavne i fire orgs: ingen indeholder et anførselstegn.
+function archyArg(vaerdi, felt) {
+  const s = String(vaerdi ?? '');
+  if (s.includes('"'))
+    throw new Error(`${felt} må ikke indeholde anførselstegn: Archy kaldes gennem cmd.exe, ` +
+                    `hvor tegnet ikke kan escapes. Omdøb flowet, eller eksportér det manuelt.`);
+  return `"${s}"`;
+}
+
+// Værdier UDEN anførselstegn omkring — fx --flowType. Her er selv et mellemrum
+// eller et & nok til at bryde ud, så de må kun bestå af de tegn de faktisk har.
+function archyBareArg(vaerdi, felt) {
+  const s = String(vaerdi ?? '');
+  if (!/^[A-Za-z0-9_.\-]+$/.test(s))
+    throw new Error(`${felt} "${s}" er ikke et gyldigt navn`);
+  return s;
+}
+
+// Underkommandoen er ikke en værdi — den er et af tre faste ord. Den kom fra
+// req.body.action og gik uciteret ind i kommandoen.
+const ARCHY_VERBS = new Set(['create', 'update', 'publish']);
+function archyVerb(handling) {
+  const s = String(handling || 'create');
+  if (!ARCHY_VERBS.has(s))
+    throw new Error(`Ukendt handling "${s}" — brug create, update eller publish`);
+  return s;
+}
+
 // Build credential flags for archy CLI (no config file needed)
 function archyCredFlags(customer) {
-  const q = v => `"${String(v).replace(/"/g, '\\"')}"`;
-
   // OAuth customers: use stored bearer token
   if (customer.authType === 'oauth') {
     const stored = tokenStore[customer.id];
     if (!stored || Date.now() > stored.expiresAt)
       throw new Error(`OAuth token missing or expired for "${customer.name}" — please log in again`);
-    return `--authToken ${q(stored.token)} --location ${q(customer.region)}`;
+    return `--authToken ${archyArg(stored.token, 'Token')} --location ${archyArg(customer.region, 'Region')}`;
   }
 
-  // Client credentials
-  return `--clientId ${q(customer.clientId)} --clientSecret ${q(customer.clientSecret)} --location ${q(customer.region)}`;
+  // Client credentials. Tidligere blev " erstattet med \" — den escape virker i
+  // en POSIX-skal, men ikke i cmd.exe, så et secret med et anførselstegn ville
+  // være brudt ud på samme måde som flownavnet.
+  return `--clientId ${archyArg(customer.clientId, 'Client ID')} ` +
+         `--clientSecret ${archyArg(customer.clientSecret, 'Client Secret')} ` +
+         `--location ${archyArg(customer.region, 'Region')}`;
 }
 
 function parseArchyOutput(raw) {
@@ -3260,7 +3327,9 @@ app.post('/api/export-all', async (req, res) => {
     }
     try {
       await runArchy(
-        `export --flowName "${flow.name}" --flowType ${flow.type.toLowerCase()} --exportType yaml --force --outputDir "${exportDir}"`,
+        `export --flowName ${archyArg(flow.name, 'Flownavn')} ` +
+        `--flowType ${archyBareArg(flow.type.toLowerCase(), 'Flowtype')} ` +
+        `--exportType yaml --force --outputDir ${archyArg(exportDir, 'Mappe')}`,
         customer
       );
       job.results.push({ name: flow.name, type: flow.type.toLowerCase(), ok: true });
@@ -3458,22 +3527,29 @@ app.post('/api/import', async (req, res) => {
   if (typeof yamlContent !== 'string' || !yamlContent.trim())
     return res.status(400).json({ error: 'Ingen YAML at importere' });
 
-  const importDir = path.join(FLOWS_DIR, `import_${customer.id}`);
+  const importDir = path.join(FLOWS_DIR, `import_${safeFileName(customer.id, 'ukendt')}`);
   if (!fs.existsSync(importDir)) fs.mkdirSync(importDir, { recursive: true });
 
-  const filePath = path.join(importDir, fileName);
-  fs.writeFileSync(filePath, yamlContent, 'utf8');
+  // Navnet er kun et navn. Kom det med mapper eller ".." med, er de skrællet af.
+  const trygtNavn = safeFileName(fileName, 'import.yaml');
+  const filePath = path.join(importDir, trygtNavn);
+  if (!insideFlowsDir(filePath))
+    return res.status(400).json({ error: 'Ugyldigt filnavn' });
 
-  const cmd = action || 'create';
-  addLog('INFO', `Importing "${fileName}" to ${customer.name} (action: ${cmd})`, customer.name, 'IMPORT');
+  let cmd;
+  try { cmd = archyVerb(action); }
+  catch (e) { return res.status(400).json({ error: e.message }); }
+
+  fs.writeFileSync(filePath, yamlContent, 'utf8');
+  addLog('INFO', `Importing "${trygtNavn}" to ${customer.name} (action: ${cmd})`, customer.name, 'IMPORT');
 
   try {
-    const out = await runArchy(`${cmd} --file "${filePath}"`, customer);
-    addLog('SUCCESS', `Import ok: "${fileName}" → ${customer.name}`, customer.name, 'IMPORT');
+    const out = await runArchy(`${cmd} --file ${archyArg(filePath, 'Filsti')}`, customer);
+    addLog('SUCCESS', `Import ok: "${trygtNavn}" → ${customer.name}`, customer.name, 'IMPORT');
     res.json({ ok: true, output: out });
   } catch (e) {
     const msg = e.message || '';
-    addLog('ERROR', `Import failed for "${fileName}" to ${customer.name}: ${msg}`, customer.name, 'IMPORT');
+    addLog('ERROR', `Import failed for "${trygtNavn}" to ${customer.name}: ${msg}`, customer.name, 'IMPORT');
     // Archy exit 108 — flow already exists with 'create' action
     if (msg.toLowerCase().includes('already exists')) {
       return res.status(409).json({ error: 'already_exists', message: msg });
@@ -3508,7 +3584,9 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
   const before = new Map(fs.readdirSync(exportDir).filter(f => f.endsWith('.yaml')).map(f => [f, mtimes(f)]));
 
   await runArchy(
-    `export --flowName "${flowName}" --flowType ${String(flowType).toLowerCase()} --exportType yaml --force --outputDir "${exportDir}"`,
+    `export --flowName ${archyArg(flowName, 'Flownavn')} ` +
+    `--flowType ${archyBareArg(String(flowType).toLowerCase(), 'Flowtype')} ` +
+    `--exportType yaml --force --outputDir ${archyArg(exportDir, 'Mappe')}`,
     source
   );
   const touched = fs.readdirSync(exportDir).filter(f => f.endsWith('.yaml'))
@@ -3526,8 +3604,17 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
   for (const kind of ['datatable', 'dataaction']) {
     const names = deps[kind] || [];
     if (!names.length) continue;
-    let existing = new Set();
-    try { existing = await lookupExisting(kind, names, tgtToken, tgtBase); } catch (_) {}
+    // Uvished er ikke det samme som fravær. Fejlen her blev før slugt, og den
+    // tomme mængde betød "alt mangler" — så oprettede vi tabeller og data
+    // actions i mål-org'en som allerede lå der. Et udløbet token eller en
+    // manglende rettighed var nok: opslaget svarer 401 og kaster.
+    let existing;
+    try { existing = await lookupExisting(kind, names, tgtToken, tgtBase); }
+    catch (e) {
+      const besked = `Kunne ikke slå ${kind} op i "${target.name}": ${describeApiError(e)}`;
+      trail.push(`✗ ${besked}`);
+      return { ok: false, error: besked };
+    }
     const missing = names.filter(n => !existing.has(n));
     if (!missing.length) continue;
 
@@ -3572,8 +3659,15 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
   for (const kind of FLOW_KINDS) {
     const names = deps[kind] || [];
     if (!names.length) continue;
-    let existing = new Set();
-    try { existing = await lookupExisting(kind, names, tgtToken, tgtBase); } catch (_) {}
+    // Samme som ovenfor: fejler opslaget, ved vi ikke om flowet er der, og så
+    // migrerer vi ikke oveni i blinde.
+    let existing;
+    try { existing = await lookupExisting(kind, names, tgtToken, tgtBase); }
+    catch (e) {
+      const besked = `Kunne ikke slå ${kind} op i "${target.name}": ${describeApiError(e)}`;
+      trail.push(`✗ ${besked}`);
+      return { ok: false, error: besked };
+    }
     for (const n of names) {
       if (existing.has(n)) continue;
       const { token: srcToken, apiBase: srcBase } = await getToken(source);
@@ -3590,7 +3684,7 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
 
   // Publicér — et modul skal være publiceret for at kunne refereres af et flow
   try {
-    await runArchy(`publish --file "${filePath}"`, target);
+    await runArchy(`publish --file ${archyArg(filePath, 'Filsti')}`, target);
     addLog('SUCCESS', `Flow-afhængighed "${flowName}" (${flowType}) migreret til ${target.name}`, target.name, 'MIGRATE');
     return { ok: true };
   } catch (e) {
@@ -3739,7 +3833,9 @@ app.post('/api/migrate/prepare', async (req, res) => {
     const before = new Map(fs.readdirSync(exportDir).filter(f => f.endsWith('.yaml')).map(f => [f, mtimes(f)]));
 
     await runArchy(
-      `export --flowName "${flowName}" --flowType ${flowType.toLowerCase()} --exportType yaml --force --outputDir "${exportDir}"`,
+      `export --flowName ${archyArg(flowName, 'Flownavn')} ` +
+      `--flowType ${archyBareArg(String(flowType).toLowerCase(), 'Flowtype')} ` +
+      `--exportType yaml --force --outputDir ${archyArg(exportDir, 'Mappe')}`,
       source
     );
 
@@ -3893,7 +3989,7 @@ app.post('/api/migrate/commit', async (req, res) => {
 
   // filePath kommer fra klienten — hold den inden for FLOWS_DIR
   const resolved = path.resolve(filePath || '');
-  if (!resolved.startsWith(path.resolve(FLOWS_DIR) + path.sep) || !fs.existsSync(resolved)) {
+  if (!insideFlowsDir(resolved) || !fs.existsSync(resolved)) {
     return res.status(400).json({ error: 'Ugyldig filsti' });
   }
 
@@ -3947,14 +4043,14 @@ app.post('/api/migrate/commit', async (req, res) => {
       fs.writeFileSync(importFile, yaml, 'utf8');
     }
 
-    const cmd = action || 'create';
+    const cmd = archyVerb(action);
     addLog('INFO', `Importing "${path.basename(importFile)}" to ${target.name} (action: ${cmd})`, target.name, 'MIGRATE');
     // finally: fejler importen, skal sidefilen alligevel væk. Uden den ligger
     // der en ".import-…"-fil tilbage i eksportmappen efter hver mislykket
     // migrering.
     let out;
     try {
-      out = await runArchy(`${cmd} --file "${importFile}"`, target);
+      out = await runArchy(`${cmd} --file ${archyArg(importFile, 'Filsti')}`, target);
     } finally {
       if (importFile !== resolved) { try { fs.unlinkSync(importFile); } catch (_) {} }
     }
@@ -4153,7 +4249,7 @@ app.post('/api/files/cleanup', (req, res) => {
     for (const f of toDelete) {
       // Bliv inden for FLOWS_DIR uanset hvad
       const resolved = path.resolve(f.path);
-      if (!resolved.startsWith(path.resolve(FLOWS_DIR) + path.sep)) continue;
+      if (!insideFlowsDir(resolved)) continue;
       try { fs.unlinkSync(resolved); deleted++; } catch (_) {}
     }
     addLog('SUCCESS', `Oprydning: ${deleted} gamle YAML-filer slettet (beholdt ${keep} pr. flow, ${Math.round(freed / 1024)} kB frigivet)`, null, 'SYSTEM');
@@ -4167,10 +4263,14 @@ app.post('/api/files/cleanup', (req, res) => {
 
 app.get('/api/files/content', (req, res) => {
   const { filePath } = req.query;
-  if (!filePath || !filePath.startsWith(FLOWS_DIR))
-    return res.status(400).json({ error: 'Invalid path' });
-  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Not found' });
-  res.json({ content: fs.readFileSync(filePath, 'utf8') });
+  // Tjekket var før en ren strengsammenligning uden path.resolve, og så slap
+  // "…\flows\..\customers.json" igennem — hele kundefilen med credentials kunne
+  // hentes gennem dette endpoint. insideFlowsDir opløser stien først.
+  if (!insideFlowsDir(filePath))
+    return res.status(400).json({ error: 'Ugyldig filsti — kun filer under flows/' });
+  const resolved = path.resolve(String(filePath));
+  if (!fs.existsSync(resolved)) return res.status(404).json({ error: 'Not found' });
+  res.json({ content: fs.readFileSync(resolved, 'utf8') });
 });
 
 // ── README ────────────────────────────────────────────────────────────────────
@@ -4247,7 +4347,9 @@ module.exports = {
   orgManifestKey, findManifestEntry,
   // Archy og fejltekster
   parseArchyOutput, truncateArchyError, archyErrorReason, describeApiError,
-  archyCredFlags,
+  archyCredFlags, archyArg, archyBareArg, archyVerb,
+  // filstier fra klienten
+  insideFlowsDir, safeFileName, FLOWS_DIR,
   // maskering
   redactSecrets
 };
