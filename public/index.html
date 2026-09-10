@@ -487,7 +487,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.39.1 · Archy GUI</div>
+    <div class="version" id="app-version">v1.39.2 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1226,8 +1226,8 @@ if (!K) {
   document.addEventListener('DOMContentLoaded', () => {
     document.body.insertAdjacentHTML('afterbegin',
       '<div style="background:#b00020;color:#fff;padding:10px 14px;font:14px system-ui">' +
-      'Kunne ikke hente <code>/konventioner.js</code> fra serveren. Genindlæs siden — ' +
-      'indtil da er trin-rækkefølgen og versionsendelsen ukendte.</div>');
+      t('boot_no_conventions').replace('{file}', '<code>/konventioner.js</code>') +
+      '</div>');
   });
 }
 
@@ -1439,10 +1439,26 @@ const LANGS = {
     val_warnings:'Advarsler — import kan muligvis fejle',
     val_no_resources:'Ingen ressourcer fundet i YAML at tjekke (division, køer, datatables, actions, prompts)',
     val_missing_res:'ressource(r) mangler i mål-org — import vil fejle!',
+    val_no_jsyaml:'js-yaml biblioteket er ikke tilgængeligt (kræver internetforbindelse til CDN)',
+    val_syntax_ok:'YAML syntaks OK',
+    val_line_col:'linje {l}, kolonne {c}',
+    val_expected_object:'Forventet et YAML-objekt — fandt {found}',
+    val_a_list:'en liste',
+    val_no_key:'(ingen nøgle)',
+    val_bad_root:'Rod-nøgle "{key}" er ikke en gyldig Archy flow-type.\nGyldige typer: {types}',
+    val_empty_body:'Indhold under "{type}:" er tomt eller ugyldigt',
+    val_name:'Navn',
+    val_missing_name:'Mangler "name:" (flow-navn)',
+    val_missing_field:'Mangler "{field}:"',
+    val_all_ok:'Alt ser korrekt ud — klar til import ✓',
+    val_all_res_found:'Alle {n} ressourcer fundet i mål-org — klar til import',
+    val_org_title:'🌐 VALIDERING MOD ORG',
     export_stop:'⏹ Stop',
     export_saved_in:'Gemt i',
     export_errors:'fejl',
     export_saved_to:'gemt i',
+    export_all_done:'Alle {n} flows eksporteret til "{folder}"',
+    export_all_stopped:'Stoppet — {n} flows gemt i "{folder}"',
     ph_search_flow:'🔍  Søg flow…',
     ph_choose_flow:'— vælg flow —',
     da_label_sourceint:'Kilde-integration (kun actions herfra vises)',
@@ -1672,6 +1688,8 @@ const LANGS = {
     division_home:'Home (standard)',
     division_need_org:'Vælg region og indtast credentials først — så hentes divisionerne fra org\'en',
     division_load_failed:'Kunne ikke hente divisioner',
+    division_not_in_org:'(findes ikke i org’en)',
+    boot_no_conventions:'Kunne ikke hente {file} fra serveren. Genindlæs siden — indtil da er trin-rækkefølgen og versionsendelsen ukendte.',
     hint_division:'Divisionen hører til miljøet. Forfremmer man fra DEV til UAT, skifter flowet og tabellen med. Er der ingen sat, bruges Home.',
     action_default_note:'publiceres som standard — flowet er i drift med det samme',
     action_prod_note:'prod: publiceres IKKE som standard — lægges som kladde du selv publicerer',
@@ -1860,10 +1878,26 @@ const LANGS = {
     val_warnings:'Warnings — the import may fail',
     val_no_resources:'No resources found in the YAML to check (division, queues, datatables, actions, prompts)',
     val_missing_res:'resource(s) missing in the target org — the import will fail!',
+    val_no_jsyaml:'The js-yaml library is unavailable (needs an internet connection to the CDN)',
+    val_syntax_ok:'YAML syntax OK',
+    val_line_col:'line {l}, column {c}',
+    val_expected_object:'Expected a YAML object — found {found}',
+    val_a_list:'a list',
+    val_no_key:'(no key)',
+    val_bad_root:'Root key "{key}" is not a valid Archy flow type.\nValid types: {types}',
+    val_empty_body:'The content under "{type}:" is empty or invalid',
+    val_name:'Name',
+    val_missing_name:'Missing "name:" (flow name)',
+    val_missing_field:'Missing "{field}:"',
+    val_all_ok:'Everything looks correct — ready to import ✓',
+    val_all_res_found:'All {n} resources found in the target org — ready to import',
+    val_org_title:'🌐 VALIDATION AGAINST ORG',
     export_stop:'⏹ Stop',
     export_saved_in:'Saved in',
     export_errors:'errors',
     export_saved_to:'saved in',
+    export_all_done:'All {n} flows exported to "{folder}"',
+    export_all_stopped:'Stopped — {n} flows saved in "{folder}"',
     ph_search_flow:'🔍  Search flow…',
     ph_choose_flow:'— select flow —',
     da_label_sourceint:'Source integration (only its actions are shown)',
@@ -2093,6 +2127,8 @@ const LANGS = {
     division_home:'Home (default)',
     division_need_org:'Pick a region and enter credentials first — the divisions are then fetched from the org',
     division_load_failed:'Could not fetch divisions',
+    division_not_in_org:'(not found in the org)',
+    boot_no_conventions:'Could not fetch {file} from the server. Reload the page — until then the stage order and the version suffix are unknown.',
     hint_division:'The division belongs to the environment. Promote from DEV to UAT and the flow and table move with it. If none is set, Home is used.',
     action_default_note:'published by default — the flow is live straight away',
     action_prod_note:'prod: NOT published by default — left as a draft for you to publish',
@@ -2281,10 +2317,26 @@ const LANGS = {
     val_warnings:'Avertissements — l\'import peut échouer',
     val_no_resources:'Aucune ressource à vérifier dans le YAML (division, files, datatables, actions, prompts)',
     val_missing_res:'ressource(s) manquante(s) dans l\'org cible — l\'import échouera !',
+    val_no_jsyaml:'La bibliothèque js-yaml est indisponible (nécessite une connexion internet au CDN)',
+    val_syntax_ok:'Syntaxe YAML OK',
+    val_line_col:'ligne {l}, colonne {c}',
+    val_expected_object:'Objet YAML attendu — reçu : {found}',
+    val_a_list:'une liste',
+    val_no_key:'(aucune clé)',
+    val_bad_root:'La clé racine "{key}" est un type de flow Archy inconnu.\nTypes valides : {types}',
+    val_empty_body:'Le contenu sous "{type}:" est vide ou invalide',
+    val_name:'Nom',
+    val_missing_name:'Absence de "name:" (nom du flow)',
+    val_missing_field:'Absence de "{field}:"',
+    val_all_ok:'Tout semble correct — prêt à importer ✓',
+    val_all_res_found:'Les {n} ressources trouvées dans l’org cible — prêt à importer',
+    val_org_title:'🌐 VALIDATION VS ORG',
     export_stop:'⏹ Arrêter',
     export_saved_in:'Enregistré dans',
     export_errors:'erreurs',
     export_saved_to:'enregistré dans',
+    export_all_done:'Les {n} flows ont été exportés vers "{folder}"',
+    export_all_stopped:'Arrêté — {n} flows enregistrés dans "{folder}"',
     ph_search_flow:'🔍  Rechercher un flow…',
     ph_choose_flow:'— choisir un flow —',
     da_label_sourceint:'Intégration source (seules ses actions sont affichées)',
@@ -2514,6 +2566,8 @@ const LANGS = {
     division_home:'Home (par défaut)',
     division_need_org:'Choisissez d\'abord une région et saisissez les identifiants — les divisions seront récupérées de l\'org',
     division_load_failed:'Impossible de récupérer les divisions',
+    division_not_in_org:'(introuvable dans l’org)',
+    boot_no_conventions:'Impossible de récupérer {file} depuis le serveur. Rechargez la page — d’ici là, l’ordre des étapes et le suffixe de version sont inconnus.',
     hint_division:'La division appartient à l\'environnement. Une promotion de DEV vers UAT y déplace le flow et la table. Sans division définie, Home est utilisé.',
     action_default_note:'publié par défaut — le flow est actif immédiatement',
     action_prod_note:'prod : NON publié par défaut — laissé en brouillon à publier vous-même',
@@ -2702,10 +2756,26 @@ const LANGS = {
     val_warnings:'Waarschuwingen — de import kan mislukken',
     val_no_resources:'Geen resources in de YAML om te controleren (division, queues, datatables, actions, prompts)',
     val_missing_res:'resource(s) ontbreken in de doel-org — de import zal mislukken!',
+    val_no_jsyaml:'De js-yaml-bibliotheek is niet beschikbaar (vereist internetverbinding met de CDN)',
+    val_syntax_ok:'YAML-syntaxis OK',
+    val_line_col:'regel {l}, kolom {c}',
+    val_expected_object:'YAML-object verwacht — {found} gevonden',
+    val_a_list:'een lijst',
+    val_no_key:'(geen sleutel)',
+    val_bad_root:'Hoofdsleutel "{key}" is geen geldig Archy-flowtype.\nGeldige types: {types}',
+    val_empty_body:'De inhoud onder "{type}:" is leeg of ongeldig',
+    val_name:'Naam',
+    val_missing_name:'Ontbrekend "name:" (flownaam)',
+    val_missing_field:'Ontbrekend "{field}:"',
+    val_all_ok:'Alles ziet er goed uit — klaar om te importeren ✓',
+    val_all_res_found:'Alle {n} resources gevonden in de doel-org — klaar om te importeren',
+    val_org_title:'🌐 VALIDATIE TEGEN ORG',
     export_stop:'⏹ Stoppen',
     export_saved_in:'Opgeslagen in',
     export_errors:'fouten',
     export_saved_to:'opgeslagen in',
+    export_all_done:'Alle {n} flows geëxporteerd naar "{folder}"',
+    export_all_stopped:'Gestopt — {n} flows opgeslagen in "{folder}"',
     ph_search_flow:'🔍  Zoek flow…',
     ph_choose_flow:'— kies flow —',
     da_label_sourceint:'Bronintegratie (alleen de bijbehorende actions worden getoond)',
@@ -2935,6 +3005,8 @@ const LANGS = {
     division_home:'Home (standaard)',
     division_need_org:'Kies eerst een regio en voer credentials in — de divisies worden dan uit de org gehaald',
     division_load_failed:'Kon divisies niet ophalen',
+    division_not_in_org:'(niet gevonden in de org)',
+    boot_no_conventions:'Kon {file} niet ophalen van de server. Herlaad de pagina — tot dan zijn de fasevolgorde en het versiesuffix onbekend.',
     hint_division:'De divisie hoort bij de omgeving. Promoveer je van DEV naar UAT, dan verhuizen flow en tabel mee. Is er geen ingesteld, dan wordt Home gebruikt.',
     action_default_note:'standaard gepubliceerd — de flow is meteen live',
     action_prod_note:'prod: standaard NIET gepubliceerd — blijft een concept dat je zelf publiceert',
@@ -3123,10 +3195,26 @@ const LANGS = {
     val_warnings:'Advertencias — la importación puede fallar',
     val_no_resources:'No hay recursos que comprobar en el YAML (division, colas, datatables, actions, prompts)',
     val_missing_res:'recurso(s) faltan en la org de destino — ¡la importación fallará!',
+    val_no_jsyaml:'La biblioteca js-yaml no está disponible (requiere conexión a internet con la CDN)',
+    val_syntax_ok:'Sintaxis YAML OK',
+    val_line_col:'línea {l}, columna {c}',
+    val_expected_object:'Se esperaba un objeto YAML — se encontró {found}',
+    val_a_list:'una lista',
+    val_no_key:'(sin clave)',
+    val_bad_root:'La clave raíz "{key}" no es un tipo de flow de Archy válido.\nTipos válidos: {types}',
+    val_empty_body:'El contenido bajo "{type}:" está vacío o no es válido',
+    val_name:'Nombre',
+    val_missing_name:'Falta "name:" (nombre del flow)',
+    val_missing_field:'Falta "{field}:"',
+    val_all_ok:'Todo parece correcto — listo para importar ✓',
+    val_all_res_found:'Los {n} recursos encontrados en la org de destino — listo para importar',
+    val_org_title:'🌐 VALIDACIÓN CONTRA LA ORG',
     export_stop:'⏹ Detener',
     export_saved_in:'Guardado en',
     export_errors:'errores',
     export_saved_to:'guardado en',
+    export_all_done:'Los {n} flows exportados a "{folder}"',
+    export_all_stopped:'Detenido — {n} flows guardados en "{folder}"',
     ph_search_flow:'🔍  Buscar flow…',
     ph_choose_flow:'— elegir flow —',
     da_label_sourceint:'Integración de origen (solo se muestran sus actions)',
@@ -3356,6 +3444,8 @@ const LANGS = {
     division_home:'Home (por defecto)',
     division_need_org:'Elija primero una región e introduzca las credenciales: las divisiones se obtienen de la org',
     division_load_failed:'No se pudieron obtener las divisiones',
+    division_not_in_org:'(no existe en la org)',
+    boot_no_conventions:'No se pudo obtener {file} del servidor. Recarga la página — hasta entonces se desconocen el orden de las etapas y el sufijo de versión.',
     hint_division:'La división pertenece al entorno. Al promover de DEV a UAT, el flow y la tabla se mueven con ella. Si no se define ninguna, se usa Home.',
     action_default_note:'publicado por defecto: el flow está activo de inmediato',
     action_prod_note:'prod: NO se publica por defecto: queda como borrador para que lo publique usted',
@@ -3377,7 +3467,7 @@ const LANGS = {
   }
 };
 
-let currentLang = 'da';
+let currentLang = localStorage.getItem('lang') || 'da';
 function t(key) { return (LANGS[currentLang] || LANGS.da)[key] || LANGS.da[key] || key; }
 
 function applyLang() {
@@ -3442,9 +3532,8 @@ function setLang(lang) {
 }
 
 function applyStoredLang() {
-  const saved = localStorage.getItem('lang') || 'da';
-  currentLang = saved;
-  document.getElementById('langSelect').value = saved;
+  currentLang = localStorage.getItem('lang') || 'da';
+  document.getElementById('langSelect').value = currentLang;
   applyLang();
 }
 
@@ -4375,15 +4464,16 @@ async function doExportAll() {
         _exportAllJobId = null;
         const folderName = job.savedTo.split(/[\\/]/).pop();
         logBox.innerHTML += `<br><strong>${t('export_saved_in')}: <span style="color:var(--accent)">${escapeHtml(job.savedTo)}</span></strong>`;
+        const folderHtml = escapeHtml(folderName);
         if (job.status === 'cancelled') {
           showAlert('ex-alert',
-            `⏹ Stoppet — ${job.succeeded} flows gemt i "${folderName}"`,
+            '⏹ ' + t('export_all_stopped').replace('{n}', job.succeeded).replace('{folder}', () => folderHtml),
             'info');
         } else {
           showAlert('ex-alert',
             job.failed === 0
-              ? `✓ Alle ${job.succeeded} flows eksporteret til "${folderName}"`
-              : `⚠ ${job.succeeded} ok / ${job.failed} ${t('export_errors')} — ${t('export_saved_to')} "${folderName}"`,
+              ? '✓ ' + t('export_all_done').replace('{n}', job.succeeded).replace('{folder}', () => folderHtml)
+              : `⚠ ${job.succeeded} ok / ${job.failed} ${t('export_errors')} — ${t('export_saved_to')} "${folderHtml}"`,
             job.failed === 0 ? 'ok' : 'info');
         }
         document.getElementById('ex-all-btn').disabled = false;
@@ -4474,7 +4564,7 @@ function validateYaml() {
   if (!yaml) { el.innerHTML = vRow('err', t('val_no_yaml')); return; }
 
   if (typeof jsyaml === 'undefined') {
-    el.innerHTML = vRow('err','js-yaml biblioteket er ikke tilgængeligt (kræver internetforbindelse til CDN)');
+    el.innerHTML = vRow('err', t('val_no_jsyaml'));
     return;
   }
 
@@ -4484,9 +4574,11 @@ function validateYaml() {
   // 1. YAML syntaks
   try {
     parsed = jsyaml.load(yaml);
-    rows.push(vRow('ok','YAML syntaks OK'));
+    rows.push(vRow('ok', t('val_syntax_ok')));
   } catch (e) {
-    const loc = e.mark ? `linje ${e.mark.line+1}, kolonne ${e.mark.column+1}` : '';
+    const loc = e.mark
+      ? t('val_line_col').replace('{l}', e.mark.line+1).replace('{c}', e.mark.column+1)
+      : '';
     rows.push(vRow('err', `${t('val_syntax_err')}${loc?' '+t('val_at')+' '+loc:''}: ${e.reason||e.message}`));
     el.innerHTML = rows.join('');
     return;
@@ -4494,15 +4586,18 @@ function validateYaml() {
 
   // 2. Rod-nøgle er en gyldig Archy flow-type
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    rows.push(vRow('err','Forventet et YAML-objekt — fandt ' + (Array.isArray(parsed)?'en liste':typeof parsed)));
+    const fandt = Array.isArray(parsed) ? t('val_a_list') : typeof parsed;
+    rows.push(vRow('err', t('val_expected_object').replace('{found}', () => fandt)));
     el.innerHTML = rows.join('');
     return;
   }
   const rootKeys  = Object.keys(parsed);
   const flowType  = rootKeys.find(k => _ARCHY_TYPES.has(k));
   if (!flowType) {
-    const found = rootKeys[0] || '(ingen nøgle)';
-    rows.push(vRow('err', `Rod-nøgle "${found}" er ikke en gyldig Archy flow-type.\nGyldige typer: ${[..._ARCHY_TYPES].join(', ')}`));
+    const found = rootKeys[0] || t('val_no_key');
+    rows.push(vRow('err', t('val_bad_root')
+      .replace('{key}', () => found)
+      .replace('{types}', () => [..._ARCHY_TYPES].join(', '))));
     el.innerHTML = rows.join('');
     return;
   }
@@ -4511,28 +4606,28 @@ function validateYaml() {
   // 3. Felter under flow-typen
   const flow = parsed[flowType];
   if (!flow || typeof flow !== 'object') {
-    rows.push(vRow('err', `Indhold under "${flowType}:" er tomt eller ugyldigt`));
+    rows.push(vRow('err', t('val_empty_body').replace('{type}', () => flowType)));
     el.innerHTML = rows.join('');
     return;
   }
 
   const nm = flow.name || flow.flowName;
-  if (nm) rows.push(vRow('ok',  `Navn: "${nm}"`));
-  else     rows.push(vRow('err','Mangler "name:" (flow-navn)'));
+  if (nm) rows.push(vRow('ok',  `${t('val_name')}: "${nm}"`));
+  else     rows.push(vRow('err', t('val_missing_name')));
 
   if (_TYPES_WITH_REF.has(flowType)) {
     if (flow.startUpRef) rows.push(vRow('ok',  `startUpRef: ${flow.startUpRef}`));
-    else                 rows.push(vRow('warn','Mangler "startUpRef:"'));
+    else                 rows.push(vRow('warn', t('val_missing_field').replace('{field}', 'startUpRef')));
   }
 
   if (flow.defaultLanguage) rows.push(vRow('ok',  `defaultLanguage: ${flow.defaultLanguage}`));
-  else                      rows.push(vRow('warn','Mangler "defaultLanguage:"'));
+  else                      rows.push(vRow('warn', t('val_missing_field').replace('{field}', 'defaultLanguage')));
 
   if (flow.supportedLanguages) {
     const langs = Object.keys(flow.supportedLanguages);
     rows.push(vRow('ok', `supportedLanguages: ${langs.join(', ')}`));
   } else {
-    rows.push(vRow('warn','Mangler "supportedLanguages:"'));
+    rows.push(vRow('warn', t('val_missing_field').replace('{field}', 'supportedLanguages')));
   }
 
   // 4. Opsummering øverst
@@ -4540,7 +4635,7 @@ function validateYaml() {
   const hasWarn = rows.some(r => r.includes('var(--yellow)'));
   const summary = hasErr  ? vRow('err', t('val_errors_found'))
                 : hasWarn ? vRow('warn', t('val_warnings'))
-                :           vRow('ok',  'Alt ser korrekt ud — klar til import ✓');
+                :           vRow('ok',  t('val_all_ok'));
   el.innerHTML = `<div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">${t('val_title')}</div>`
                + summary
                + `<hr style="border:none;border-top:1px solid var(--border);margin:8px 0">`
@@ -4598,11 +4693,11 @@ async function validateYamlVsOrg() {
     } else if (missing.length > 0) {
       summary = vRow(false, '', '', `${missing.length} ${t('val_missing_res')}`);
     } else {
-      summary = vRow(true, '', '', `Alle ${checks.length} ressourcer fundet i m\u00e5l-org \u2014 klar til import`);
+      summary = vRow(true, '', '', t('val_all_res_found').replace('{n}', checks.length));
     }
 
     el.style.display = 'block';
-    el.innerHTML = `<div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">\ud83c\udf10 VALIDERING MOD ORG: ${escapeHtml((customers.find(c=>c.id===customerId)||{}).name||'')}</div>`
+    el.innerHTML = `<div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">${escapeHtml(t('val_org_title'))}: ${escapeHtml((customers.find(c=>c.id===customerId)||{}).name||'')}</div>`
       + summary
       + (rows.length ? `<hr style="border:none;border-top:1px solid var(--border);margin:8px 0">` + rows.join('') : '');
 
@@ -7350,7 +7445,7 @@ async function fillDivisions(selectId, envId, valgt) {
       .filter(d => d !== 'Home')
       .map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
     if (valgt && !(r.divisions || []).includes(valgt))
-      el.innerHTML += `<option value="${escapeHtml(valgt)}">${escapeHtml(valgt)} (findes ikke i org'en)</option>`;
+      el.innerHTML += `<option value="${escapeHtml(valgt)}">${escapeHtml(valgt)} ${escapeHtml(t('division_not_in_org'))}</option>`;
     el.value = valgt || '';
   } catch (e) {
     el.innerHTML = behold +

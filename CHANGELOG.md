@@ -5,6 +5,57 @@
 
 ---
 
+### v1.39.2
+---
+**🇩🇰 Dansk**
+
+- **Brugerfladen talte dansk i en engelsk flade.** Efter en eksport af alle flows stod der
+
+  ```
+  ✓ Alle 76 flows eksporteret til "Transcom"
+  ```
+
+  selv om sprogvælgeren stod på English. Beskeden var **hardkodet** i en template-streng og gik uden om `t()` — mens nabolinjen i det *samme* udtryk hentede sin tekst fra `LANGS`:
+
+  ```js
+  job.failed === 0
+    ? `✓ Alle ${job.succeeded} flows eksporteret til "${folderName}"`   // hardkodet
+    : `⚠ … ${t('export_errors')} — ${t('export_saved_to')} "…"`         // oversat
+  ```
+
+  Det er derfor den overlevede: koden *ser* oversat ud. Samme fejl sad i "Stoppet"-beskeden, som kun ses hvis man afbryder en eksport.
+
+- **Hele YAML-validatorens udskrift stod på dansk.** Fjorten tekster — fra `YAML syntaks OK` og `linje 12, kolonne 5` til `Mangler "startUpRef:"` og `Alt ser korrekt ud — klar til import` — samt overskriften `🌐 VALIDERING MOD ORG` og opsummeringen `Alle 76 ressourcer fundet i mål-org`. Alle fem sprog har nu nøglerne.
+
+- **To steder mere:** `(findes ikke i org'en)` i division-rullelisten, og advarselsbanneret når `/konventioner.js` ikke kan hentes. Banneret krævede en ekstra rettelse: det tegnes på `DOMContentLoaded`, men sproget blev først læst i `window.onload` — så `t()` ville have svaret dansk uanset hvad. `currentLang` sættes nu fra `localStorage` allerede ved erklæringen, så `t()` svarer rigtigt fra det første kald i programmet.
+
+- **Mappenavnet escapes nu**, inden det lander i `showAlert`, der skriver med `innerHTML` — samme linje som i v1.38.0.
+
+**En sprogvagt på brugerfladen** (`test/ui-sprog.test.js`), efter samme mønster som vagten på systemloggen fra v1.37.0, men med modsat fortegn: loggen skal være engelsk, fladen skal komme fra `LANGS`. Den læser klient-JS'en, blanker `LANGS` ud, springer kommentarer og regexer over — og fælder på en dansk streng i det der er tilbage.
+
+To ting kostede en omgang hver:
+
+| Problem | Udslag |
+|---|---|
+| `job.current / job.total` blev læst som starten på et regex | scanneren løb ud af trit og meldte kodestumper som tekst |
+| `klar` og `korrekt` manglede i ordlisten | `Alt ser korrekt ud — klar til import` slap igennem |
+
+Efterprøvet ved at genindføre alle fire rigtige fejl: **alle fire blev fanget**, med linjenummer i `index.html`. Dertil en test på at de fem sprogblokke har præcis de samme nøgler — mangler en nøgle i ét sprog, falder `t()` tilbage på dansk, altså den samme fejl gemt i ordbogen i stedet.
+
+**6 nye tests**, i alt 149.
+
+**🇬🇧 English**
+- **The interface spoke Danish in an English window.** `✓ Alle 76 flows eksporteret til "Transcom"` was hardcoded in a template string and bypassed `t()` — while the neighbouring branch of the *same* expression read its text from `LANGS`. That is why it survived: the code looks translated.
+- **The whole YAML validator output was Danish** — fourteen strings, plus the org-check heading and summary. All five languages now carry the keys.
+- **Two more:** `(findes ikke i org'en)` in the division dropdown, and the banner shown when `/konventioner.js` cannot be fetched. The banner needed a second fix: it is drawn on `DOMContentLoaded`, but the language was not read until `window.onload`, so `t()` would have answered Danish regardless. `currentLang` is now initialised from `localStorage` at declaration.
+- **The folder name is escaped** before it reaches `showAlert`, which writes with `innerHTML`.
+
+**A language guard for the interface** (`test/ui-sprog.test.js`), mirroring the system-log guard from v1.37.0 with the sign reversed: the log must be English, the interface must come from `LANGS`. Verified by reintroducing all four real defects — all four were caught, with line numbers. Plus a test that the five dictionaries hold exactly the same keys.
+
+**6 new tests**, 149 in total.
+
+---
+
 ### v1.39.1
 ---
 **🇩🇰 Dansk**
