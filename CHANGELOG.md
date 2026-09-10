@@ -5,6 +5,47 @@
 
 ---
 
+### v1.39.1
+---
+**🇩🇰 Dansk**
+
+- **Fejlen bærer nu stien til Archys fulde udskrift.** Tre migreringer fejlede med kun
+
+  ```
+  Architect Scripting session ended in error ( code: 99 )
+  ```
+
+  Det er Archys generiske afslutning. Den er så intetsigende at `archyErrorReason` **aktivt fravælger den**, hvis der står noget mere præcist i udskriften — så når den alligevel kom igennem, var der intet mere præcist at finde. Og der var ikke noget at gå videre med.
+
+  Men Archy skriver selv en `Log:`-linje med stien til hele kørslen, og **`parseArchyOutput` filtrerede den væk som støj** — med rette når det gik godt, men netop når det gik galt var den den eneste pegepind til detaljen. Nu hæftes den på:
+
+  ```
+  the flow named 'ZZZ_findes_ikke' of type 'workflow' does not exist.
+    — full Archy output: C:\Tools\Archy\archyHome\debug\archy-debug-2026-09-10T08.31.18.687Z.txt
+  ```
+
+  Efterprøvet mod en rigtig org med en læsende eksport af et flow der ikke findes: stien kom med, og filen lå der. Den hæftes på **efter** afkortningen — ellers ville den selv blive skrevet væk på en lang udskrift, altså præcis dem hvor man har mest brug for den.
+
+- **Tre danske tekster slap stadig ind i systemloggen.** Sprogvagten fra v1.37.0 scannede `addLog(`, `throw new Error(` og `reject(new Error(` — men ikke de funktioner der **returnerer** en besked, som så ender i loggen som en del af `${e.message}`:
+
+  | Sted | Før | Nu |
+  |---|---|---|
+  | `truncateArchyError` | `[... 70 linjer skjult — viser de sidste 30 ...]` | `[... 70 lines hidden — showing the last 30 ...]` |
+  | `archyErrorReason` | `(+2 flere)` | `(+2 more)` |
+  | `describeApiError` | `Ukendt fejl` | `Unknown error` |
+
+  Vagten dækker nu også de seks funktioner der bygger fejlbeskeder. **Den fandt selv de to sidste** — jeg havde kun set den første.
+
+**7 nye tests**, i alt 143. Efterprøvet ved at genindføre hver af de fem fejl: alle fem blev fanget. To af dem krævede en kildekontrol på `runArchy`, som ikke kan køres uden Archy og en org — dér er **rækkefølgen** det testen holder øje med.
+
+**🇬🇧 English**
+- **Failures now carry the path to Archy's full output.** Three migrations failed with nothing but `Architect Scripting session ended in error ( code: 99 )` — Archy's generic terminator. Archy writes a `Log:` line pointing at the complete run, and `parseArchyOutput` was filtering it out as noise; right on success, wrong on failure. It is now appended to the error, after truncation so it cannot be trimmed away.
+- **Three Danish strings still reached the system log.** The guard from v1.37.0 scanned `addLog(` and thrown errors, but not the functions that *return* a message which later lands in `${e.message}`. It now covers the six message-building functions — and found two of the three itself.
+
+**7 new tests**, 143 in total.
+
+---
+
 ### v1.39.0
 ---
 **🇩🇰 Dansk**

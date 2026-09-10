@@ -100,6 +100,42 @@ test('ingen kastet fejl er på dansk — de ender i loggen som ${e.message}', ()
   assert.deepEqual(danske, [], 'danske fejlbeskeder:\n  ' + danske.join('\n  '));
 });
 
+// De funktioner der BYGGER en fejlbesked og returnerer den. Teksten herfra
+// ender i loggen som en del af ${e.message}, men står hverken i et addLog- eller
+// et throw-kald, så de tre scanninger ovenfor kunne ikke se den.
+// truncateArchyError slap netop forbi på den måde.
+const BESKEDBYGGERE = [
+  'truncateArchyError', 'archyErrorReason', 'archyValidationIssues',
+  'describeApiError', 'withArchyLog', 'parseArchyOutput'
+];
+
+function funktionskrop(navn) {
+  const start = SERVER.indexOf(`function ${navn}(`);
+  if (start === -1) return null;
+  const slut = SERVER.indexOf('\n}', start);
+  return SERVER.slice(start, slut + 2);
+}
+
+test('de funktioner der bygger fejlbeskeder skriver engelsk', () => {
+  const danske = [];
+  for (const navn of BESKEDBYGGERE) {
+    const krop = funktionskrop(navn);
+    assert.ok(krop, `fandt ikke ${navn} i server.js`);
+    for (const streng of strengeI(udenKommentarer(krop))) {
+      if (erDansk(streng)) danske.push(`${navn}: ${streng.replace(/\s+/g, ' ').slice(0, 80)}`);
+    }
+  }
+  assert.deepEqual(danske, [], 'dansk i en fejlbesked:\n  ' + danske.join('\n  '));
+});
+
+test('kontrol: de seks funktioner findes og har indhold', () => {
+  // En scanning der ikke finder noget ville bestå i tavshed.
+  for (const navn of BESKEDBYGGERE) {
+    const krop = funktionskrop(navn);
+    assert.ok(krop && krop.length > 100, `${navn} ser tom ud — er scanningen gået i stå?`);
+  }
+});
+
 test('kontrol: opdageren fælder faktisk dansk', () => {
   // Uden dette kunne de to ovenstående bestå fordi mønstret ikke matcher noget.
   assert.equal(erDansk('Kunne ikke skrive manifest'), true);

@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.39.0
+# Archy GUI — Flow Manager · v1.39.1
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.39.0**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.39.0**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.39.1**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.39.1**.
 
 ---
 
@@ -44,7 +44,7 @@ Alternativt manuelt: `node server.js`
 npm test
 ```
 
-134 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+143 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -183,6 +183,15 @@ Du kan vælge **Migrér valgte og fortsæt**, **Fortsæt uden** (flowet importer
 > **Skills der slås op dynamisk kan ikke tjekkes.** Bruger flowet `FindSkill(Task.Skills)`, afgøres skillet først når flowet kører. Dialogen siger det, men du må selv kontrollere at skillene findes i mål-org'en.
 
 Alt hvad der mangler skrives også til **Systemloggen**, så du kan finde det igen bagefter.
+
+> **Når Archy fejler uden at sige hvorfor.** Nogle fejl ender som `Architect Scripting session ended in error ( code: 99 )` — Archys generiske afslutning, der intet forklarer. Beskeden bærer derfor stien til Archys egen fulde udskrift:
+>
+> ```
+> Architect Scripting session ended in error ( code: 99 )
+>   — full Archy output: C:\Tools\Archy\archyHome\debug\archy-debug-….txt
+> ```
+>
+> Den fil indeholder hele kørslen. Archy skriver én pr. kald.
 
 #### 📤 Export YAML
 Eksporter ét flow eller hele org'en med live fremgangsindikator.
@@ -326,7 +335,7 @@ Double-click **`start.bat`** or run `node server.js` manually.
 npm test
 ```
 
-134 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+143 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 
@@ -452,6 +461,15 @@ You can choose **Migrate selected and continue**, **Continue anyway** (the flow 
 > **Dynamically resolved skills cannot be checked.** When a flow uses `FindSkill(Task.Skills)` the skill is decided at runtime. The dialog says so, but you have to verify yourself that the skills exist in the target org.
 
 Everything missing is also written to the **System Log**, so you can find it again afterwards.
+
+> **When Archy fails without saying why.** Some failures end as `Architect Scripting session ended in error ( code: 99 )` — Archy's generic terminator, which explains nothing. The message therefore carries the path to Archy's own full output:
+>
+> ```
+> Architect Scripting session ended in error ( code: 99 )
+>   — full Archy output: C:\Tools\Archy\archyHome\debug\archy-debug-….txt
+> ```
+>
+> That file holds the whole run. Archy writes one per call.
 
 #### 📤 Export YAML
 Export a single flow or an entire org with live progress indicator.

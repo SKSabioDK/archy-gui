@@ -2921,7 +2921,7 @@ function describeApiError(e) {
     if (Object.keys(rest).length) parts.push('— ' + JSON.stringify(rest).slice(0, 400));
   }
 
-  if (!parts.length) parts.push(e.message || 'Ukendt fejl');
+  if (!parts.length) parts.push(e.message || 'Unknown error');
 
   if (e.response.status) parts.push(`(HTTP ${e.response.status}`);
   else parts.push('(');
@@ -3144,7 +3144,25 @@ function truncateArchyError(raw) {
   const lines = raw.split(/\r?\n/);
   if (lines.length <= ARCHY_LOG_TAIL) return raw;
   const tail = lines.slice(-ARCHY_LOG_TAIL);
-  return `[... ${lines.length - ARCHY_LOG_TAIL} linjer skjult — viser de sidste ${ARCHY_LOG_TAIL} ...]\n` + tail.join('\n');
+  return `[... ${lines.length - ARCHY_LOG_TAIL} lines hidden — showing the last ${ARCHY_LOG_TAIL} ...]\n` + tail.join('\n');
+}
+
+// Archy skriver stien til sin egen fulde udskrift i en "Log:"-linje til sidst.
+// parseArchyOutput filtrerer den væk som støj — med rette når det gik godt.
+//
+// Men når det gik galt, er den den eneste pegepind til hele detaljen, og det vi
+// selv kan trække ud er nogle gange kun "Architect Scripting session ended in
+// error ( code: 99 )". Tre migreringer fejlede sådan, og der var intet at gå
+// videre med — mens hele forklaringen lå i en fil vi kendte stien til og smed
+// væk. Så hæftes den på fejlen i stedet.
+function archyDebugLog(out) {
+  const m = String(out || '').match(/^[ \t]*Log:[ \t]*(\S.*?)[ \t]*$/mi);
+  return m ? m[1] : null;
+}
+
+function withArchyLog(besked, out) {
+  const sti = archyDebugLog(out);
+  return sti ? `${besked}\n  — full Archy output: ${sti}` : besked;
 }
 
 // Fejler et flow valideringen, står den brugbare tekst i "Validation Results"
@@ -3218,7 +3236,7 @@ function archyErrorReason(out) {
   const valideringsfejl = archyValidationIssues(lines);
   if (valideringsfejl.length) {
     summary = valideringsfejl.slice(0, 3).join(' · ');
-    if (valideringsfejl.length > 3) summary += ` (+${valideringsfejl.length - 3} flere)`;
+    if (valideringsfejl.length > 3) summary += ` (+${valideringsfejl.length - 3} more)`;
     harEgenSti = true;
   }
 
@@ -3374,9 +3392,13 @@ function runArchy(args, customer) {
 
       // redactSecrets: err.message fra exec indeholder hele kommandolinjen,
       // inkl. --clientSecret. Den Error her ender også i svaret til browseren.
-      if (failed)               return reject(new Error(redactSecrets(truncateArchyError(archyErrorReason(combined) || parsed || 'Archy failed'))));
+      // Stien hæftes på EFTER afkortningen, så den ikke selv bliver skrevet væk.
+      const afvis = (grund) =>
+        reject(new Error(redactSecrets(withArchyLog(truncateArchyError(grund), combined))));
+
+      if (failed)               return afvis(archyErrorReason(combined) || parsed || 'Archy failed');
       if (finished || !err)     return resolve(parsed || 'OK');
-      reject(new Error(redactSecrets(truncateArchyError(archyErrorReason(combined) || parsed || err.message))));
+      afvis(archyErrorReason(combined) || parsed || err.message);
     });
   });
 }
@@ -4503,6 +4525,7 @@ module.exports = {
   orgManifestKey, findManifestEntry,
   // Archy og fejltekster
   parseArchyOutput, truncateArchyError, archyErrorReason, describeApiError,
+  archyDebugLog, withArchyLog,
   archyCredFlags, archyArg, archyBareArg, archyVerb, archyVersionFlag,
   // filstier fra klienten
   insideFlowsDir, safeFileName, missingFields, FLOWS_DIR,

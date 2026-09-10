@@ -216,6 +216,79 @@ test('archyErrorReason tager Exception-linjen ved en YAML-fejl', () => {
   assert.ok(!ud.includes('metadata'), 'metadata-halen skal skæres af');
 });
 
+// Halen herunder er Archys RIGTIGE udskrift fra en mislykket kørsel — to
+// mellemrum efter "Log:" og alt. Skrev jeg den selv, ville testen bevise at
+// koden passer til min hukommelse, ikke til Archy.
+const ARCHY_HALE = arkiv(
+  'Summary',
+  '',
+  "Command: 'validateYaml'",
+  "you must specify either an 'authToken' or 'clientId' and 'clientSecret' runtime values.",
+  '',
+  'Error(s) encountered.',
+  '',
+  'Log:  C:\\Tools\\Archy\\archyHome\\debug\\archy-debug-2026-09-10T08.27.06.569Z.txt',
+  'execution complete.',
+  '',
+  'exit code: 106'
+);
+
+const DEBUG_STI = 'C:\\Tools\\Archy\\archyHome\\debug\\archy-debug-2026-09-10T08.27.06.569Z.txt';
+
+test('archyDebugLog finder stien til Archys fulde udskrift', () => {
+  assert.equal(s.archyDebugLog(ARCHY_HALE), DEBUG_STI);
+});
+
+test('archyDebugLog svarer null når der ingen Log-linje er', () => {
+  for (const uden of ['', null, undefined, 'noget gik galt', 'Logbog: ikke det her'])
+    assert.equal(s.archyDebugLog(uden), null);
+});
+
+test('withArchyLog hæfter stien på fejlen', () => {
+  // Det var det her der manglede: tre migreringer fejlede med kun
+  // "session ended in error ( code: 99 )", og hele forklaringen lå i en fil
+  // vi kendte stien til og smed væk.
+  const ud = s.withArchyLog('Architect Scripting session ended in error ( code: 99 )', ARCHY_HALE);
+  assert.match(ud, /code: 99/);
+  assert.match(ud, /full Archy output/);
+  assert.ok(ud.includes(DEBUG_STI));
+});
+
+test('withArchyLog lader beskeden stå når der ingen sti er', () => {
+  assert.equal(s.withArchyLog('noget gik galt', 'ingen Log-linje her'), 'noget gik galt');
+});
+
+test('stien overlever afkortningen', () => {
+  // truncateArchyError beholder kun de sidste 30 linjer. Hæftede vi stien på
+  // FØR den, ville den selv blive skrevet væk på en lang udskrift.
+  const langt = Array.from({ length: 100 }, (_, i) => 'støjlinje ' + i).join('\n');
+  const ud = s.withArchyLog(s.truncateArchyError(langt), ARCHY_HALE);
+  assert.ok(ud.includes(DEBUG_STI), 'stien blev skrevet væk');
+  assert.match(ud, /lines hidden/, 'afkortningsbeskeden skal være engelsk');
+});
+
+test('afkortningsbeskeden er engelsk — den ender i systemloggen', () => {
+  // Den stod på dansk og slap forbi sprogvagten, fordi den returneres i stedet
+  // for at blive kastet eller logget direkte.
+  const ud = s.truncateArchyError(Array.from({ length: 50 }, (_, i) => 'l' + i).join('\n'));
+  assert.ok(!/linjer skjult/.test(ud));
+  assert.ok(ud.startsWith('[... 20 lines hidden'), ud.slice(0, 40));
+});
+
+test('runArchy hæfter stien på begge sine afvisningsveje', () => {
+  // runArchy kan ikke køres uden Archy og en org, så den her læser koden.
+  // RÆKKEFØLGEN er pointen: withArchyLog SKAL ligge uden om
+  // truncateArchyError. Omvendt ville stien selv blive afkortet væk på en lang
+  // udskrift — lige netop dem hvor man har mest brug for den.
+  const SERVER = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  assert.match(SERVER,
+    /reject\(new Error\(redactSecrets\(withArchyLog\(truncateArchyError\(/,
+    'afvisningen i runArchy hæfter ikke stien på uden om afkortningen');
+  // Én fælles afvisningsvej, så de to udgange ikke kan komme fra hinanden.
+  assert.equal((SERVER.match(/afvis\(archyErrorReason\(combined\)/g) || []).length, 2,
+    'begge udgange skal gå gennem den samme afvisning');
+});
+
 test('parseArchyOutput fjerner Archys bannere og opgraderingsreklame', () => {
   const ud = s.parseArchyOutput(arkiv(
     '*********************************',
@@ -235,7 +308,7 @@ test('parseArchyOutput fjerner Archys bannere og opgraderingsreklame', () => {
 test('truncateArchyError viser slutningen — det er dér fejlen står', () => {
   const langt = Array.from({ length: 100 }, (_, i) => 'linje ' + i).join('\n');
   const ud = s.truncateArchyError(langt);
-  assert.match(ud, /^\[\.\.\. 70 linjer skjult/);
+  assert.ok(ud.startsWith('[... 70 lines hidden'), ud.slice(0, 40));
   assert.ok(ud.endsWith('linje 99'));
 });
 
