@@ -220,3 +220,24 @@ test('stripSchemaUris fjerner pegepinde til kildens action, men beholder skemaer
     { requestTemplate: 'a', andet: 1 }
   );
 });
+
+test('scanYamlDependencies finder en fast bruger i "Transfer to User"', () => {
+  // Findes brugeren ikke i målet, kan flowet ikke importeres. Et udtryk slås
+  // først op når flowet kører og kan ikke tjekkes på forhånd.
+  const y = [
+    'inboundCall:',
+    '  name: X',
+    '  tasks:',
+    '    - task:',
+    '        actions:',
+    '          - transferToUser:',
+    '              targetUser:',
+    '                lit:',
+    '                  userName: frederik.lysgaard@sabiogroup.com',
+    '          - transferToUser:',
+    '              targetUser:',
+    '                exp: Task.bruger',
+    ''
+  ].join('\n');
+  assert.deepEqual(s.scanYamlDependencies(y).user, ['frederik.lysgaard@sabiogroup.com']);
+});

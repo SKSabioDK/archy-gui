@@ -5,6 +5,26 @@
 
 ---
 
+### v1.41.1
+---
+**🇩🇰 Dansk**
+
+- **Programmet starter på Pipeline** når der er sat grupper op, med den kunde man sidst arbejdede med valgt. Tavlen hentes ikke af sig selv — det ville kalde alle gruppens orgs, og et OAuth-miljø ville bede om login — så man trykker stadig *Vis pipeline*. Uden grupper starter det på Kunder som før.
+
+- **Brugere tjekkes før import.** Et flow med en fast bruger i *Transfer to User* (`targetUser: lit: userName: …`) blev ikke tjekket, så en bruger der ikke fandtes i mål-org'en først viste sig når Archy afviste importen. Nu slås brugeren op i målet på login-mailen, og en manglende bruger står i afhængighedsdialogen under *opret i mål-org først*, sammen med køerne. Brugere oprettes ikke af værktøjet. I de eksporterede flows er der 6 med faste brugere.
+
+  En bruger eller kø givet som udtryk (`exp:`) slås først op når flowet kører og kan ikke tjekkes på forhånd.
+
+**1 ny test**, i alt 170.
+
+**🇬🇧 English**
+- **The app starts on Pipeline** when groups are set up, with the last-used customer selected. The board is not fetched automatically.
+- **Users are checked before import.** A fixed user in *Transfer to User* was not checked, so a user missing in the target org only surfaced when Archy rejected the import. The user is now looked up by login email and listed under *create in target org first*, alongside queues. Users given as an expression cannot be checked in advance.
+
+**1 new test**, 170 in total.
+
+---
+
 ### v1.41.0
 ---
 **🇩🇰 Dansk**

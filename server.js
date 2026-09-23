@@ -3718,6 +3718,13 @@ function scanYamlDependencies(yaml) {
     botflow:      grab(new RegExp(`^\\s+botFlow:\\s*\\n\\s+([${ORD}][${ORD} .\\-()]*):`, 'gm')).filter(notMeta),
     targetflow:   grab(/targetFlow:\s*\n\s*(?:lit:\s*\n\s*)?name:\s*["']?([^'"\n]+)["']?/gm),
 
+    // ── Brugere ───────────────────────────────────────────────────────────
+    // "Transfer to User" med en fast bruger: targetUser: \n lit: \n userName: x@y.
+    // En bruger er en person i org'en — findes vedkommende ikke i målet, kan
+    // flowet ikke importeres, og vi kan ikke oprette brugeren for dem.
+    // Et udtryk (exp:) slås op når flowet kører og kan ikke tjekkes her.
+    user:          grab(/targetUser:\s*\n\s*lit:\s*\n\s*userName:[ \t]*["']?([^'"\n]+?)["']?[ \t]*$/gm),
+
     // ── Åbningstider ──────────────────────────────────────────────────────
     schedule:      grab(/schedule:\s*\n\s*selectedSchedule:\s*\n\s*(?:lit:\s*\n\s*)?name:\s*["']?([^'"\n]+)["']?/gm),
     schedulegroup: grab(/scheduleGroup:\s*\n\s*lit:\s*\n\s*name:\s*["']?([^'"\n]+)["']?/gm),
@@ -3765,6 +3772,23 @@ async function lookupExisting(kind, names, token, apiBase) {
       for (const x of e) if (names.includes(x.name)) found.add(x.name);
       if (e.length < bulk[kind].size) break;
       page++;
+    }
+    return found;
+  }
+
+  // Brugere findes på brugernavnet (login-mailen), ikke på et navnefelt.
+  if (kind === 'user') {
+    for (const n of names) {
+      try {
+        const r = await axios.post(`${apiBase}/api/v2/users/search`, {
+          pageSize: 5,
+          query: [{ type: 'EXACT', fields: ['email'], value: n }]
+        }, { headers: { ...H.headers, 'Content-Type': 'application/json' } });
+        const lav = String(n).toLowerCase();
+        if ((r.data.results || []).some(u =>
+          String(u.username || '').toLowerCase() === lav || String(u.email || '').toLowerCase() === lav))
+          found.add(n);
+      } catch (_) { /* uafklaret — tælles som manglende og markeres i rapporten */ }
     }
     return found;
   }
