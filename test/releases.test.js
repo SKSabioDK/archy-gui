@@ -127,3 +127,65 @@ test('flowHasDraft: en kladde eller en checked-in udgave over den publicerede', 
   assert.equal(s.flowHasDraft({ publishedVersion: { name: '3.0' }, checkedInVersion: { name: '4.0' } }), true);
   assert.equal(s.flowHasDraft({ publishedVersion: { name: '3.0' }, savedVersion: { name: '4.0' } }), true);
 });
+
+// ── v1.41.0: releases bor i org'en ──────────────────────────────────────────
+// Rollback skal virke fra en anden pc end den der forfremmede. Derfor ligger
+// historikken i manifest-rækken, og den lokale fil er kun en cache.
+
+const PROD_ENV = { id: 'prod', name: 'PROD', tenant: 'K', group: 'G', stage: 'prod' };
+
+test('compactRelease tager hverken indhold eller diff-linjer med til org\'en', () => {
+  const c = s.compactRelease({
+    id: 'a', at: 1, kind: 'promotion', toName: 'X', prevVersion: '4.0', newVersion: '5.0',
+    prevSnapshot: 'sti', newSnapshot: 'sti',
+    diff: { added: 2, removed: 1, noPrevious: false, hunks: [{ line: 1, lines: ['+ x'] }] }
+  });
+  assert.equal(c.prevSnapshot, undefined);
+  assert.equal(c.diff, undefined);
+  assert.deepEqual(c.diffSummary, { added: 2, removed: 1, noPrevious: false });
+  assert.equal(c.prevVersion, '4.0');   // det er DET rollback henter fra org'en
+});
+
+test('trimOrgReleases holder de nyeste og holder rækken under loftet', () => {
+  const mange = Array.from({ length: 50 }, (_, i) => ({ id: String(i), note: '' }));
+  const ud = s.trimOrgReleases(mange, {});
+  assert.equal(ud.length, s.ORG_RELEASES_MAX);
+  assert.equal(ud[ud.length - 1].id, '49');
+  const store = Array.from({ length: 10 }, (_, i) => ({ id: String(i), note: 'x'.repeat(20000) }));
+  const trimmet = s.trimOrgReleases(store, {});
+  assert.ok(trimmet.length < 10 && trimmet.length >= 1);
+  assert.equal(trimmet[trimmet.length - 1].id, '9');
+});
+
+test('mergeReleases: en release fra en anden pc kan rulles tilbage uden lokal cache', () => {
+  const fraOrg = [{ id: 'r1', at: 5, kind: 'promotion', toName: 'Betaling_v6', fromName: 'Betaling_v5',
+                   prevVersion: '12.0', newVersion: '13.0', diffSummary: { added: 1, removed: 1 } }];
+  const liste = s.mergeReleases(fraOrg, [], { env: PROD_ENV, baseName: 'Betaling', flowType: 'INBOUNDCALL' });
+  assert.equal(liste.length, 1);
+  assert.equal(liste[0].targetId, 'prod');
+  assert.equal(liste[0].source, 'org');
+  assert.equal(s.rollbackCandidate(liste).id, 'r1');
+});
+
+test('mergeReleases: org\'en vinder på status, cachen bidrager med diff-linjer', () => {
+  const lokal = [{ id: 'r1', at: 5, kind: 'promotion', targetId: 'prod', note: 'gammel',
+                   diff: { added: 1, removed: 1, hunks: [{ line: 1, lines: ['+ x'] }] }, prevSnapshot: 'p' }];
+  const org = [{ id: 'r1', at: 5, kind: 'promotion', note: 'ny fra anden pc', rolledBackBy: 'rb' }];
+  const [m] = s.mergeReleases(org, lokal, { env: PROD_ENV, baseName: 'B', flowType: 'INBOUNDCALL' });
+  assert.equal(m.note, 'ny fra anden pc');
+  assert.equal(m.rolledBackBy, 'rb');
+  assert.equal(m.diff.hunks.length, 1);
+  assert.equal(m.prevSnapshot, 'p');
+  assert.equal(m.source, 'org+local');
+});
+
+test('mergeReleases: poster der kun findes lokalt kommer med og siger det', () => {
+  const lokal = [{ id: 'kun-her', at: 1, kind: 'promotion', targetId: 'prod' }];
+  const [m] = s.mergeReleases([], lokal, { env: PROD_ENV, baseName: 'B', flowType: 'INBOUNDCALL' });
+  assert.equal(m.source, 'local');
+});
+
+test('rollbackCandidate nøjes med en udgave i org\'en — intet lokalt indhold kræves', () => {
+  const r = { id: 'x', at: 1, kind: 'promotion', prevVersion: '4.0', prevSnapshot: null };
+  assert.equal(s.rollbackCandidate([r]).id, 'x');
+});

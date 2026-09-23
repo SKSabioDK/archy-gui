@@ -487,7 +487,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.40.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.41.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1696,6 +1696,9 @@ const LANGS = {
     rb_title:'Publicér indholdet fra før seneste forfremmelse igen',
     rb_confirm:'Rul "{name}" tilbage til {label}?\n\nIndholdet fra før seneste forfremmelse publiceres igen som en ny udgave.',
     rb_done:'rullet tilbage til',
+    rb_running:'Ruller tilbage…',
+    rel_local_only:'kun på denne pc',
+    rel_local_only_title:'Miljøet har ingen manifest-tabel, eller den kunne ikke skrives. Releasen kan ikke ses eller rulles tilbage fra en anden pc.',
     rep_title:'Genpublicér flows der bruger modulet',
     rep_intro:'Et common module slår først igennem i de flows der kalder det, når de publiceres igen. Disse flows i {env} bruger "{module}":',
     rep_none:'Ingen flows i miljøet bruger modulet.',
@@ -2173,6 +2176,9 @@ const LANGS = {
     rb_title:'Publish the content from before the latest promotion again',
     rb_confirm:'Roll "{name}" back to {label}?\n\nThe content from before the latest promotion is published again as a new version.',
     rb_done:'rolled back to',
+    rb_running:'Rolling back…',
+    rel_local_only:'this PC only',
+    rel_local_only_title:'The environment has no manifest table, or it could not be written. The release cannot be seen or rolled back from another PC.',
     rep_title:'Republish flows that use the module',
     rep_intro:'A common module only takes effect in the flows that call it once they are published again. These flows in {env} use "{module}":',
     rep_none:'No flows in this environment use the module.',
@@ -2650,6 +2656,9 @@ const LANGS = {
     rb_title:'Republier le contenu d’avant la dernière promotion',
     rb_confirm:'Revenir de "{name}" à {label} ?\n\nLe contenu d’avant la dernière promotion est republié comme nouvelle version.',
     rb_done:'revenu à',
+    rb_running:'Retour arrière en cours…',
+    rel_local_only:'ce PC uniquement',
+    rel_local_only_title:'L’environnement n’a pas de table de manifeste, ou elle n’a pas pu être écrite. La version ne peut pas être vue ni annulée depuis un autre PC.',
     rep_title:'Republier les flows qui utilisent le module',
     rep_intro:'Un common module ne prend effet dans les flows qui l’appellent qu’une fois ceux-ci republiés. Ces flows dans {env} utilisent "{module}" :',
     rep_none:'Aucun flow de cet environnement n’utilise le module.',
@@ -3127,6 +3136,9 @@ const LANGS = {
     rb_title:'De inhoud van vóór de laatste promotie opnieuw publiceren',
     rb_confirm:'"{name}" terugdraaien naar {label}?\n\nDe inhoud van vóór de laatste promotie wordt opnieuw gepubliceerd als nieuwe versie.',
     rb_done:'teruggedraaid naar',
+    rb_running:'Terugdraaien…',
+    rel_local_only:'alleen deze pc',
+    rel_local_only_title:'De omgeving heeft geen manifesttabel, of die kon niet worden geschreven. De release is niet te zien of terug te draaien vanaf een andere pc.',
     rep_title:'Flows die de module gebruiken opnieuw publiceren',
     rep_intro:'Een common module werkt pas door in de flows die hem aanroepen als die opnieuw gepubliceerd worden. Deze flows in {env} gebruiken "{module}":',
     rep_none:'Geen flows in deze omgeving gebruiken de module.',
@@ -3604,6 +3616,9 @@ const LANGS = {
     rb_title:'Publicar de nuevo el contenido de antes de la última promoción',
     rb_confirm:'¿Revertir "{name}" a {label}?\n\nEl contenido de antes de la última promoción se publica de nuevo como una nueva versión.',
     rb_done:'revertido a',
+    rb_running:'Revirtiendo…',
+    rel_local_only:'solo este PC',
+    rel_local_only_title:'El entorno no tiene tabla de manifiesto, o no se pudo escribir. La versión no se puede ver ni revertir desde otro PC.',
     rep_title:'Republicar los flows que usan el módulo',
     rep_intro:'Un common module solo surte efecto en los flows que lo llaman cuando se vuelven a publicar. Estos flows en {env} usan "{module}":',
     rep_none:'Ningún flow de este entorno usa el módulo.',
@@ -4498,7 +4513,7 @@ async function runMigration() {
         // Et common module slår først igennem når de flows der kalder det
         // publiceres igen — brugeren vælger hvilke.
         if ((data.dependents || []).length) {
-          const res = await showRepublishModal(targetId, data.targetName || name, data.dependents, data.releaseId);
+          const res = await showRepublishModal(targetId, data.targetName || name, data.dependents, data.releaseRef);
           for (const x of (res || []))
             log(logBox, `    ${x.ok ? '✓' : '✗'} 🔁 ${x.name}${x.error ? ': ' + x.error : ''}`, x.ok ? 'ok' : 'err');
         }
@@ -7988,7 +8003,7 @@ function renderPipeline() {
     const rollback = (c.rollback && !c.unknown)
       ? `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm"
            style="font-size:10px;padding:2px 6px;border-color:var(--yellow);color:var(--yellow)" title="${t('rb_title')}"
-           onclick="rollbackRelease(${jsAttr(c.rollback.id)}, ${jsAttr(c.envId)}, ${jsAttr(c.rollback.label)}, ${jsAttr(c.name)})"
+           onclick="rollbackRelease(${jsAttr(JSON.stringify(c.rollback.ref))}, ${jsAttr(c.rollback.label)}, ${jsAttr(c.name)})"
            >↩ ${escapeHtml(c.rollback.label)}</button></div>`
       : '';
     const notes = c.releaseCount
@@ -8083,7 +8098,7 @@ async function promoteFromBoard(flowName, flowType, fromId, toId) {
     showAlert('pipelineAlert', (r.renamed
       ? `"${escapeHtml(r.fromName)}" → ${escapeHtml(to.name)}: ${t('demo_renamed_to')} "${escapeHtml(r.toName)}"`
       : `"${escapeHtml(r.fromName)}" → ${escapeHtml(to.name)}: ${t('demo_name_kept')}`) + diff, 'ok');
-    if ((r.dependents || []).length) await showRepublishModal(toId, r.toName, r.dependents, r.releaseId);
+    if ((r.dependents || []).length) await showRepublishModal(toId, r.toName, r.dependents, r.releaseRef);
     pipelineHashes = {};
     await loadPipeline();
     return;
@@ -8132,27 +8147,50 @@ async function openReleases(ctx) {
   document.getElementById('rel-overlay').style.display = 'flex';
 }
 
-function releaseDiffHtml(d) {
+// Diff'en for én release. Har serveren den ikke i sin cache (releasen blev lavet
+// fra en anden pc), bygges den først når man folder den ud — det koster en
+// eksport af to udgaver fra org'en, og det skal ikke ske for hver linje i listen.
+function releaseDiffHtml(r, i) {
+  const d = (r.diff && r.diff.hunks) ? r.diff : (r.diffSummary || r.diff);
   if (!d) return '';
   if (d.noPrevious) return `<div style="font-size:11px;color:var(--muted)">${t('rel_new')}</div>`;
-  if (!d.added && !d.removed) return `<div style="font-size:11px;color:var(--muted)">${t('rel_nochange')}</div>`;
+  if (d.added === 0 && d.removed === 0) return `<div style="font-size:11px;color:var(--muted)">${t('rel_nochange')}</div>`;
+  const tal = d.added == null ? '' :
+    `<span style="color:var(--green)">+${d.added}</span> / <span style="color:var(--red)">−${d.removed}</span> ${t('rel_lines')}`;
+  const indhold = d.hunks ? diffLinesHtml(d) : `<span class="spin"></span>`;
+  const hent = d.hunks ? '' : ` ontoggle="loadReleaseDiff(${i}, this)"`;
+  return `<details style="margin-top:6px"${hent}>
+      <summary style="cursor:pointer;font-size:11px">${t('rel_show_diff')} ${tal}</summary>
+      <div class="rel-diff" style="margin-top:6px;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;
+                  font-family:var(--mono);font-size:11px;overflow-x:auto;max-height:340px;overflow-y:auto">${indhold}</div>
+    </details>`;
+}
+
+function diffLinesHtml(d) {
   const farve = l => l.startsWith('+') ? 'var(--green)' : l.startsWith('-') ? 'var(--red)' : 'var(--muted)';
   const linjer = (d.hunks || []).map(h =>
     `<div style="color:var(--blue)">@@ ${h.line} @@</div>` +
     h.lines.map(l => `<div style="color:${farve(l)};white-space:pre">${escapeHtml(l)}</div>`).join('')).join('');
-  return `<details style="margin-top:6px">
-      <summary style="cursor:pointer;font-size:11px">${t('rel_show_diff')}
-        <span style="color:var(--green)">+${d.added}</span> / <span style="color:var(--red)">−${d.removed}</span> ${t('rel_lines')}</summary>
-      <div style="margin-top:6px;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;
-                  font-family:var(--mono);font-size:11px;overflow-x:auto;max-height:340px;overflow-y:auto">${linjer}
-        ${d.truncated ? `<div style="color:var(--yellow)">… ${t('rel_truncated')}</div>` : ''}</div>
-    </details>`;
+  const afkortet = d.truncated ? `<div style="color:var(--yellow)">… ${t('rel_truncated')}</div>` : '';
+  return linjer + afkortet;
+}
+
+async function loadReleaseDiff(i, el) {
+  const r = relList[i];
+  if (!el.open || !r || (r.diff && r.diff.hunks)) return;
+  const box = el.querySelector('.rel-diff');
+  const res = await fetch('/api/releases/diff', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ref: r.ref })
+  }).then(x => x.json()).catch(e => ({ error: e.message }));
+  if (res.error) { box.innerHTML = `<span style="color:var(--red)">✗ ${escapeHtml(res.error)}</span>`; return; }
+  r.diff = res.diff;
+  box.innerHTML = diffLinesHtml(res.diff);
 }
 
 function renderReleases() {
   const box = document.getElementById('rel-body');
   if (!relList.length) { box.innerHTML = `<div style="color:var(--muted);font-size:12px">${t('rel_none')}</div>`; return; }
-  box.innerHTML = relList.map(r => {
+  box.innerHTML = relList.map((r, i) => {
     const kindFarve = r.kind === 'rollback' ? 'var(--yellow)' : r.kind === 'republish' ? 'var(--blue)' : 'var(--green)';
     const versioner = r.prevVersion ? `v${escapeHtml(r.prevVersion)} → v${escapeHtml(r.newVersion || '?')}` : (r.newVersion ? `v${escapeHtml(r.newVersion)}` : '');
     const omdoebt = r.fromName && r.fromName !== r.toName
@@ -8162,28 +8200,32 @@ function renderReleases() {
           `<span style="color:${c.ok ? 'var(--green)' : 'var(--red)'}">${c.ok ? '✓' : '✗'} ${escapeHtml(c.name)}</span>`).join(' · ')}</div>` : '';
     const rb = r.canRollback
       ? `<button class="btn btn-secondary btn-sm" style="font-size:11px;border-color:var(--yellow);color:var(--yellow)"
-           title="${t('rb_title')}" onclick="rollbackRelease(${jsAttr(r.id)})">↩ ${t('rb_btn')} ${escapeHtml(rollbackLabel(r))}</button>` : '';
+           title="${t('rb_title')}" onclick="rollbackRelease(relList[${i}].ref, ${jsAttr(rollbackLabel(r))}, relList[${i}].toName)">↩ ${t('rb_btn')} ${escapeHtml(rollbackLabel(r))}</button>` : '';
     const rulletTilbage = r.rolledBackBy
       ? `<span style="color:var(--yellow);font-size:11px">· ${t('rel_rolled_back')}</span>` : '';
     const ikkeLive = (r.action && r.action !== 'publish')
       ? `<span style="color:var(--yellow);font-size:11px">· ${t('rel_not_live')}</span>` : '';
+    // Kun på denne pc: miljøet har ingen manifest-tabel, eller skrivningen til
+    // den fejlede. Så kan en anden pc hverken se eller rulle releasen tilbage.
+    const kunLokalt = r.source === 'local'
+      ? `<span style="color:var(--muted);font-size:11px" title="${t('rel_local_only_title')}">· ${t('rel_local_only')}</span>` : '';
     const fra = r.sourceName ? ' · ← ' + escapeHtml(r.sourceName) : '';
     const dimmet = r.rolledBackBy ? ';opacity:.65' : '';
     return `<div style="padding:10px 12px;border:1px solid var(--border);border-radius:6px;margin-bottom:10px${dimmet}">
       <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap">
-        <input type="checkbox" style="width:auto;margin-top:3px" data-rel="${escapeHtml(r.id)}" checked/>
+        <input type="checkbox" style="width:auto;margin-top:3px" data-rel="${i}" checked/>
         <div style="flex:1;min-width:220px">
           <div style="font-size:13px"><span style="color:${kindFarve};font-size:11px;font-weight:700;margin-right:6px">${t('rel_kind_' + r.kind)}</span>
-            <b style="font-family:var(--mono)">${escapeHtml(r.toName)}</b> · ${escapeHtml(r.targetName)} ${rulletTilbage} ${ikkeLive}</div>
+            <b style="font-family:var(--mono)">${escapeHtml(r.toName)}</b> · ${escapeHtml(r.targetName)} ${rulletTilbage} ${ikkeLive} ${kunLokalt}</div>
           <div style="font-size:11px;color:var(--muted)">${new Date(r.at).toLocaleString()} · ${t('rel_by')} ${escapeHtml(r.by || '?')}${fra}${versioner ? ' · ' + versioner : ''}</div>
           ${omdoebt}
-          ${releaseDiffHtml(r.diff)}
+          ${releaseDiffHtml(r, i)}
           ${cascade}
           <input type="text" style="margin-top:6px;font-size:11px;padding:4px 8px" placeholder="${t('rel_note_ph')}"
-            value="${escapeHtml(r.note || '')}" onchange="saveReleaseNote(${jsAttr(r.id)}, this.value)"/>
+            value="${escapeHtml(r.note || '')}" onchange="saveReleaseNote(${i}, this.value)"/>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
-          <button class="btn btn-secondary btn-sm" style="font-size:11px" onclick="copyReleaseNotes([${jsAttr(r.id)}])">${t('rel_copy')}</button>
+          <button class="btn btn-secondary btn-sm" style="font-size:11px" onclick="copyReleaseNotes([relList[${i}].ref])">${t('rel_copy')}</button>
           ${rb}
         </div>
       </div></div>`;
@@ -8198,41 +8240,44 @@ function rollbackLabel(r) {
   return n != null ? `_v${n}` : (r.prevVersion ? `v${r.prevVersion}` : '');
 }
 
-async function saveReleaseNote(id, note) {
-  await fetch(`/api/releases/${encodeURIComponent(id)}/note`, {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ note })
+// Noten skrives i org'ens manifest, så den kan læses fra en anden pc.
+async function saveReleaseNote(i, note) {
+  const r = relList[i];
+  if (!r) return;
+  await fetch('/api/releases/note', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ref: r.ref, note })
   }).catch(() => {});
-  const r = relList.find(x => x.id === id);
-  if (r) r.note = note;
+  r.note = note;
 }
 
-const selectedReleaseIds = () =>
-  [...document.querySelectorAll('#rel-body input[data-rel]:checked')].map(cb => cb.dataset.rel);
+const selectedReleaseRefs = () =>
+  [...document.querySelectorAll('#rel-body input[data-rel]:checked')]
+    .map(cb => relList[parseInt(cb.dataset.rel, 10)]).filter(Boolean).map(r => r.ref);
 
-async function releaseMarkdown(ids) {
+async function releaseMarkdown(refs) {
   const r = await fetch('/api/releases/notes', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids })
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refs })
   }).then(x => x.json());
   if (r.error) throw new Error(r.error);
   return r.markdown;
 }
 
-async function copyReleaseNotes(ids) {
+async function copyReleaseNotes(refs) {
   const st = document.getElementById('rel-status');
-  if (!ids.length) { st.style.color = 'var(--yellow)'; st.textContent = t('rel_select_some'); return; }
+  if (!refs.length) { st.style.color = 'var(--yellow)'; st.textContent = t('rel_select_some'); return; }
   try {
-    await navigator.clipboard.writeText(await releaseMarkdown(ids));
+    await navigator.clipboard.writeText(await releaseMarkdown(refs));
     st.style.color = 'var(--green)'; st.textContent = '✓ ' + t('rel_copied');
   } catch (e) { st.style.color = 'var(--red)'; st.textContent = '✗ ' + e.message; }
 }
-const copySelectedReleases = () => copyReleaseNotes(selectedReleaseIds());
+const copySelectedReleases = () => copyReleaseNotes(selectedReleaseRefs());
 
 async function downloadSelectedReleases() {
-  const ids = selectedReleaseIds();
+  const refs = selectedReleaseRefs();
   const st = document.getElementById('rel-status');
-  if (!ids.length) { st.style.color = 'var(--yellow)'; st.textContent = t('rel_select_some'); return; }
+  if (!refs.length) { st.style.color = 'var(--yellow)'; st.textContent = t('rel_select_some'); return; }
   try {
-    const md = await releaseMarkdown(ids);
+    const md = await releaseMarkdown(refs);
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([md], { type: 'text/markdown' }));
     a.download = `release-notes-${new Date().toISOString().slice(0, 10)}.md`;
@@ -8241,24 +8286,24 @@ async function downloadSelectedReleases() {
 }
 
 // Ét klik: publicér indholdet fra før seneste forfremmelse igen. Prod kræver
-// den samme bevidste bekræftelse som en forfremmelse.
-async function rollbackRelease(id, envId, label, name) {
-  const r = relList.find(x => x.id === id);
-  envId = envId || (r && r.targetId);
-  label = label || (r && rollbackLabel(r)) || '';
-  name  = name  || (r && r.toName) || '';
-  let msg = t('rb_confirm').replace('{name}', name).replace('{label}', label) + '\n\n' + envNameOf(envId);
+// den samme bevidste bekræftelse som en forfremmelse. ref kan komme som tekst
+// fra tavlens knap eller som objekt fra release-listen.
+async function rollbackRelease(ref, label, name) {
+  if (typeof ref === 'string') ref = JSON.parse(ref);
+  const envId = ref.envId;
+  let msg = t('rb_confirm').replace('{name}', name || '').replace('{label}', label || '') + '\n\n' + envNameOf(envId);
   const prod = isProdEnv(envId);
   if (prod) msg = t('pl_prod_warn') + '\n\n' + msg;
   if (!confirm(msg)) return;
-  const res = await fetch(`/api/releases/${encodeURIComponent(id)}/rollback`, {
+  showAlert('pipelineAlert', `<span class="spin"></span> ${t('rb_running')}`, 'info');
+  const res = await fetch('/api/releases/rollback', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ confirmProd: prod })
+    body: JSON.stringify({ ref, confirmProd: prod })
   }).then(x => x.json()).catch(e => ({ error: e.message }));
   document.getElementById('rel-overlay').style.display = 'none';
-  if (res.error) return showAlert('pipelineAlert', res.error, 'err');
+  if (res.error) return showAlert('pipelineAlert', escapeHtml(res.error), 'err');
   showAlert('pipelineAlert', `"${escapeHtml(name)}" ${t('rb_done')} ${escapeHtml(label)} → ${escapeHtml(res.name)} (v${escapeHtml(res.version || '?')})`, 'ok');
-  if ((res.dependents || []).length) await showRepublishModal(envId, res.name, res.dependents, res.releaseId);
+  if ((res.dependents || []).length) await showRepublishModal(envId, res.name, res.dependents, res.releaseRef);
   pipelineHashes = {};
   if (pipelineData) await loadPipeline();
 }
@@ -8267,8 +8312,8 @@ async function rollbackRelease(id, envId, label, name) {
 // Et flow med en upubliceret kladde er fravalgt som standard: genpublicering
 // tager den publicerede udgave, og kladden ville blive erstattet.
 let repResolver = null, repCtx = null;
-function showRepublishModal(envId, moduleName, dependents, releaseId) {
-  repCtx = { envId, moduleName, releaseId };
+function showRepublishModal(envId, moduleName, dependents, releaseRef) {
+  repCtx = { envId, moduleName, releaseRef };
   const body = document.getElementById('rep-body');
   const intro = `<div style="font-size:12px;color:var(--muted);margin-bottom:10px">${escapeHtml(t('rep_intro')
     .replace('{env}', envNameOf(envId)).replace('{module}', moduleName))}</div>`;
@@ -8309,7 +8354,7 @@ async function repResolve(go) {
     `<div style="margin-top:10px;font-size:12px;color:var(--muted)"><span class="spin"></span> ${t('rep_running')}</div>`);
   const r = await fetch('/api/flows/republish', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ envId: repCtx.envId, moduleName: repCtx.moduleName, releaseId: repCtx.releaseId,
+    body: JSON.stringify({ envId: repCtx.envId, moduleName: repCtx.moduleName, releaseRef: repCtx.releaseRef,
                            flows: picked, confirmProd: prod })
   }).then(x => x.json()).catch(e => ({ error: e.message }));
   if (r.error) { showAlert('pipelineAlert', r.error, 'err'); return done(null); }

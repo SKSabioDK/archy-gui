@@ -479,6 +479,7 @@ function seedDemo() {
   // Flet ind i det der allerede ligger. Skrev vi hele filen, ville en
   // nulstilling af demo 1 slette demo 2's flows og begge demoers manifester —
   // og de to skal ikke kunne røre hinanden.
+  for (const liste of Object.values(flows)) liste.forEach(demoRemember);
   const d = loadDemo();
   d.flows = { ...(d.flows || {}), ...flows };
   d.seededAt = now;
@@ -491,6 +492,17 @@ function seedDemo() {
 // skal de læse fra samme liste — ellers er der intet præfikset at filtrere i.
 const demoFlowKey = c => (typeof c === 'string' ? c : (c.demoOrg || c.id));
 function demoFlowsFor(env) { return (loadDemo().flows || {})[demoFlowKey(env)] || []; }
+
+// Demoen efterligner Genesys' versionshistorik: hver publiceret udgave huskes
+// på flowet, så en rollback kan hente den — præcis som den ville hente den fra
+// en rigtig org med en eksport af den udgave.
+const DEMO_VERSIONS_MAX = 30;
+function demoRemember(f) {
+  f.versions = f.versions || {};
+  f.versions[String(f.published)] = f.content;
+  const keys = Object.keys(f.versions);
+  for (const k of keys.slice(0, Math.max(0, keys.length - DEMO_VERSIONS_MAX))) delete f.versions[k];
+}
 
 function seedDemo2() {
   const d = loadDemo();
@@ -542,6 +554,8 @@ function seedDemo2() {
   A.push({ name: 'Gammelt forsoeg', type: 'INBOUNDCALL', published: '1.0',
            publishedAt: now - 300 * day, content: demoYaml('Gammelt forsoeg', 'glemt') });
 
+  A.forEach(demoRemember);
+  B.forEach(demoRemember);
   d.flows[DEMO2_ORG_A] = A;
   d.flows[DEMO2_ORG_B] = B;
   // Nulstilling giver en ren tavle: demo 2's egne manifestrækker ryddes, og
@@ -684,12 +698,12 @@ app.post('/api/demo/promote', async (req, res) => {
     existing.published = `${cur + 1}.0`;
     existing.publishedAt = now;
     existing.content = tgtContent;
+    demoRemember(existing);
     action = 'update';
   } else {
-    d.flows[tgtKey].push({
-      name: newName, type: flowType,
-      published: '1.0', publishedAt: now, content: tgtContent
-    });
+    const ny = { name: newName, type: flowType, published: '1.0', publishedAt: now, content: tgtContent };
+    demoRemember(ny);
+    d.flows[tgtKey].push(ny);
     action = 'create';
   }
 
@@ -699,6 +713,7 @@ app.post('/api/demo/promote', async (req, res) => {
   const renamedSource = src.name !== srcNewName ? src.name : null;
   src.name = srcNewName;
   src.content = renameFlowInYaml(src.content, srcNewName);
+  demoRemember(src);
 
   saveDemo(d);
   const targetVersion = existing ? existing.published : '1.0';
@@ -727,7 +742,7 @@ app.post('/api/demo/promote', async (req, res) => {
 
   // Release-noten: hvad målet indeholdt før, og hvad det indeholder nu.
   const who = await whoAmI(target);
-  const release = recordRelease({
+  const release = await recordReleaseEverywhere(target, {
     kind: 'promotion', demo: true,
     tenant: tenantOf(target), group: groupOf(target),
     sourceId, sourceName: source.name, targetId, targetName: target.name,
@@ -753,7 +768,7 @@ app.post('/api/demo/promote', async (req, res) => {
     target.name, 'DEMO');
   res.json({ ok: true, fromName: flowName, toName: newName,
              renamed, renamedSource, renamedTarget, action,
-             releaseId: release.id,
+             releaseRef: releaseRef(release),
              diff: { added: release.diff.added, removed: release.diff.removed, noPrevious: release.diff.noPrevious },
              dependents });
 });
@@ -791,6 +806,7 @@ app.post('/api/demo/publish', (req, res) => {
   f.publishedAt = Date.now();
   // Indholdet ændrer sig — ellers ville et indholdstjek stadig sige "i trit".
   f.content = f.content.replace(/\s*# udgave \d+$/, '') + `\n  # udgave ${cur + n}`;
+  demoRemember(f);
   saveDemo(d);
 
   addLog('INFO', `Demo: "${flowName}" published ${n} time(s) in ${env.name} → v${f.published}`, env.name, 'DEMO');
@@ -2147,12 +2163,26 @@ async function readOrgManifest(customer) {
   return out;
 }
 
-async function writeOrgManifestRow(customer, flowName, flowType, data) {
-  const key = orgManifestKey(flowName, flowType);
-  const who = await whoAmI(customer);
-  const payload = { ...data, by: who.by, bySource: who.bySource, at: Date.now() };
-  if (isDemo(customer)) { demoManifestWrite(customer.id, key, payload); return { ok: true, key }; }
+// Én række, slået op direkte. undefined = ingen tabel, null = ingen række.
+async function readOrgManifestRow(customer, key) {
+  if (isDemo(customer)) return demoManifest(customer.id)[key] || null;
+  const tableId = await findOrgManifestTable(customer);
+  if (!tableId) return undefined;
+  const { token, apiBase } = await getToken(customer);
+  try {
+    const r = await axios.get(`${apiBase}/api/v2/flows/datatables/${tableId}/rows/${encodeURIComponent(key)}`, {
+      headers: { Authorization: `Bearer ${token}` }, params: { showbrief: false }
+    });
+    try { return JSON.parse(r.data.Data || '{}'); } catch (_) { return null; }
+  } catch (e) {
+    if (e.response?.status === 404) return null;
+    throw e;
+  }
+}
 
+// Skriver rækken præcis som den er — ingen stempel med hvem og hvornår.
+async function putOrgManifestRow(customer, key, payload) {
+  if (isDemo(customer)) { demoManifestWrite(customer.id, key, payload); return { ok: true, key }; }
   const tableId = await findOrgManifestTable(customer);
   if (!tableId) return { ok: false, reason: 'no-table' };
   const { token, apiBase } = await getToken(customer);
@@ -2167,6 +2197,22 @@ async function writeOrgManifestRow(customer, flowName, flowType, data) {
     else throw e;
   }
   return { ok: true, key };
+}
+
+async function writeOrgManifestRow(customer, flowName, flowType, data) {
+  const key = orgManifestKey(flowName, flowType);
+  const who = await whoAmI(customer);
+  // Release-historikken bor i samme række. En forfremmelse skriver rækken
+  // forfra, og uden dette ville den slette historikken hver gang — og dermed
+  // muligheden for at rulle tilbage fra en anden pc.
+  let releases = data.releases;
+  if (releases === undefined) {
+    try { releases = ((await readOrgManifestRow(customer, key)) || {}).releases; }
+    catch (_) { releases = undefined; }
+  }
+  const payload = { ...data, by: who.by, bySource: who.bySource, at: Date.now() };
+  if (releases) payload.releases = releases;
+  return putOrgManifestRow(customer, key, payload);
 }
 
 // Skriver de to rækker en forfremmelse afstedkommer: én i kilden og én i målet.
@@ -2414,15 +2460,29 @@ function releaseDiff(prevYaml, newYaml) {
   return { noPrevious: false, added, removed, hunks: ud, truncated };
 }
 
+// ── Hvor releases bor ────────────────────────────────────────────────────────
+// Sandheden ligger i ORG'EN, i manifest-rækken for flowet: en kort historik
+// (seneste ORG_RELEASES_MAX) med udgaverne før og efter, hvem, hvornår og noten.
+// Indholdet gemmes IKKE dér — Genesys har allerede hver publiceret udgave, så
+// en rollback henter bare den udgave målet stod på før, direkte fra org'en.
+// Derfor kan man forfremme fra én pc og rulle tilbage fra en anden.
+//
+// Den lokale fil er en cache: den har diff'en og indholdet klar, så man slipper
+// for en eksport, og den er det eneste sted historikken findes for et miljø
+// uden manifest-tabel.
+const ORG_RELEASES_MAX = 20;
+const ORG_ROW_MAX_CHARS = 60000;   // langt under tabellens grænse; en række skal kunne læses hurtigt
+
 function recordRelease(entry) {
   const all = loadReleases();
   const rel = {
-    id: `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`,
-    at: Date.now(),
+    id: entry.id || `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`,
+    at: entry.at || Date.now(),
     ...entry,
     flowType: normType(entry.flowType)
   };
-  all.push(rel);
+  const i = all.findIndex(x => x.id === rel.id && x.targetId === rel.targetId);
+  if (i >= 0) all[i] = { ...all[i], ...rel }; else all.push(rel);
   // Loggen må ikke vokse uden ende. Snapshots der ikke længere har en post,
   // ryddes med — ellers ville mappen blive ved med at vokse alligevel.
   const MAX = 2000;
@@ -2435,6 +2495,125 @@ function recordRelease(entry) {
   }
   saveReleases(all);
   return rel;
+}
+
+// Det der kommer med i org'en: alt undtagen indhold og diff-linjer.
+function compactRelease(r) {
+  const d = r.diff || {};
+  const c = {
+    id: r.id, at: r.at, kind: r.kind, action: r.action || null,
+    sourceName: r.sourceName || null, sourceVersion: r.sourceVersion ?? null,
+    fromName: r.fromName || null, toName: r.toName,
+    prevVersion: r.prevVersion ?? null, newVersion: r.newVersion ?? null,
+    by: r.by || null, bySource: r.bySource || null,
+    note: r.note || '', rollbackOf: r.rollbackOf || null,
+    rolledBackBy: r.rolledBackBy || null, rolledBackAt: r.rolledBackAt || null,
+    references: r.references || [], cascade: r.cascade || [],
+    diffSummary: { added: d.added ?? r.diffSummary?.added ?? null,
+                   removed: d.removed ?? r.diffSummary?.removed ?? null,
+                   noPrevious: d.noPrevious ?? r.diffSummary?.noPrevious ?? false }
+  };
+  return c;
+}
+
+// Holder historikken inden for rammerne: de nyeste ORG_RELEASES_MAX, og
+// færre hvis rækken ellers bliver for stor. Nyeste står sidst.
+function trimOrgReleases(list, rowWithout) {
+  let out = list.slice(-ORG_RELEASES_MAX);
+  const base = JSON.stringify(rowWithout || {}).length;
+  while (out.length > 1 && base + JSON.stringify(out).length > ORG_ROW_MAX_CHARS) out = out.slice(1);
+  return out;
+}
+
+// Læs rækken, lad fn ændre historikken, skriv den tilbage. Rækkens øvrige
+// felter (versionen manifestet noterede, hvem der forfremmede) røres ikke.
+async function updateOrgReleases(env, baseName, flowType, fn) {
+  const key = orgManifestKey(baseName, flowType);
+  const row = await readOrgManifestRow(env, key);
+  if (row === undefined) return { ok: false, reason: 'no-table' };
+  const cur = (row && row.releases) || [];
+  const { releases: _, ...rest } = row || {};
+  const next = trimOrgReleases(fn(cur.slice()) || cur, rest);
+  return putOrgManifestRow(env, key, { ...rest, releases: next });
+}
+
+// Skriver releasen begge steder. Fejler org'en, står den stadig lokalt — og
+// det siges i loggen, for så kan en anden pc ikke se den.
+async function recordReleaseEverywhere(env, entry) {
+  const rel = recordRelease(entry);
+  try {
+    const r = await updateOrgReleases(env, rel.baseName, rel.flowType, list => [...list, compactRelease(rel)]);
+    if (!r.ok && r.reason === 'no-table')
+      addLog('WARN', `${env.name} has no manifest table — the release of "${rel.toName}" is only stored on this PC`, env.name, 'RELEASE');
+  } catch (e) {
+    addLog('WARN', `Could not write the release of "${rel.toName}" to the manifest in ${env.name}: ${describeApiError(e)} — it is only stored on this PC`, env.name, 'RELEASE');
+  }
+  return rel;
+}
+
+// Ændrer én release begge steder (note, rullet tilbage, kaskade).
+async function mutateRelease(env, baseName, flowType, id, fn) {
+  const all = loadReleases();
+  const lokal = all.find(x => x.id === id && x.targetId === env.id);
+  if (lokal) { fn(lokal); saveReleases(all); }
+  try {
+    await updateOrgReleases(env, baseName, flowType, list => {
+      const hit = list.find(x => x.id === id);
+      if (hit) fn(hit);
+      else if (lokal) list.push(compactRelease(lokal));   // kun lokalt indtil nu — send den med
+      return list;
+    });
+  } catch (e) {
+    addLog('WARN', `Could not update the release in the manifest in ${env.name}: ${describeApiError(e)}`, env.name, 'RELEASE');
+  }
+}
+
+// Org'ens historik og den lokale cache flettet på id. Org'en vinder på det
+// andre kan have ændret (note, rullet tilbage, kaskade); cachen bidrager med
+// diff-linjer og indhold. Poster der kun findes lokalt (miljø uden tabel, eller
+// ældre end org'ens historik) tages med.
+function mergeReleases(orgList, localList, ctx) {
+  const byId = new Map();
+  for (const l of localList) byId.set(l.id, { ...l, source: 'local' });
+  for (const o of orgList || []) {
+    const l = byId.get(o.id);
+    byId.set(o.id, {
+      ...(l || {}), ...o,
+      targetId: ctx.env.id, targetName: ctx.env.name, targetStage: stageOf(ctx.env),
+      tenant: tenantOf(ctx.env), group: groupOf(ctx.env),
+      baseName: ctx.baseName, flowType: normType(ctx.flowType),
+      diff: l && l.diff && l.diff.hunks ? l.diff : null,
+      prevSnapshot: l ? l.prevSnapshot : null, newSnapshot: l ? l.newSnapshot : null,
+      source: l ? 'org+local' : 'org'
+    });
+  }
+  return [...byId.values()].sort((a, b) => b.at - a.at);
+}
+
+// Hele historikken for ét miljø: org-rækkerne (hvis tabellen findes) + cachen.
+// rows kan gives med, så tavlen ikke læser tabellen to gange.
+async function releasesOfEnv(env, rows) {
+  if (rows === undefined) {
+    try { rows = await readOrgManifest(env); }
+    catch (e) {
+      rows = null;
+      addLog('WARN', `Could not read the manifest in ${env.name}: ${describeApiError(e)} — showing releases stored on this PC only`, env.name, 'RELEASE');
+    }
+  }
+  const local = loadReleases().filter(r => r.targetId === env.id);
+  const keys = new Set([
+    ...Object.keys(rows || {}),
+    ...local.map(r => orgManifestKey(r.baseName, r.flowType))
+  ]);
+  const out = [];
+  for (const key of keys) {
+    const [baseName, flowType] = key.split('|');
+    const org = rows && rows[key] ? rows[key].releases || [] : [];
+    const lok = local.filter(r => orgManifestKey(r.baseName, r.flowType) === key);
+    if (!org.length && !lok.length) continue;
+    out.push(...mergeReleases(org, lok, { env, baseName, flowType }));
+  }
+  return out.sort((a, b) => b.at - a.at);
 }
 
 // Demoens releases ryddes sammen med demoen, ligesom dens manifestrækker.
@@ -2467,10 +2646,67 @@ function releasesFor(all, envId, baseName, flowType) {
 // genpubliceringer springes over — de ændrer ikke hvad der blev leveret, så
 // næste klik efter en rollback går én forfremmelse længere tilbage (_v6 → _v5
 // → _v4). En release der oprettede flowet har intet før at gå tilbage til.
+//
+// "Et før" er udgaven målet stod på (hentes fra org'en) — eller indholdet i
+// cachen, hvis udgaven af en eller anden grund ikke blev noteret.
 function rollbackCandidate(list) {
   const top = list.find(r => r.kind === 'promotion' && !r.rolledBackBy);
-  if (!top || !top.prevSnapshot) return null;
+  if (!top || !(top.prevVersion || top.prevSnapshot)) return null;
   return top;
+}
+
+// Indholdet af én bestemt udgave af et flow — fra org'ens egen historik.
+// version null = den gemte kladde (bruges kun når en release aldrig blev
+// publiceret). Demoen har sin egen historik pr. flow.
+async function flowVersionContent(env, name, flowType, version) {
+  if (isDemo(env)) {
+    const siblings = loadCustomers().filter(c => isDemo(c) && demoFlowKey(c) === demoFlowKey(env));
+    const base = baseFlowName(stripEnvPrefix(name, env));
+    const f = demoFlowsFor(env).find(x => normType(x.type) === normType(flowType) &&
+      belongsToEnv(x.name, env, siblings) && baseFlowName(stripEnvPrefix(x.name, env)) === base);
+    if (!f) throw new Error(`"${name}" does not exist in ${env.name}`);
+    if (version == null || String(version) === String(f.published)) return f.content;
+    const hit = (f.versions || {})[String(version)];
+    if (hit == null) throw new Error(`Version ${version} of "${name}" is no longer in ${env.name}`);
+    return hit;
+  }
+  const { yaml } = await exportFlowToYaml(env, name, String(flowType).toLowerCase(), version);
+  return yaml;
+}
+
+// Find én release ud fra { envId, baseName, flowType, id }.
+async function findRelease(ref) {
+  const env = loadCustomers().find(c => c.id === (ref && ref.envId));
+  if (!env) return { error: 'Environment not found', status: 404 };
+  let rows;
+  try { rows = await readOrgManifest(env); } catch (_) { rows = null; }
+  const key = orgManifestKey(ref.baseName, ref.flowType);
+  const org = rows && rows[key] ? rows[key].releases || [] : [];
+  const lok = loadReleases().filter(r => r.targetId === env.id && orgManifestKey(r.baseName, r.flowType) === key);
+  const list = mergeReleases(org, lok, { env, baseName: ref.baseName, flowType: ref.flowType });
+  const rel = list.find(r => r.id === ref.id);
+  if (!rel) return { error: 'Release not found', status: 404 };
+  return { env, list, rel };
+}
+
+// Diff'en for en release: fra cachen, ellers bygget af de to udgaver i org'en
+// og lagt i cachen, så det kun koster eksporten én gang.
+async function releaseDiffFor(env, rel) {
+  if (rel.diff && rel.diff.hunks) return rel.diff;
+  const s = rel.diffSummary || {};
+  if (rel.kind === 'republish' || (s.added === 0 && s.removed === 0))
+    return { noPrevious: false, added: 0, removed: 0, hunks: [], truncated: false };
+  let prev = readSnapshot(rel.prevSnapshot), neu = readSnapshot(rel.newSnapshot);
+  const navn = rel.toName;
+  if (prev == null && rel.prevVersion) prev = await flowVersionContent(env, navn, rel.flowType, rel.prevVersion);
+  if (neu == null) neu = await flowVersionContent(env, navn, rel.flowType, rel.newVersion || null);
+  const diff = releaseDiff(prev, neu);
+  recordRelease({
+    ...rel, diff,
+    prevSnapshot: rel.prevSnapshot || saveSnapshot(env.id, navn, prev),
+    newSnapshot: rel.newSnapshot || saveSnapshot(env.id, navn, neu)
+  });
+  return diff;
 }
 
 // Release-noten som markdown — til at sætte ind i en change request eller mail.
@@ -2496,64 +2732,87 @@ function releaseNoteMarkdown(r) {
     for (const c of r.cascade) l.push(`  - ${c.ok ? '✓' : '✗'} ${c.name}${c.error ? ` — ${c.error}` : ''}`);
   }
   l.push('');
-  const d = r.diff || {};
+  const d = r.diff || r.diffSummary || {};
   if (d.noPrevious) l.push(`_New in ${r.targetName} — no previous version to compare with._`);
-  else if (!d.added && !d.removed) l.push('_No content changes._');
+  else if (!d.added && !d.removed) l.push(d.added == null ? '_Changes not available._' : '_No content changes._');
   else {
     l.push(`**Changes:** +${d.added} / −${d.removed} lines`);
-    l.push('');
-    l.push('```diff');
-    for (const h of d.hunks || []) { l.push(`@@ line ${h.line} @@`); l.push(...h.lines); }
-    if (d.truncated) l.push('… (truncated)');
-    l.push('```');
+    if (d.hunks) {
+      l.push('');
+      l.push('```diff');
+      for (const h of d.hunks) { l.push(`@@ line ${h.line} @@`); l.push(...h.lines); }
+      if (d.truncated) l.push('… (truncated)');
+      l.push('```');
+    }
   }
   return l.join('\n');
 }
 
-// Listen til brugerfladen. Filtre: miljø, gruppe eller ét flow.
-app.get('/api/releases', (req, res) => {
+// Til brugerfladen: det klienten skal bruge for at pege på en release igen.
+const releaseRef = r => ({ envId: r.targetId, baseName: r.baseName, flowType: r.flowType, id: r.id });
+
+// Listen. Enten ét miljø (evt. ét flow), eller alle miljøer i en gruppe.
+app.get('/api/releases', async (req, res) => {
   const { envId, tenant, group, baseName, flowType, limit = '200' } = req.query;
-  let all = loadReleases();
-  if (envId) all = all.filter(r => r.targetId === envId);
-  if (tenant) all = all.filter(r => r.tenant === tenant);
-  if (group) all = all.filter(r => r.group === group);
-  if (baseName) all = all.filter(r => r.baseName === baseName);
-  if (flowType) all = all.filter(r => r.flowType === normType(flowType));
-  all.sort((a, b) => b.at - a.at);
-  const out = all.slice(0, Math.max(1, Math.min(parseInt(limit, 10) || 200, 2000)));
-  // Hvilke der kan rulles tilbage — beregnet her, så klienten ikke skal kende reglen.
-  const kan = new Set();
-  const seen = new Set();
-  for (const r of out) {
-    const k = `${r.targetId}|${r.baseName}|${r.flowType}`;
-    if (seen.has(k)) continue;
-    seen.add(k);
-    const c = rollbackCandidate(releasesFor(loadReleases(), r.targetId, r.baseName, r.flowType));
-    if (c) kan.add(c.id);
+  const all = loadCustomers();
+  const envs = envId ? all.filter(c => c.id === envId)
+             : all.filter(c => tenant && group && tenantOf(c) === tenant && groupOf(c) === group);
+  if (!envs.length) return res.status(404).json({ error: 'Environment not found' });
+
+  let out = [];
+  for (const env of envs) {
+    let list = await releasesOfEnv(env);
+    if (baseName) list = list.filter(r => r.baseName === baseName);
+    if (flowType) list = list.filter(r => r.flowType === normType(flowType));
+    // Hvilken der kan rulles tilbage — beregnet her, så klienten ikke skal kende reglen.
+    const kan = new Set();
+    const pr = new Map();
+    for (const r of list) {
+      const k = `${r.baseName}|${r.flowType}`;
+      if (!pr.has(k)) pr.set(k, []);
+      pr.get(k).push(r);
+    }
+    for (const l of pr.values()) { const c = rollbackCandidate(l); if (c) kan.add(c.id); }
+    out.push(...list.map(r => ({ ...r, canRollback: kan.has(r.id), ref: releaseRef(r) })));
   }
-  res.json({ ok: true, releases: out.map(r => ({ ...r, canRollback: kan.has(r.id) })) });
+  out.sort((a, b) => b.at - a.at);
+  out = out.slice(0, Math.max(1, Math.min(parseInt(limit, 10) || 200, 2000)));
+  res.json({ ok: true, releases: out });
 });
 
-app.get('/api/releases/:id/notes', (req, res) => {
-  const r = loadReleases().find(x => x.id === req.params.id);
-  if (!r) return res.status(404).json({ error: 'Release not found' });
-  res.json({ ok: true, markdown: releaseNoteMarkdown(r) });
+app.post('/api/releases/diff', async (req, res) => {
+  const f = await findRelease(req.body.ref);
+  if (f.error) return res.status(f.status).json({ error: f.error });
+  try { res.json({ ok: true, diff: await releaseDiffFor(f.env, f.rel) }); }
+  catch (e) {
+    addLog('WARN', `Could not build the diff for "${f.rel.toName}" in ${f.env.name}: ${describeApiError(e)}`, f.env.name, 'RELEASE');
+    res.status(500).json({ error: describeApiError(e) });
+  }
 });
 
-// Samlede release notes for flere releases, fx alt i en gruppe siden en dato.
-app.post('/api/releases/notes', (req, res) => {
-  const ids = new Set(req.body.ids || []);
-  const list = loadReleases().filter(r => ids.has(r.id)).sort((a, b) => a.at - b.at);
-  if (!list.length) return res.status(400).json({ error: 'No releases selected' });
+// Samlede release notes for flere releases. Mangler en diff, bygges den —
+// fejler det, står noten der stadig, bare uden linjerne.
+app.post('/api/releases/notes', async (req, res) => {
+  const refs = req.body.refs || [];
+  if (!refs.length) return res.status(400).json({ error: 'No releases selected' });
+  const list = [];
+  for (const ref of refs) {
+    const f = await findRelease(ref);
+    if (f.error) continue;
+    let r = f.rel;
+    try { r = { ...r, diff: await releaseDiffFor(f.env, r) }; } catch (_) {}
+    list.push(r);
+  }
+  if (!list.length) return res.status(404).json({ error: 'Release not found' });
+  list.sort((a, b) => a.at - b.at);
   res.json({ ok: true, markdown: `# Release notes\n\n` + list.map(releaseNoteMarkdown).join('\n\n---\n\n') + '\n' });
 });
 
-app.put('/api/releases/:id/note', (req, res) => {
-  const all = loadReleases();
-  const r = all.find(x => x.id === req.params.id);
-  if (!r) return res.status(404).json({ error: 'Release not found' });
-  r.note = String(req.body.note || '').slice(0, 2000);
-  saveReleases(all);
+app.post('/api/releases/note', async (req, res) => {
+  const f = await findRelease(req.body.ref);
+  if (f.error) return res.status(f.status).json({ error: f.error });
+  const note = String(req.body.note || '').slice(0, 500);
+  await mutateRelease(f.env, f.rel.baseName, f.rel.flowType, f.rel.id, r => { r.note = note; });
   res.json({ ok: true });
 });
 
@@ -2677,6 +2936,7 @@ async function republishOne(env, name, type) {
     const cur = parseInt(String(f.published || '0').split('.')[0], 10) || 0;
     f.published = `${cur + 1}.0`;
     f.publishedAt = Date.now();
+    demoRemember(f);
     saveDemo(d);
     return { prevVersion, version: f.published, publishedAt: f.publishedAt, yaml: f.content };
   }
@@ -2696,7 +2956,7 @@ async function republishOne(env, name, type) {
 }
 
 app.post('/api/flows/republish', async (req, res) => {
-  const { envId, flows, moduleName, releaseId, confirmProd } = req.body;
+  const { envId, flows, moduleName, releaseRef: modulRef, confirmProd } = req.body;
   const env = loadCustomers().find(c => c.id === envId);
   if (!env) return res.status(404).json({ error: 'Customer not found' });
   if (!Array.isArray(flows) || !flows.length) return res.status(400).json({ error: 'No flows selected' });
@@ -2711,7 +2971,7 @@ app.post('/api/flows/republish', async (req, res) => {
       const r = await republishOne(env, f.name, f.type);
       const base = baseFlowName(stripEnvPrefix(f.name, env));
       const snap = saveSnapshot(env.id, f.name, r.yaml);
-      recordRelease({
+      await recordReleaseEverywhere(env, {
         kind: 'republish', demo: isDemo(env),
         tenant: tenantOf(env), group: groupOf(env),
         sourceId: null, sourceName: null, targetId: env.id, targetName: env.name,
@@ -2735,13 +2995,10 @@ app.post('/api/flows/republish', async (req, res) => {
   }
   // Modulets egen release-note får listen med, så man kan se hvad ændringen
   // trak med sig.
-  if (releaseId) {
-    const all = loadReleases();
-    const r = all.find(x => x.id === releaseId);
-    if (r) {
-      r.cascade = [...(r.cascade || []), ...results.map(x => ({ name: x.name, ok: x.ok, error: x.error || null }))];
-      saveReleases(all);
-    }
+  if (modulRef && modulRef.id && modulRef.envId === env.id) {
+    const nye = results.map(x => ({ name: x.name, ok: x.ok, error: x.error || null }));
+    await mutateRelease(env, modulRef.baseName, modulRef.flowType, modulRef.id,
+      r => { r.cascade = [...(r.cascade || []), ...nye]; });
   }
   res.json({ ok: true, results });
 });
@@ -2750,47 +3007,60 @@ app.post('/api/flows/republish', async (req, res) => {
 // udgave. Genesys kan ikke "af-publicere" til en gammel udgave — historikken
 // går kun fremad — så en rollback er en ny publicering af det gamle indhold.
 //
+// Indholdet hentes fra ORG'ENS egen historik: releasen i manifest-rækken siger
+// hvilken udgave målet stod på før, og den udgave eksporteres. Det virker fra
+// enhver pc med adgang til org'en. Har denne pc indholdet i cachen, bruges det
+// og eksporten spares.
+//
 // Navnet: i demoen går navnet tilbage med (Betaling_v6 → Betaling_v5), for
 // dér bærer navnet versionen. I en rigtig org beholder flowet sit nuværende
 // navn — et andet navn i YAML'en ville få Archy til at oprette et NYT flow
 // ved siden af, og alt der ruter til det gamle ville pege forkert.
-app.post('/api/releases/:id/rollback', async (req, res) => {
-  const all = loadReleases();
-  const r = all.find(x => x.id === req.params.id);
-  if (!r) return res.status(404).json({ error: 'Release not found' });
-  const env = loadCustomers().find(c => c.id === r.targetId);
-  if (!env) return res.status(404).json({ error: `Miljøet "${r.targetName}" findes ikke længere` });
+app.post('/api/releases/rollback', async (req, res) => {
+  const f = await findRelease(req.body.ref);
+  if (f.error) return res.status(f.status).json({ error: f.error });
+  const { env, list, rel: r } = f;
 
-  const cand = rollbackCandidate(releasesFor(all, r.targetId, r.baseName, r.flowType));
+  const cand = rollbackCandidate(list);
   if (!cand || cand.id !== r.id)
     return res.status(409).json({ code: 'not-latest',
-      error: 'Kun den nyeste release kan rulles tilbage — rul de senere tilbage først.' });
+      error: 'Kun den nyeste forfremmelse kan rulles tilbage — den er måske allerede rullet tilbage fra en anden pc. Genindlæs tavlen.' });
   if (stageOf(env) === 'prod' && !req.body.confirmProd)
     return res.status(409).json({ code: 'prod-confirm',
       error: `"${env.name}" er et prod-miljø. Rollback skal bekræftes udtrykkeligt.` });
 
-  const prevYaml = readSnapshot(r.prevSnapshot);
-  if (prevYaml == null)
-    return res.status(410).json({ error: 'Indholdet fra før releasen er ikke gemt længere — rollback er ikke mulig.' });
-  const curYaml = readSnapshot(r.newSnapshot);
-
   try {
+    // Det vi går tilbage TIL, og det vi går væk FRA (til diff'en).
+    let prevYaml = readSnapshot(r.prevSnapshot);
+    let kilde = 'cache';
+    if (prevYaml == null) {
+      prevYaml = await flowVersionContent(env, r.toName, r.flowType, r.prevVersion);
+      kilde = 'org';
+    }
+    let curYaml = readSnapshot(r.newSnapshot);
+    if (curYaml == null) {
+      try { curYaml = await flowVersionContent(env, r.toName, r.flowType, null); } catch (_) { curYaml = null; }
+    }
+    addLog('INFO', `Rollback of "${r.toName}" in ${env.name}: content of v${r.prevVersion || '?'} taken from ` +
+      (kilde === 'org' ? 'the org\'s version history' : 'the local cache'), env.name, 'ROLLBACK');
+
     let name, version, publishedAt, published;
     if (isDemo(env)) {
       const d = loadDemo();
       const siblings = loadCustomers().filter(c => isDemo(c) && demoFlowKey(c) === demoFlowKey(env));
-      const f = (d.flows[demoFlowKey(env)] || []).find(x =>
+      const fl = (d.flows[demoFlowKey(env)] || []).find(x =>
         normType(x.type) === r.flowType && belongsToEnv(x.name, env, siblings) &&
         baseFlowName(stripEnvPrefix(x.name, env)) === r.baseName);
-      if (!f) throw new Error(`"${r.toName}" does not exist in ${env.name} anymore`);
-      name = r.fromName || f.name;
+      if (!fl) throw new Error(`"${r.toName}" does not exist in ${env.name} anymore`);
+      name = r.fromName || fl.name;
       published = renameFlowInYaml(prevYaml, name);
-      const cur = parseInt(String(f.published || '0').split('.')[0], 10) || 0;
-      f.name = name;
-      f.content = published;
-      f.published = `${cur + 1}.0`;
-      f.publishedAt = Date.now();
-      version = f.published; publishedAt = f.publishedAt;
+      const cur = parseInt(String(fl.published || '0').split('.')[0], 10) || 0;
+      fl.name = name;
+      fl.content = published;
+      fl.published = `${cur + 1}.0`;
+      fl.publishedAt = Date.now();
+      demoRemember(fl);
+      version = fl.published; publishedAt = fl.publishedAt;
       saveDemo(d);
     } else {
       name = r.toName;
@@ -2809,26 +3079,25 @@ app.post('/api/releases/:id/rollback', async (req, res) => {
     }
 
     const who = await whoAmI(env);
-    const rb = recordRelease({
+    const rb = await recordReleaseEverywhere(env, {
       kind: 'rollback', demo: isDemo(env),
-      tenant: r.tenant, group: r.group,
+      tenant: tenantOf(env), group: groupOf(env),
       sourceId: null, sourceName: null, targetId: env.id, targetName: env.name,
       targetStage: stageOf(env),
       flowType: r.flowType, baseName: r.baseName, fromName: r.toName, toName: name,
       prevVersion: r.newVersion, newVersion: version,
       by: who.by, bySource: who.bySource,
-      prevSnapshot: r.newSnapshot,
+      prevSnapshot: saveSnapshot(env.id, r.toName, curYaml),
       newSnapshot: saveSnapshot(env.id, name, published),
       rollbackOf: r.id,
       diff: releaseDiff(curYaml, published)
     });
-    // Markér den rullede release. Næste klik går så én release længere tilbage.
-    const frisk = loadReleases();
-    const orig = frisk.find(x => x.id === r.id);
-    if (orig) { orig.rolledBackBy = rb.id; orig.rolledBackAt = rb.at; saveReleases(frisk); }
+    // Markér den rullede release — i org'en, så en anden pc ser det samme.
+    // Næste klik går så én forfremmelse længere tilbage.
+    await mutateRelease(env, r.baseName, r.flowType, r.id, x => { x.rolledBackBy = rb.id; x.rolledBackAt = rb.at; });
 
     await noteTargetRepublished(env, r.baseName, r.flowType, version, publishedAt, 'rollback');
-    addLog('SUCCESS', `Rollback: "${r.toName}" in ${env.name} is back on the content from before the release` +
+    addLog('SUCCESS', `Rollback: "${r.toName}" in ${env.name} is back on the content of v${r.prevVersion || '?'}` +
       (name !== r.toName ? ` as "${name}"` : '') + ` (now v${version || '?'})`, env.name, 'ROLLBACK');
 
     // Et modul der rulles tilbage, er lige så meget en ændring som et der
@@ -2837,7 +3106,7 @@ app.post('/api/releases/:id/rollback', async (req, res) => {
     if (r.flowType === 'COMMONMODULE') {
       try { dependents = await dependentsOf(env, name); } catch (_) {}
     }
-    res.json({ ok: true, name, version, releaseId: rb.id, dependents });
+    res.json({ ok: true, name, version, releaseRef: releaseRef(rb), dependents, contentFrom: kilde });
   } catch (e) {
     const msg = describeApiError(e);
     addLog('ERROR', `Rollback of "${r.toName}" in ${env.name} failed: ${msg}`, env.name, 'ROLLBACK');
@@ -3175,8 +3444,11 @@ app.get('/api/pipeline', async (req, res) => {
   }
 
   const failed = new Set(problems.map(p => p.environment));
-  const releases = loadReleases();
   const rows = [];
+  // Hele historikken pr. miljø — fra org'ens manifest og den lokale cache —
+  // så en release lavet fra en anden pc også kan ses og rulles tilbage her.
+  const relByEnv = {};
+  for (const c of envs) relByEnv[c.id] = await releasesOfEnv(c, orgManifests[c.id]);
   for (const [key, cells] of byFlow) {
     const [flowName, flowType] = key.split('|');
     rows.push({
@@ -3187,13 +3459,14 @@ app.get('/api/pipeline', async (req, res) => {
         // Etiketten er versionsendelsen hvor navnet bærer den (_v5), ellers
         // miljøets egen udgave før releasen (v5).
         if (!cell.missing) {
-          const hist = releasesFor(releases, c.id, flowName, flowType);
+          const hist = releasesFor(relByEnv[c.id] || [], c.id, flowName, flowType);
           if (hist.length) {
             cell.releaseCount = hist.length;
             const rb = rollbackCandidate(hist);
             if (rb) {
               const suf = versionSuffixOf(rb.fromName);
-              cell.rollback = { id: rb.id, label: suf != null ? `_v${suf}` : (rb.prevVersion ? `v${rb.prevVersion}` : ''),
+              cell.rollback = { id: rb.id, ref: releaseRef(rb),
+                                label: suf != null ? `_v${suf}` : (rb.prevVersion ? `v${rb.prevVersion}` : ''),
                                 toName: rb.fromName || rb.toName };
             }
           }
@@ -4991,7 +5264,7 @@ app.post('/api/migrate/commit', async (req, res) => {
     const baseName = baseFlowName(stripEnvPrefix(nyName, target));
     let release = null;
     try {
-      release = recordRelease({
+      release = await recordReleaseEverywhere(target, {
         kind: 'promotion', demo: false, action: cmd,
         tenant: tenantOf(target), group: groupOf(target),
         sourceId, sourceName: source.name, targetId, targetName: target.name,
@@ -5020,7 +5293,7 @@ app.post('/api/migrate/commit', async (req, res) => {
     }
 
     res.json({ ok: true, fileName: path.basename(resolved), output: out, yaml: fs.readFileSync(resolved, 'utf8'),
-      targetName: nyName, releaseId: release?.id || null,
+      targetName: nyName, releaseRef: release ? releaseRef(release) : null,
       diff: release ? { added: release.diff.added, removed: release.diff.removed, noPrevious: release.diff.noPrevious } : null,
       dependents });
   } catch (e) {
@@ -5269,6 +5542,7 @@ module.exports = {
   isPipelineOrigin, promotionNameFrom, carriesVersionSuffix, prefixClash,
   // releases
   lineDiff, releaseDiff, rollbackCandidate, releasesFor, releaseNoteMarkdown, flowHasDraft,
+  compactRelease, trimOrgReleases, mergeReleases, ORG_RELEASES_MAX,
   parseFlowFileName, versionLabel, sanitizeName, normType,
   // miljøer og præfikser
   prefixOf, orgKeyOf, belongsToEnv, stripEnvPrefix, withEnvPrefix, depNameIn,

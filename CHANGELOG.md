@@ -5,6 +5,38 @@
 
 ---
 
+### v1.41.0
+---
+**🇩🇰 Dansk**
+
+- **Rollback virker nu fra en anden pc.** I v1.40.0 lå hele release-loggen — og indholdet en rollback skulle bruge — i `flows/.releases.json` på den pc der forfremmede. Åbnede man tavlen på en anden pc næste morgen, var der hverken en **↩**-knap eller et **📝**-link.
+
+  Nu ligger historikken i **org'en**, i manifest-rækken for flowet: de seneste 20 releases med udgaven før og efter, hvem, hvornår, noten og om den er rullet tilbage. Indholdet gemmes *ikke* dér — Genesys har allerede hver publiceret udgave, så rollback eksporterer den udgave målet stod på før, direkte fra org'en. Det er efterprøvet på demoen ved at slette hele den lokale cache mellem forfremmelse og rollback.
+
+- **Den lokale fil er nu en cache.** Den har diff'en og indholdet klar og sparer en eksport. Mangler den, bygges diff'en af de to udgaver i org'en første gang man folder den ud, og lægges så i cachen.
+
+- **Noter og "rullet tilbage" deles.** En note skrevet på én pc, eller en rollback lavet fra en anden, ses af alle. Næste klik på **↩** går én forfremmelse længere tilbage, uanset hvilken pc de forrige klik kom fra.
+
+- **En forfremmelse sletter ikke længere historikken.** Manifest-rækken blev skrevet forfra ved hver forfremmelse. Nu læses den først, og historikken følger med.
+
+- **Miljøer uden manifest-tabel** har stadig kun historikken på den pc der lavede releasen. Listen markerer dem *kun på denne pc*, og systemloggen siger det ved hver release.
+
+- **Demoen husker sine udgaver**, ligesom Genesys, så rollback i demoen henter indholdet samme vej som i en rigtig org.
+
+**6 nye tests**, i alt 169.
+
+**🇬🇧 English**
+- **Rollback now works from another PC.** In v1.40.0 the release log — and the content a rollback needed — lived in `flows/.releases.json` on the PC that promoted. The history now lives in **the org**, in the flow's manifest row: the latest 20 releases with version before and after, who, when, note and rollback status. Content is *not* stored there; Genesys keeps every published version, so rollback exports the previous version straight from the org. Verified on the demo by deleting the whole local cache between promotion and rollback.
+- **The local file is now a cache**; a missing diff is built from the two versions in the org on first expand.
+- **Notes and rollback status are shared** across PCs.
+- **A promotion no longer wipes the history** in the manifest row.
+- **Environments without a manifest table** keep history on the promoting PC only, marked *this PC only*.
+- **The demo keeps its versions**, as Genesys does.
+
+**6 new tests**, 169 in total.
+
+---
+
 ### v1.40.0
 ---
 **🇩🇰 Dansk**
