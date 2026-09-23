@@ -429,8 +429,17 @@ const DEMO_DIVISIONS = ['Home', 'DEV', 'TEST', 'UAT', 'PROD'];
 
 
 // Et flows indhold er bare en tekst her — nok til at hashe og sammenligne.
-const demoYaml = (name, body) =>
-  `inboundCall:\n  name: ${name}\n  division: Home\n  description: "${body}"\n`;
+// Med 'modul' kalder flowet et common module — skrevet som Archy skriver det,
+// så afhængighedsscanningen og præfiks-omskrivningen virker på det.
+const demoYaml = (name, body, modul) =>
+  `inboundCall:\n  name: ${name}\n  division: Home\n  description: "${body}"\n` +
+  (modul
+    ? `  tasks:\n    - task:\n        name: Start\n        refId: Start_1\n` +
+      `        actions:\n          - callCommonModule:\n              name: Hilsen\n              commonModule:\n` +
+      `                ${modul}:\n                  ver_latestPublished:\n`
+    : '');
+const demoModuleYaml = (name, body) =>
+  `commonModule:\n  name: ${name}\n  division: Home\n  description: "${body}"\n`;
 
 function seedDemo() {
   const now = Date.now();
@@ -490,15 +499,27 @@ function seedDemo2() {
   const A = [], B = [];
 
   // 1) Findes i alle fire med samme indhold — den rolige række.
+  // Ordreflow og Betaling kalder begge det fælles modul "Hilsen". Forfremmes
+  // modulet, skal de to publiceres igen i målet for at få den nye udgave med.
   const ord = 'tag imod ordren';
   A.push({ name: 'DEV_Ordreflow',  type: 'INBOUNDCALL', published: '9.0',
-           publishedAt: now - 30 * day, content: demoYaml('DEV_Ordreflow', ord) });
+           publishedAt: now - 30 * day, content: demoYaml('DEV_Ordreflow', ord, 'DEV_Hilsen') });
   A.push({ name: 'TEST_Ordreflow', type: 'INBOUNDCALL', published: '2.0',
-           publishedAt: now - 22 * day, content: demoYaml('TEST_Ordreflow', ord) });
+           publishedAt: now - 22 * day, content: demoYaml('TEST_Ordreflow', ord, 'TEST_Hilsen') });
   A.push({ name: 'UAT_Ordreflow',  type: 'INBOUNDCALL', published: '2.0',
-           publishedAt: now - 15 * day, content: demoYaml('UAT_Ordreflow', ord) });
+           publishedAt: now - 15 * day, content: demoYaml('UAT_Ordreflow', ord, 'UAT_Hilsen') });
   B.push({ name: 'Ordreflow',      type: 'INBOUNDCALL', published: '1.0',
-           publishedAt: now - 8 * day,  content: demoYaml('Ordreflow', ord) });
+           publishedAt: now - 8 * day,  content: demoYaml('Ordreflow', ord, 'Hilsen') });
+
+  // 1b) Det fælles modul. Dev er rettet (ny velkomsttekst); resten er ens.
+  A.push({ name: 'DEV_Hilsen',  type: 'COMMONMODULE', published: '4.0',
+           publishedAt: now - 1 * day,  content: demoModuleYaml('DEV_Hilsen', 'velkommen til Kunde 2 - nu med ny tekst') });
+  A.push({ name: 'TEST_Hilsen', type: 'COMMONMODULE', published: '1.0',
+           publishedAt: now - 22 * day, content: demoModuleYaml('TEST_Hilsen', 'velkommen til Kunde 2') });
+  A.push({ name: 'UAT_Hilsen',  type: 'COMMONMODULE', published: '1.0',
+           publishedAt: now - 15 * day, content: demoModuleYaml('UAT_Hilsen', 'velkommen til Kunde 2') });
+  B.push({ name: 'Hilsen',      type: 'COMMONMODULE', published: '1.0',
+           publishedAt: now - 8 * day,  content: demoModuleYaml('Hilsen', 'velkommen til Kunde 2') });
 
   // 2) Kun i dev — hele kæden ligger foran.
   A.push({ name: 'DEV_Fejlbesked', type: 'WORKFLOW', published: '4.0',
@@ -507,14 +528,14 @@ function seedDemo2() {
   // 3) Findes overalt, men prod er løbet fra de andre.
   const bet = 'tag imod betaling';
   A.push({ name: 'DEV_Betaling',  type: 'INBOUNDCALL', published: '5.0',
-           publishedAt: now - 26 * day, content: demoYaml('DEV_Betaling', bet) });
+           publishedAt: now - 26 * day, content: demoYaml('DEV_Betaling', bet, 'DEV_Hilsen') });
   A.push({ name: 'TEST_Betaling', type: 'INBOUNDCALL', published: '2.0',
-           publishedAt: now - 20 * day, content: demoYaml('TEST_Betaling', bet) });
+           publishedAt: now - 20 * day, content: demoYaml('TEST_Betaling', bet, 'TEST_Hilsen') });
   A.push({ name: 'UAT_Betaling',  type: 'INBOUNDCALL', published: '2.0',
-           publishedAt: now - 14 * day, content: demoYaml('UAT_Betaling', bet) });
+           publishedAt: now - 14 * day, content: demoYaml('UAT_Betaling', bet, 'UAT_Hilsen') });
   B.push({ name: 'Betaling',      type: 'INBOUNDCALL', published: '11.0',
            publishedAt: now - 1 * day,
-           content: demoYaml('Betaling', 'rettet direkte i prod, ingen ved hvorfor') });
+           content: demoYaml('Betaling', 'rettet direkte i prod, ingen ved hvorfor', 'Hilsen') });
 
   // Et efterladt flow uden præfiks i non-prod-org'en. Det hører til INTET
   // miljø — prod bor i en anden org — og skal derfor ikke dukke op på tavlen.
@@ -561,6 +582,38 @@ function promotionName(currentName, sourcePublishedVersion) {
   return `${baseFlowName(currentName)}_v${n}`;
 }
 
+// Er miljøet det første trin i sin gruppe — dér hvor flowet bygges?
+//
+// Kun DÉR sætter forfremmelsen et nyt tal på navnet. Længere nede i kæden er
+// miljøets egen udgave bare antallet af gange det har modtaget noget: TEST kan
+// stå på v3 mens flowet kom fra DEV som v6. Brugte vi TESTs tal, blev
+// "TEST_Betaling_v6" forfremmet til UAT som "UAT_Betaling_v3" — og TEST blev
+// omdøbt til _v3 med. Endelsen skal fortælle hvilken udviklingsudgave der
+// kører, hele vejen til prod.
+function isPipelineOrigin(env, all) {
+  if (!stageOf(env)) return true;
+  const peers = (all || []).filter(c => sameGroup(c, env) && stageOf(c));
+  if (!peers.length) return true;
+  return stageOrder(env.stage) <= Math.min(...peers.map(c => stageOrder(c.stage)));
+}
+
+// Navnet efter forfremmelse. Fra første trin: kildens udgave. Længere nede:
+// navnet som det er — endelsen blev sat dengang flowet forlod første trin.
+function promotionNameFrom(currentName, sourcePublishedVersion, fromOrigin, flowType) {
+  if (flowType && !carriesVersionSuffix(flowType)) return currentName;
+  return fromOrigin ? promotionName(currentName, sourcePublishedVersion) : currentName;
+}
+
+// Flowtyper der kaldes VED NAVN fra andre flows. Et common module står i
+// kalderens YAML som "commonModule: Hilsen:", og et bot flow som "botFlow:".
+// Fik de en versionsendelse, ville "Hilsen" blive til "Hilsen_v4", og hvert
+// eneste flow der kalder modulet ville pege på et navn der ikke findes længere.
+// Et opkaldsflow rammes derimod via sit id (DID, rute), så dér er endelsen ufarlig.
+const NAVNGIVNE_KALDEMAAL = new Set(['COMMONMODULE', 'BOT', 'DIGITALBOT']);
+function carriesVersionSuffix(flowType) {
+  return !NAVNGIVNE_KALDEMAAL.has(normType(flowType));
+}
+
 // Forfremmelse inde i demoen. Kopierer indholdet fra kilden til målet under det
 // navn reglen giver. Ingen Archy, ingen Genesys — kun den lokale demofil.
 app.post('/api/demo/promote', async (req, res) => {
@@ -587,20 +640,41 @@ app.post('/api/demo/promote', async (req, res) => {
   // derefter på hver side for sig. Ellers ville "DEV_Velkomst" forfremmet til
   // test hedde "DEV_Velkomst_v10" i test-miljøet — altså bære afsenderens
   // præfiks ind i modtageren.
+  //
+  // Endelsen sættes kun fra pipelinens første trin — se isPipelineOrigin.
   const bare       = stripEnvPrefix(src.name, source);
-  const bareNew    = promotionName(bare, src.published);
+  const bareNew    = promotionNameFrom(bare, src.published, isPipelineOrigin(source, all), flowType);
   const newName    = withEnvPrefix(bareNew, target);   // navnet i målet
   const srcNewName = withEnvPrefix(bareNew, source);   // og i kilden
   const base       = baseFlowName(bareNew);
   d.flows[tgtKey] = d.flows[tgtKey] || [];
   const now = Date.now();
 
+  // Indholdet gør det samme som en rigtig import: navnet i YAML'en skal være
+  // målets navn, referencerne skal pege på målets præfiksede ressourcer, og
+  // divisionen følger miljøet. Før blev kildens tekst kopieret som den var —
+  // så UAT-udgaven stod med "name: DEV_Betaling" indeni.
+  let tgtContent = renameFlowInYaml(src.content, newName);
+  tgtContent = setFlowDivisionInYaml(tgtContent, divisionOf(target));
+  const dep = prefixDependenciesInYaml(tgtContent, source, target);
+  tgtContent = dep.yaml;
+
   // Målet kan allerede have flowet under et ældre versionsnavn. Det er stadig
   // det samme flow, så det omdøbes og opdateres — der laves ikke et nyt ved
   // siden af. Dermed beholder det sit id i målet, og alt der ruter til det
   // bliver ved med at gøre det.
+  //
+  // Kun flows der hører til MÅLMILJØET. Har målet intet præfiks og deler org
+  // med præfiksede søskende, ville "DEV_Betaling" ellers kunne udpeges som
+  // målets flow, fordi grundnavnet efter et tomt præfiks er hele navnet.
+  const tgtSiblings = all.filter(c => isDemo(c) && demoFlowKey(c) === tgtKey);
   const existing = d.flows[tgtKey].find(f =>
-    f.type === flowType && baseFlowName(stripEnvPrefix(f.name, target)) === base);
+    f.type === flowType && belongsToEnv(f.name, target, tgtSiblings) &&
+    baseFlowName(stripEnvPrefix(f.name, target)) === base);
+
+  const prevContent = existing ? existing.content : null;
+  const prevName    = existing ? existing.name : null;
+  const prevVersion = existing ? existing.published : null;
 
   let action, renamedTarget = null;
   if (existing) {
@@ -609,12 +683,12 @@ app.post('/api/demo/promote', async (req, res) => {
     existing.name = newName;
     existing.published = `${cur + 1}.0`;
     existing.publishedAt = now;
-    existing.content = src.content;
+    existing.content = tgtContent;
     action = 'update';
   } else {
     d.flows[tgtKey].push({
       name: newName, type: flowType,
-      published: '1.0', publishedAt: now, content: src.content
+      published: '1.0', publishedAt: now, content: tgtContent
     });
     action = 'create';
   }
@@ -624,17 +698,19 @@ app.post('/api/demo/promote', async (req, res) => {
   // hedder den stadig _v10 indtil den bliver forfremmet igen.
   const renamedSource = src.name !== srcNewName ? src.name : null;
   src.name = srcNewName;
+  src.content = renameFlowInYaml(src.content, srcNewName);
 
   saveDemo(d);
+  const targetVersion = existing ? existing.published : '1.0';
 
   recordManifest({
     ts: new Date().toISOString(), kind: 'migration',
     sourceId, sourceOrgId: sourceId, sourceName: source.name,
     targetId, targetOrgId: targetId, targetName: target.name,
     flowName: bareNew, flowType,
-    sourceVersion: src.published, targetVersion: existing ? existing.published : '1.0',
+    sourceVersion: src.published, targetVersion,
     targetPublishedAt: now, action,
-    hash: flowContentHash(src.content)
+    hash: flowContentHash(src.content, source)
   });
 
   // To rækker, én i hver org, og hver beskriver kun sig selv. Kilden er også
@@ -643,20 +719,56 @@ app.post('/api/demo/promote', async (req, res) => {
   // præfiksede navn, blev rækken skrevet under en nøgle der aldrig læses.
   await recordOrgManifest(source, target, bareNew, flowType, {
     sourceVersion: src.published,
-    targetVersion: existing ? existing.published : '1.0',
+    targetVersion,
     targetPublishedAt: now,
     sourcePublishedAt: src.publishedAt,
-    hash: flowContentHash(src.content)
+    hash: flowContentHash(src.content, source)
   });
+
+  // Release-noten: hvad målet indeholdt før, og hvad det indeholder nu.
+  const who = await whoAmI(target);
+  const release = recordRelease({
+    kind: 'promotion', demo: true,
+    tenant: tenantOf(target), group: groupOf(target),
+    sourceId, sourceName: source.name, targetId, targetName: target.name,
+    targetStage: stageOf(target),
+    flowType, baseName: base, fromName: prevName, toName: newName,
+    prevVersion, newVersion: targetVersion, sourceVersion: src.published,
+    by: who.by, bySource: who.bySource,
+    prevSnapshot: saveSnapshot(targetId, prevName || newName, prevContent),
+    newSnapshot: saveSnapshot(targetId, newName, tgtContent),
+    references: dep.changed,
+    diff: releaseDiff(prevContent, tgtContent)
+  });
+
+  // Et common module der ændres, slår først igennem i de flows der bruger det,
+  // når de publiceres igen. Vi finder dem og lader brugeren tage stilling.
+  const dependents = normType(flowType) === 'COMMONMODULE'
+    ? demoDependentsOf(target, newName) : [];
 
   const renamed = !!renamedSource || !!renamedTarget;
   addLog('SUCCESS',
     `Demo: "${renamedSource || newName}" ${source.name} → ${target.name}` +
     (renamed ? ` as "${newName}" (also renamed in ${source.name})` : ' (name unchanged)'),
     target.name, 'DEMO');
-  res.json({ ok: true, fromName: renamedSource || newName, toName: newName,
-             renamed, renamedSource, renamedTarget, action });
+  res.json({ ok: true, fromName: flowName, toName: newName,
+             renamed, renamedSource, renamedTarget, action,
+             releaseId: release.id,
+             diff: { added: release.diff.added, removed: release.diff.removed, noPrevious: release.diff.noPrevious },
+             dependents });
 });
+
+// De flows i et demo-miljø der bruger et common module. Demoen har ingen
+// afhængighedssporing, så referencerne læses direkte ud af indholdet.
+function demoDependentsOf(env, moduleName) {
+  const siblings = loadCustomers().filter(c => isDemo(c) && demoFlowKey(c) === demoFlowKey(env));
+  const base = baseFlowName(stripEnvPrefix(moduleName, env));
+  return demoFlowsFor(env)
+    .filter(f => belongsToEnv(f.name, env, siblings) && f.name !== moduleName)
+    .filter(f => (scanYamlDependencies(f.content).commonmodule || [])
+      .some(n => baseFlowName(stripEnvPrefix(n, env)) === base))
+    .map(f => ({ name: f.name, type: f.type, published: f.published, hasDraft: false }));
+}
 
 // Simulerer at nogen arbejder videre i et miljø og publicerer igen. Navnet
 // røres ikke — det er netop pointen: udgaven stiger, men navnet bliver ved med
@@ -741,6 +853,7 @@ app.post('/api/demo/reset', (req, res) => {
   if (!loadCustomers().some(c => demoIs(c, which)))
     return res.status(404).json({ error: 'Ingen demo-kunde' });
   dropDemoManifest(which);
+  dropDemoReleases(which);
   if (which === '2') seedDemo2(); else seedDemo();
   addLog('INFO', 'Demo reset', which === '2' ? DEMO2_TENANT : DEMO_TENANT, 'DEMO');
   res.json({ ok: true });
@@ -757,6 +870,7 @@ app.delete('/api/demo', (req, res) => {
       delete d.manifest[k];
   saveDemo(d);
   dropDemoManifest(which);
+  dropDemoReleases(which);
   addLog('INFO', 'Demo removed', which === '2' ? DEMO2_TENANT : DEMO_TENANT, 'DEMO');
   res.json({ ok: true });
 });
@@ -821,6 +935,21 @@ async function publishedVersionOf(customer, flowName, flowType) {
   return { found: true, published: f.publishedVersion?.name || f.publishedVersion?.commitVersion || null };
 }
 
+// To miljøer i SAMME org med SAMME præfiks ville gøre krav på de samme flows —
+// tavlen kunne ikke skelne dem, og en forfremmelse mellem dem ville skrive
+// flowet ovenpå sig selv. Oftest er det to miljøer uden præfiks: fx UAT og
+// prod i samme org. UAT uden præfiks er fint, så længe prod bor i en anden org.
+function prefixClash(env, all) {
+  if (!stageOf(env)) return null;
+  const hit = all.find(c => c.id !== env.id && stageOf(c) &&
+    orgKeyOf(c) === orgKeyOf(env) && prefixOf(c) === prefixOf(env) &&
+    tenantOf(c) === tenantOf(env) && groupOf(c) === groupOf(env));
+  if (!hit) return null;
+  return prefixOf(env)
+    ? `"${hit.name}" bruger allerede præfikset "${prefixOf(env)}" i samme org. Hvert miljø i en org skal have sit eget præfiks.`
+    : `"${hit.name}" ligger allerede uden præfiks i samme org. Kun ét miljø pr. org kan være uden præfiks — giv det ene et præfiks (fx UAT_).`;
+}
+
 app.get('/api/customers', (req, res) => {
   const customers = loadCustomers().map(c => ({ ...c, clientSecret: '••••••••' }));
   res.json(customers);
@@ -848,6 +977,8 @@ app.post('/api/customers', (req, res) => {
     orgLabel: (orgLabel || '').trim(),
     division: (division || '').trim()
   };
+  const clash = prefixClash(customer, customers);
+  if (clash) return res.status(400).json({ error: clash });
   customers.push(customer);
   saveCustomers(customers);
   addLog('INFO', `Customer created: ${name} (region: ${region}, auth: ${customer.authType})`, name, 'CUSTOMER');
@@ -879,6 +1010,8 @@ app.put('/api/customers/:id', (req, res) => {
     if (patch[k] !== undefined) patch[k] = String(patch[k] || '').trim();
 
   const updated = { ...customers[idx], ...patch };
+  const clash = prefixClash(updated, customers);
+  if (clash) return res.status(400).json({ error: clash });
   customers[idx] = updated;
   saveCustomers(customers);
   addLog('INFO', `Customer updated: ${updated.name}`, updated.name, 'CUSTOMER');
@@ -2165,6 +2298,553 @@ function recordManifest(entry) {
 
 app.get('/api/migrations', (req, res) => res.json(loadManifest()));
 
+// ── Releases: release notes og rollback ──────────────────────────────────────
+// Manifestet husker kun den SENESTE forfremmelse pr. flow og mål — nok til at
+// se om nogen har rørt ved målet siden. En release-log husker dem alle, med
+// hvad målet indeholdt før og efter. Det er det der skal til for at kunne sige
+// hvad der blev ændret (release notes), og for at kunne gå tilbage (rollback).
+//
+// Indholdet gemmes som filer ved siden af, ikke inde i loggen: et stort flow er
+// hundredvis af kB, og loggen skal kunne læses hver gang tavlen tegnes.
+const RELEASES_FILE = path.join(FLOWS_DIR, '.releases.json');
+const RELEASES_DIR  = path.join(FLOWS_DIR, '.releases');
+
+function loadReleases() {
+  try { return JSON.parse(fs.readFileSync(RELEASES_FILE, 'utf8')); } catch (_) { return []; }
+}
+function saveReleases(all) {
+  if (!fs.existsSync(FLOWS_DIR)) fs.mkdirSync(FLOWS_DIR, { recursive: true });
+  fs.writeFileSync(RELEASES_FILE, JSON.stringify(all, null, 2));
+}
+
+// Gemmer ét flows indhold og returnerer den relative sti. Navnet bærer tiden,
+// så to releases af samme flow aldrig kan overskrive hinandens snapshot.
+function saveSnapshot(envId, name, yaml) {
+  if (yaml == null) return null;
+  const dir = path.join(RELEASES_DIR, sanitizeName(String(envId)));
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const rel = path.join(sanitizeName(String(envId)),
+    `${Date.now()}-${crypto.randomBytes(3).toString('hex')}-${sanitizeName(name)}.yaml`);
+  fs.writeFileSync(path.join(RELEASES_DIR, rel), String(yaml), 'utf8');
+  return rel;
+}
+function readSnapshot(rel) {
+  if (!rel) return null;
+  const p = path.resolve(RELEASES_DIR, rel);
+  if (!p.startsWith(path.resolve(RELEASES_DIR) + path.sep)) return null;
+  try { return fs.readFileSync(p, 'utf8'); } catch (_) { return null; }
+}
+
+// Linje-diff (længste fælles delfølge). Fælles begyndelse og slutning skæres
+// fra først — i et flow er ændringen næsten altid et lille stykke midt i en
+// lang fil. Er midterstykket stadig for stort til tabellen, meldes det hele
+// som fjernet og tilføjet frem for at bruge hundredvis af MB på det.
+const DIFF_MAX_CELLS = 4_000_000;
+function lineDiff(a, b) {
+  const A = String(a ?? '').split('\n'), B = String(b ?? '').split('\n');
+  if (a == null || a === '') A.length = 0;
+  if (b == null || b === '') B.length = 0;
+  let s = 0;
+  while (s < A.length && s < B.length && A[s] === B[s]) s++;
+  let ea = A.length, eb = B.length;
+  while (ea > s && eb > s && A[ea - 1] === B[eb - 1]) { ea--; eb--; }
+  const out = A.slice(0, s).map(text => ({ op: ' ', text }));
+  const midA = A.slice(s, ea), midB = B.slice(s, eb);
+  const n = midA.length, m = midB.length;
+  if (n * m > DIFF_MAX_CELLS) {
+    for (const text of midA) out.push({ op: '-', text });
+    for (const text of midB) out.push({ op: '+', text });
+  } else if (n || m) {
+    const L = new Uint32Array((n + 1) * (m + 1));
+    for (let i = n - 1; i >= 0; i--)
+      for (let j = m - 1; j >= 0; j--)
+        L[i * (m + 1) + j] = midA[i] === midB[j]
+          ? L[(i + 1) * (m + 1) + j + 1] + 1
+          : Math.max(L[(i + 1) * (m + 1) + j], L[i * (m + 1) + j + 1]);
+    let i = 0, j = 0;
+    while (i < n && j < m) {
+      if (midA[i] === midB[j]) { out.push({ op: ' ', text: midA[i] }); i++; j++; }
+      else if (L[(i + 1) * (m + 1) + j] >= L[i * (m + 1) + j + 1]) out.push({ op: '-', text: midA[i++] });
+      else out.push({ op: '+', text: midB[j++] });
+    }
+    while (i < n) out.push({ op: '-', text: midA[i++] });
+    while (j < m) out.push({ op: '+', text: midB[j++] });
+  }
+  for (const text of A.slice(ea)) out.push({ op: ' ', text });
+  return out;
+}
+
+// Diff'en til en release note. Begge sider er fra SAMME miljø — før og efter —
+// så præfiks og division er ens og skal stå som de er. Kun det der skifter ved
+// hver eksport (trackingId'er, refId-numre, tomme beskrivelser) renses væk, så
+// noten viser det der faktisk er ændret og ikke hundrede linjer støj.
+// Hunks med 3 linjers kontekst; en meget stor ændring skæres af og siger det.
+const DIFF_CONTEXT = 3, DIFF_MAX_LINES = 600;
+function releaseDiff(prevYaml, newYaml) {
+  const rens = y => normalizeFlowYaml(y);
+  if (prevYaml == null) {
+    const lines = rens(newYaml).split('\n');
+    return { noPrevious: true, added: lines.length, removed: 0, hunks: [], truncated: false };
+  }
+  const d = lineDiff(rens(prevYaml), rens(newYaml));
+  const added = d.filter(x => x.op === '+').length;
+  const removed = d.filter(x => x.op === '-').length;
+  const hunks = [];
+  let cur = null, lastChange = -Infinity, shown = 0, truncated = false;
+  d.forEach((x, idx) => {
+    if (x.op === ' ') return;
+    const from = Math.max(0, idx - DIFF_CONTEXT);
+    if (!cur || from > lastChange + DIFF_CONTEXT + 1) {
+      if (cur) hunks.push(cur);
+      cur = { start: from, end: from };
+    }
+    lastChange = idx;
+    cur.end = Math.min(d.length, idx + DIFF_CONTEXT + 1);
+  });
+  if (cur) hunks.push(cur);
+  const ud = [];
+  for (const h of hunks) {
+    if (shown >= DIFF_MAX_LINES) { truncated = true; break; }
+    const lines = d.slice(h.start, h.end).map(x => x.op + ' ' + x.text);
+    const left = DIFF_MAX_LINES - shown;
+    if (lines.length > left) truncated = true;
+    ud.push({ line: h.start + 1, lines: lines.slice(0, left) });
+    shown += Math.min(lines.length, left);
+  }
+  return { noPrevious: false, added, removed, hunks: ud, truncated };
+}
+
+function recordRelease(entry) {
+  const all = loadReleases();
+  const rel = {
+    id: `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`,
+    at: Date.now(),
+    ...entry,
+    flowType: normType(entry.flowType)
+  };
+  all.push(rel);
+  // Loggen må ikke vokse uden ende. Snapshots der ikke længere har en post,
+  // ryddes med — ellers ville mappen blive ved med at vokse alligevel.
+  const MAX = 2000;
+  if (all.length > MAX) {
+    for (const old of all.splice(0, all.length - MAX))
+      for (const s of [old.prevSnapshot, old.newSnapshot]) {
+        if (!s) continue;
+        try { fs.unlinkSync(path.resolve(RELEASES_DIR, s)); } catch (_) {}
+      }
+  }
+  saveReleases(all);
+  return rel;
+}
+
+// Demoens releases ryddes sammen med demoen, ligesom dens manifestrækker.
+function dropDemoReleases(which) {
+  const hit = id => which === '2' ? String(id).startsWith('demo2-')
+            : which === '1' ? (String(id).startsWith('demo-') && !String(id).startsWith('demo2-'))
+            : String(id).startsWith('demo');
+  const all = loadReleases();
+  const keep = [];
+  for (const r of all) {
+    if (!hit(r.targetId || '')) { keep.push(r); continue; }
+    for (const s of [r.prevSnapshot, r.newSnapshot]) {
+      if (!s) continue;
+      try { fs.unlinkSync(path.resolve(RELEASES_DIR, s)); } catch (_) {}
+    }
+  }
+  if (keep.length !== all.length) saveReleases(keep);
+}
+
+// Releases for ét flow i ét miljø, nyeste først. Grundnavnet er nøglen, så en
+// omdøbning fra _v5 til _v6 stadig er samme historik.
+function releasesFor(all, envId, baseName, flowType) {
+  const ft = normType(flowType);
+  return all.filter(r => r.targetId === envId && r.baseName === baseName && r.flowType === ft)
+            .sort((a, b) => b.at - a.at);
+}
+
+// Den release der kan rulles tilbage: den nyeste FORFREMMELSE, som ikke selv
+// er rullet tilbage, og som har et "før" at gå tilbage til. Rollbacks og
+// genpubliceringer springes over — de ændrer ikke hvad der blev leveret, så
+// næste klik efter en rollback går én forfremmelse længere tilbage (_v6 → _v5
+// → _v4). En release der oprettede flowet har intet før at gå tilbage til.
+function rollbackCandidate(list) {
+  const top = list.find(r => r.kind === 'promotion' && !r.rolledBackBy);
+  if (!top || !top.prevSnapshot) return null;
+  return top;
+}
+
+// Release-noten som markdown — til at sætte ind i en change request eller mail.
+function releaseNoteMarkdown(r) {
+  const dato = new Date(r.at).toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+  const kind = { promotion: 'Promotion', rollback: 'Rollback', republish: 'Republish (common module)' }[r.kind] || r.kind;
+  const l = [];
+  l.push(`## ${r.toName} — ${r.targetName}`);
+  l.push('');
+  l.push(`- **Type:** ${kind}`);
+  l.push(`- **Flow:** ${r.baseName} (${r.flowType})`);
+  if (r.sourceName) l.push(`- **From:** ${r.sourceName}${r.sourceVersion ? ` (v${r.sourceVersion})` : ''}`);
+  l.push(`- **To:** ${r.targetName}${r.prevVersion ? ` — v${r.prevVersion} → v${r.newVersion || '?'}` : r.newVersion ? ` — v${r.newVersion}` : ''}`);
+  if (r.fromName && r.fromName !== r.toName) l.push(`- **Renamed:** ${r.fromName} → ${r.toName}`);
+  l.push(`- **When:** ${dato}`);
+  if (r.by) l.push(`- **By:** ${r.by}${r.bySource === 'machine' ? ' (PC user)' : ''}`);
+  if (r.note) l.push(`- **Note:** ${r.note}`);
+  if (r.rollbackOf) l.push(`- **Rolls back:** release ${r.rollbackOf}`);
+  if (r.rolledBackBy) l.push(`- **Rolled back** by release ${r.rolledBackBy}`);
+  if ((r.references || []).length) l.push(`- **References rewritten:** ${r.references.join(', ')}`);
+  if ((r.cascade || []).length) {
+    l.push(`- **Dependent flows republished:**`);
+    for (const c of r.cascade) l.push(`  - ${c.ok ? '✓' : '✗'} ${c.name}${c.error ? ` — ${c.error}` : ''}`);
+  }
+  l.push('');
+  const d = r.diff || {};
+  if (d.noPrevious) l.push(`_New in ${r.targetName} — no previous version to compare with._`);
+  else if (!d.added && !d.removed) l.push('_No content changes._');
+  else {
+    l.push(`**Changes:** +${d.added} / −${d.removed} lines`);
+    l.push('');
+    l.push('```diff');
+    for (const h of d.hunks || []) { l.push(`@@ line ${h.line} @@`); l.push(...h.lines); }
+    if (d.truncated) l.push('… (truncated)');
+    l.push('```');
+  }
+  return l.join('\n');
+}
+
+// Listen til brugerfladen. Filtre: miljø, gruppe eller ét flow.
+app.get('/api/releases', (req, res) => {
+  const { envId, tenant, group, baseName, flowType, limit = '200' } = req.query;
+  let all = loadReleases();
+  if (envId) all = all.filter(r => r.targetId === envId);
+  if (tenant) all = all.filter(r => r.tenant === tenant);
+  if (group) all = all.filter(r => r.group === group);
+  if (baseName) all = all.filter(r => r.baseName === baseName);
+  if (flowType) all = all.filter(r => r.flowType === normType(flowType));
+  all.sort((a, b) => b.at - a.at);
+  const out = all.slice(0, Math.max(1, Math.min(parseInt(limit, 10) || 200, 2000)));
+  // Hvilke der kan rulles tilbage — beregnet her, så klienten ikke skal kende reglen.
+  const kan = new Set();
+  const seen = new Set();
+  for (const r of out) {
+    const k = `${r.targetId}|${r.baseName}|${r.flowType}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    const c = rollbackCandidate(releasesFor(loadReleases(), r.targetId, r.baseName, r.flowType));
+    if (c) kan.add(c.id);
+  }
+  res.json({ ok: true, releases: out.map(r => ({ ...r, canRollback: kan.has(r.id) })) });
+});
+
+app.get('/api/releases/:id/notes', (req, res) => {
+  const r = loadReleases().find(x => x.id === req.params.id);
+  if (!r) return res.status(404).json({ error: 'Release not found' });
+  res.json({ ok: true, markdown: releaseNoteMarkdown(r) });
+});
+
+// Samlede release notes for flere releases, fx alt i en gruppe siden en dato.
+app.post('/api/releases/notes', (req, res) => {
+  const ids = new Set(req.body.ids || []);
+  const list = loadReleases().filter(r => ids.has(r.id)).sort((a, b) => a.at - b.at);
+  if (!list.length) return res.status(400).json({ error: 'No releases selected' });
+  res.json({ ok: true, markdown: `# Release notes\n\n` + list.map(releaseNoteMarkdown).join('\n\n---\n\n') + '\n' });
+});
+
+app.put('/api/releases/:id/note', (req, res) => {
+  const all = loadReleases();
+  const r = all.find(x => x.id === req.params.id);
+  if (!r) return res.status(404).json({ error: 'Release not found' });
+  r.note = String(req.body.note || '').slice(0, 2000);
+  saveReleases(all);
+  res.json({ ok: true });
+});
+
+// Efter en rollback eller genpublicering står målet på en højere udgave end
+// den manifestet noterede ved forfremmelsen. Uden denne opdatering ville tavlen
+// melde "ændret uden om pipelinen" om noget vi selv lige har gjort.
+async function noteTargetRepublished(env, baseName, flowType, version, publishedAt, kind) {
+  try {
+    const rows = await readOrgManifest(env);
+    const key = orgManifestKey(baseName, flowType);
+    const cur = (rows && rows[key]) || null;
+    if (cur || isDemo(env)) {
+      await writeOrgManifestRow(env, baseName, flowType, {
+        ...(cur || {}), version, publishedAt, kind
+      });
+    }
+  } catch (e) {
+    addLog('WARN', `Could not update the manifest in ${env.name}: ${describeApiError(e)}`, env.name, 'MANIFEST');
+  }
+  const all = loadManifest();
+  const hit = findManifestEntry(all, { targetOrgId: null, targetId: env.id, flowName: baseName, flowType });
+  if (hit) recordManifest({ ...hit, flowName: hit.flowName, targetVersion: version, targetPublishedAt: publishedAt });
+}
+
+// Alle flows i en org, med kladdeoplysninger.
+async function listAllFlows(customer) {
+  const { token, apiBase } = await getToken(customer);
+  const acc = [];
+  for (let page = 1; ; page++) {
+    const r = await axios.get(`${apiBase}/api/v2/flows`, {
+      headers: { Authorization: `Bearer ${token}` },
+      params: { pageSize: 100, pageNumber: page, includeDraft: true }
+    });
+    const e = r.data.entities || [];
+    acc.push(...e);
+    if (e.length < 100) break;
+  }
+  return acc;
+}
+
+// Har flowet noget der er nyere end den publicerede udgave? Så vil en
+// genpublicering af den publicerede udgave erstatte det — og det skal man vide.
+function flowHasDraft(f) {
+  const pub = versionLabel(f.publishedVersion);
+  const saved = versionLabel(f.savedVersion);
+  const checked = versionLabel(f.checkedInVersion);
+  return !!((saved && saved !== pub) || (checked && checked !== pub));
+}
+
+// De flows i et miljø der bruger et common module — også gennem et andet
+// modul: bruger modul B modul A, og flow C bruger B, skal både B og C
+// publiceres igen når A ændres. Moduler står først i listen, så de er
+// publiceret før de flows der kalder dem.
+async function dependentsOf(env, moduleName) {
+  const seen = new Set([moduleName]);
+  const out = [];
+  const walk = async (name, depth) => {
+    if (depth > 5) return;
+    const direkte = isDemo(env) ? demoDependentsOf(env, name) : await realDirectDependents(env, name);
+    for (const f of direkte) {
+      if (seen.has(f.name)) continue;
+      seen.add(f.name);
+      out.push({ ...f, via: name === moduleName ? null : name });
+      if (normType(f.type) === 'COMMONMODULE') await walk(f.name, depth + 1);
+    }
+  };
+  await walk(moduleName, 0);
+  return [
+    ...out.filter(f => normType(f.type) === 'COMMONMODULE'),
+    ...out.filter(f => normType(f.type) !== 'COMMONMODULE')
+  ];
+}
+
+// Genesys' egen afhængighedssporing. Den bygges asynkront efter en
+// publicering, men de flows der bruger modulet har brugt det længe — de står
+// der allerede. Kun flows der hører til MILJØET tages med: i en præfikset org
+// bruger TEST_-flowene TEST_-modulet, og dev's flows er ikke vores sag her.
+async function realDirectDependents(env, moduleName) {
+  const flows = await listAllFlows(env);
+  const mod = flows.find(f => f.name === moduleName && normType(f.type) === 'COMMONMODULE');
+  if (!mod) throw new Error(`Common module "${moduleName}" was not found in ${env.name}`);
+  const { token, apiBase } = await getToken(env);
+  const ids = new Set();
+  for (let page = 1; page < 50; page++) {
+    const r = await axios.get(`${apiBase}/api/v2/architect/dependencytracking/consumingresources`, {
+      headers: { Authorization: `Bearer ${token}` },
+      params: { id: mod.id, objectType: 'COMMONMODULEFLOW', pageSize: 100, pageNumber: page }
+    });
+    const e = r.data.entities || [];
+    for (const x of e) ids.add(x.id);
+    if (e.length < 100) break;
+  }
+  const siblings = loadCustomers().filter(c => orgKeyOf(c) === orgKeyOf(env));
+  return flows
+    .filter(f => ids.has(f.id) && f.id !== mod.id && belongsToEnv(f.name, env, siblings))
+    .map(f => ({ name: f.name, type: f.type, published: versionLabel(f.publishedVersion),
+                 hasDraft: flowHasDraft(f), unpublished: !f.publishedVersion }));
+}
+
+app.post('/api/flows/dependents', async (req, res) => {
+  const { envId, moduleName } = req.body;
+  const env = loadCustomers().find(c => c.id === envId);
+  if (!env) return res.status(404).json({ error: 'Customer not found' });
+  if (!moduleName) return res.status(400).json({ error: 'moduleName required' });
+  try {
+    res.json({ ok: true, dependents: await dependentsOf(env, moduleName) });
+  } catch (e) {
+    addLog('ERROR', `Could not find the flows that use "${moduleName}" in ${env.name}: ${describeApiError(e)}`, env.name, 'REPUBLISH');
+    res.status(500).json({ error: describeApiError(e) });
+  }
+});
+
+// Genpublicerer ét flow i sin publicerede udgave, så det tager den nyeste
+// udgave af de common modules det kalder med. Indholdet ellers er uændret.
+async function republishOne(env, name, type) {
+  if (isDemo(env)) {
+    const d = loadDemo();
+    const f = (d.flows[demoFlowKey(env)] || []).find(x => x.name === name && normType(x.type) === normType(type));
+    if (!f) throw new Error(`"${name}" does not exist in ${env.name}`);
+    const prevVersion = f.published;
+    const cur = parseInt(String(f.published || '0').split('.')[0], 10) || 0;
+    f.published = `${cur + 1}.0`;
+    f.publishedAt = Date.now();
+    saveDemo(d);
+    return { prevVersion, version: f.published, publishedAt: f.publishedAt, yaml: f.content };
+  }
+  const lower = String(type).toLowerCase();
+  const prevVersion = await publishedVersionFor(env, name, lower, 'REPUBLISH');
+  if (!prevVersion) throw new Error(`"${name}" has no published version in ${env.name}`);
+  const { yaml, fileName } = await exportFlowToYaml(env, name, lower, prevVersion);
+  const file = path.join(FLOWS_DIR, sanitizeName(env.name), `.republish-${fileName}`);
+  fs.writeFileSync(file, yaml, 'utf8');
+  try {
+    await runArchy(`publish --file ${archyArg(file, 'File path')}`, env);
+  } finally {
+    try { fs.unlinkSync(file); } catch (_) {}
+  }
+  const pub = await getFlowPublishInfo(env, name, lower).catch(() => null);
+  return { prevVersion, version: pub?.version || null, publishedAt: pub?.publishedAt || Date.now(), yaml };
+}
+
+app.post('/api/flows/republish', async (req, res) => {
+  const { envId, flows, moduleName, releaseId, confirmProd } = req.body;
+  const env = loadCustomers().find(c => c.id === envId);
+  if (!env) return res.status(404).json({ error: 'Customer not found' });
+  if (!Array.isArray(flows) || !flows.length) return res.status(400).json({ error: 'No flows selected' });
+  if (stageOf(env) === 'prod' && !confirmProd)
+    return res.status(409).json({ code: 'prod-confirm',
+      error: `"${env.name}" er et prod-miljø. Genpubliceringen skal bekræftes udtrykkeligt.` });
+
+  const who = await whoAmI(env);
+  const results = [];
+  for (const f of flows) {
+    try {
+      const r = await republishOne(env, f.name, f.type);
+      const base = baseFlowName(stripEnvPrefix(f.name, env));
+      const snap = saveSnapshot(env.id, f.name, r.yaml);
+      recordRelease({
+        kind: 'republish', demo: isDemo(env),
+        tenant: tenantOf(env), group: groupOf(env),
+        sourceId: null, sourceName: null, targetId: env.id, targetName: env.name,
+        targetStage: stageOf(env),
+        flowType: f.type, baseName: base, fromName: f.name, toName: f.name,
+        prevVersion: r.prevVersion, newVersion: r.version,
+        by: who.by, bySource: who.bySource,
+        prevSnapshot: snap, newSnapshot: snap,
+        note: moduleName ? `Republished to pick up common module "${moduleName}"` : '',
+        diff: releaseDiff(r.yaml, r.yaml)
+      });
+      await noteTargetRepublished(env, base, f.type, r.version, r.publishedAt, 'republish');
+      addLog('SUCCESS', `"${f.name}" republished in ${env.name} (v${r.prevVersion} → v${r.version || '?'})` +
+        (moduleName ? ` to pick up "${moduleName}"` : ''), env.name, 'REPUBLISH');
+      results.push({ name: f.name, type: f.type, ok: true, version: r.version });
+    } catch (e) {
+      const msg = describeApiError(e);
+      addLog('ERROR', `Could not republish "${f.name}" in ${env.name}: ${msg}`, env.name, 'REPUBLISH');
+      results.push({ name: f.name, type: f.type, ok: false, error: msg });
+    }
+  }
+  // Modulets egen release-note får listen med, så man kan se hvad ændringen
+  // trak med sig.
+  if (releaseId) {
+    const all = loadReleases();
+    const r = all.find(x => x.id === releaseId);
+    if (r) {
+      r.cascade = [...(r.cascade || []), ...results.map(x => ({ name: x.name, ok: x.ok, error: x.error || null }))];
+      saveReleases(all);
+    }
+  }
+  res.json({ ok: true, results });
+});
+
+// Rollback: målet får det indhold det havde før releasen, publiceret som en ny
+// udgave. Genesys kan ikke "af-publicere" til en gammel udgave — historikken
+// går kun fremad — så en rollback er en ny publicering af det gamle indhold.
+//
+// Navnet: i demoen går navnet tilbage med (Betaling_v6 → Betaling_v5), for
+// dér bærer navnet versionen. I en rigtig org beholder flowet sit nuværende
+// navn — et andet navn i YAML'en ville få Archy til at oprette et NYT flow
+// ved siden af, og alt der ruter til det gamle ville pege forkert.
+app.post('/api/releases/:id/rollback', async (req, res) => {
+  const all = loadReleases();
+  const r = all.find(x => x.id === req.params.id);
+  if (!r) return res.status(404).json({ error: 'Release not found' });
+  const env = loadCustomers().find(c => c.id === r.targetId);
+  if (!env) return res.status(404).json({ error: `Miljøet "${r.targetName}" findes ikke længere` });
+
+  const cand = rollbackCandidate(releasesFor(all, r.targetId, r.baseName, r.flowType));
+  if (!cand || cand.id !== r.id)
+    return res.status(409).json({ code: 'not-latest',
+      error: 'Kun den nyeste release kan rulles tilbage — rul de senere tilbage først.' });
+  if (stageOf(env) === 'prod' && !req.body.confirmProd)
+    return res.status(409).json({ code: 'prod-confirm',
+      error: `"${env.name}" er et prod-miljø. Rollback skal bekræftes udtrykkeligt.` });
+
+  const prevYaml = readSnapshot(r.prevSnapshot);
+  if (prevYaml == null)
+    return res.status(410).json({ error: 'Indholdet fra før releasen er ikke gemt længere — rollback er ikke mulig.' });
+  const curYaml = readSnapshot(r.newSnapshot);
+
+  try {
+    let name, version, publishedAt, published;
+    if (isDemo(env)) {
+      const d = loadDemo();
+      const siblings = loadCustomers().filter(c => isDemo(c) && demoFlowKey(c) === demoFlowKey(env));
+      const f = (d.flows[demoFlowKey(env)] || []).find(x =>
+        normType(x.type) === r.flowType && belongsToEnv(x.name, env, siblings) &&
+        baseFlowName(stripEnvPrefix(x.name, env)) === r.baseName);
+      if (!f) throw new Error(`"${r.toName}" does not exist in ${env.name} anymore`);
+      name = r.fromName || f.name;
+      published = renameFlowInYaml(prevYaml, name);
+      const cur = parseInt(String(f.published || '0').split('.')[0], 10) || 0;
+      f.name = name;
+      f.content = published;
+      f.published = `${cur + 1}.0`;
+      f.publishedAt = Date.now();
+      version = f.published; publishedAt = f.publishedAt;
+      saveDemo(d);
+    } else {
+      name = r.toName;
+      published = renameFlowInYaml(prevYaml, name);
+      const dir = path.join(FLOWS_DIR, sanitizeName(env.name));
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      const file = path.join(dir, `.rollback-${sanitizeName(name)}-${Date.now()}.yaml`);
+      fs.writeFileSync(file, published, 'utf8');
+      try {
+        await runArchy(`publish --file ${archyArg(file, 'File path')}`, env);
+      } finally {
+        try { fs.unlinkSync(file); } catch (_) {}
+      }
+      const pub = await getFlowPublishInfo(env, name, r.flowType.toLowerCase()).catch(() => null);
+      version = pub?.version || null; publishedAt = pub?.publishedAt || Date.now();
+    }
+
+    const who = await whoAmI(env);
+    const rb = recordRelease({
+      kind: 'rollback', demo: isDemo(env),
+      tenant: r.tenant, group: r.group,
+      sourceId: null, sourceName: null, targetId: env.id, targetName: env.name,
+      targetStage: stageOf(env),
+      flowType: r.flowType, baseName: r.baseName, fromName: r.toName, toName: name,
+      prevVersion: r.newVersion, newVersion: version,
+      by: who.by, bySource: who.bySource,
+      prevSnapshot: r.newSnapshot,
+      newSnapshot: saveSnapshot(env.id, name, published),
+      rollbackOf: r.id,
+      diff: releaseDiff(curYaml, published)
+    });
+    // Markér den rullede release. Næste klik går så én release længere tilbage.
+    const frisk = loadReleases();
+    const orig = frisk.find(x => x.id === r.id);
+    if (orig) { orig.rolledBackBy = rb.id; orig.rolledBackAt = rb.at; saveReleases(frisk); }
+
+    await noteTargetRepublished(env, r.baseName, r.flowType, version, publishedAt, 'rollback');
+    addLog('SUCCESS', `Rollback: "${r.toName}" in ${env.name} is back on the content from before the release` +
+      (name !== r.toName ? ` as "${name}"` : '') + ` (now v${version || '?'})`, env.name, 'ROLLBACK');
+
+    // Et modul der rulles tilbage, er lige så meget en ændring som et der
+    // forfremmes — de flows der bruger det skal også publiceres igen.
+    let dependents = [];
+    if (r.flowType === 'COMMONMODULE') {
+      try { dependents = await dependentsOf(env, name); } catch (_) {}
+    }
+    res.json({ ok: true, name, version, releaseId: rb.id, dependents });
+  } catch (e) {
+    const msg = describeApiError(e);
+    addLog('ERROR', `Rollback of "${r.toName}" in ${env.name} failed: ${msg}`, env.name, 'ROLLBACK');
+    res.status(500).json({ error: msg });
+  }
+});
+
 // Publicerer et flow der allerede ligger i org'en — typisk efter en migrering
 // med handlingen 'create', som lægger flowet ind som checked-in draft.
 //
@@ -2495,6 +3175,7 @@ app.get('/api/pipeline', async (req, res) => {
   }
 
   const failed = new Set(problems.map(p => p.environment));
+  const releases = loadReleases();
   const rows = [];
   for (const [key, cells] of byFlow) {
     const [flowName, flowType] = key.split('|');
@@ -2502,6 +3183,21 @@ app.get('/api/pipeline', async (req, res) => {
       flowName, flowType,
       cells: envs.map(c => {
         const cell = { envId: c.id, unknown: failed.has(c.name), ...(cells[c.id] || { missing: true }) };
+        // Release-historik og hvad et klik på rollback vil gå tilbage til.
+        // Etiketten er versionsendelsen hvor navnet bærer den (_v5), ellers
+        // miljøets egen udgave før releasen (v5).
+        if (!cell.missing) {
+          const hist = releasesFor(releases, c.id, flowName, flowType);
+          if (hist.length) {
+            cell.releaseCount = hist.length;
+            const rb = rollbackCandidate(hist);
+            if (rb) {
+              const suf = versionSuffixOf(rb.fromName);
+              cell.rollback = { id: rb.id, label: suf != null ? `_v${suf}` : (rb.prevVersion ? `v${rb.prevVersion}` : ''),
+                                toName: rb.fromName || rb.toName };
+            }
+          }
+        }
         // Manifestet slås op så snart cellen har indhold — også hvis der ikke
         // er nogen publiceringsdato, for udgavenummeret alene kan afsløre at
         // miljøet er publiceret videre siden vi forfremmede.
@@ -4194,6 +4890,7 @@ app.post('/api/migrate/commit', async (req, res) => {
     // lokale kopi af kildens flow; skrev vi ovenpå den, ville kopien af kilden
     // stille og roligt blive til noget andet.
     let importFile = resolved;
+    let omskrevneRefs = [];
     const nyName = targetFlowName(flowName, source, target);
     const nyDivision = divisionOf(target);
     const skalOmskrives = prefixOf(source) !== prefixOf(target) ||
@@ -4213,6 +4910,7 @@ app.post('/api/migrate/commit', async (req, res) => {
       // prods tabel, og de to miljøer ville dele data.
       const dep = prefixDependenciesInYaml(yaml, source, target);
       yaml = dep.yaml;
+      omskrevneRefs = dep.changed;
       for (const omskrevet of dep.changed)
         addLog('INFO', `Reference rewritten: ${omskrevet}`, target.name, 'MIGRATE');
 
@@ -4222,6 +4920,26 @@ app.post('/api/migrate/commit', async (req, res) => {
     }
 
     const cmd = archyVerb(action);
+
+    // Til release-noten og en senere rollback: hvad målet kører LIGE NU, før
+    // vi skriver ovenpå. Det koster en eksport, men uden den ved vi hverken
+    // hvad der blev ændret, eller hvad vi skal tilbage til. Fejler det, går
+    // forfremmelsen stadig igennem — noten siger så at "før" ikke kendes.
+    const importYaml = fs.readFileSync(importFile, 'utf8');
+    const rodType = ((importYaml.match(/^(\w+):/m) || [])[1] || '').toLowerCase();
+    let prevYaml = null, prevVersion = null;
+    if (rodType) {
+      try {
+        const { found, published } = await publishedVersionOf(target, nyName, rodType);
+        if (found && published) {
+          prevVersion = published;
+          prevYaml = (await exportFlowToYaml(target, nyName, rodType, published)).yaml;
+        }
+      } catch (e) {
+        addLog('WARN', `Could not read what ${target.name} had before the release of "${nyName}": ${describeApiError(e)}`, target.name, 'RELEASE');
+      }
+    }
+
     addLog('INFO', `Importing "${path.basename(importFile)}" to ${target.name} (action: ${cmd})`, target.name, 'MIGRATE');
     // finally: fejler importen, skal sidefilen alligevel væk. Uden den ligger
     // der en ".import-…"-fil tilbage i eksportmappen efter hver mislykket
@@ -4267,7 +4985,44 @@ app.post('/api/migrate/commit', async (req, res) => {
       hash: flowContentHash(importedYaml)
     });
 
-    res.json({ ok: true, fileName: path.basename(resolved), output: out, yaml: fs.readFileSync(resolved, 'utf8') });
+    // Release-noten. Den skrives også for 'create' og 'update', hvor flowet
+    // kun ligger som kladde — men så siger noten det, for så er intet i drift.
+    const who = await whoAmI(target);
+    const baseName = baseFlowName(stripEnvPrefix(nyName, target));
+    let release = null;
+    try {
+      release = recordRelease({
+        kind: 'promotion', demo: false, action: cmd,
+        tenant: tenantOf(target), group: groupOf(target),
+        sourceId, sourceName: source.name, targetId, targetName: target.name,
+        targetStage: stageOf(target),
+        flowType: yamlType, baseName, fromName: prevVersion ? nyName : null, toName: nyName,
+        prevVersion, newVersion: pub?.version || null,
+        sourceVersion: versionFromFileName(path.basename(resolved)),
+        by: who.by, bySource: who.bySource,
+        prevSnapshot: saveSnapshot(targetId, nyName, prevYaml),
+        newSnapshot: saveSnapshot(targetId, nyName, importYaml),
+        references: omskrevneRefs,
+        note: cmd === 'publish' ? '' : `Imported with "${cmd}" — not published yet`,
+        diff: releaseDiff(prevYaml, importYaml)
+      });
+    } catch (e) {
+      addLog('WARN', `Could not write the release log: ${e.message}`, target.name, 'RELEASE');
+    }
+
+    // Et common module slår først igennem i de flows der kalder det, når de
+    // publiceres igen. Kun når modulet selv ER publiceret — ligger det som
+    // kladde, ville en genpublicering bare hente den gamle udgave igen.
+    let dependents = [];
+    if (normType(yamlType) === 'COMMONMODULE' && cmd === 'publish') {
+      try { dependents = await dependentsOf(target, nyName); }
+      catch (e) { addLog('WARN', `Could not find the flows that use "${nyName}" in ${target.name}: ${describeApiError(e)}`, target.name, 'RELEASE'); }
+    }
+
+    res.json({ ok: true, fileName: path.basename(resolved), output: out, yaml: fs.readFileSync(resolved, 'utf8'),
+      targetName: nyName, releaseId: release?.id || null,
+      diff: release ? { added: release.diff.added, removed: release.diff.removed, noPrevious: release.diff.noPrevious } : null,
+      dependents });
   } catch (e) {
     let msg = e.message || '';
     // "create" fejler når flowet allerede findes i mål-org'en. Archy foreslår
@@ -4511,6 +5266,9 @@ module.exports = {
   STAGES, VERSION_SUFFIX,
   // navne og versioner
   compareVersions, baseFlowName, versionSuffixOf, promotionName, versionFromFileName,
+  isPipelineOrigin, promotionNameFrom, carriesVersionSuffix, prefixClash,
+  // releases
+  lineDiff, releaseDiff, rollbackCandidate, releasesFor, releaseNoteMarkdown, flowHasDraft,
   parseFlowFileName, versionLabel, sanitizeName, normType,
   // miljøer og præfikser
   prefixOf, orgKeyOf, belongsToEnv, stripEnvPrefix, withEnvPrefix, depNameIn,

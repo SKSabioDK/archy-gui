@@ -5,6 +5,41 @@
 
 ---
 
+### v1.40.0
+---
+**🇩🇰 Dansk**
+
+- **Forfremmelse videre end ét trin gav forkert navn.** `DEV_Betaling_v6` → TEST blev rigtigt `TEST_Betaling_v6`, men videre til UAT blev det `UAT_Betaling_v3` — og TEST blev omdøbt til `_v3` med. Tallet blev taget fra det miljø man forfremmede *fra*, og TEST stod selv på v3. Nu sættes tallet kun når flowet forlader gruppens **første trin**; derefter følger navnet med som det er, hele vejen til prod.
+
+- **Indholdet fik ikke målets navn.** Demoen kopierede kildens YAML som den var, så UAT-udgaven stod med `name: DEV_Betaling` indeni, og referencer pegede på `DEV_`-ressourcer. Forfremmelsen omskriver nu navn, referencer og division som en rigtig import gør.
+
+- **Common modules får aldrig en versionsendelse.** Fanget under afprøvningen: `TEST_Hilsen` blev til `TEST_Hilsen_v4`, og de flows der kalder modulet *ved navn* pegede på noget der ikke fandtes længere. Gælder også bot flows.
+
+- **📝 Release notes.** Hver forfremmelse skriver en release med diff af hvad målet indeholdt før og efter, hvem, hvornår og hvilke referencer der blev omskrevet. Ses fra tavlen (📝 N på cellen, 📝 Release notes for gruppen), kan kommenteres, og kan kopieres eller hentes som markdown. Den rigtige migrering eksporterer målets publicerede udgave før importen for at kende "før" — én ekstra eksport pr. forfremmelse.
+
+- **↩ Rollback med ét klik.** Publicerer indholdet fra før seneste forfremmelse igen. Næste klik går én længere tilbage. Prod kræver bekræftelse. Manifestet opdateres, så tavlen ikke melder vores egen rollback som "publiceret uden om pipelinen".
+
+- **🔁 Kaskade for common modules.** Forfremmes eller rulles et modul tilbage, findes de flows i målmiljøet der bruger det (Genesys' afhængighedssporing, også gennem et andet modul), og man vælger hvilke der genpubliceres. Flows med en upubliceret kladde er fravalgt som standard. Også som knap på tavlen.
+
+- **Ét miljø uden præfiks pr. org.** UAT uden præfiks i samme org som `DEV_` og `TEST_` virkede allerede — nu afviser serveren blot et *andet* miljø uden præfiks (eller med samme præfiks) i samme org, for de ville gøre krav på de samme flows.
+
+- **Demo 2** har fået et common module, `Hilsen`, som Ordreflow og Betaling kalder — så kaskaden kan prøves af.
+
+**14 nye tests** (`test/releases.test.js`), i alt 163.
+
+**🇬🇧 English**
+- **Promotion beyond one stage produced the wrong name.** `DEV_Betaling_v6` → TEST correctly became `TEST_Betaling_v6`, but onward to UAT it became `UAT_Betaling_v3`, and TEST was renamed to `_v3` as well. The number came from the environment promoted *from*, and TEST itself stood at v3. The number is now only set when leaving the group's **first stage**; after that the name travels unchanged to prod.
+- **The content did not get the target's name.** The demo copied the source YAML verbatim. Promotion now rewrites name, references and division as a real import does.
+- **Common modules never get a version suffix** — other flows call them by name. Same for bot flows.
+- **📝 Release notes** with a diff of before and after, who, when and rewritten references; commentable, copyable and downloadable as markdown.
+- **↩ One-click rollback** to the content from before the latest promotion; each further click goes one promotion back. Prod requires confirmation.
+- **🔁 Common module cascade**: after a module is promoted or rolled back, the flows using it in the target are found and can be republished. Also a board button.
+- **One unprefixed environment per org** is now enforced on the server.
+
+**14 new tests**, 163 in total.
+
+---
+
 ### v1.39.2
 ---
 **🇩🇰 Dansk**
