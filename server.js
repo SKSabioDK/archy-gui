@@ -423,6 +423,10 @@ const DEMO2_ENVS = [
   { suffix: 'prod', stage: 'prod', prefix: '',      org: DEMO2_ORG_B, orgLabel: 'Prod-org' }
 ];
 const demo2EnvId = suffix => 'demo2-' + suffix;
+// Navnet bærer trinnet, ikke præfikset. Præfikset kan ændres under Kunder, og
+// så ville "Kunde 2 A/S — UAT_" stå tilbage over et miljø uden præfiks.
+// Tavlen viser præfikset for sig selv i kolonnehovedet.
+const demo2EnvName = stage => `${DEMO2_TENANT} — ${String(stage).toUpperCase()}`;
 
 // Demoen har sine egne divisioner, så rullelisten kan prøves af uden en org.
 const DEMO_DIVISIONS = ['Home', 'DEV', 'TEST', 'UAT', 'PROD'];
@@ -510,49 +514,60 @@ function seedDemo2() {
   const now = Date.now(), day = 86400000;
   const A = [], B = [];
 
+  // Præfikserne tages fra miljøernes AKTUELLE opsætning, ikke fra DEMO2_ENVS.
+  // Fjerner man UAT_ under Kunder og nulstiller, skal demoen følge med —
+  // ellers stod de gamle "UAT_Betaling" tilbage som selvstændige flows i et
+  // miljø uden præfiks, én ekstra række pr. flow.
+  const envs = loadCustomers();
+  const pfx = {};
+  for (const e of DEMO2_ENVS) {
+    const c = envs.find(x => x.id === demo2EnvId(e.suffix));
+    pfx[e.stage] = c ? prefixOf(c) : e.prefix;
+  }
+  const nonProd = ['dev', 'test', 'uat'];
+  const n = (stage, base) => pfx[stage] + base;
+
   // 1) Findes i alle fire med samme indhold — den rolige række.
   // Ordreflow og Betaling kalder begge det fælles modul "Hilsen". Forfremmes
   // modulet, skal de to publiceres igen i målet for at få den nye udgave med.
   const ord = 'tag imod ordren';
-  A.push({ name: 'DEV_Ordreflow',  type: 'INBOUNDCALL', published: '9.0',
-           publishedAt: now - 30 * day, content: demoYaml('DEV_Ordreflow', ord, 'DEV_Hilsen') });
-  A.push({ name: 'TEST_Ordreflow', type: 'INBOUNDCALL', published: '2.0',
-           publishedAt: now - 22 * day, content: demoYaml('TEST_Ordreflow', ord, 'TEST_Hilsen') });
-  A.push({ name: 'UAT_Ordreflow',  type: 'INBOUNDCALL', published: '2.0',
-           publishedAt: now - 15 * day, content: demoYaml('UAT_Ordreflow', ord, 'UAT_Hilsen') });
-  B.push({ name: 'Ordreflow',      type: 'INBOUNDCALL', published: '1.0',
-           publishedAt: now - 8 * day,  content: demoYaml('Ordreflow', ord, 'Hilsen') });
+  const ordV = { dev: ['9.0', 30], test: ['2.0', 22], uat: ['2.0', 15] };
+  for (const s of nonProd)
+    A.push({ name: n(s, 'Ordreflow'), type: 'INBOUNDCALL', published: ordV[s][0],
+             publishedAt: now - ordV[s][1] * day, content: demoYaml(n(s, 'Ordreflow'), ord, n(s, 'Hilsen')) });
+  B.push({ name: n('prod', 'Ordreflow'), type: 'INBOUNDCALL', published: '1.0',
+           publishedAt: now - 8 * day, content: demoYaml(n('prod', 'Ordreflow'), ord, n('prod', 'Hilsen')) });
 
   // 1b) Det fælles modul. Dev er rettet (ny velkomsttekst); resten er ens.
-  A.push({ name: 'DEV_Hilsen',  type: 'COMMONMODULE', published: '4.0',
-           publishedAt: now - 1 * day,  content: demoModuleYaml('DEV_Hilsen', 'velkommen til Kunde 2 - nu med ny tekst') });
-  A.push({ name: 'TEST_Hilsen', type: 'COMMONMODULE', published: '1.0',
-           publishedAt: now - 22 * day, content: demoModuleYaml('TEST_Hilsen', 'velkommen til Kunde 2') });
-  A.push({ name: 'UAT_Hilsen',  type: 'COMMONMODULE', published: '1.0',
-           publishedAt: now - 15 * day, content: demoModuleYaml('UAT_Hilsen', 'velkommen til Kunde 2') });
-  B.push({ name: 'Hilsen',      type: 'COMMONMODULE', published: '1.0',
-           publishedAt: now - 8 * day,  content: demoModuleYaml('Hilsen', 'velkommen til Kunde 2') });
+  const hilV = { dev: ['4.0', 1], test: ['1.0', 22], uat: ['1.0', 15] };
+  for (const s of nonProd)
+    A.push({ name: n(s, 'Hilsen'), type: 'COMMONMODULE', published: hilV[s][0],
+             publishedAt: now - hilV[s][1] * day,
+             content: demoModuleYaml(n(s, 'Hilsen'), s === 'dev' ? 'velkommen til Kunde 2 - nu med ny tekst' : 'velkommen til Kunde 2') });
+  B.push({ name: n('prod', 'Hilsen'), type: 'COMMONMODULE', published: '1.0',
+           publishedAt: now - 8 * day, content: demoModuleYaml(n('prod', 'Hilsen'), 'velkommen til Kunde 2') });
 
   // 2) Kun i dev — hele kæden ligger foran.
-  A.push({ name: 'DEV_Fejlbesked', type: 'WORKFLOW', published: '4.0',
-           publishedAt: now - 2 * day, content: demoYaml('DEV_Fejlbesked', 'sig undskyld') });
+  A.push({ name: n('dev', 'Fejlbesked'), type: 'WORKFLOW', published: '4.0',
+           publishedAt: now - 2 * day, content: demoYaml(n('dev', 'Fejlbesked'), 'sig undskyld') });
 
   // 3) Findes overalt, men prod er løbet fra de andre.
   const bet = 'tag imod betaling';
-  A.push({ name: 'DEV_Betaling',  type: 'INBOUNDCALL', published: '5.0',
-           publishedAt: now - 26 * day, content: demoYaml('DEV_Betaling', bet, 'DEV_Hilsen') });
-  A.push({ name: 'TEST_Betaling', type: 'INBOUNDCALL', published: '2.0',
-           publishedAt: now - 20 * day, content: demoYaml('TEST_Betaling', bet, 'TEST_Hilsen') });
-  A.push({ name: 'UAT_Betaling',  type: 'INBOUNDCALL', published: '2.0',
-           publishedAt: now - 14 * day, content: demoYaml('UAT_Betaling', bet, 'UAT_Hilsen') });
-  B.push({ name: 'Betaling',      type: 'INBOUNDCALL', published: '11.0',
+  const betV = { dev: ['5.0', 26], test: ['2.0', 20], uat: ['2.0', 14] };
+  for (const s of nonProd)
+    A.push({ name: n(s, 'Betaling'), type: 'INBOUNDCALL', published: betV[s][0],
+             publishedAt: now - betV[s][1] * day, content: demoYaml(n(s, 'Betaling'), bet, n(s, 'Hilsen')) });
+  B.push({ name: n('prod', 'Betaling'), type: 'INBOUNDCALL', published: '11.0',
            publishedAt: now - 1 * day,
-           content: demoYaml('Betaling', 'rettet direkte i prod, ingen ved hvorfor', 'Hilsen') });
+           content: demoYaml(n('prod', 'Betaling'), 'rettet direkte i prod, ingen ved hvorfor', n('prod', 'Hilsen')) });
 
   // Et efterladt flow uden præfiks i non-prod-org'en. Det hører til INTET
   // miljø — prod bor i en anden org — og skal derfor ikke dukke op på tavlen.
-  A.push({ name: 'Gammelt forsoeg', type: 'INBOUNDCALL', published: '1.0',
-           publishedAt: now - 300 * day, content: demoYaml('Gammelt forsoeg', 'glemt') });
+  // Står et non-prod-miljø UDEN præfiks, er flowet dets — så giver det ingen
+  // mening som eksempel, og det udelades.
+  if (nonProd.every(s => pfx[s]))
+    A.push({ name: 'Gammelt forsoeg', type: 'INBOUNDCALL', published: '1.0',
+             publishedAt: now - 300 * day, content: demoYaml('Gammelt forsoeg', 'glemt') });
 
   A.forEach(demoRemember);
   B.forEach(demoRemember);
@@ -564,8 +579,6 @@ function seedDemo2() {
     if (k.startsWith('demo2-')) delete d.manifest[k];
   saveDemo(d);
 }
-
-
 
 // Navneregel ved forfremmelse.
 //
@@ -840,7 +853,7 @@ app.post('/api/demo/create', (req, res) => {
   if (which === '2') {
     for (const e of DEMO2_ENVS) customers.push({
       id: demo2EnvId(e.suffix),
-      name: `${DEMO2_TENANT} — ${e.prefix || 'PROD'}`,
+      name: demo2EnvName(e.stage),
       clientId: '', clientSecret: '', region: 'demo',
       authType: 'demo', demo: true, demoOrg: e.org, orgLabel: e.orgLabel,
       prefix: e.prefix,
@@ -870,7 +883,18 @@ app.post('/api/demo/reset', (req, res) => {
     return res.status(404).json({ error: 'Ingen demo-kunde' });
   dropDemoManifest(which);
   dropDemoReleases(which);
-  if (which === '2') seedDemo2(); else seedDemo();
+  if (which === '2') {
+    // Ældre demoer hed "— DEV_", "— UAT_" osv. Navnene rettes til trinnet, så
+    // de ikke lyver når præfikset er ændret. Manifest og releases er lige
+    // ryddet, så intet peger på de gamle navne.
+    const alle = loadCustomers();
+    let rettet = false;
+    for (const c of alle) if (demoIs(c, '2') && stageOf(c) && c.name !== demo2EnvName(stageOf(c))) {
+      c.name = demo2EnvName(stageOf(c)); rettet = true;
+    }
+    if (rettet) saveCustomers(alle);
+    seedDemo2();
+  } else seedDemo();
   addLog('INFO', 'Demo reset', which === '2' ? DEMO2_TENANT : DEMO_TENANT, 'DEMO');
   res.json({ ok: true });
 });
@@ -965,6 +989,43 @@ function prefixClash(env, all) {
     ? `"${hit.name}" bruger allerede præfikset "${prefixOf(env)}" i samme org. Hvert miljø i en org skal have sit eget præfiks.`
     : `"${hit.name}" ligger allerede uden præfiks i samme org. Kun ét miljø pr. org kan være uden præfiks — giv det ene et præfiks (fx UAT_).`;
 }
+
+// Hvilke flows i org'en ville skifte betydning hvis miljøet fik et andet
+// præfiks? Flows omdøbes ikke af sig selv — i en rigtig org ville Archy lave et
+// nyt flow ved siden af — så navnene i org'en står som de er. Ændres præfikset
+// fra "UAT_" til intet, ligger "UAT_Betaling" tilbage, og tavlen viser det som
+// sit eget flow med grundnavnet "UAT_Betaling". Ændres det fra intet til
+// "UAT_", hører "Betaling" slet ikke til miljøet længere.
+function prefixChangeImpact(env, newPrefix, flows, all) {
+  const efter = { ...env, prefix: String(newPrefix || '').trim() };
+  const soeskende = (e) => all.map(c => c.id === env.id ? e : c).filter(c => orgKeyOf(c) === orgKeyOf(env));
+  const foer = soeskende(env), nu = soeskende(efter);
+  const ramt = [];
+  for (const f of flows) {
+    const hoerteTil = belongsToEnv(f.name, env, foer);
+    if (!hoerteTil) continue;
+    const hoererTil = belongsToEnv(f.name, efter, nu);
+    const skifter = !hoererTil ||
+      baseFlowName(stripEnvPrefix(f.name, env)) !== baseFlowName(stripEnvPrefix(f.name, efter));
+    if (skifter) ramt.push({ name: f.name, type: f.type, lost: !hoererTil });
+  }
+  return ramt;
+}
+
+app.post('/api/customers/:id/prefix-check', async (req, res) => {
+  const all = loadCustomers();
+  const env = all.find(c => c.id === req.params.id);
+  if (!env) return res.status(404).json({ error: 'Not found' });
+  const newPrefix = String(req.body.prefix || '').trim();
+  if (newPrefix === prefixOf(env)) return res.json({ ok: true, affected: [] });
+  try {
+    const flows = isDemo(env) ? demoFlowsFor(env) : await listAllFlows(env);
+    const affected = prefixChangeImpact(env, newPrefix, flows, all);
+    res.json({ ok: true, oldPrefix: prefixOf(env), newPrefix, count: affected.length, affected: affected.slice(0, 10) });
+  } catch (e) {
+    res.status(500).json({ error: describeApiError(e) });
+  }
+});
 
 app.get('/api/customers', (req, res) => {
   const customers = loadCustomers().map(c => ({ ...c, clientSecret: '••••••••' }));
@@ -5563,7 +5624,7 @@ module.exports = {
   STAGES, VERSION_SUFFIX,
   // navne og versioner
   compareVersions, baseFlowName, versionSuffixOf, promotionName, versionFromFileName,
-  isPipelineOrigin, promotionNameFrom, carriesVersionSuffix, prefixClash,
+  isPipelineOrigin, promotionNameFrom, carriesVersionSuffix, prefixClash, prefixChangeImpact,
   // releases
   lineDiff, releaseDiff, rollbackCandidate, releasesFor, releaseNoteMarkdown, flowHasDraft,
   compactRelease, trimOrgReleases, mergeReleases, ORG_RELEASES_MAX,

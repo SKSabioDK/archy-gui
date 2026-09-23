@@ -487,7 +487,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.41.1 · Archy GUI</div>
+    <div class="version" id="app-version">v1.41.2 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1746,6 +1746,8 @@ const LANGS = {
     csv_missing:'mangler',
     pl_envs_in_org:'miljøer',
     label_prefix:'Præfiks',
+    pfx_warn:'Præfikset ændres fra {old} til {new}. {n} flow(s) i org\'en har stadig den gamle navngivning — de bliver IKKE omdøbt, og vil stå som egne rækker på tavlen (eller ikke høre til miljøet længere). Gem alligevel?',
+    pfx_none:'intet præfiks',
     hint_prefix:'Kun hvis flere miljøer deler den samme org og kendes på et præfiks — fx DEV_. Lad feltet stå tomt for prod og for miljøer der har en org for sig selv. Datatabellerne følger samme konvention.',
     label_orglabel:'Org-navn',
     demo1_name:'Demo 1 — én org pr. miljø',
@@ -2226,6 +2228,8 @@ const LANGS = {
     csv_missing:'missing',
     pl_envs_in_org:'environments',
     label_prefix:'Prefix',
+    pfx_warn:'The prefix changes from {old} to {new}. {n} flow(s) in the org still use the old naming — they are NOT renamed and will show as separate rows on the board (or no longer belong to the environment). Save anyway?',
+    pfx_none:'no prefix',
     hint_prefix:'Only if several environments share one org and are told apart by a prefix — e.g. DEV_. Leave it empty for prod and for environments that have an org to themselves. Datatables follow the same convention.',
     label_orglabel:'Org label',
     demo1_name:'Demo 1 — one org per environment',
@@ -2706,6 +2710,8 @@ const LANGS = {
     csv_missing:'absent',
     pl_envs_in_org:'environnements',
     label_prefix:'Préfixe',
+    pfx_warn:'Le préfixe passe de {old} à {new}. {n} flow(s) de l’org utilisent encore l’ancien nommage — ils ne sont PAS renommés et apparaîtront comme lignes séparées (ou n’appartiendront plus à l’environnement). Enregistrer quand même ?',
+    pfx_none:'aucun préfixe',
     hint_prefix:'Uniquement si plusieurs environnements partagent une org et se distinguent par un préfixe — par ex. DEV_. Laissez vide pour la prod et pour les environnements ayant leur propre org. Les tables de données suivent la même convention.',
     label_orglabel:'Nom de l\'org',
     demo1_name:'Démo 1 — une org par environnement',
@@ -3186,6 +3192,8 @@ const LANGS = {
     csv_missing:'ontbreekt',
     pl_envs_in_org:'omgevingen',
     label_prefix:'Prefix',
+    pfx_warn:'Het voorvoegsel verandert van {old} naar {new}. {n} flow(s) in de org gebruiken nog de oude naamgeving — ze worden NIET hernoemd en verschijnen als aparte rijen (of horen niet meer bij de omgeving). Toch opslaan?',
+    pfx_none:'geen voorvoegsel',
     hint_prefix:'Alleen als meerdere omgevingen één org delen en herkenbaar zijn aan een prefix — bv. DEV_. Laat leeg voor prod en voor omgevingen met een eigen org. Datatables volgen dezelfde conventie.',
     label_orglabel:'Org-naam',
     demo1_name:'Demo 1 — één org per omgeving',
@@ -3666,6 +3674,8 @@ const LANGS = {
     csv_missing:'falta',
     pl_envs_in_org:'entornos',
     label_prefix:'Prefijo',
+    pfx_warn:'El prefijo cambia de {old} a {new}. {n} flow(s) de la org aún usan el nombre antiguo — NO se renombran y aparecerán como filas separadas (o dejarán de pertenecer al entorno). ¿Guardar de todos modos?',
+    pfx_none:'sin prefijo',
     hint_prefix:'Solo si varios entornos comparten una org y se distinguen por un prefijo, p. ej. DEV_. Déjelo vacío para prod y para entornos con org propia. Las tablas de datos siguen la misma convención.',
     label_orglabel:'Nombre de la org',
     demo1_name:'Demo 1: una org por entorno',
@@ -7715,6 +7725,24 @@ async function saveGrouping(id) {
     orgLabel: document.getElementById('grp-orglabel-' + id).value.trim(),
     division: document.getElementById('grp-division-' + id).value
   };
+  // Skifter præfikset, bliver flowene i org'en ikke omdøbt med. Står der flows
+  // med den gamle navngivning, skal man vide det før man gemmer — ellers dukker
+  // de op som egne rækker på tavlen. Kan org'en ikke læses, gemmes der alligevel.
+  const gammel = (customers.find(c => c.id === id) || {}).prefix || '';
+  if (body.prefix !== gammel) {
+    const chk = await fetch(`/api/customers/${encodeURIComponent(id)}/prefix-check`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prefix: body.prefix })
+    }).then(x => x.json()).catch(() => ({}));
+    if (chk.count) {
+      const eks = (chk.affected || []).map(f => '  • ' + f.name).join('\n');
+      const msg = t('pfx_warn')
+        .replace('{n}', chk.count)
+        .replace('{old}', gammel || t('pfx_none'))
+        .replace('{new}', body.prefix || t('pfx_none'));
+      if (!confirm(msg + '\n\n' + eks + (chk.count > (chk.affected || []).length ? '\n  …' : ''))) return;
+    }
+  }
   const r = await fetch('/api/customers/' + id, {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)

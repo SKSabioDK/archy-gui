@@ -142,3 +142,21 @@ test('vagten afviser et ukendt miljø frem for at fortsætte', () => {
   assert.equal(s.migrationGuard(null, KUNDE.prod).code, 'unknown-env');
   assert.equal(s.migrationGuard(KUNDE.dev, undefined).code, 'unknown-env');
 });
+
+// Et præfiks der ændres, omdøber ikke flowene i org'en. Før man gemmer, skal
+// man vide hvor mange der ville stå tilbage med den gamle navngivning — ellers
+// dukker "UAT_Betaling" op som sin egen række i et miljø uden præfiks.
+test('prefixChangeImpact finder flows med den gamle navngivning', () => {
+  const env = (id, stage, prefix) => ({ id, name: id, stage, prefix, tenant: 'K', group: 'G', clientId: 'x', region: 'r' });
+  const dev = env('dev', 'dev', 'DEV_'), uat = env('uat', 'uat', 'UAT_');
+  const flows = [{ name: 'DEV_Betaling' }, { name: 'UAT_Betaling' }, { name: 'UAT_Hilsen' }, { name: 'Betaling' }];
+  // UAT_ → intet: de to UAT_-flows skifter grundnavn.
+  const a = s.prefixChangeImpact(uat, '', flows, [dev, uat]);
+  assert.deepEqual(a.map(f => f.name).sort(), ['UAT_Betaling', 'UAT_Hilsen']);
+  // Uændret præfiks: intet ramt.
+  assert.deepEqual(s.prefixChangeImpact(uat, 'UAT_', flows, [dev, uat]), []);
+  // intet → UAT_: "Betaling" hører ikke længere til miljøet.
+  const u0 = env('uat', 'uat', '');
+  const b = s.prefixChangeImpact(u0, 'UAT_', flows, [dev, u0]);
+  assert.ok(b.some(f => f.name === 'Betaling' && f.lost));
+});

@@ -5,6 +5,30 @@
 
 ---
 
+### v1.41.2
+---
+**🇩🇰 Dansk**
+
+- **Demo 2 fulgte ikke præfikserne.** Fjernede man `UAT_` på UAT-miljøet, stod demoens flows stadig som `UAT_Betaling`, `UAT_Hilsen` og `UAT_Ordreflow` — og et miljø uden præfiks ser dem som selvstændige flows. Tavlen fik en ekstra række pr. flow. *Nulstil demo* bygger nu flowene ud fra miljøernes aktuelle præfiks.
+
+- **Demo-miljøerne hedder efter trinnet**, "Kunde 2 A/S — UAT", ikke efter præfikset, som kunne ændres og så stå forkert i kolonnehovedet. Ældre navne rettes ved nulstilling.
+
+- **"Gammelt forsoeg" udelades** når et non-prod-miljø er uden præfiks — så hører flowet til det miljø, og eksemplet giver ingen mening.
+
+- **Advarsel når et præfiks ændres.** Det samme kan ske med rigtige kunder: flowene i org'en omdøbes ikke, når præfikset ændres. Før der gemmes, tjekker værktøjet org'en og siger hvor mange flows der stadig har den gamle navngivning, med eksempler — og man kan fortryde. Kan org'en ikke læses, gemmes der som før.
+
+**1 ny test**, i alt 171.
+
+**🇬🇧 English**
+- **Demo 2 did not follow the prefixes.** With `UAT_` removed, the demo flows were still named `UAT_…` and showed as extra rows. *Reset demo* now builds them from the environments' current prefixes.
+- **Demo environments are named after the stage**, not the prefix; older names are fixed on reset.
+- **"Gammelt forsoeg" is left out** when a non-prod environment has no prefix.
+- **A warning when a prefix changes.** Flows in the org are not renamed; before saving, the tool reports how many flows still use the old naming, with examples, and lets you cancel.
+
+**1 new test**, 171 in total.
+
+---
+
 ### v1.41.1
 ---
 **🇩🇰 Dansk**
