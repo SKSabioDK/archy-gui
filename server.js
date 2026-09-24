@@ -1220,7 +1220,7 @@ function prodWriteBlock(env, stored, now = Date.now()) {
   if (!env || isDemo(env) || stageOf(env) !== 'prod') return null;
   if (env.authType !== 'oauth')
     return { code: 'prod-oauth-required',
-             error: `"${env.name}" er et prod-miljø med client credentials. Skrivning til prod kræver at du logger ind som dig selv — skift miljøet til OAuth (PKCE) under Kunder → ⚙ Gruppering.` };
+             error: `"${env.name}" er et prod-miljø med client credentials. Skrivning til prod kræver at du logger ind som dig selv — skift miljøet til OAuth (PKCE) under Kunder → ⚙ Indstillinger.` };
   if (!stored || now > stored.expiresAt || !stored.deploy)
     return { code: 'prod-login',
              error: `Log ind i "${env.name}" for at skrive til prod, og prøv igen.` };

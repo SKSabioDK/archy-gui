@@ -351,6 +351,11 @@
   .customer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
   .customer-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; position: relative; transition: border .15s; }
   .customer-card:hover { border-color: var(--border2); }
+  /* Client credentials: en secret ligger på disken. Kortet skal skille sig ud. */
+  .customer-card.creds { border-color: color-mix(in srgb, var(--yellow) 55%, transparent);
+                         background: color-mix(in srgb, var(--yellow) 7%, var(--card)); }
+  .customer-card.creds:hover { border-color: var(--yellow); }
+  .customer-chip.creds span:last-child { color: var(--yellow); }
   .customer-card .cc-name { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
   .customer-card .cc-region { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-bottom: 14px; }
   .customer-card .cc-actions { display: flex; gap: 8px; }
@@ -487,7 +492,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.42.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.42.1 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -508,16 +513,15 @@
 
       <div class="card">
         <div class="card-title" data-i18n="add_customer_card">TILFØJ KUNDE</div>
-        <!-- Auth type toggle -->
+        <!-- Nye miljøer oprettes altid med personligt login (PKCE). Client
+             credentials lægger en secret på disken, og kan kun vælges på et
+             eksisterende miljø under ⚙ Indstillinger. -->
         <div style="margin-bottom:14px">
           <label data-i18n="label_auth_type">Auth type</label>
-          <div style="display:flex;gap:8px;margin-top:4px">
-            <button class="btn btn-primary btn-sm" id="auth-btn-cred" onclick="setFormAuthType('credentials')" data-i18n="btn_auth_credentials">🔑 Client Credentials</button>
-            <button class="btn btn-secondary btn-sm" id="auth-btn-oauth" onclick="setFormAuthType('oauth')" data-i18n="btn_auth_oauth">🌐 OAuth (PKCE)</button>
-          </div>
-          <div id="auth-type-hint" style="margin-top:6px;font-size:11px;color:var(--muted)" data-i18n="hint_auth_credentials">Client ID + Secret gemt lokalt. Bruges til script/automation.</div>
+          <div style="margin-top:4px;font-size:12px;font-family:var(--mono)" data-i18n="btn_auth_oauth">🌐 OAuth (PKCE)</div>
+          <div id="auth-type-hint" style="margin-top:6px;font-size:11px;color:var(--muted)" data-i18n="hint_auth_oauth">Ingen secret gemt — du logger ind via Genesys Cloud browser-login (PKCE).</div>
         </div>
-        <input type="hidden" id="c-authType" value="credentials"/>
+        <input type="hidden" id="c-authType" value="oauth"/>
         <div class="grid-2" style="margin-bottom:12px">
           <div>
             <label data-i18n="label_customername">Kundenavn *</label>
@@ -539,10 +543,6 @@
           <div>
             <label data-i18n="label_clientid">Client ID *</label>
             <input id="c-clientId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
-          </div>
-          <div id="c-secret-wrap">
-            <label data-i18n="label_clientsecret">Client Secret *</label>
-            <input id="c-clientSecret" type="password" placeholder="••••••••••••" />
           </div>
           <div>
             <label data-i18n="label_tenant">Kunde</label>
@@ -1643,9 +1643,9 @@ const LANGS = {
     stage_none:'— intet trin —',
     hint_grouping:'Kunde + gruppe afgør hvad der må migreres indbyrdes. Gruppen kan være et land eller et firma — den er pipelinen.',
     btn_save_grouping:'Gem',
-    btn_edit_grouping:'⚙ Gruppering',
+    btn_edit_grouping:'⚙ Indstillinger',
     cc_ungrouped:'ikke grupperet',
-    grouping_saved:'Gruppering gemt',
+    grouping_saved:'Indstillinger gemt',
     pl_needs_publish:'Publicér flowet i kildemiljøet først — en kladde er ikke testet',
     pl_check:'⇄ Tjek indhold',
     pl_check_all:'⇄ Tjek alle der findes flere steder',
@@ -1755,7 +1755,7 @@ const LANGS = {
     prod_auth_label:'Godkendelse',
     prod_clientid_ph:'Client ID (tom = uændret)',
     prod_secret_ph:'Ny secret (ved skift til credentials)',
-    prod_lock_creds:'🔒 Prod med client credentials: kan læses, men ikke skrives til. Skift til OAuth (PKCE) under ⚙ Gruppering.',
+    prod_lock_creds:'🔒 Prod med client credentials: kan læses, men ikke skrives til. Skift til OAuth (PKCE) under ⚙ Indstillinger.',
     prod_lock_login:'🔒 Log ind for at deploye til prod',
     prod_lock_ok:'🔓 {who} kan deploye i {min} min',
     prod_lock_expired:'🔒 Deploy-retten er udløbet — log ind igen',
@@ -2140,9 +2140,9 @@ const LANGS = {
     stage_none:'— no stage —',
     hint_grouping:'Customer + group decide what may be migrated between. The group can be a country or a company — it is the pipeline.',
     btn_save_grouping:'Save',
-    btn_edit_grouping:'⚙ Grouping',
+    btn_edit_grouping:'⚙ Settings',
     cc_ungrouped:'not grouped',
-    grouping_saved:'Grouping saved',
+    grouping_saved:'Settings saved',
     pl_needs_publish:'Publish the flow in the source environment first — a draft has not been tested',
     pl_check:'⇄ Check content',
     pl_check_all:'⇄ Check all present in more than one place',
@@ -2252,7 +2252,7 @@ const LANGS = {
     prod_auth_label:'Authentication',
     prod_clientid_ph:'Client ID (empty = unchanged)',
     prod_secret_ph:'New secret (when switching to credentials)',
-    prod_lock_creds:'🔒 Prod with client credentials: readable, but writes are blocked. Switch to OAuth (PKCE) under ⚙ Grouping.',
+    prod_lock_creds:'🔒 Prod with client credentials: readable, but writes are blocked. Switch to OAuth (PKCE) under ⚙ Settings.',
     prod_lock_login:'🔒 Log in to deploy to prod',
     prod_lock_ok:'🔓 {who} can deploy for {min} min',
     prod_lock_expired:'🔒 Deploy rights have expired — log in again',
@@ -2637,9 +2637,9 @@ const LANGS = {
     stage_none:'— aucune étape —',
     hint_grouping:'Client + groupe déterminent les migrations autorisées. Le groupe peut être un pays ou une société — c\'est le pipeline.',
     btn_save_grouping:'Enregistrer',
-    btn_edit_grouping:'⚙ Regroupement',
+    btn_edit_grouping:'⚙ Paramètres',
     cc_ungrouped:'non regroupé',
-    grouping_saved:'Regroupement enregistré',
+    grouping_saved:'Paramètres enregistrés',
     pl_needs_publish:'Publiez d\'abord le flow dans l\'environnement source — un brouillon n\'est pas testé',
     pl_check:'⇄ Vérifier le contenu',
     pl_check_all:'⇄ Vérifier tous ceux présents à plusieurs endroits',
@@ -2749,7 +2749,7 @@ const LANGS = {
     prod_auth_label:'Authentification',
     prod_clientid_ph:'Client ID (vide = inchangé)',
     prod_secret_ph:'Nouveau secret (passage en credentials)',
-    prod_lock_creds:'🔒 Prod avec client credentials : lecture seule, écriture bloquée. Passez en OAuth (PKCE) via ⚙ Regroupement.',
+    prod_lock_creds:'🔒 Prod avec client credentials : lecture seule, écriture bloquée. Passez en OAuth (PKCE) via ⚙ Paramètres.',
     prod_lock_login:'🔒 Connectez-vous pour déployer en prod',
     prod_lock_ok:'🔓 {who} peut déployer pendant {min} min',
     prod_lock_expired:'🔒 Le droit de déploiement a expiré — reconnectez-vous',
@@ -3134,9 +3134,9 @@ const LANGS = {
     stage_none:'— geen fase —',
     hint_grouping:'Klant + groep bepalen waartussen gemigreerd mag worden. De groep kan een land of bedrijf zijn — het is de pipeline.',
     btn_save_grouping:'Opslaan',
-    btn_edit_grouping:'⚙ Groepering',
+    btn_edit_grouping:'⚙ Instellingen',
     cc_ungrouped:'niet gegroepeerd',
-    grouping_saved:'Groepering opgeslagen',
+    grouping_saved:'Instellingen opgeslagen',
     pl_needs_publish:'Publiceer de flow eerst in de bronomgeving — een concept is niet getest',
     pl_check:'⇄ Inhoud checken',
     pl_check_all:'⇄ Alle checken die op meer plekken staan',
@@ -3246,7 +3246,7 @@ const LANGS = {
     prod_auth_label:'Authenticatie',
     prod_clientid_ph:'Client ID (leeg = ongewijzigd)',
     prod_secret_ph:'Nieuw secret (bij overstap naar credentials)',
-    prod_lock_creds:'🔒 Prod met client credentials: leesbaar, schrijven geblokkeerd. Stap over op OAuth (PKCE) via ⚙ Groepering.',
+    prod_lock_creds:'🔒 Prod met client credentials: leesbaar, schrijven geblokkeerd. Stap over op OAuth (PKCE) via ⚙ Instellingen.',
     prod_lock_login:'🔒 Log in om naar prod te deployen',
     prod_lock_ok:'🔓 {who} kan {min} min deployen',
     prod_lock_expired:'🔒 Deployrecht verlopen — log opnieuw in',
@@ -3631,9 +3631,9 @@ const LANGS = {
     stage_none:'— sin etapa —',
     hint_grouping:'Cliente + grupo determinan entre qué se puede migrar. El grupo puede ser un país o una empresa: es el pipeline.',
     btn_save_grouping:'Guardar',
-    btn_edit_grouping:'⚙ Agrupación',
+    btn_edit_grouping:'⚙ Configuración',
     cc_ungrouped:'sin agrupar',
-    grouping_saved:'Agrupación guardada',
+    grouping_saved:'Configuración guardada',
     pl_needs_publish:'Publique el flow primero en el entorno de origen: un borrador no está probado',
     pl_check:'⇄ Comprobar contenido',
     pl_check_all:'⇄ Comprobar todos los presentes en más de un sitio',
@@ -3743,7 +3743,7 @@ const LANGS = {
     prod_auth_label:'Autenticación',
     prod_clientid_ph:'Client ID (vacío = sin cambios)',
     prod_secret_ph:'Nuevo secret (al cambiar a credentials)',
-    prod_lock_creds:'🔒 Prod con client credentials: lectura sí, escritura bloqueada. Cambie a OAuth (PKCE) en ⚙ Agrupación.',
+    prod_lock_creds:'🔒 Prod con client credentials: lectura sí, escritura bloqueada. Cambie a OAuth (PKCE) en ⚙ Configuración.',
     prod_lock_login:'🔒 Inicie sesión para desplegar en prod',
     prod_lock_ok:'🔓 {who} puede desplegar durante {min} min',
     prod_lock_expired:'🔒 El derecho de despliegue ha caducado — inicie sesión de nuevo',
@@ -4076,7 +4076,7 @@ function renderSidebarCustomers() {
       </div>`;
 
     const boern = aaben ? miljoer.map(c => `
-      <div class="customer-chip tree-env" onclick="quickViewFlows('${c.id}')">
+      <div class="customer-chip tree-env${c.authType !== 'oauth' && c.authType !== 'demo' && !c.demo ? ' creds' : ''}" onclick="quickViewFlows('${c.id}')">
         <div class="chip-dot" id="chip-${c.id}"></div>
         <span class="tree-stage">${(c.stage || '').toUpperCase()}</span>
         <span>${escapeHtml(c.name)}</span>
@@ -4094,14 +4094,15 @@ function renderCustomerGrid() {
   }
   grid.innerHTML = customers.map(c => {
     const isOAuth = c.authType === 'oauth';
+    const isCreds = !isOAuth && c.authType !== 'demo' && !c.demo;
     const loginBtn = isOAuth
       ? `<button class="btn btn-secondary btn-sm" id="oauth-btn-${c.id}" onclick="oauthLogin('${c.id}')">${t('btn_login')}</button>`
       : '';
     const authBadge = isOAuth
       ? `<span id="oauth-badge-${c.id}" style="font-size:10px;font-family:var(--mono);color:var(--muted)" title="OAuth PKCE">🌐 OAuth</span>`
-      : `<span style="font-size:10px;font-family:var(--mono);color:var(--muted)">${t('card_badge_creds')}</span>`;
+      : `<span style="font-size:10px;font-family:var(--mono);color:${isCreds ? 'var(--yellow)' : 'var(--muted)'}">${t('card_badge_creds')}</span>`;
     return `
-    <div class="customer-card">
+    <div class="customer-card${isCreds ? ' creds' : ''}">
       <div class="cc-status"><div class="dot" id="card-dot-${c.id}"></div><span id="card-status-${c.id}">–</span></div>
       <div class="cc-name">${escapeHtml(c.name)}</div>
       <div class="cc-region" style="display:flex;align-items:center;gap:8px">${escapeHtml(c.region)} ${authBadge}</div>
@@ -4120,21 +4121,10 @@ function renderCustomerGrid() {
   }).join('');
 }
 
-function setFormAuthType(type) {
-  document.getElementById('c-authType').value = type;
-  const isOAuth = type === 'oauth';
-  document.getElementById('c-secret-wrap').style.display = isOAuth ? 'none' : '';
-  document.getElementById('auth-btn-cred').className  = 'btn btn-sm ' + (isOAuth ? 'btn-secondary' : 'btn-primary');
-  document.getElementById('auth-btn-oauth').className = 'btn btn-sm ' + (isOAuth ? 'btn-primary' : 'btn-secondary');
-  document.getElementById('auth-type-hint').dataset.i18n = isOAuth ? 'hint_auth_oauth' : 'hint_auth_credentials';
-  document.getElementById('auth-type-hint').textContent  = t(isOAuth ? 'hint_auth_oauth' : 'hint_auth_credentials');
-}
-
 async function addCustomer() {
   const name         = document.getElementById('c-name').value.trim();
   const region       = document.getElementById('c-region').value;
   const clientId     = document.getElementById('c-clientId').value.trim();
-  const clientSecret = document.getElementById('c-clientSecret').value.trim();
   const authType     = document.getElementById('c-authType').value;
   const tenant       = document.getElementById('c-tenant').value.trim();
   const group        = document.getElementById('c-group').value.trim();
@@ -4142,18 +4132,17 @@ async function addCustomer() {
   const prefix       = document.getElementById('c-prefix').value.trim();
   const orgLabel     = document.getElementById('c-orgLabel').value.trim();
   const division     = document.getElementById('c-division').value;
-  const isOAuth      = authType === 'oauth';
   showAlert('customerAlert', '');
-  if (!name || !clientId || (!isOAuth && !clientSecret))
+  if (!name || !clientId)
     return showAlert('customerAlert', t('err_fields_required'), 'err');
   const res = await fetch('/api/customers', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({name, region, clientId, clientSecret, authType, tenant, group, stage, prefix, orgLabel, division})
+    body: JSON.stringify({name, region, clientId, authType, tenant, group, stage, prefix, orgLabel, division})
   });
   const data = await res.json();
   if (data.error) return showAlert('customerAlert', data.error, 'err');
   showAlert('customerAlert', `${t('msg_customer_added')} "${name}"`, 'ok');
-  ['c-name','c-clientId','c-clientSecret'].forEach(id => document.getElementById(id).value = '');
+  ['c-name','c-clientId'].forEach(id => document.getElementById(id).value = '');
   await refreshCustomers();
 }
 

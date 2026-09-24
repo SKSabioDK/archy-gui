@@ -5,6 +5,23 @@
 
 ---
 
+### v1.42.1
+---
+**🇩🇰 Dansk**
+
+- **Nye miljøer oprettes med personligt login (OAuth/PKCE).** Client credentials kan ikke længere vælges ved oprettelse, og feltet til client secret er væk fra formularen. Et eksisterende miljø kan stadig skiftes under ⚙ Indstillinger.
+
+- **Miljøer med client credentials er markeret med gult** — både kortet og navnet i sidebjælken. De har en secret liggende på disken.
+
+- **"⚙ Gruppering" hedder nu "⚙ Indstillinger".** Knappen rummer mere end gruppering: trin, præfiks, division, godkendelse og krav til prod.
+
+**🇬🇧 English**
+- **New environments are created with a personal login (OAuth/PKCE).** Client credentials can no longer be chosen when creating one; existing environments can still be switched under ⚙ Settings.
+- **Environments using client credentials are highlighted in yellow**, on the card and in the sidebar.
+- **"⚙ Grouping" is now "⚙ Settings".**
+
+---
+
 ### v1.42.0
 ---
 **🇩🇰 Dansk**
