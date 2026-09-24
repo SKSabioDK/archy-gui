@@ -14,6 +14,9 @@ const app = express();
 // af de 153 eksporterede YAML-filer her er ni over grænsen, den største på
 // 800 KB. Import af dem svarede 413 uden nogen forklaring.
 app.use(express.json({ limit: '25mb' }));
+// Før alle ruter: skrivning til prod kræver et personligt login med
+// rettigheden. Selve vagten står ved OAuth-koden længere nede.
+app.use((req, res, next) => prodWriteGate(req, res, next));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const CUSTOMERS_FILE = path.join(__dirname, 'customers.json');
@@ -1034,7 +1037,7 @@ app.get('/api/customers', (req, res) => {
 
 app.post('/api/customers', (req, res) => {
   const { name, clientId, clientSecret, region, authType, tenant, group, stage,
-          prefix, orgLabel, division } = req.body;
+          prefix, orgLabel, division, deployPermission, deployGroup } = req.body;
   const isOAuth = authType === 'oauth';
   if (!name || !clientId || !region || (!isOAuth && !clientSecret))
     return res.status(400).json({ error: isOAuth ? 'Name, Client ID and Region required' : 'All fields required' });
@@ -1052,8 +1055,13 @@ app.post('/api/customers', (req, res) => {
     stage:  String(stage || '').toLowerCase() || '',
     prefix:   (prefix   || '').trim(),
     orgLabel: (orgLabel || '').trim(),
-    division: (division || '').trim()
+    division: (division || '').trim(),
+    deployPermission: (deployPermission || '').trim(),
+    deployGroup:      (deployGroup      || '').trim()
   };
+  // Et prod-miljø med PKCE skal ikke have en secret liggende — så var der en
+  // genvej uden om det personlige login.
+  if (customer.stage === 'prod' && customer.authType === 'oauth') customer.clientSecret = '';
   const clash = prefixClash(customer, customers);
   if (clash) return res.status(400).json({ error: clash });
   customers.push(customer);
@@ -1083,10 +1091,26 @@ app.put('/api/customers/:id', (req, res) => {
       return res.status(400).json({ error: `Ukendt trin "${patch.stage}" — vælg et af: ${STAGES.join(', ')}` });
     patch.stage = s;
   }
-  for (const k of ['tenant', 'group', 'prefix', 'orgLabel', 'division'])
+  for (const k of ['tenant', 'group', 'prefix', 'orgLabel', 'division', 'clientId',
+                   'deployPermission', 'deployGroup'])
     if (patch[k] !== undefined) patch[k] = String(patch[k] || '').trim();
+  if (patch.authType !== undefined && !['credentials', 'oauth'].includes(patch.authType))
+    return res.status(400).json({ error: `Ukendt godkendelse "${patch.authType}"` });
+  if (patch.clientId === '') delete patch.clientId;
 
-  const updated = { ...customers[idx], ...patch };
+  const before  = customers[idx];
+  const updated = { ...before, ...patch };
+  if (updated.authType !== 'oauth' && !isDemo(updated) && !updated.clientSecret)
+    return res.status(400).json({ error: 'Client credentials kræver en client secret.' });
+  // Som ved oprettelse: prod med PKCE har ingen secret på disken.
+  if (updated.stage === 'prod' && updated.authType === 'oauth') updated.clientSecret = '';
+  // Et login hører til den klient og det miljø det blev givet til. Skifter
+  // godkendelsen, klienten, regionen eller trinnet, gælder det ikke længere.
+  if (['authType', 'clientId', 'region', 'stage', 'deployPermission', 'deployGroup']
+        .some(k => (before[k] || '') !== (updated[k] || ''))) {
+    delete tokenStore[updated.id];
+    delete _whoCache[updated.id];
+  }
   const clash = prefixClash(updated, customers);
   if (clash) return res.status(400).json({ error: clash });
   customers[idx] = updated;
@@ -1102,6 +1126,130 @@ app.delete('/api/customers/:id', (req, res) => {
   addLog('WARN', `Customer deleted: ${customer?.name || req.params.id}`, customer?.name, 'CUSTOMER');
   res.json({ ok: true });
 });
+
+// ── Skrivning til prod kræver en person med rettigheden ─────────────────────
+// Et tjek af en indtastet e-mail beviser kun at DEN e-mail har rettigheden —
+// ikke at det er dens ejer der sidder ved tastaturet. Derfor logger man ind i
+// Genesys som sig selv (PKCE), og det er DET token der skriver. Genesys
+// håndhæver så selv rettighederne, og audit-loggen viser personen.
+//
+// Et prod-miljø med client credentials kan stadig læses, men ikke skrives til:
+// med en secret på disken kunne enhver ved maskinen deploye. Og selv med et
+// gyldigt login gælder deploy-retten kun et stykke tid — et token lever et
+// døgn, og en pc der står ulåst efter frokost skal ikke kunne deploye.
+
+const PROD_DEPLOY_WINDOW = 30 * 60 * 1000;
+const DEFAULT_DEPLOY_PERMISSION = 'architect:flow:publish';
+
+// Hver rute der skriver til en org, og feltet der siger hvilket miljø. En ny
+// skrivende rute SKAL stå her — test/prod-rettigheder.test.js fælder ellers.
+// Rollback og release-noter finder miljøet via releasen og tjekker selv.
+const PROD_WRITE_ROUTES = {
+  '/api/import':                  'customerId',
+  '/api/flows/publish':           'customerId',
+  '/api/flows/republish':         'envId',
+  '/api/manifest/create':         'envId',
+  '/api/flows/baseline':          'targetId',
+  '/api/migrate/prepare':         'targetId',
+  '/api/migrate/commit':          'targetId',
+  '/api/flows/migrate-dependency': 'targetId',
+  '/api/actions/migrate':         'targetId',
+  '/api/datatables/migrate':      'targetId',
+  '/api/prompts/migrate':         'targetId',
+  '/api/surveyforms/migrate':     'targetId',
+  '/api/divisions/create':        'targetId'
+};
+
+function deployRequirements(env) {
+  const permissions = String(env?.deployPermission || DEFAULT_DEPLOY_PERMISSION)
+    .split(/[,\s]+/).filter(Boolean);
+  return { permissions, group: String(env?.deployGroup || '').trim() };
+}
+
+// "architect:*:*" dækker "architect:flow:publish". Stjernen gælder et helt led.
+function permissionGranted(held, wanted) {
+  const h = String(held || '').split(':'), w = String(wanted || '').split(':');
+  if (h.length !== 3 || w.length !== 3) return false;
+  return h.every((x, i) => x === '*' || x.toLowerCase() === w[i].toLowerCase());
+}
+
+// Ren vurdering af /users/me?expand=authorization,groups mod kravene.
+// groupIds er id'erne på grupper med det krævede navn (null = ikke slået op).
+function evaluateDeployRights(me, need, groupIds, now = Date.now(), lookupError = null) {
+  const held = me?.authorization?.permissions || [];
+  const missing = [];
+  for (const p of need.permissions)
+    if (!held.some(h => permissionGranted(h, p))) missing.push({ kind: 'permission', value: p });
+  if (need.group) {
+    if (lookupError) missing.push({ kind: 'lookup', value: `${need.group}: ${lookupError}` });
+    else {
+      const mine = (me?.groups || []).map(g => g.id);
+      if (!(groupIds || []).some(id => mine.includes(id))) missing.push({ kind: 'group', value: need.group });
+    }
+  }
+  const who = me?.email || me?.username || me?.name || me?.id || '?';
+  return { ok: missing.length === 0, who, missing, checkedAt: now };
+}
+
+async function checkDeployRights(env) {
+  const { token, apiBase } = await getToken(env);
+  const H = { headers: { Authorization: `Bearer ${token}` } };
+  const me = (await axios.get(`${apiBase}/api/v2/users/me`,
+    { ...H, params: { expand: 'authorization,groups' } })).data;
+  const need = deployRequirements(env);
+  let groupIds = null, lookupError = null;
+  if (need.group) {
+    // Kan gruppen ikke slås op, er svaret nej. En vagt der lukker op når den
+    // er i tvivl, er ingen vagt.
+    try {
+      const r = await axios.post(`${apiBase}/api/v2/groups/search`,
+        { query: [{ type: 'EXACT', fields: ['name'], value: need.group }] }, H);
+      groupIds = (r.data.results || []).map(g => g.id);
+    } catch (e) { lookupError = describeApiError(e); }
+  }
+  return evaluateDeployRights(me, need, groupIds, Date.now(), lookupError);
+}
+
+const missingText = m => m.kind === 'permission' ? `rettigheden ${m.value}`
+  : m.kind === 'group' ? `medlemskab af gruppen "${m.value}"`
+  : `gruppeopslaget (${m.value})`;
+const missingLog = m => m.kind === 'lookup' ? `group lookup failed (${m.value})` : `${m.kind} ${m.value}`;
+
+// Returnerer null når skrivningen er tilladt, ellers { code, error }.
+function prodWriteBlock(env, stored, now = Date.now()) {
+  if (!env || isDemo(env) || stageOf(env) !== 'prod') return null;
+  if (env.authType !== 'oauth')
+    return { code: 'prod-oauth-required',
+             error: `"${env.name}" er et prod-miljø med client credentials. Skrivning til prod kræver at du logger ind som dig selv — skift miljøet til OAuth (PKCE) under Kunder → ⚙ Gruppering.` };
+  if (!stored || now > stored.expiresAt || !stored.deploy)
+    return { code: 'prod-login',
+             error: `Log ind i "${env.name}" for at skrive til prod, og prøv igen.` };
+  const d = stored.deploy;
+  if (!d.ok)
+    return { code: 'prod-rights',
+             error: `${d.who} må ikke skrive til "${env.name}" — mangler ${d.missing.map(missingText).join(' og ')}.` };
+  if (now - d.checkedAt > PROD_DEPLOY_WINDOW)
+    return { code: 'prod-login',
+             error: `Dit prod-login i "${env.name}" gælder ${PROD_DEPLOY_WINDOW / 60000} minutter og er udløbet. Log ind igen, og prøv igen.` };
+  return null;
+}
+
+function refuseProdWrite(res, env, what) {
+  const blocked = prodWriteBlock(env, env && tokenStore[env.id]);
+  if (!blocked) return false;
+  addLog('WARN', `Write to prod blocked (${blocked.code}): ${what} → ${env.name}`, env.name, 'SECURITY');
+  res.status(403).json({ ...blocked, envId: env.id, envName: env.name });
+  return true;
+}
+
+// Registreres øverst i filen, før ruterne — se app.use(prodWriteGate).
+function prodWriteGate(req, res, next) {
+  const field = req.method === 'POST' && PROD_WRITE_ROUTES[req.path];
+  if (!field) return next();
+  const env = loadCustomers().find(c => c.id === req.body?.[field]);
+  if (refuseProdWrite(res, env, req.path)) return;
+  next();
+}
 
 // ── OAuth / PKCE endpoints ───────────────────────────────────────────────────
 
@@ -1182,8 +1330,26 @@ app.get('/auth/callback', async (req, res) => {
     const { access_token, expires_in } = resp.data;
     const expiresAt = Date.now() + ((expires_in || 86400) * 1000) - 60000;
     tokenStore[customer.id] = { token: access_token, expiresAt };
+    delete _whoCache[customer.id];
     addLog('SUCCESS', `PKCE OAuth login succeeded for ${customer.name}`, customer.name, 'CUSTOMER');
-    page(true, 'Logged in!', 'You can close this window and return to Archy GUI.');
+
+    // I prod afgøres deploy-retten her, ved login — og kun her, så den altid
+    // hviler på et frisk login og ikke på et døgngammelt token.
+    let extra = '';
+    if (stageOf(customer) === 'prod' && !isDemo(customer)) {
+      let d;
+      try { d = await checkDeployRights(customer); }
+      catch (e) { d = { ok: false, who: '?', missing: [{ kind: 'lookup', value: describeApiError(e) }], checkedAt: Date.now() }; }
+      tokenStore[customer.id].deploy = d;
+      addLog(d.ok ? 'SUCCESS' : 'WARN',
+        `Prod deploy rights for ${customer.name}: ${d.who} ${d.ok ? 'allowed' : 'denied — missing ' + d.missing.map(missingLog).join(', ')}`,
+        customer.name, 'SECURITY');
+      const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      extra = d.ok
+        ? `<br><br>🔓 ${esc(d.who)} may deploy to prod for ${PROD_DEPLOY_WINDOW / 60000} minutes.`
+        : `<br><br>⛔ ${esc(d.who)} may NOT deploy to prod — missing ${esc(d.missing.map(missingLog).join(', '))}.`;
+    }
+    page(true, 'Logged in!', 'You can close this window and return to Archy GUI.' + extra);
   } catch (e) {
     const msg = e.response?.data?.description || e.response?.data?.error || e.message;
     addLog('ERROR', `PKCE token exchange failed for ${customer.name}: ${msg}`, customer.name, 'CUSTOMER');
@@ -1199,7 +1365,14 @@ app.get('/api/auth/status/:id', (req, res) => {
     delete tokenStore[req.params.id];
     return res.json({ authenticated: false, expired: true });
   }
-  res.json({ authenticated: true, expiresIn: Math.floor((stored.expiresAt - Date.now()) / 1000) });
+  const out = { authenticated: true, expiresIn: Math.floor((stored.expiresAt - Date.now()) / 1000) };
+  const env = loadCustomers().find(c => c.id === req.params.id);
+  if (env && stageOf(env) === 'prod' && !isDemo(env) && stored.deploy) {
+    const d = stored.deploy;
+    out.deploy = { ok: d.ok, who: d.who, missing: d.missing,
+                   expiresIn: Math.max(0, Math.floor((d.checkedAt + PROD_DEPLOY_WINDOW - Date.now()) / 1000)) };
+  }
+  res.json(out);
 });
 
 // ── Token helper ────────────────────────────────────────────────────────────
@@ -2872,6 +3045,7 @@ app.post('/api/releases/notes', async (req, res) => {
 app.post('/api/releases/note', async (req, res) => {
   const f = await findRelease(req.body.ref);
   if (f.error) return res.status(f.status).json({ error: f.error });
+  if (refuseProdWrite(res, f.env, '/api/releases/note')) return;
   const note = String(req.body.note || '').slice(0, 500);
   await mutateRelease(f.env, f.rel.baseName, f.rel.flowType, f.rel.id, r => { r.note = note; });
   res.json({ ok: true });
@@ -3081,6 +3255,7 @@ app.post('/api/releases/rollback', async (req, res) => {
   const f = await findRelease(req.body.ref);
   if (f.error) return res.status(f.status).json({ error: f.error });
   const { env, list, rel: r } = f;
+  if (refuseProdWrite(res, env, '/api/releases/rollback')) return;
 
   const cand = rollbackCandidate(list);
   if (!cand || cand.id !== r.id)
@@ -5649,5 +5824,8 @@ module.exports = {
   // eksport af den rigtige udgave
   publishedVersionOf, publishedVersionFor, exportFlowToYaml,
   // maskering
-  redactSecrets
+  redactSecrets,
+  // prod kræver et personligt login med rettigheden
+  PROD_WRITE_ROUTES, PROD_DEPLOY_WINDOW, DEFAULT_DEPLOY_PERMISSION,
+  deployRequirements, permissionGranted, evaluateDeployRights, prodWriteBlock
 };

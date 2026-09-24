@@ -5,6 +5,37 @@
 
 ---
 
+### v1.42.0
+---
+**🇩🇰 Dansk**
+
+- **Prod kræver et personligt login med rettigheden.** Før kunne enhver ved pc'en skrive til prod — bekræftelsen var et klik, og client secret'en lå på disken. Nu skal prod-miljøet bruge OAuth (PKCE), og man logger ind i Genesys som sig selv. Ved login slås brugeren op, og værktøjet tjekker at vedkommende har rettigheden — som standard `architect:flow:publish` — og, hvis det er sat op, er med i en bestemt gruppe. Kravene sættes pr. miljø under **⚙ Gruppering**.
+
+  Et indtastet e-mail-tjek var overvejet, men det beviser kun at e-mailen har rettigheden, ikke at det er ejeren der sidder ved tastaturet.
+
+- **Genesys håndhæver det også selv.** Archy og API-kaldene til prod kører med brugerens eget token, så en manglende rettighed afvises af Genesys, og audit-loggen viser personen — ikke integrationen.
+
+- **Deploy-retten gælder 30 minutter** efter login. Tokenet lever et døgn, og en ulåst pc efter frokost skal ikke kunne deploye på formiddagens login. Med SSO er et nyt login som regel ét klik.
+
+- **Prod med client credentials kan læses, men ikke skrives til.** Kortet siger det, og skift til OAuth sker under ⚙ Gruppering. Når et prod-miljø skifter til OAuth, slettes secret'en fra `customers.json`.
+
+- **Alle skrivende ruter står bag vagten** — import, publicering, genpublicering, forfremmelse, rollback, nulpunkt, manifest, release-noter og migrering af data actions, datatabeller, prompts, survey forms og divisioner. Afvises man, tilbyder værktøjet at logge ind. En test fælder, hvis en ny skrivende rute kommer til uden at være taget stilling til.
+
+- **Demo-miljøerne er ikke omfattet** — de har ingen org at logge ind i.
+
+**11 nye tests**, i alt 182.
+
+**🇬🇧 English**
+- **Prod requires a personal login with the permission.** A prod environment must use OAuth (PKCE). At login the user is looked up in Genesys and must hold `architect:flow:publish` (configurable) and, optionally, belong to a group — set per environment under ⚙ Grouping.
+- **Genesys enforces it too.** Archy and API calls to prod run with the user's own token; the audit log shows the person.
+- **Deploy rights last 30 minutes** after login.
+- **Prod with client credentials is read-only.** Switching a prod environment to OAuth removes its secret from `customers.json`.
+- **Every writing route is behind the guard**, with a test that fails if a new one is added without a decision. Demo environments are not affected.
+
+**11 new tests**, 182 in total.
+
+---
+
 ### v1.41.2
 ---
 **🇩🇰 Dansk**

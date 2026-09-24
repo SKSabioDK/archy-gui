@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.41.2
+# Archy GUI — Flow Manager · v1.42.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.41.2**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.41.2**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.42.0**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.42.0**.
 
 ---
 
@@ -44,7 +44,7 @@ Alternativt manuelt: `node server.js`
 npm test
 ```
 
-171 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+182 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -173,7 +173,7 @@ Samme funktion ligger på tavlen som **🔁 Genpublicér brugere** på hver comm
 
 **⭳ Hent som CSV** henter præcis de rækker der vises — også efter et typefilter — med semikolon og UTF-8 BOM så dansk Excel åbner den i kolonner.
 
-**Vagter, håndhævet på serveren:** migrering på tværs af grupper er spærret; prod kræver en bevidst bekræftelse; kilden skal være publiceret; kilde og mål må ikke være samme miljø.
+**Vagter, håndhævet på serveren:** migrering på tværs af grupper er spærret; prod kræver en bevidst bekræftelse **og et personligt login med rettigheden** (se Sikkerhed); kilden skal være publiceret; kilde og mål må ikke være samme miljø.
 
 **Delt manifest.** Hvert miljø kan have en datatabel — `ArchyGUI_Manifest`, med præfiks hvis miljøet har et — der beskriver **sig selv**: hvad org'en indeholder, hvornår det kom hertil og hvem der gjorde det. Fordi hver org kun skriver om sig selv, kan to personer på hver sin pc aldrig sige hver sit om samme celle. Tabellen oprettes med en knap, aldrig af sig selv.
 
@@ -308,6 +308,7 @@ Tekniske betegnelser oversættes ikke — flow-typer (`InboundCall`, `Workflow` 
 ### Sikkerhed
 - Client Secrets vises aldrig i GUI efter gemning, og maskeres i logfil og systemlog
 - OAuth PKCE: ingen secret gemmes — token lever kun i serverens hukommelse
+- **Skrivning til prod kræver et personligt login.** Et prod-miljø skal bruge OAuth (PKCE); med client credentials kan det læses, men ikke skrives til. Ved login slår værktøjet brugeren op i Genesys og tjekker rettigheden — som standard `architect:flow:publish` — og eventuelt medlemskab af en gruppe. Begge sættes pr. miljø under **⚙ Gruppering**. Deploy-retten gælder 30 minutter efter login; derefter logger man ind igen. Archy og API-kaldene kører med brugerens eget token, så Genesys håndhæver også selv rettighederne, og audit-loggen viser personen. Kræver en OAuth-klient af typen *Code Authorization* i prod-org'en med redirect URI `http://localhost:3737/auth/callback`
 - Serveren binder til `127.0.0.1`. Sæt `HOST` hvis den bevidst skal nås udefra — men der er ingen adgangskontrol foran, så det bør ikke gøres uden
 - Filstier fra brugerfladen holdes inden for `flows/`, både ved læsning og skrivning
 - Navne fra en org escapes før de tegnes: `escapeHtml` i HTML-tekst, `jsAttr` i en `onclick`. Et flow der hedder `<img src=x onerror=…>` vises som tekst
@@ -361,7 +362,7 @@ Double-click **`start.bat`** or run `node server.js` manually.
 npm test
 ```
 
-171 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+182 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 
@@ -477,7 +478,7 @@ The same function is on the board as **🔁 Republish users** on every common mo
 
 **⭳ Download as CSV** takes exactly the rows shown — including after a type filter — semicolon separated with a UTF-8 BOM so Danish Excel opens it in columns.
 
-**Guards, enforced on the server:** migrating across groups is blocked; prod requires a deliberate confirmation; the source must be published; source and target cannot be the same environment.
+**Guards, enforced on the server:** migrating across groups is blocked; prod requires a deliberate confirmation **and a personal login with the permission** (see Security); the source must be published; source and target cannot be the same environment.
 
 **Shared manifest.** Each environment can have a datatable — `ArchyGUI_Manifest`, prefixed if the environment has a prefix — describing **itself**: what the org holds, when it arrived, and who did it. Because each org only writes about itself, two people on different PCs can never disagree about the same cell. The table is created with a button, never on its own.
 
@@ -610,6 +611,7 @@ Technical identifiers are not translated — flow types (`InboundCall`, `Workflo
 ### Security
 - Client Secrets never shown in the GUI after saving, and redacted in the log file and system log
 - OAuth PKCE: no secret stored — token lives only in server memory
+- **Writing to prod requires a personal login.** A prod environment must use OAuth (PKCE); with client credentials it can be read but not written to. At login the tool looks the user up in Genesys and checks the permission — `architect:flow:publish` by default — and optionally membership of a group. Both are set per environment under **⚙ Grouping**. Deploy rights last 30 minutes after login; then you log in again. Archy and the API calls run with the user's own token, so Genesys enforces the permissions too and the audit log shows the person. Needs a *Code Authorization* OAuth client in the prod org with redirect URI `http://localhost:3737/auth/callback`
 - The server binds to `127.0.0.1`. Set `HOST` to expose it deliberately — but there is no access control in front of it
 - File paths from the UI are confined to `flows/`, for both reading and writing
 - Names from an org are escaped before rendering: `escapeHtml` in HTML text, `jsAttr` inside an `onclick`. A flow named `<img src=x onerror=…>` renders as text
