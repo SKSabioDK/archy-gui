@@ -5,6 +5,24 @@
 
 ---
 
+### v1.42.2
+---
+**🇩🇰 Dansk**
+
+- **Et miljø kan omdøbes** under ⚙ Indstillinger. Før var der intet felt til navnet. Navnet må ikke være tomt eller allerede i brug.
+
+- **Eksportmappen flytter med.** Et miljøs eksporter ligger i `flows/<navn>`, så uden flytningen ville Flow Browser og rollback-cachen se en tom mappe efter omdøbningen. Findes en mappe med det nye navn allerede, flettes der ikke — begge bliver stående, og systemloggen siger det.
+
+**2 nye tests**, i alt 184.
+
+**🇬🇧 English**
+- **An environment can be renamed** under ⚙ Settings. The name must be non-empty and unique.
+- **The export folder moves along** (`flows/<name>`). If a folder with the new name already exists, nothing is merged and the system log says so.
+
+**2 new tests**, 184 in total.
+
+---
+
 ### v1.42.1
 ---
 **🇩🇰 Dansk**

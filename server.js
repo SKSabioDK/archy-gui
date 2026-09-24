@@ -1097,6 +1097,12 @@ app.put('/api/customers/:id', (req, res) => {
   if (patch.authType !== undefined && !['credentials', 'oauth'].includes(patch.authType))
     return res.status(400).json({ error: `Ukendt godkendelse "${patch.authType}"` });
   if (patch.clientId === '') delete patch.clientId;
+  if (patch.name !== undefined) {
+    patch.name = String(patch.name || '').trim();
+    if (!patch.name) return res.status(400).json({ error: 'Navnet må ikke være tomt.' });
+    if (customers.some(c => c.id !== req.params.id && c.name === patch.name))
+      return res.status(400).json({ error: `Der findes allerede et miljø der hedder "${patch.name}".` });
+  }
 
   const before  = customers[idx];
   const updated = { ...before, ...patch };
@@ -1115,6 +1121,10 @@ app.put('/api/customers/:id', (req, res) => {
   if (clash) return res.status(400).json({ error: clash });
   customers[idx] = updated;
   saveCustomers(customers);
+  if (before.name !== updated.name) {
+    addLog('INFO', `Customer renamed: "${before.name}" → "${updated.name}"`, updated.name, 'CUSTOMER');
+    moveCustomerFolder(before.name, updated.name);
+  }
   addLog('INFO', `Customer updated: ${updated.name}`, updated.name, 'CUSTOMER');
   res.json({ ...updated, clientSecret: '••••••••' });
 });
@@ -4209,6 +4219,27 @@ function sanitizeName(name) {
   return name.replace(/[<>:"/\\|?*]/g, '_').trim() || 'unknown';
 }
 
+// Et miljøs eksporter ligger i flows/<navn>. Skifter navnet, skal mappen med —
+// ellers ser Flow Browser og rollback-cachen en tom mappe og glemmer alt der
+// er hentet. Findes den nye mappe allerede, flettes der ikke: så bliver begge
+// stående, og loggen siger det.
+function moveCustomerFolder(oldName, newName) {
+  const from = path.join(FLOWS_DIR, sanitizeName(oldName));
+  const to   = path.join(FLOWS_DIR, sanitizeName(newName));
+  if (from === to || !fs.existsSync(from)) return;
+  // Kun forskel i store/små bogstaver: på Windows ER det den samme mappe.
+  if (from.toLowerCase() === to.toLowerCase()) {
+    try { fs.renameSync(from, to); } catch (_) {}
+    return;
+  }
+  if (fs.existsSync(to)) {
+    addLog('WARN', `Folder not moved: "${path.basename(to)}" already exists — exports stay in "${path.basename(from)}"`, newName, 'CUSTOMER');
+    return;
+  }
+  try { fs.renameSync(from, to); }
+  catch (e) { addLog('WARN', `Could not move folder "${path.basename(from)}": ${e.message}`, newName, 'CUSTOMER'); }
+}
+
 // ── Felter fra klienten ──────────────────────────────────────────────────────
 
 // Et manglende felt skal give en besked man kan handle på. Uden dette kom
@@ -5820,7 +5851,7 @@ module.exports = {
   archyDebugLog, withArchyLog,
   archyCredFlags, archyArg, archyBareArg, archyVerb, archyVersionFlag,
   // filstier fra klienten
-  insideFlowsDir, safeFileName, missingFields, FLOWS_DIR,
+  insideFlowsDir, safeFileName, missingFields, FLOWS_DIR, moveCustomerFolder,
   // eksport af den rigtige udgave
   publishedVersionOf, publishedVersionFor, exportFlowToYaml,
   // maskering

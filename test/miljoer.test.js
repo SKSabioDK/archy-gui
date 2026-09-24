@@ -160,3 +160,38 @@ test('prefixChangeImpact finder flows med den gamle navngivning', () => {
   const b = s.prefixChangeImpact(u0, 'UAT_', flows, [dev, u0]);
   assert.ok(b.some(f => f.name === 'Betaling' && f.lost));
 });
+
+// ── Omdøbning af et miljø ────────────────────────────────────────────────────
+
+test('omdøbes et miljø, flytter dets eksportmappe med', () => {
+  const fs = require('fs'), path = require('path');
+  const tag = 'zz-omdoeb-' + process.pid;
+  const fra = path.join(s.FLOWS_DIR, tag + '-gammel'), til = path.join(s.FLOWS_DIR, tag + '-ny');
+  try {
+    fs.mkdirSync(fra, { recursive: true });
+    fs.writeFileSync(path.join(fra, 'Flow_v1-0.yaml'), 'x');
+    s.moveCustomerFolder(tag + '-gammel', tag + '-ny');
+    assert.equal(fs.existsSync(fra), false);
+    assert.equal(fs.readFileSync(path.join(til, 'Flow_v1-0.yaml'), 'utf8'), 'x');
+  } finally {
+    fs.rmSync(fra, { recursive: true, force: true });
+    fs.rmSync(til, { recursive: true, force: true });
+  }
+});
+
+test('findes den nye mappe allerede, flettes der ikke', () => {
+  // To miljøers eksporter blandet sammen kan ikke skilles ad igen.
+  const fs = require('fs'), path = require('path');
+  const tag = 'zz-omdoeb2-' + process.pid;
+  const fra = path.join(s.FLOWS_DIR, tag + '-a'), til = path.join(s.FLOWS_DIR, tag + '-b');
+  try {
+    fs.mkdirSync(fra, { recursive: true }); fs.writeFileSync(path.join(fra, 'a.yaml'), 'a');
+    fs.mkdirSync(til, { recursive: true }); fs.writeFileSync(path.join(til, 'b.yaml'), 'b');
+    s.moveCustomerFolder(tag + '-a', tag + '-b');
+    assert.equal(fs.existsSync(path.join(fra, 'a.yaml')), true);
+    assert.equal(fs.existsSync(path.join(til, 'a.yaml')), false);
+  } finally {
+    fs.rmSync(fra, { recursive: true, force: true });
+    fs.rmSync(til, { recursive: true, force: true });
+  }
+});
