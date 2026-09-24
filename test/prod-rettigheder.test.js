@@ -116,3 +116,28 @@ test('vagten registreres før den første rute', () => {
   const foerste = SERVER.search(/app\.(get|post|put|delete)\('/);
   assert.ok(vagt > 0 && vagt < foerste);
 });
+
+// ── Vagtens egne indstillinger ───────────────────────────────────────────────
+
+test('trin og krav på et prod-miljø kan ikke ændres uden prod-login', () => {
+  // Ellers: sæt trinnet til "uat", skriv, sæt det tilbage.
+  for (const changed of [{ stage: 'uat' }, { deployGroup: '' }, { deployPermission: 'architect:flow:view' }, { authType: 'credentials' }])
+    assert.equal(s.prodSettingsBlock(PROD, changed, null, NU).code, 'prod-login', JSON.stringify(changed));
+  assert.equal(s.prodSettingsBlock(PROD, { stage: 'uat' }, login(ja), NU), null);
+});
+
+test('navn og præfiks på prod kan ændres uden login', () => {
+  assert.equal(s.prodSettingsBlock(PROD, { name: 'Nyt navn', prefix: '', orgLabel: 'x' }, null, NU), null);
+});
+
+test('prod med client credentials kan kun strammes til OAuth', () => {
+  const creds = { ...PROD, authType: 'credentials' };
+  assert.equal(s.prodSettingsBlock(creds, { authType: 'oauth', clientId: 'x' }, null, NU), null);
+  assert.equal(s.prodSettingsBlock(creds, { stage: 'uat' }, null, NU).code, 'prod-oauth-required');
+  assert.equal(s.prodSettingsBlock(creds, { authType: 'oauth', stage: 'uat' }, null, NU).code, 'prod-oauth-required');
+});
+
+test('at gøre et miljø TIL prod kræver intet login', () => {
+  assert.equal(s.prodSettingsBlock({ ...PROD, stage: 'uat' }, { stage: 'prod' }, null, NU), null);
+  assert.equal(s.prodSettingsBlock({ ...PROD, demo: true }, { stage: 'uat' }, null, NU), null);
+});

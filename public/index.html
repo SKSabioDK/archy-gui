@@ -492,7 +492,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.42.2 · Archy GUI</div>
+    <div class="version" id="app-version">v1.42.3 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -525,7 +525,7 @@
         <div class="grid-2" style="margin-bottom:12px">
           <div>
             <label data-i18n="label_customername">Kundenavn *</label>
-            <input id="c-name" placeholder="*" />
+            <input id="c-name" placeholder="*" maxlength="60" />
           </div>
           <div>
             <label data-i18n="label_region">Region *</label>
@@ -542,25 +542,25 @@
           </div>
           <div>
             <label data-i18n="label_clientid">Client ID *</label>
-            <input id="c-clientId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+            <input id="c-clientId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" maxlength="36" />
           </div>
           <div>
             <label data-i18n="label_tenant">Kunde</label>
-            <input id="c-tenant" list="tenantList" placeholder="Vattenfall" />
+            <input id="c-tenant" list="tenantList" placeholder="Vattenfall" maxlength="40" />
             <datalist id="tenantList"></datalist>
           </div>
           <div>
             <label data-i18n="label_group">Gruppe</label>
-            <input id="c-group" list="groupList" placeholder="DE" />
+            <input id="c-group" list="groupList" placeholder="DE" maxlength="40" />
             <datalist id="groupList"></datalist>
           </div>
           <div>
             <label data-i18n="label_prefix">Præfiks</label>
-            <input id="c-prefix" placeholder="DEV_" />
+            <input id="c-prefix" placeholder="DEV_" maxlength="20" />
           </div>
           <div>
             <label data-i18n="label_orglabel">Org-navn</label>
-            <input id="c-orgLabel" placeholder="Fælles non-prod org" />
+            <input id="c-orgLabel" placeholder="Fælles non-prod org" maxlength="60" />
           </div>
           <div>
             <label data-i18n="label_division">Division</label>
@@ -7790,12 +7790,12 @@ function toggleGrouping(id) {
   const opt = v => `<option value="${v}"${(c.stage || '') === v ? ' selected' : ''}>${v || t('stage_none')}</option>`;
   box.style.display = 'block';
   box.innerHTML = `
-    <input id="grp-name-${id}" placeholder="${t('label_customername')}" title="${t('label_customername')}" value="${escapeHtml(c.name || '')}" style="margin-bottom:6px" />
-    <input id="grp-tenant-${id}" list="tenantList" placeholder="${t('label_tenant')}" value="${escapeHtml(c.tenant || '')}" style="margin-bottom:6px" />
-    <input id="grp-group-${id}"  list="groupList"  placeholder="${t('label_group')}"  value="${escapeHtml(c.group  || '')}" style="margin-bottom:6px" />
+    <input id="grp-name-${id}" placeholder="${t('label_customername')}" title="${t('label_customername')}" value="${escapeHtml(c.name || '')}" maxlength="60" style="margin-bottom:6px" />
+    <input id="grp-tenant-${id}" list="tenantList" placeholder="${t('label_tenant')}" value="${escapeHtml(c.tenant || '')}" maxlength="40" style="margin-bottom:6px" />
+    <input id="grp-group-${id}"  list="groupList"  placeholder="${t('label_group')}"  value="${escapeHtml(c.group  || '')}" maxlength="40" style="margin-bottom:6px" />
     <select id="grp-stage-${id}" style="margin-bottom:6px">${['', ...STAGES].map(opt).join('')}</select>
-    <input id="grp-prefix-${id}" placeholder="${t('label_prefix')} (DEV_)" value="${escapeHtml(c.prefix || '')}" style="margin-bottom:6px" />
-    <input id="grp-orglabel-${id}" placeholder="${t('label_orglabel')}" value="${escapeHtml(c.orgLabel || '')}" style="margin-bottom:6px" />
+    <input id="grp-prefix-${id}" placeholder="${t('label_prefix')} (DEV_)" value="${escapeHtml(c.prefix || '')}" maxlength="20" style="margin-bottom:6px" />
+    <input id="grp-orglabel-${id}" placeholder="${t('label_orglabel')}" value="${escapeHtml(c.orgLabel || '')}" maxlength="60" style="margin-bottom:6px" />
     <select id="grp-division-${id}" style="margin-bottom:8px">
       <option value="">${t('division_home')}</option>
     </select>
@@ -7805,10 +7805,11 @@ function toggleGrouping(id) {
       <option value="credentials"${c.authType !== 'oauth' ? ' selected' : ''}>🔑 Client Credentials</option>
       <option value="oauth"${c.authType === 'oauth' ? ' selected' : ''}>🌐 OAuth (PKCE)</option>
     </select>
-    <input id="grp-clientid-${id}" placeholder="${t('prod_clientid_ph')}" style="margin-bottom:6px" />
+    <input id="grp-clientid-${id}" placeholder="${t('prod_clientid_ph')}" maxlength="36" style="margin-bottom:6px" />
     <input id="grp-secret-${id}" type="password" placeholder="${t('prod_secret_ph')}" style="margin-bottom:6px" />
     <input id="grp-deployperm-${id}" placeholder="${t('prod_deploy_perm')}" title="${t('prod_deploy_perm')}" value="${escapeHtml(c.deployPermission || '')}" style="margin-bottom:6px" />
-    <input id="grp-deploygroup-${id}" placeholder="${t('prod_deploy_group')}" title="${t('prod_deploy_group')}" value="${escapeHtml(c.deployGroup || '')}" style="margin-bottom:8px" />`}
+    <input id="grp-deploygroup-${id}" placeholder="${t('prod_deploy_group')}" title="${t('prod_deploy_group')}" value="${escapeHtml(c.deployGroup || '')}" maxlength="100" style="margin-bottom:8px" />`}
+    <div id="grp-err-${id}" style="display:none;margin-bottom:8px;font-size:11px;color:var(--red)"></div>
     <button class="btn btn-primary btn-sm" onclick="saveGrouping('${id}')">${t('btn_save_grouping')}</button>`;
   fillDivisions('grp-division-' + id, id, c.division || '');
 }
@@ -7878,7 +7879,12 @@ async function saveGrouping(id) {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   }).then(x => x.json());
-  if (r.error) return showAlert('customerAlert', r.error, 'err');
+  const fejlEl = document.getElementById('grp-err-' + id);
+  if (r.error) {
+    if (fejlEl) { fejlEl.textContent = r.error; fejlEl.style.display = ''; }
+    return showAlert('customerAlert', r.error, 'err');
+  }
+  if (fejlEl) fejlEl.style.display = 'none';
   showAlert('customerAlert', t('grouping_saved'), 'ok');
   await refreshCustomers();
 }

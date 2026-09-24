@@ -5,6 +5,40 @@
 
 ---
 
+### v1.42.3
+---
+**🇩🇰 Dansk**
+
+- **Felterne på et miljø tjekkes, før de gemmes.** Navnet bliver til en mappe, mappen står på Archys kommandolinje gennem cmd.exe, præfikset bliver en del af flownavne i Genesys, og Client ID og region ender i URL'er. En værdi der ikke holder hele vejen, afvises nu ved oprettelse og redigering, med en besked der siger hvilket tegn eller hvilken regel det drejer sig om:
+  - **Navn, kunde, gruppe og org-navn:** ikke `< > : " \ | ? * % ! ^ $ '`, backtick eller kontroltegn. Navnet må ikke være tomt, over 60 tegn, begynde eller slutte med punktum, være et reserveret Windows-navn (`CON`, `NUL` …) eller begynde med `import_`.
+  - **To navne der giver samme mappe afvises** — også `Kunde` mod `kunde` og `A/S` mod `A_S`, fordi Windows ser dem som samme mappe.
+  - **Præfiks:** kun `A-Z`, `0-9`, `_` og `-`, højst 20 tegn.
+  - **Client ID** skal være et GUID, **regionen** en kendt, og **deploy-rettigheder** på formen `domæne:entitet:handling`.
+  - `/` er tilladt, så "A/S" kan bruges; i mappenavnet bliver det til `_`.
+
+- **Kun det der ændres, tjekkes**, så et ældre navn ikke spærrer for at rette noget andet.
+
+- **Fejlen vises i formularen** under ⚙ Indstillinger, ikke kun øverst på siden. Felterne har samme længdegrænse som serveren.
+
+- **Redigering tager kun imod de felter der kan redigeres.** Før kunne et kald sætte hvad som helst — også `"demo": true`, som ville få prod-vagten til at se bort fra miljøet.
+
+- **Navne trimmes ved oprettelse.** Mellemrum før og efter kom før med i navnet og mappen.
+
+- **Prod-vagtens egne indstillinger er låst.** Trin, godkendelse, Client ID, region og deploy-krav på et prod-miljø kan kun ændres med et gyldigt prod-login. Før kunne man sætte trinnet til "uat", skrive, og sætte det tilbage — eller fjerne gruppekravet. Navn, præfiks og org-navn kan stadig ændres frit, og et prod-miljø med client credentials kan altid skiftes til OAuth, så længe det bliver i prod.
+
+**13 nye tests**, i alt 197.
+
+**🇬🇧 English**
+- **Environment fields are validated before saving** — name, customer, group, org label, prefix, Client ID, region and deploy permissions — with a message naming the character or rule. Names that would map to the same export folder (case, `/` vs `_`) are rejected. `/` is allowed so "A/S" works.
+- **Only changed fields are checked.** Errors show inside the ⚙ Settings form.
+- **Editing only accepts editable fields.** Previously `"demo": true` could be set, which would make the prod guard skip the environment.
+- **Names are trimmed on creation.**
+- **The prod guard's own settings are locked.** Stage, authentication, Client ID, region and deploy requirements of a prod environment can only be changed with a valid prod login. A credentials prod environment can always be switched to OAuth as long as it stays prod.
+
+**13 new tests**, 197 in total.
+
+---
+
 ### v1.42.2
 ---
 **🇩🇰 Dansk**
