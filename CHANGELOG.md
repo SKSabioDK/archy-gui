@@ -5,6 +5,24 @@
 
 ---
 
+### v1.45.0
+---
+**🇩🇰 Dansk**
+
+- **Pipeline viser også common modules der er nyere end de flows der bruger dem.** Når tavlen er hentet, tjekkes hvert miljø i gruppen samtidig. Øverst står fx "⚠ Sabio APS - PROD: 2 common module(s) er nyere end 1 flow(s) der bruger dem". Modulets celle er mærket "⚠ 1 flow(s) ikke genpubliceret", og dets **🔁**-knap bliver gul. Flowets celle er mærket "⚠ ældre end …". Kan et miljø ikke tjekkes — fx prod uden login — siges det.
+
+- **En test fanger nu syntaksfejl i brugerfladen.** En fransk hjælpetekst med en apostrof der ikke var escapet, ville have stoppet hele programmet, og ingen af de andre tests opdagede det. Fejlen blev fanget under afprøvningen, før den blev committet.
+
+**2 nye tests**, i alt 205.
+
+**🇬🇧 English**
+- **Pipeline also shows common modules that are newer than the flows using them**: a summary per environment at the top, ⚠ on the module and flow cells, and a yellow 🔁.
+- **A test now catches syntax errors in the UI scripts.**
+
+**2 new tests**, 205 in total.
+
+---
+
 ### v1.44.0
 ---
 **🇩🇰 Dansk**
