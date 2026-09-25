@@ -1298,10 +1298,16 @@ function deployRequirements(env) {
 }
 
 // "architect:*:*" dækker "architect:flow:publish". Stjernen gælder et helt led.
+//
+// Genesys skriver rettigheder der gælder pr. division med divisionernes id'er
+// som et fjerde led: "architect:flow:publish:<id>,<id>,…". Det er sådan ALLE
+// flow-rettigheder ser ud, så med krav om præcis tre led blev selv en Master
+// Admin afvist. Divisionerne ses der bort fra her — Genesys håndhæver dem selv,
+// når Archy skriver med brugerens token.
 function permissionGranted(held, wanted) {
   const h = String(held || '').split(':'), w = String(wanted || '').split(':');
-  if (h.length !== 3 || w.length !== 3) return false;
-  return h.every((x, i) => x === '*' || x.toLowerCase() === w[i].toLowerCase());
+  if (h.length < 3 || h.length > 4 || w.length !== 3) return false;
+  return h.slice(0, 3).every((x, i) => x === '*' || x.toLowerCase() === w[i].toLowerCase());
 }
 
 // Ren vurdering af /users/me?expand=authorization,groups mod kravene.

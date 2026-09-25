@@ -27,6 +27,15 @@ test('en rettighed dækkes af sig selv og af stjerner', () => {
   assert.equal(s.permissionGranted('', 'architect:flow:publish'), false);
 });
 
+test('en rettighed pr. division tæller med', () => {
+  // Sådan står den i /users/me for en Master Admin i Sabio-org'en. Med krav om
+  // præcis tre led blev den afvist.
+  const held = 'architect:flow:publish:00000000-0000-0000-0000-000000000000,24b89025-2695-4e97-ba60-38e2cad34622';
+  assert.equal(s.permissionGranted(held, 'architect:flow:publish'), true);
+  assert.equal(s.permissionGranted('architect:flow:view:00000000-0000-0000-0000-000000000000', 'architect:flow:publish'), false);
+  assert.equal(s.permissionGranted('admin', 'architect:flow:publish'), false);
+});
+
 test('uden opsætning kræves architect:flow:publish, og flere kan kræves', () => {
   assert.deepEqual(s.deployRequirements({}).permissions, [s.DEFAULT_DEPLOY_PERMISSION]);
   assert.deepEqual(s.deployRequirements({ deployPermission: 'a:b:c, d:e:f' }).permissions, ['a:b:c', 'd:e:f']);

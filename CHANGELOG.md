@@ -5,6 +5,21 @@
 
 ---
 
+### v1.45.1
+---
+**🇩🇰 Dansk**
+
+- **Prod-login afviste brugere der har rettigheden.** Genesys skriver rettigheder der gælder pr. division med divisionernes id'er som et fjerde led — `architect:flow:publish:<id>,<id>,…` — og sådan ser alle flow-rettigheder ud. Tjekket krævede præcis tre led, så selv en Master Admin fik "missing permission architect:flow:publish". Nu tæller de første tre led; divisionerne håndhæver Genesys selv, når der skrives med brugerens token. Efterprøvet mod de rigtige rettigheder for brugeren i Sabio-org'en.
+
+**1 ny test**, i alt 206.
+
+**🇬🇧 English**
+- **Prod login rejected users who hold the permission.** Division-scoped permissions carry the division ids as a fourth segment (`architect:flow:publish:<ids>`); the check required exactly three. Verified against the real permissions of the user in the Sabio org.
+
+**1 new test**, 206 in total.
+
+---
+
 ### v1.45.0
 ---
 **🇩🇰 Dansk**
