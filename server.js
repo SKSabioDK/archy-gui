@@ -1517,6 +1517,25 @@ app.get('/auth/callback', async (req, res) => {
   }
 });
 
+// Status for alle OAuth-miljøer i ét kald. Sidebjælken og kundekortene skal
+// vise hvem man er logget ind i, og med 200 kunder er ét kald pr. miljø for
+// meget.
+app.get('/api/auth/status', (req, res) => {
+  const now = Date.now();
+  const out = {};
+  for (const c of loadCustomers()) {
+    if (c.authType !== 'oauth') continue;
+    const st = tokenStore[c.id];
+    if (!st || now > st.expiresAt) { out[c.id] = { authenticated: false }; continue; }
+    const o = { authenticated: true, expiresIn: Math.floor((st.expiresAt - now) / 1000) };
+    if (stageOf(c) === 'prod' && st.deploy)
+      o.deploy = { ok: st.deploy.ok, who: st.deploy.who, missing: st.deploy.missing,
+                   expiresIn: Math.max(0, Math.floor((st.deploy.checkedAt + PROD_DEPLOY_WINDOW - now) / 1000)) };
+    out[c.id] = o;
+  }
+  res.json(out);
+});
+
 // Token status check
 app.get('/api/auth/status/:id', (req, res) => {
   const stored = tokenStore[req.params.id];
@@ -6057,7 +6076,7 @@ if (require.main === module) {
 // især haft mindst én fejl der nåede ud til brugeren, og de er samtidig de
 // eneste der kan efterprøves uden en rigtig org. Se test/*.test.js.
 module.exports = {
-  app, tokenStore,
+  app, tokenStore, getToken,
   // konventioner
   STAGES, VERSION_SUFFIX,
   // navne og versioner

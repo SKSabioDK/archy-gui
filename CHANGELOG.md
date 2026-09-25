@@ -5,6 +5,37 @@
 
 ---
 
+### v1.46.0
+---
+**🇩🇰 Dansk**
+
+- **Log ind hvor du står.** Før kunne man kun logge ind under Kunder, på et kort man skulle lede efter. Nu genkender værktøjet når et svar fra serveren siger at et OAuth-miljø mangler login — fra Flow Browser, Export, Pipeline, Migrer eller et hvilket som helst andet sted — og viser en bjælke øverst: *"Sabio APS - PROD" kræver at du logger ind* med en **Log ind**-knap. Efter login hentes siden igen, så man ikke selv skal finde knappen der fejlede. Manglende prod-login bruger den samme bjælke.
+
+- **🔒 i sidebjælken.** OAuth-miljøer har en lås ved navnet, og et klik på den logger ind. 🟢 når man er logget ind.
+
+- **Kunder-siden kan bruges med mange kunder.** Søgefelt over kortene (navn, kunde, gruppe, trin, org-navn), et filter *Kun dem der kræver login*, og en tæller. Kortene sorteres efter kunde og trin som i sidebjælken. *Tilføj kunde* og *Demo-kunde* er foldet sammen, så kortene står øverst.
+
+- **Status for alle OAuth-miljøer i ét kald** i stedet for ét pr. miljø.
+
+- **Demo-miljøer står som 🧪 Demo**, ikke 🔑 Creds.
+
+- **Systemloggen viste UTC-tid som om det var dansk tid.** Serveren gemmer tiden i UTC, og visningen skar blot `T` og `Z` af — så en hændelse kl. 00:07 stod som 22:07 dagen før. Nu omregnes til maskinens egen tid; UTC-værdien står i tooltip.
+
+- **"15 min" og "1 time" i Systemloggen skjulte det nyeste.** Sluttiden blev sat til nu rundet ned til hele minutter, så det der blev logget i indeværende minut — også med auto-opdater — faldt udenfor. Nu er der ingen sluttid. **"I dag"** betyder fra midnat, ikke de sidste 24 timer.
+
+**6 nye tests**, i alt 212 — bl.a. holder de serverens login-fejltekst og brugerfladens genkendelse af den i takt.
+
+**🇬🇧 English**
+- **Log in where you are**: a bar with a Log in button appears on any page when an environment needs a login, and the page reloads afterwards.
+- **🔒 in the sidebar** logs in to an OAuth environment.
+- **The Customers page scales**: search, a "only those requiring login" filter, sorting by customer and stage, and collapsed form and demo cards.
+- **Auth status for all environments in one call.** Demo environments show 🧪 Demo.
+- **The System log showed UTC as if it were local time** — now converted to the machine's time zone, UTC in the tooltip. "15 min" and "1 hour" no longer hide the newest entries, and "Today" starts at midnight.
+
+**6 new tests**, 212 in total.
+
+---
+
 ### v1.45.1
 ---
 **🇩🇰 Dansk**

@@ -492,7 +492,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.45.1 · Archy GUI</div>
+    <div class="version" id="app-version">v1.46.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -506,13 +506,17 @@
       <button class="banner-dismiss" onclick="document.getElementById('update-banner').style.display='none'" title="Dismiss">✕</button>
     </div>
 
+    <!-- Miljøer der kræver login, fra hvilken som helst side -->
+    <div id="login-bar" style="display:none;position:sticky;top:0;z-index:50;margin-bottom:12px"></div>
+
     <!-- CUSTOMERS PAGE -->
     <div class="page active" id="page-customers">
       <div style="display:flex;align-items:center"><div class="page-title" data-i18n="page_customers_title">Kundeprofiler</div><button class="help-btn" onclick="showHelp('customers','nav_customers')">?</button></div>
       <div class="page-sub" data-i18n="page_customers_sub">Administrer Genesys Cloud org-forbindelser</div>
 
-      <div class="card">
-        <div class="card-title" data-i18n="add_customer_card">TILFØJ KUNDE</div>
+      <details class="card" id="addCustomerCard">
+        <summary class="card-title" style="cursor:pointer;margin-bottom:0" data-i18n="add_customer_card">TILFØJ KUNDE</summary>
+        <div style="height:16px"></div>
         <!-- Nye miljøer oprettes altid med personligt login (PKCE). Client
              credentials lægger en secret på disken, og kan kun vælges på et
              eksisterende miljø under ⚙ Indstillinger. -->
@@ -580,15 +584,24 @@
         <div style="margin-bottom:6px;font-size:11px;color:var(--muted)" data-i18n="hint_division">Divisionen hører til miljøet.</div>
         <div style="margin-bottom:12px;font-size:11px;color:var(--muted)" data-i18n="hint_prefix">Præfiks bruges kun når flere miljøer deler den samme org.</div>
         <button class="btn btn-primary" onclick="addCustomer()" data-i18n="btn_add_customer">+ Tilføj Kunde</button>
-      </div>
+      </details>
 
-      <div class="card" id="demoCard">
-        <div class="card-title" data-i18n="demo_title">DEMO-KUNDE</div>
+      <details class="card" id="demoCard">
+        <summary class="card-title" style="cursor:pointer;margin-bottom:0" data-i18n="demo_title">DEMO-KUNDE</summary>
+        <div style="height:12px"></div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:12px" data-i18n="demo_hint">Fire miljøer og tre flows der kun findes lokalt.</div>
         <div id="demoButtons"></div>
-      </div>
+      </details>
 
       <div id="customerAlert"></div>
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+        <input id="cust-search" style="flex:1;min-width:240px" oninput="renderCustomerGrid()" autocomplete="off"
+               data-i18n-placeholder="cust_search_ph" placeholder="🔍  Søg i miljøer — navn, kunde, gruppe, trin" />
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);white-space:nowrap">
+          <input type="checkbox" id="cust-only-login" style="width:auto" onchange="renderCustomerGrid()" />
+          <span data-i18n="cust_only_login">Kun dem der kræver login</span></label>
+        <span id="cust-count" style="font-size:11px;color:var(--muted);font-family:var(--mono)"></span>
+      </div>
       <div class="customer-grid" id="customerGrid"></div>
     </div>
 
@@ -1053,7 +1066,7 @@
             <div style="display:flex;gap:6px">
               <button class="btn btn-secondary btn-sm" onclick="slQuick(15)">15 min</button>
               <button class="btn btn-secondary btn-sm" onclick="slQuick(60)">1 <span data-i18n="lbl_hour">time</span></button>
-              <button class="btn btn-secondary btn-sm" onclick="slQuick(1440)" data-i18n="btn_today">I dag</button>
+              <button class="btn btn-secondary btn-sm" onclick="slQuick('today')" data-i18n="btn_today">I dag</button>
               <button class="btn btn-secondary btn-sm" onclick="slClear()" data-i18n="btn_clear">Ryd</button>
             </div>
           </div>
@@ -1783,7 +1796,7 @@ const LANGS = {
     action_default_note:'publiceres som standard — flowet er i drift med det samme',
     action_prod_note:'prod: publiceres IKKE som standard — lægges som kladde du selv publicerer',
     tree_ungrouped:'Ikke grupperet',
-    help_customers:'Ét miljø er én Genesys-org set gennem én OAuth-klient.\n• Nye miljøer bruger altid **OAuth (PKCE)**: du logger ind i Genesys som dig selv, og der gemmes ingen secret. Ældre miljøer med client credentials er markeret med **gult**.\n• **⚙ Indstillinger** rummer navn, kunde, gruppe, trin, præfiks, division, godkendelse og krav til prod. Ulovlige tegn og navne der ville give samme mappe, afvises når du gemmer.\n• **Kunde + gruppe** afgør hvad der må migreres indbyrdes — gruppen er pipelinen, og den kan hedde et land eller et firma.\n• **Trin** er dev, test, uat eller prod og bestemmer rækkefølgen på pipelinen.\n• **Præfiks** bruges kun når flere miljøer deler den samme org og kendes på fx DEV_. Lad det stå tomt for prod.\n• **Prod kræver et prod-login**: ved login tjekkes at du har rettigheden (som standard architect:flow:publish) og evt. er med i en gruppe. Retten gælder 30 minutter. Trin, godkendelse og krav på et prod-miljø kan kun ændres med et gyldigt prod-login.\n• **Demo-kunderne** er helt lokale — intet login, ingen kald til Genesys.',
+    help_customers:'Ét miljø er én Genesys-org set gennem én OAuth-klient.\n• Nye miljøer bruger altid **OAuth (PKCE)**: du logger ind i Genesys som dig selv, og der gemmes ingen secret. Ældre miljøer med client credentials er markeret med **gult**.\n• **⚙ Indstillinger** rummer navn, kunde, gruppe, trin, præfiks, division, godkendelse og krav til prod. Ulovlige tegn og navne der ville give samme mappe, afvises når du gemmer.\n• **Kunde + gruppe** afgør hvad der må migreres indbyrdes — gruppen er pipelinen, og den kan hedde et land eller et firma.\n• **Trin** er dev, test, uat eller prod og bestemmer rækkefølgen på pipelinen.\n• **Præfiks** bruges kun når flere miljøer deler den samme org og kendes på fx DEV_. Lad det stå tomt for prod.\n• **Prod kræver et prod-login**: ved login tjekkes at du har rettigheden (som standard architect:flow:publish) og evt. er med i en gruppe. Retten gælder 30 minutter. Trin, godkendelse og krav på et prod-miljø kan kun ændres med et gyldigt prod-login.\n• **Log ind hvor du står**: mangler et miljø login, kommer der en bjælke øverst med en Log ind-knap — på alle sider. 🔒 ved miljøet i sidebjælken logger også ind, og siden hentes igen bagefter.\n• **Søg** i miljøerne over kortene, eller vis kun dem der kræver login. Formularen og demo-kunderne kan foldes ud.\n• **Demo-kunderne** er helt lokale — intet login, ingen kald til Genesys.',
     help_pipeline:'Flows som rækker, gruppens miljøer som kolonner i trin-rækkefølge.\n• Versionstallene kan **ikke** sammenlignes på tværs — de tælles pr. org. Brug **⇄ Tjek indhold**, som er det eneste der afgør om to miljøer er ens.\n• **Grøn** betyder publiceret ad den rigtige vej. **Rød** betyder enten publiceret uden om pipelinen, eller flere udgaver end trinnet før.\n• **⟶ Forfrem** flytter ét trin ad gangen. Kun en publiceret udgave kan forfremmes — en kladde er ikke testet. Til prod kræves dit prod-login.\n• **⟵ Hent hertil** henter et flow ned fra et senere trin, fx når dev lige er sat op.\n• **↩** ruller seneste forfremmelse tilbage, og **📝** viser release notes.\n• Forfremmes eller rulles et **common module** tilbage, tilbydes du at genpublicere de flows i miljøet der bruger det. **🔁** gør det samme når modulet er rettet direkte i Architect. Er et modul publiceret efter flows der bruger det, står det øverst på tavlen, cellerne er mærket ⚠, og 🔁 er gul.\n• **Delt manifest** lægger historikken i org\'en, så flere kan arbejde på samme kunde uden at se hver sin sandhed.',
     help_flows:'Hent, søg og filtrér miljøets flows. Deler flere miljøer org\'en, vises kun dette miljøs egne.\n• Filtrér på **flowtype** — listen fyldes ud fra de typer miljøet faktisk har.\n• **Publicér** sætter en allerede migreret kladde i drift uden at hente noget fra kilden igen. Er det et common module, tilbydes du bagefter at genpublicere de flows der bruger det.\n• **Common modules tjekkes** hver gang listen hentes: er et modul publiceret **efter** et flow der bruger det, kører flowet stadig på den gamle udgave. Det står i et gult felt med en knap der genpublicerer dem, og rækkerne er mærket ⚠.\n• **🔁 Brugere** på et common module viser alle de flows der bruger det.\n• **⇄ Sammenlign** mod en anden org sammenligner **indholdet**, ikke versionsnumrene.\n• **📌 Sæt nulpunkt** noterer hvad org\'en indeholder nu, så værktøjet bagefter kan fange at nogen har publiceret direkte — også for flows det aldrig selv har migreret.',
     help_cross:'Viser de flows der findes hos **flere kunder** — fx det samme common module hos ti kunder.\n• Oversigten bygger på ét kald pr. kunde og er derfor hurtig.\n• **⇄ Sammenlign indhold** eksporterer flowet fra hver kunde og sammenligner hashen. Det tager tid, så det køres kun for den række du beder om.\n• Kunne en org ikke læses, siges det — der står **aldrig** "identisk" hvis vi mangler svar fra nogen.',
@@ -1796,6 +1809,15 @@ const LANGS = {
     help_syslog:'Alt hvad værktøjet har foretaget sig, nyeste øverst.\n• Filtrér på tidsrum, niveau, handling, kunde og fritekst.\n• Manglende afhængigheder ved en migrering havner her, så du kan finde dem igen bagefter.\n• **SECURITY** viser prod-login, hvem der fik eller ikke fik deploy-ret og hvorfor, og hvert forsøg på at skrive til prod der blev afvist.\n• Credentials skrives **aldrig** i loggen: hemmeligheder maskeres, og client-id\'er forkortes.',
     help_flowbuilder_title:'Flow Builder',
     help_btn_title:'Sådan bruges denne side',
+    login_bar_needs:'🔒 "{env}" kræver at du logger ind.',
+    login_bar_btn:'Log ind',
+    login_bar_done:'✓ Logget ind i "{env}" — siden hentes igen.',
+    cust_search_ph:'🔍  Søg i miljøer — navn, kunde, gruppe, trin',
+    cust_count:'{n} af {total} miljøer',
+    cust_only_login:'Kun dem der kræver login',
+    tree_login_tip:'Ikke logget ind — klik for at logge ind',
+    tree_logged_in_tip:'Logget ind',
+    card_badge_demo:'🧪 Demo',
     pl_stale_summary:'⚠ {env}: {m} common module(s) er nyere end {n} flow(s) der bruger dem',
     pl_stale_checking:'Tjekker common modules…',
     pl_stale_failed:'{env}: common modules kunne ikke tjekkes',
@@ -2337,7 +2359,7 @@ const LANGS = {
     action_default_note:'published by default — the flow is live straight away',
     action_prod_note:'prod: NOT published by default — left as a draft for you to publish',
     tree_ungrouped:'Not grouped',
-    help_customers:'One environment is one Genesys org seen through one OAuth client.\n• New environments always use **OAuth (PKCE)**: you log in to Genesys as yourself and no secret is stored. Older environments using client credentials are marked in **yellow**.\n• **⚙ Settings** holds name, customer, group, stage, prefix, division, authentication and prod requirements. Invalid characters, and names that would share a folder, are rejected on save.\n• **Customer + group** decide what may be migrated between — the group is the pipeline, named after a country or a company.\n• **Stage** is dev, test, uat or prod and sets the order on the pipeline.\n• **Prefix** is only used when several environments share one org, recognised by e.g. DEV_. Leave it empty for prod.\n• **Prod requires a prod login**: at login you are checked for the permission (architect:flow:publish by default) and optionally a group. The right lasts 30 minutes. Stage, authentication and requirements of a prod environment can only be changed with a valid prod login.\n• **Demo customers** are fully local — no login, no calls to Genesys.',
+    help_customers:'One environment is one Genesys org seen through one OAuth client.\n• New environments always use **OAuth (PKCE)**: you log in to Genesys as yourself and no secret is stored. Older environments using client credentials are marked in **yellow**.\n• **⚙ Settings** holds name, customer, group, stage, prefix, division, authentication and prod requirements. Invalid characters, and names that would share a folder, are rejected on save.\n• **Customer + group** decide what may be migrated between — the group is the pipeline, named after a country or a company.\n• **Stage** is dev, test, uat or prod and sets the order on the pipeline.\n• **Prefix** is only used when several environments share one org, recognised by e.g. DEV_. Leave it empty for prod.\n• **Prod requires a prod login**: at login you are checked for the permission (architect:flow:publish by default) and optionally a group. The right lasts 30 minutes. Stage, authentication and requirements of a prod environment can only be changed with a valid prod login.\n• **Log in where you are**: when an environment needs a login, a bar with a Log in button appears at the top — on every page. 🔒 next to the environment in the sidebar logs in too, and the page reloads afterwards.\n• **Search** the environments above the cards, or show only those requiring login. The form and the demo customers can be expanded.\n• **Demo customers** are fully local — no login, no calls to Genesys.',
     help_pipeline:'Flows as rows, the group\'s environments as columns in stage order.\n• Version numbers **cannot** be compared across orgs — they are counted per org. Use **⇄ Check content**, the only thing that decides whether two environments match.\n• **Green** means published the right way. **Red** means published outside the pipeline, or more versions than the stage before.\n• **⟶ Promote** moves one stage at a time. Only a published version can be promoted — a draft is untested. Prod requires your prod login.\n• **⟵ Pull here** fetches a flow from a later stage, e.g. when dev has just been set up.\n• **↩** rolls back the latest promotion, and **📝** shows release notes.\n• When a **common module** is promoted or rolled back, you are offered to republish the flows in that environment that use it. **🔁** does the same when the module was changed directly in Architect. If a module was published after flows that use it, this is listed at the top of the board, the cells are marked ⚠ and 🔁 turns yellow.\n• **Shared manifest** keeps history in the org, so several people can work on one customer and see the same truth.',
     help_flows:'Fetch, search and filter the environment\'s flows. When several environments share an org, only this environment\'s own are shown.\n• Filter by **flow type** — the list is populated from the types the environment actually has.\n• **Publish** puts an already-migrated draft live without fetching anything from the source again. For a common module, you are then offered to republish the flows that use it.\n• **Common modules are checked** every time the list is fetched: if a module was published **after** a flow that uses it, the flow still runs the old version. This is shown in a yellow box with a button to republish them, and the rows are marked ⚠.\n• **🔁 Users** on a common module lists every flow that uses it.\n• **⇄ Compare** against another org compares **content**, not version numbers.\n• **📌 Set baseline** records what the org holds now, so the tool can later catch someone publishing directly — even for flows it never migrated itself.',
     help_cross:'Shows the flows that exist at **more than one customer** — the same common module at ten customers, say.\n• The overview rests on one call per customer and is therefore quick.\n• **⇄ Compare content** exports the flow from each customer and compares the hash. That takes time, so it runs only for the row you ask for.\n• If an org could not be read, it says so — it **never** reports "identical" when an answer is missing.',
@@ -2350,6 +2372,15 @@ const LANGS = {
     help_syslog:'Everything the tool has done, newest first.\n• Filter by time span, level, action, customer and free text.\n• Missing dependencies during a migration end up here, so you can find them afterwards.\n• **SECURITY** shows prod logins, who did or did not get deploy rights and why, and every rejected attempt to write to prod.\n• Credentials are **never** written to the log: secrets are masked and client ids shortened.',
     help_flowbuilder_title:'Flow Builder',
     help_btn_title:'How to use this page',
+    login_bar_needs:'🔒 "{env}" requires you to log in.',
+    login_bar_btn:'Log in',
+    login_bar_done:'✓ Logged in to "{env}" — reloading the page.',
+    cust_search_ph:'🔍  Search environments — name, customer, group, stage',
+    cust_count:'{n} of {total} environments',
+    cust_only_login:'Only those requiring login',
+    tree_login_tip:'Not logged in — click to log in',
+    tree_logged_in_tip:'Logged in',
+    card_badge_demo:'🧪 Demo',
     pl_stale_summary:'⚠ {env}: {m} common module(s) newer than {n} flow(s) that use them',
     pl_stale_checking:'Checking common modules…',
     pl_stale_failed:'{env}: common modules could not be checked',
@@ -2891,7 +2922,7 @@ const LANGS = {
     action_default_note:'publié par défaut — le flow est actif immédiatement',
     action_prod_note:'prod : NON publié par défaut — laissé en brouillon à publier vous-même',
     tree_ungrouped:'Non regroupé',
-    help_customers:'Un environnement est une org Genesys vue à travers un client OAuth.\n• Les nouveaux environnements utilisent toujours **OAuth (PKCE)** : vous vous connectez à Genesys en votre nom et aucun secret n\'est stocké. Les anciens environnements en client credentials sont en **jaune**.\n• **⚙ Paramètres** contient nom, client, groupe, étape, préfixe, division, authentification et exigences prod. Les caractères interdits et les noms qui partageraient un dossier sont refusés à l\'enregistrement.\n• **Client + groupe** déterminent ce qui peut être migré entre eux — le groupe est le pipeline.\n• **Étape** vaut dev, test, uat ou prod et fixe l\'ordre du pipeline.\n• **Préfixe** ne sert que si plusieurs environnements partagent une org, reconnus par ex. DEV_. Laissez-le vide pour prod.\n• **Prod exige une connexion prod** : à la connexion, on vérifie la permission (architect:flow:publish par défaut) et éventuellement un groupe. Le droit dure 30 minutes. Étape, authentification et exigences d\'un environnement prod ne changent qu\'avec une connexion prod valide.\n• **Les clients démo** sont entièrement locaux — pas de connexion, aucun appel à Genesys.',
+    help_customers:'Un environnement est une org Genesys vue à travers un client OAuth.\n• Les nouveaux environnements utilisent toujours **OAuth (PKCE)** : vous vous connectez à Genesys en votre nom et aucun secret n\'est stocké. Les anciens environnements en client credentials sont en **jaune**.\n• **⚙ Paramètres** contient nom, client, groupe, étape, préfixe, division, authentification et exigences prod. Les caractères interdits et les noms qui partageraient un dossier sont refusés à l\'enregistrement.\n• **Client + groupe** déterminent ce qui peut être migré entre eux — le groupe est le pipeline.\n• **Étape** vaut dev, test, uat ou prod et fixe l\'ordre du pipeline.\n• **Préfixe** ne sert que si plusieurs environnements partagent une org, reconnus par ex. DEV_. Laissez-le vide pour prod.\n• **Prod exige une connexion prod** : à la connexion, on vérifie la permission (architect:flow:publish par défaut) et éventuellement un groupe. Le droit dure 30 minutes. Étape, authentification et exigences d\'un environnement prod ne changent qu\'avec une connexion prod valide.\n• **Connectez-vous où vous êtes** : si un environnement demande une connexion, une barre avec un bouton apparaît en haut — sur toutes les pages. 🔒 dans la barre latérale connecte aussi, puis la page se recharge.\n• **Cherchez** parmi les environnements, ou affichez seulement ceux à connecter. Le formulaire et les démos se déplient.\n• **Les clients démo** sont entièrement locaux — pas de connexion, aucun appel à Genesys.',
     help_pipeline:'Les flows en lignes, les environnements du groupe en colonnes, par étape.\n• Les numéros de version ne sont **pas** comparables entre orgs — ils sont comptés par org. Utilisez **⇄ Vérifier le contenu**, seul juge de l\'égalité de deux environnements.\n• **Vert** : publié par le bon chemin. **Rouge** : publié hors du pipeline, ou plus de versions que l\'étape précédente.\n• **⟶ Promouvoir** avance d\'une étape à la fois. Seule une version publiée peut être promue. Prod exige votre connexion prod.\n• **⟵ Ramener ici** récupère un flow d\'une étape ultérieure, par ex. quand dev vient d\'être créé.\n• **↩** annule la dernière promotion, **📝** affiche les notes de version.\n• Quand un **common module** est promu ou annulé, on vous propose de republier les flows de l\'environnement qui l\'utilisent. **🔁** fait de même si le module a été modifié directement dans Architect. Si un module a été publié après des flows qui l\'utilisent, c\'est indiqué en haut du tableau, les cellules sont marquées ⚠ et 🔁 devient jaune.\n• **Le manifeste partagé** garde l\'historique dans l\'org, pour que chacun voie la même vérité.',
     help_flows:'Récupérer, chercher et filtrer les flows de l\'environnement. Si plusieurs environnements partagent une org, seuls les siens sont affichés.\n• Filtrez par **type de flow** — la liste reprend les types réellement présents.\n• **Publier** met en service un brouillon déjà migré. Pour un common module, on vous propose ensuite de republier les flows qui l\'utilisent.\n• **Les common modules sont vérifiés** à chaque chargement : un module publié **après** un flow qui l\'utilise signifie que le flow tourne encore sur l\'ancienne version. C\'est signalé dans un encadré jaune avec un bouton pour les republier, et les lignes sont marquées ⚠.\n• **🔁 Utilisateurs** sur un common module liste tous les flows qui l\'utilisent.\n• **⇄ Comparer** avec une autre org compare le **contenu**, pas les numéros de version.\n• **📌 Point zéro** enregistre l\'état actuel de l\'org, pour repérer ensuite les publications directes.',
     help_cross:'Montre les flows présents chez **plusieurs clients** — par exemple le même common module chez dix clients.\n• La vue repose sur un appel par client et est donc rapide.\n• **⇄ Comparer le contenu** exporte le flow chez chaque client et compare l\'empreinte. C\'est long, donc réservé à la ligne demandée.\n• Si une org n\'a pas pu être lue, c\'est dit — il n\'affiche **jamais** « identique » quand une réponse manque.',
@@ -2904,6 +2935,15 @@ const LANGS = {
     help_syslog:'Tout ce que l\'outil a fait, le plus récent en haut.\n• Filtrez par période, niveau, action, client et texte libre.\n• Les dépendances manquantes lors d\'une migration arrivent ici, pour les retrouver ensuite.\n• **SECURITY** montre les connexions prod, qui a obtenu ou non le droit de déployer et pourquoi, et chaque tentative d\'écriture en prod refusée.\n• Les identifiants ne sont **jamais** écrits : les secrets sont masqués et les client id raccourcis.',
     help_flowbuilder_title:'Flow Builder',
     help_btn_title:'Comment utiliser cette page',
+    login_bar_needs:'🔒 « {env} » nécessite une connexion.',
+    login_bar_btn:'Se connecter',
+    login_bar_done:'✓ Connecté à « {env} » — la page se recharge.',
+    cust_search_ph:'🔍  Chercher — nom, client, groupe, étape',
+    cust_count:'{n} sur {total} environnements',
+    cust_only_login:'Seulement ceux à connecter',
+    tree_login_tip:'Non connecté — cliquez pour vous connecter',
+    tree_logged_in_tip:'Connecté',
+    card_badge_demo:'🧪 Démo',
     pl_stale_summary:'⚠ {env} : {m} common module(s) plus récent(s) que {n} flow(s) qui les utilisent',
     pl_stale_checking:'Vérification des common modules…',
     pl_stale_failed:'{env} : impossible de vérifier les common modules',
@@ -3445,7 +3485,7 @@ const LANGS = {
     action_default_note:'standaard gepubliceerd — de flow is meteen live',
     action_prod_note:'prod: standaard NIET gepubliceerd — blijft een concept dat je zelf publiceert',
     tree_ungrouped:'Niet gegroepeerd',
-    help_customers:'Eén omgeving is één Genesys-org gezien via één OAuth-client.\n• Nieuwe omgevingen gebruiken altijd **OAuth (PKCE)**: je logt in bij Genesys als jezelf en er wordt geen secret opgeslagen. Oudere omgevingen met client credentials zijn **geel** gemarkeerd.\n• **⚙ Instellingen** bevat naam, klant, groep, fase, voorvoegsel, divisie, authenticatie en prod-eisen. Ongeldige tekens en namen die een map zouden delen, worden bij opslaan geweigerd.\n• **Klant + groep** bepalen wat onderling gemigreerd mag worden — de groep is de pipeline.\n• **Fase** is dev, test, uat of prod en bepaalt de volgorde op de pipeline.\n• **Voorvoegsel** wordt alleen gebruikt als meerdere omgevingen één org delen, herkenbaar aan bv. DEV_. Laat het leeg voor prod.\n• **Prod vereist een prod-login**: bij inloggen wordt gecontroleerd of je de permissie hebt (standaard architect:flow:publish) en eventueel in een groep zit. Het recht geldt 30 minuten. Fase, authenticatie en eisen van een prod-omgeving kunnen alleen met een geldige prod-login worden gewijzigd.\n• **Demo-klanten** zijn volledig lokaal — geen login, geen aanroepen naar Genesys.',
+    help_customers:'Eén omgeving is één Genesys-org gezien via één OAuth-client.\n• Nieuwe omgevingen gebruiken altijd **OAuth (PKCE)**: je logt in bij Genesys als jezelf en er wordt geen secret opgeslagen. Oudere omgevingen met client credentials zijn **geel** gemarkeerd.\n• **⚙ Instellingen** bevat naam, klant, groep, fase, voorvoegsel, divisie, authenticatie en prod-eisen. Ongeldige tekens en namen die een map zouden delen, worden bij opslaan geweigerd.\n• **Klant + groep** bepalen wat onderling gemigreerd mag worden — de groep is de pipeline.\n• **Fase** is dev, test, uat of prod en bepaalt de volgorde op de pipeline.\n• **Voorvoegsel** wordt alleen gebruikt als meerdere omgevingen één org delen, herkenbaar aan bv. DEV_. Laat het leeg voor prod.\n• **Prod vereist een prod-login**: bij inloggen wordt gecontroleerd of je de permissie hebt (standaard architect:flow:publish) en eventueel in een groep zit. Het recht geldt 30 minuten. Fase, authenticatie en eisen van een prod-omgeving kunnen alleen met een geldige prod-login worden gewijzigd.\n• **Log in waar je bent**: heeft een omgeving een login nodig, dan verschijnt bovenaan een balk met een inlogknop — op elke pagina. 🔒 in de zijbalk logt ook in, en daarna wordt de pagina opnieuw geladen.\n• **Zoek** in de omgevingen, of toon alleen die login vereisen. Het formulier en de demo-klanten klap je open.\n• **Demo-klanten** zijn volledig lokaal — geen login, geen aanroepen naar Genesys.',
     help_pipeline:'Flows als rijen, de omgevingen van de groep als kolommen op fase-volgorde.\n• Versienummers zijn **niet** vergelijkbaar tussen orgs — ze worden per org geteld. Gebruik **⇄ Inhoud checken**, het enige dat bepaalt of twee omgevingen gelijk zijn.\n• **Groen** betekent langs de juiste weg gepubliceerd. **Rood** betekent buiten de pipeline om, of meer versies dan de vorige fase.\n• **⟶ Promoveren** gaat één fase tegelijk. Alleen een gepubliceerde versie kan worden gepromoveerd. Prod vereist je prod-login.\n• **⟵ Hierheen halen** haalt een flow op uit een latere fase, bv. als dev net is opgezet.\n• **↩** draait de laatste promotie terug, **📝** toont release notes.\n• Wordt een **common module** gepromoveerd of teruggedraaid, dan krijg je aangeboden de flows in die omgeving die hem gebruiken opnieuw te publiceren. **🔁** doet hetzelfde als de module direct in Architect is aangepast. Is een module gepubliceerd na flows die hem gebruiken, dan staat dat bovenaan het bord, zijn de cellen gemarkeerd met ⚠ en wordt 🔁 geel.\n• **Gedeeld manifest** bewaart de geschiedenis in de org, zodat iedereen dezelfde waarheid ziet.',
     help_flows:'Flows van de omgeving ophalen, zoeken en filteren. Delen meerdere omgevingen een org, dan worden alleen de eigen getoond.\n• Filter op **flowtype** — de lijst wordt gevuld met de types die de omgeving echt heeft.\n• **Publiceren** zet een al gemigreerd concept live. Bij een common module krijg je daarna aangeboden de flows die hem gebruiken opnieuw te publiceren.\n• **Common modules worden gecontroleerd** bij elke keer ophalen: is een module **na** een flow die hem gebruikt gepubliceerd, dan draait die flow nog op de oude versie. Dat staat in een geel vak met een knap om ze opnieuw te publiceren, en de rijen zijn gemarkeerd met ⚠.\n• **🔁 Gebruikers** op een common module toont alle flows die hem gebruiken.\n• **⇄ Vergelijken** met een andere org vergelijkt de **inhoud**, niet de versienummers.\n• **📌 Nulpunt** legt vast wat de org nu bevat, zodat directe publicaties later opvallen.',
     help_cross:'Toont de flows die bij **meerdere klanten** bestaan — bijvoorbeeld dezelfde common module bij tien klanten.\n• Het overzicht steunt op één aanroep per klant en is dus snel.\n• **⇄ Inhoud vergelijken** exporteert de flow bij elke klant en vergelijkt de hash. Dat kost tijd, dus alleen voor de rij die je vraagt.\n• Kon een org niet gelezen worden, dan wordt dat gezegd — er staat **nooit** "identiek" als een antwoord ontbreekt.',
@@ -3458,6 +3498,15 @@ const LANGS = {
     help_syslog:'Alles wat de tool heeft gedaan, nieuwste bovenaan.\n• Filter op periode, niveau, actie, klant en vrije tekst.\n• Ontbrekende afhankelijkheden bij een migratie komen hier terecht, zodat je ze later terugvindt.\n• **SECURITY** toont prod-logins, wie wel of geen deployrecht kreeg en waarom, en elke geweigerde poging om naar prod te schrijven.\n• Credentials worden **nooit** gelogd: secrets worden gemaskeerd en client-id\'s ingekort.',
     help_flowbuilder_title:'Flow Builder',
     help_btn_title:'Zo gebruik je deze pagina',
+    login_bar_needs:'🔒 "{env}" vereist dat je inlogt.',
+    login_bar_btn:'Inloggen',
+    login_bar_done:'✓ Ingelogd bij "{env}" — de pagina wordt opnieuw geladen.',
+    cust_search_ph:'🔍  Zoeken — naam, klant, groep, fase',
+    cust_count:'{n} van {total} omgevingen',
+    cust_only_login:'Alleen die login vereisen',
+    tree_login_tip:'Niet ingelogd — klik om in te loggen',
+    tree_logged_in_tip:'Ingelogd',
+    card_badge_demo:'🧪 Demo',
     pl_stale_summary:'⚠ {env}: {m} common module(s) nieuwer dan {n} flow(s) die ze gebruiken',
     pl_stale_checking:'Common modules controleren…',
     pl_stale_failed:'{env}: common modules konden niet worden gecontroleerd',
@@ -3999,7 +4048,7 @@ const LANGS = {
     action_default_note:'publicado por defecto: el flow está activo de inmediato',
     action_prod_note:'prod: NO se publica por defecto: queda como borrador para que lo publique usted',
     tree_ungrouped:'Sin agrupar',
-    help_customers:'Un entorno es una org de Genesys vista a través de un cliente OAuth.\n• Los entornos nuevos usan siempre **OAuth (PKCE)**: inicia sesión en Genesys como usted mismo y no se guarda ningún secret. Los entornos antiguos con client credentials aparecen en **amarillo**.\n• **⚙ Configuración** contiene nombre, cliente, grupo, etapa, prefijo, división, autenticación y requisitos de prod. Los caracteres no válidos y los nombres que compartirían carpeta se rechazan al guardar.\n• **Cliente + grupo** deciden qué se puede migrar entre sí — el grupo es el pipeline.\n• **Etapa** es dev, test, uat o prod y fija el orden del pipeline.\n• **Prefijo** solo se usa cuando varios entornos comparten una org, reconocidos por p. ej. DEV_. Déjelo vacío para prod.\n• **Prod exige un inicio de sesión de prod**: al entrar se comprueba el permiso (architect:flow:publish por defecto) y opcionalmente un grupo. El derecho dura 30 minutos. Etapa, autenticación y requisitos de un entorno de prod solo se cambian con un inicio de sesión de prod válido.\n• **Los clientes demo** son totalmente locales — sin inicio de sesión ni llamadas a Genesys.',
+    help_customers:'Un entorno es una org de Genesys vista a través de un cliente OAuth.\n• Los entornos nuevos usan siempre **OAuth (PKCE)**: inicia sesión en Genesys como usted mismo y no se guarda ningún secret. Los entornos antiguos con client credentials aparecen en **amarillo**.\n• **⚙ Configuración** contiene nombre, cliente, grupo, etapa, prefijo, división, autenticación y requisitos de prod. Los caracteres no válidos y los nombres que compartirían carpeta se rechazan al guardar.\n• **Cliente + grupo** deciden qué se puede migrar entre sí — el grupo es el pipeline.\n• **Etapa** es dev, test, uat o prod y fija el orden del pipeline.\n• **Prefijo** solo se usa cuando varios entornos comparten una org, reconocidos por p. ej. DEV_. Déjelo vacío para prod.\n• **Prod exige un inicio de sesión de prod**: al entrar se comprueba el permiso (architect:flow:publish por defecto) y opcionalmente un grupo. El derecho dura 30 minutos. Etapa, autenticación y requisitos de un entorno de prod solo se cambian con un inicio de sesión de prod válido.\n• **Inicie sesión donde esté**: si un entorno necesita inicio de sesión, aparece arriba una barra con un botón — en todas las páginas. 🔒 en la barra lateral también inicia sesión, y la página se recarga después.\n• **Busque** entre los entornos, o muestre solo los que requieren inicio de sesión. El formulario y los clientes demo se despliegan.\n• **Los clientes demo** son totalmente locales — sin inicio de sesión ni llamadas a Genesys.',
     help_pipeline:'Flows en filas, los entornos del grupo en columnas por orden de etapa.\n• Los números de versión **no** son comparables entre orgs — se cuentan por org. Use **⇄ Comprobar contenido**, lo único que decide si dos entornos son iguales.\n• **Verde**: publicado por el camino correcto. **Rojo**: publicado fuera del pipeline, o más versiones que la etapa anterior.\n• **⟶ Promover** avanza una etapa cada vez. Solo se puede promover una versión publicada. Prod exige su inicio de sesión de prod.\n• **⟵ Traer aquí** trae un flow de una etapa posterior, p. ej. cuando dev se acaba de crear.\n• **↩** revierte la última promoción y **📝** muestra las notas de versión.\n• Al promover o revertir un **common module**, se le ofrece volver a publicar los flows del entorno que lo usan. **🔁** hace lo mismo si el módulo se cambió directamente en Architect. Si un módulo se publicó después de flows que lo usan, se indica arriba del tablero, las celdas se marcan con ⚠ y 🔁 se vuelve amarillo.\n• **El manifiesto compartido** guarda el historial en la org, para que todos vean la misma verdad.',
     help_flows:'Obtener, buscar y filtrar los flows del entorno. Si varios entornos comparten una org, solo se muestran los propios.\n• Filtre por **tipo de flow** — la lista se llena con los tipos que el entorno tiene realmente.\n• **Publicar** pone en producción un borrador ya migrado. Si es un common module, se le ofrece después volver a publicar los flows que lo usan.\n• **Los common modules se comprueban** cada vez que se carga la lista: si un módulo se publicó **después** de un flow que lo usa, el flow sigue con la versión antigua. Se indica en un recuadro amarillo con un botón para volver a publicarlos, y las filas se marcan con ⚠.\n• **🔁 Usuarios** en un common module lista todos los flows que lo usan.\n• **⇄ Comparar** con otra org compara el **contenido**, no los números de versión.\n• **📌 Punto cero** registra lo que contiene la org ahora, para detectar después publicaciones directas.',
     help_cross:'Muestra los flows presentes en **varios clientes**, por ejemplo el mismo common module en diez clientes.\n• La vista se basa en una llamada por cliente, así que es rápida.\n• **⇄ Comparar contenido** exporta el flow de cada cliente y compara el hash. Lleva tiempo, así que solo se hace en la fila que pida.\n• Si una org no se pudo leer, se dice: **nunca** informa «idéntico» cuando falta una respuesta.',
@@ -4012,6 +4061,15 @@ const LANGS = {
     help_syslog:'Todo lo que ha hecho la herramienta, lo más reciente arriba.\n• Filtre por periodo, nivel, acción, cliente y texto libre.\n• Las dependencias que faltan en una migración acaban aquí, para encontrarlas después.\n• **SECURITY** muestra los inicios de sesión de prod, quién obtuvo o no el derecho de despliegue y por qué, y cada intento rechazado de escribir en prod.\n• Las credenciales **nunca** se escriben: los secrets se enmascaran y los client id se acortan.',
     help_flowbuilder_title:'Flow Builder',
     help_btn_title:'Cómo usar esta página',
+    login_bar_needs:'🔒 "{env}" requiere iniciar sesión.',
+    login_bar_btn:'Iniciar sesión',
+    login_bar_done:'✓ Sesión iniciada en "{env}" — la página se recarga.',
+    cust_search_ph:'🔍  Buscar — nombre, cliente, grupo, etapa',
+    cust_count:'{n} de {total} entornos',
+    cust_only_login:'Solo los que requieren inicio de sesión',
+    tree_login_tip:'Sin sesión — haga clic para iniciar sesión',
+    tree_logged_in_tip:'Sesión iniciada',
+    card_badge_demo:'🧪 Demo',
     pl_stale_summary:'⚠ {env}: {m} common module(s) más recientes que {n} flow(s) que los usan',
     pl_stale_checking:'Comprobando common modules…',
     pl_stale_failed:'{env}: no se pudieron comprobar los common modules',
@@ -4082,20 +4140,82 @@ function t(key) { return (LANGS[currentLang] || LANGS.da)[key] || LANGS.da[key] 
 // Kalderen får stadig fejlen og viser den som før.
 const _fetch = window.fetch.bind(window);
 let _prodGateOpen = false;
+// Serverens egen tekst når et OAuth-miljø mangler login (getToken i server.js).
+// Den kan komme fra hvilken som helst side — Flow Browser, Export, Pipeline,
+// Migrer — og står nogle gange inde i en længere besked eller i en liste over
+// problemer, så hele svaret gennemsøges. test/login.test.js holder de to i takt.
+const LOGIN_NEEDED = /OAuth token (?:missing|expired|missing or expired) for "([^"]+)"/g;
 window.fetch = async (...args) => {
   const r = await _fetch(...args);
+  const url = String(args[0]?.url || args[0] || '');
+  if (!/\/api\/(logs|auth\/status)/.test(url)) {
+    // Teksten ligger i JSON, hvor anførselstegnene er escapet — derfor
+    // gennemgås de afkodede strenge, ikke svarets rå tekst.
+    r.clone().text().then(txt => {
+      if (!txt.includes('OAuth token')) return;
+      const strenge = [];
+      const saml = v => typeof v === 'string' ? strenge.push(v)
+        : v && typeof v === 'object' ? Object.values(v).forEach(saml) : null;
+      try { saml(JSON.parse(txt)); } catch (_) { strenge.push(txt); }
+      for (const str of strenge) for (const m of str.matchAll(LOGIN_NEEDED)) {
+        const env = customers.find(c => c.name === m[1]);
+        if (env) needLogin(env.id);
+      }
+    }).catch(() => {});
+  }
   if (r.status === 403) {
     r.clone().json().then(d => {
-      if (!d || !/^prod-/.test(d.code || '') || _prodGateOpen) return;
+      if (!d || !/^prod-/.test(d.code || '')) return;
+      // Mangler prod-login, er det samme bjælke som ethvert andet login.
+      if (d.code === 'prod-login' && d.envId) return needLogin(d.envId, d.error);
+      if (_prodGateOpen) return;
       _prodGateOpen = true;         // en løkke over ti flows skal ikke give ti dialoger
       setTimeout(() => { _prodGateOpen = false; }, 3000);
-      if (d.code === 'prod-login' && d.envId) {
-        if (confirm(t('prod_gate_login').replace('{msg}', d.error))) oauthLogin(d.envId);
-      } else alert(t('prod_gate_title') + '\n\n' + d.error);
+      alert(t('prod_gate_title') + '\n\n' + d.error);
     }).catch(() => {});
   }
   return r;
 };
+
+// Bjælken øverst: ét punkt pr. miljø der mangler login, med en knap. En knap
+// frem for confirm(): browseren lader kun et login-vindue åbne efter et
+// rigtigt klik.
+const loginNeeded = new Map();   // envId -> besked
+function needLogin(envId, msg) {
+  if (authStatus[envId]?.authenticated && !msg) return;
+  loginNeeded.set(envId, msg || '');
+  renderLoginBar();
+}
+function renderLoginBar() {
+  const bar = document.getElementById('login-bar');
+  if (!bar) return;
+  if (!loginNeeded.size) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  bar.style.display = 'block';
+  bar.innerHTML = [...loginNeeded].map(([id, msg]) => {
+    const env = customers.find(c => c.id === id) || { name: id };
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;margin-bottom:6px;border:1px solid var(--yellow);
+                border-radius:6px;background:color-mix(in srgb, var(--yellow) 10%, var(--card));font-size:12px">
+        <span style="flex:1">${escapeHtml(msg || t('login_bar_needs').replace('{env}', env.name))}</span>
+        <button class="btn btn-primary btn-sm" onclick="oauthLogin(${jsAttr(id)})">${t('login_bar_btn')}</button>
+        <button class="btn btn-secondary btn-sm" onclick="loginNeeded.delete(${jsAttr(id)}); renderLoginBar()">✕</button>
+      </div>`;
+  }).join('');
+}
+
+// Efter et login hentes den side man står på igen, så man ikke selv skal
+// finde knappen der fejlede.
+function afterLogin(envId) {
+  loginNeeded.delete(envId);
+  renderLoginBar();
+  const side = document.querySelector('.page.active')?.id;
+  const igen = {
+    'page-flows':    () => document.getElementById('fb-customer').value && loadFlows(),
+    'page-export':   () => document.getElementById('ex-customer').value && loadExportFlows(),
+    'page-pipeline': () => pipelineData && loadPipeline(),
+    'page-migrate':  () => document.getElementById('m-source').value && onMigrateSourceChange(),
+  }[side];
+  if (igen) igen();
+}
 
 // Tooltips. En statisk knap med data-i18n="X" får tip_X som title, hvis den
 // findes; en knap bygget i JS angiver selv data-tip="tip_…". Knapperne tegnes
@@ -4322,13 +4442,15 @@ async function refreshCustomers() {
   updateOAuthStatuses();
 }
 
+let authStatus = {};   // envId -> { authenticated, expiresIn, deploy? }
 async function updateOAuthStatuses() {
+  try { authStatus = await fetch('/api/auth/status').then(r => r.json()); } catch (_) {}
+  renderTreeAuth();
   for (const c of customers) {
     const prod = c.stage === 'prod' && c.authType !== 'demo';
     if (c.authType !== 'oauth') { if (prod) renderProdLock(c, null); continue; }
     try {
-      const r = await fetch('/api/auth/status/' + c.id);
-      const s = await r.json();
+      const s = authStatus[c.id] || { authenticated: false };
       if (prod) renderProdLock(c, s);
       const btn   = document.getElementById('oauth-btn-' + c.id);
       const badge = document.getElementById('oauth-badge-' + c.id);
@@ -4353,6 +4475,16 @@ function toggleTenant(tenant) {
   if (treeOpen.has(tenant)) treeOpen.delete(tenant); else treeOpen.add(tenant);
   try { localStorage.setItem('treeOpen', JSON.stringify([...treeOpen])); } catch (_) {}
   renderSidebarCustomers();
+}
+
+function renderTreeAuth() {
+  for (const c of customers) {
+    const el = document.getElementById('tree-auth-' + c.id);
+    if (!el) continue;
+    const inde = authStatus[c.id]?.authenticated;
+    el.textContent = inde ? '🟢' : '🔒';
+    el.title = t(inde ? 'tree_logged_in_tip' : 'tree_login_tip');
+  }
 }
 
 function renderSidebarCustomers() {
@@ -4387,10 +4519,13 @@ function renderSidebarCustomers() {
         <div class="chip-dot" id="chip-${c.id}"></div>
         <span class="tree-stage">${(c.stage || '').toUpperCase()}</span>
         <span>${escapeHtml(c.name)}</span>
+        ${c.authType === 'oauth' ? `<span class="tree-auth" id="tree-auth-${c.id}" style="margin-left:auto;cursor:pointer"
+            onclick="event.stopPropagation(); if (!authStatus[${jsAttr(c.id)}]?.authenticated) oauthLogin(${jsAttr(c.id)})"></span>` : ''}
       </div>`).join('') : '';
 
     return hoved + boern;
   }).join('');
+  renderTreeAuth();
 }
 
 function renderCustomerGrid() {
@@ -4399,7 +4534,19 @@ function renderCustomerGrid() {
     grid.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:20px">${t('no_customers_yet')}</div>`;
     return;
   }
-  grid.innerHTML = customers.map(c => {
+  // Med mange kunder skal man kunne finde ét miljø: sorteret som i
+  // sidebjælken (kunde, så trin), og filtreret på fritekst.
+  const q = (document.getElementById('cust-search')?.value || '').trim().toLowerCase();
+  const kunLogin = document.getElementById('cust-only-login')?.checked;
+  const vis = customers
+    .filter(c => !q || [c.name, c.tenant, c.group, c.stage, c.orgLabel, c.region]
+      .some(v => String(v || '').toLowerCase().includes(q)))
+    .filter(c => !kunLogin || (c.authType === 'oauth' && !authStatus[c.id]?.authenticated))
+    .sort((a, b) => String(a.tenant || '\uffff').localeCompare(String(b.tenant || '\uffff'))
+                 || byStage(a, b) || a.name.localeCompare(b.name));
+  const cnt = document.getElementById('cust-count');
+  if (cnt) cnt.textContent = t('cust_count').replace('{n}', vis.length).replace('{total}', customers.length);
+  grid.innerHTML = vis.map(c => {
     const isOAuth = c.authType === 'oauth';
     const isCreds = !isOAuth && c.authType !== 'demo' && !c.demo;
     const loginBtn = isOAuth
@@ -4407,7 +4554,7 @@ function renderCustomerGrid() {
       : '';
     const authBadge = isOAuth
       ? `<span id="oauth-badge-${c.id}" style="font-size:10px;font-family:var(--mono);color:var(--muted)" title="OAuth PKCE">🌐 OAuth</span>`
-      : `<span style="font-size:10px;font-family:var(--mono);color:${isCreds ? 'var(--yellow)' : 'var(--muted)'}">${t('card_badge_creds')}</span>`;
+      : `<span style="font-size:10px;font-family:var(--mono);color:${isCreds ? 'var(--yellow)' : 'var(--muted)'}">${t(isCreds ? 'card_badge_creds' : 'card_badge_demo')}</span>`;
     return `
     <div class="customer-card${isCreds ? ' creds' : ''}">
       <div class="cc-status"><div class="dot" id="card-dot-${c.id}"></div><span id="card-status-${c.id}">–</span></div>
@@ -4481,6 +4628,7 @@ async function oauthLogin(id) {
       if (s.authenticated && !venterPaaRet) {
         clearInterval(poll);
         updateOAuthStatuses();
+        afterLogin(id);
         if (btn) { btn.disabled = false; btn.textContent = '✓ ' + t('auth_status_connected'); btn.className = 'btn btn-green btn-sm'; }
         if (badge) { badge.textContent = '🟢 ' + t('auth_status_connected'); badge.style.color = 'var(--green)'; }
         // Update test dot green
@@ -5843,9 +5991,8 @@ async function loadLog() {
   empty.style.display = 'none';
 
   tbody.innerHTML = entries.map(e => {
-    const ts = e.ts.replace('T', ' ').replace(/\.\d+Z$/, '');
     return `<tr>
-      <td class="log-ts">${ts}</td>
+      <td class="log-ts" title="${escapeHtml(e.ts)}">${logTime(e.ts)}</td>
       <td>${LEVEL_BADGE[e.level] || e.level}</td>
       <td>${ACTION_BADGE[e.action] || e.action}</td>
       <td class="log-customer">${e.customer ? escapeHtml(e.customer) : '<span style="color:var(--muted)">—</span>'}</td>
@@ -5873,11 +6020,26 @@ async function loadLogStats() {
   </div>`).join('');
 }
 
+// Serveren gemmer tiden i UTC (ISO med Z). Vises den som den står, ligner
+// den lokal tid og går to timer forkert om sommeren i Danmark — så den
+// omregnes til maskinens egen tid. UTC-værdien står i tooltip.
+function logTime(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return escapeHtml(iso);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+         `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+// "Seneste 15 min" betyder til og med nu — også det der logges mens man ser
+// på det. Før blev sluttiden sat til nu rundet NED til hele minutter, og det
+// nyeste forsvandt, selv med auto-opdater slået til.
 function slQuick(minutes) {
-  const now = new Date();
-  const from = new Date(now - minutes * 60000);
+  const from = minutes === 'today'
+    ? new Date(new Date().setHours(0, 0, 0, 0))        // "I dag" = fra midnat, ikke 24 timer
+    : new Date(Date.now() - minutes * 60000);
   document.getElementById('sl-from').value = toLocalDatetimeInput(from);
-  document.getElementById('sl-to').value   = toLocalDatetimeInput(now);
+  document.getElementById('sl-to').value   = '';
   loadLog();
 }
 
