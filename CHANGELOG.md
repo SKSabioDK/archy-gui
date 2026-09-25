@@ -5,6 +5,28 @@
 
 ---
 
+### v1.46.1
+---
+**🇩🇰 Dansk**
+
+- **Genpublicering forklarer hvorfor et flow ikke kunne genpubliceres, og hvad man gør ved det.** Genpublicering tager den publicerede udgave og publicerer den igen — og så tjekkes flowet mod org'en som den er i dag. Før lukkede dialogen og viste Archys rå tekst i en linje. Nu bliver den stående med én linje pr. flow:
+  - **TTS-stemme der ikke findes** — *Flowet bruger TTS-stemmen "nb-NO-Standard-A" (nb-no), som org'en ikke har længere* → vælg en stemme der findes under flowets sprog i Architect.
+  - **Ingen standardstemme for et sprog** — fx da-DK.
+  - **Noget der ikke findes længere** — *Flowet peger på en kø der ikke findes i org'en længere (i menu "EG_Demo_69")*; også brugere, datatabeller, data actions, prompts, tidsplaner og flows.
+  - **Et tomt felt** — *Feltet "initialGreeting" skal være udfyldt, men er tomt*.
+  - **Et låst flow**, og ellers Archys egen tekst.
+
+  Archys rå tekst og stien til den fulde debug-log står under *Detaljer fra Archy*. Beskeden på siden er nu kort: *1 genpubliceret · 4 kunne ikke*. Forklaringerne er bygget og afprøvet på de fire rigtige fejl fra Sabio's prod-org.
+
+**5 nye tests**, i alt 217.
+
+**🇬🇧 English**
+- **Republishing explains why a flow could not be republished, and what to do about it** — missing TTS voice, no default voice for a language, a reference to something that no longer exists (with where in the flow), an empty required field, a locked flow — with Archy's raw text and the debug log path under *Details*.
+
+**5 new tests**, 217 in total.
+
+---
+
 ### v1.46.0
 ---
 **🇩🇰 Dansk**

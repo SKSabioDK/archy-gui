@@ -492,7 +492,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.46.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.46.1 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1809,6 +1809,30 @@ const LANGS = {
     help_syslog:'Alt hvad værktøjet har foretaget sig, nyeste øverst.\n• Filtrér på tidsrum, niveau, handling, kunde og fritekst.\n• Manglende afhængigheder ved en migrering havner her, så du kan finde dem igen bagefter.\n• **SECURITY** viser prod-login, hvem der fik eller ikke fik deploy-ret og hvorfor, og hvert forsøg på at skrive til prod der blev afvist.\n• Credentials skrives **aldrig** i loggen: hemmeligheder maskeres, og client-id\'er forkortes.',
     help_flowbuilder_title:'Flow Builder',
     help_btn_title:'Sådan bruges denne side',
+    rep_result:'{ok} genpubliceret · {fail} kunne ikke',
+    rep_result_intro:'Genpublicering tager den publicerede udgave og publicerer den igen — og så tjekkes flowet mod org\'en som den er i dag. Det der er ændret eller slettet siden flowet sidst blev publiceret, stopper det.',
+    rep_why_tts_voice:'Flowet bruger TTS-stemmen "{value}" ({lang}), som org\'en ikke har længere.',
+    rep_why_tts_default:'Org\'en har ingen standard-TTS-stemme for {lang}, som flowet understøtter.',
+    rep_fix_tts:'Vælg en stemme der findes, under flowets sprog (Supported Languages) i Architect, og publicér flowet.',
+    rep_why_missing:'Flowet peger på {what} der ikke findes i org\'en længere{where}.',
+    rep_fix_missing:'Opret den igen, eller ret flowet i Architect så det peger på en der findes, og publicér.',
+    rep_why_empty:'Feltet "{field}" skal være udfyldt, men er tomt{where}.',
+    rep_fix_empty:'Udfyld det i Architect, og publicér flowet.',
+    rep_why_locked:'Flowet er tjekket ud (låst) i Architect.',
+    rep_fix_locked:'Få det tjekket ind i Architect, og prøv igen.',
+    rep_why_other:'Archy afviste flowet.',
+    rep_fix_other:'Se detaljerne nedenfor, ret flowet i Architect, og prøv igen.',
+    rep_what_queue:'en kø',
+    rep_what_user:'en bruger',
+    rep_what_datatable:'en datatabel',
+    rep_what_dataaction:'en data action',
+    rep_what_prompt:'en prompt',
+    rep_what_schedule:'en tidsplan',
+    rep_what_flow:'et flow',
+    rep_what_other:'noget ("{field}")',
+    rep_where:' (i {where})',
+    rep_details:'Detaljer fra Archy',
+    rep_debug:'Fuld Archy-log',
     login_bar_needs:'🔒 "{env}" kræver at du logger ind.',
     login_bar_btn:'Log ind',
     login_bar_done:'✓ Logget ind i "{env}" — siden hentes igen.',
@@ -2372,6 +2396,30 @@ const LANGS = {
     help_syslog:'Everything the tool has done, newest first.\n• Filter by time span, level, action, customer and free text.\n• Missing dependencies during a migration end up here, so you can find them afterwards.\n• **SECURITY** shows prod logins, who did or did not get deploy rights and why, and every rejected attempt to write to prod.\n• Credentials are **never** written to the log: secrets are masked and client ids shortened.',
     help_flowbuilder_title:'Flow Builder',
     help_btn_title:'How to use this page',
+    rep_result:'{ok} republished · {fail} could not be',
+    rep_result_intro:'Republishing takes the published version and publishes it again — and the flow is then checked against the org as it is today. Anything changed or deleted since the flow was last published stops it.',
+    rep_why_tts_voice:'The flow uses the TTS voice "{value}" ({lang}), which the org no longer has.',
+    rep_why_tts_default:'The org has no default TTS voice for {lang}, which the flow supports.',
+    rep_fix_tts:'Pick a voice that exists under the flow\'s Supported Languages in Architect, and publish the flow.',
+    rep_why_missing:'The flow points to {what} that no longer exists in the org{where}.',
+    rep_fix_missing:'Recreate it, or change the flow in Architect to point to one that exists, and publish.',
+    rep_why_empty:'The field "{field}" must be filled in but is empty{where}.',
+    rep_fix_empty:'Fill it in in Architect, and publish the flow.',
+    rep_why_locked:'The flow is checked out (locked) in Architect.',
+    rep_fix_locked:'Have it checked in in Architect, and try again.',
+    rep_why_other:'Archy rejected the flow.',
+    rep_fix_other:'See the details below, fix the flow in Architect, and try again.',
+    rep_what_queue:'a queue',
+    rep_what_user:'a user',
+    rep_what_datatable:'a data table',
+    rep_what_dataaction:'a data action',
+    rep_what_prompt:'a prompt',
+    rep_what_schedule:'a schedule',
+    rep_what_flow:'a flow',
+    rep_what_other:'something ("{field}")',
+    rep_where:' (in {where})',
+    rep_details:'Details from Archy',
+    rep_debug:'Full Archy log',
     login_bar_needs:'🔒 "{env}" requires you to log in.',
     login_bar_btn:'Log in',
     login_bar_done:'✓ Logged in to "{env}" — reloading the page.',
@@ -2935,6 +2983,30 @@ const LANGS = {
     help_syslog:'Tout ce que l\'outil a fait, le plus récent en haut.\n• Filtrez par période, niveau, action, client et texte libre.\n• Les dépendances manquantes lors d\'une migration arrivent ici, pour les retrouver ensuite.\n• **SECURITY** montre les connexions prod, qui a obtenu ou non le droit de déployer et pourquoi, et chaque tentative d\'écriture en prod refusée.\n• Les identifiants ne sont **jamais** écrits : les secrets sont masqués et les client id raccourcis.',
     help_flowbuilder_title:'Flow Builder',
     help_btn_title:'Comment utiliser cette page',
+    rep_result:'{ok} republié(s) · {fail} impossible(s)',
+    rep_result_intro:'Republier reprend la version publiée et la publie à nouveau — le flow est alors vérifié contre l\'org telle qu\'elle est aujourd\'hui. Tout ce qui a changé ou été supprimé depuis la dernière publication le bloque.',
+    rep_why_tts_voice:'Le flow utilise la voix TTS « {value} » ({lang}), que l\'org n\'a plus.',
+    rep_why_tts_default:'L\'org n\'a pas de voix TTS par défaut pour {lang}, que le flow prend en charge.',
+    rep_fix_tts:'Choisissez une voix existante dans les langues du flow (Supported Languages) dans Architect, puis publiez.',
+    rep_why_missing:'Le flow pointe vers {what} qui n\'existe plus dans l\'org{where}.',
+    rep_fix_missing:'Recréez-la, ou modifiez le flow dans Architect pour pointer vers un élément existant, puis publiez.',
+    rep_why_empty:'Le champ « {field} » doit être rempli mais il est vide{where}.',
+    rep_fix_empty:'Remplissez-le dans Architect, puis publiez le flow.',
+    rep_why_locked:'Le flow est extrait (verrouillé) dans Architect.',
+    rep_fix_locked:'Faites-le réintégrer dans Architect, puis réessayez.',
+    rep_why_other:'Archy a refusé le flow.',
+    rep_fix_other:'Voir les détails ci-dessous, corrigez le flow dans Architect, puis réessayez.',
+    rep_what_queue:'une file',
+    rep_what_user:'un utilisateur',
+    rep_what_datatable:'une table de données',
+    rep_what_dataaction:'une data action',
+    rep_what_prompt:'un prompt',
+    rep_what_schedule:'un planning',
+    rep_what_flow:'un flow',
+    rep_what_other:'un élément (« {field} »)',
+    rep_where:' (dans {where})',
+    rep_details:'Détails d\'Archy',
+    rep_debug:'Journal Archy complet',
     login_bar_needs:'🔒 « {env} » nécessite une connexion.',
     login_bar_btn:'Se connecter',
     login_bar_done:'✓ Connecté à « {env} » — la page se recharge.',
@@ -3498,6 +3570,30 @@ const LANGS = {
     help_syslog:'Alles wat de tool heeft gedaan, nieuwste bovenaan.\n• Filter op periode, niveau, actie, klant en vrije tekst.\n• Ontbrekende afhankelijkheden bij een migratie komen hier terecht, zodat je ze later terugvindt.\n• **SECURITY** toont prod-logins, wie wel of geen deployrecht kreeg en waarom, en elke geweigerde poging om naar prod te schrijven.\n• Credentials worden **nooit** gelogd: secrets worden gemaskeerd en client-id\'s ingekort.',
     help_flowbuilder_title:'Flow Builder',
     help_btn_title:'Zo gebruik je deze pagina',
+    rep_result:'{ok} opnieuw gepubliceerd · {fail} niet gelukt',
+    rep_result_intro:'Opnieuw publiceren neemt de gepubliceerde versie en publiceert die opnieuw — en dan wordt de flow getoetst aan de org zoals die nu is. Wat sinds de laatste publicatie is gewijzigd of verwijderd, houdt hem tegen.',
+    rep_why_tts_voice:'De flow gebruikt de TTS-stem "{value}" ({lang}), die de org niet meer heeft.',
+    rep_why_tts_default:'De org heeft geen standaard-TTS-stem voor {lang}, dat de flow ondersteunt.',
+    rep_fix_tts:'Kies een bestaande stem bij de talen van de flow (Supported Languages) in Architect, en publiceer.',
+    rep_why_missing:'De flow verwijst naar {what} die niet meer in de org bestaat{where}.',
+    rep_fix_missing:'Maak hem opnieuw aan, of pas de flow in Architect aan zodat hij naar een bestaande verwijst, en publiceer.',
+    rep_why_empty:'Het veld "{field}" moet gevuld zijn maar is leeg{where}.',
+    rep_fix_empty:'Vul het in Architect in, en publiceer de flow.',
+    rep_why_locked:'De flow is uitgecheckt (vergrendeld) in Architect.',
+    rep_fix_locked:'Laat hem inchecken in Architect, en probeer opnieuw.',
+    rep_why_other:'Archy heeft de flow geweigerd.',
+    rep_fix_other:'Bekijk de details hieronder, pas de flow aan in Architect, en probeer opnieuw.',
+    rep_what_queue:'een wachtrij',
+    rep_what_user:'een gebruiker',
+    rep_what_datatable:'een datatabel',
+    rep_what_dataaction:'een data action',
+    rep_what_prompt:'een prompt',
+    rep_what_schedule:'een planning',
+    rep_what_flow:'een flow',
+    rep_what_other:'iets ("{field}")',
+    rep_where:' (in {where})',
+    rep_details:'Details van Archy',
+    rep_debug:'Volledig Archy-logboek',
     login_bar_needs:'🔒 "{env}" vereist dat je inlogt.',
     login_bar_btn:'Inloggen',
     login_bar_done:'✓ Ingelogd bij "{env}" — de pagina wordt opnieuw geladen.',
@@ -4061,6 +4157,30 @@ const LANGS = {
     help_syslog:'Todo lo que ha hecho la herramienta, lo más reciente arriba.\n• Filtre por periodo, nivel, acción, cliente y texto libre.\n• Las dependencias que faltan en una migración acaban aquí, para encontrarlas después.\n• **SECURITY** muestra los inicios de sesión de prod, quién obtuvo o no el derecho de despliegue y por qué, y cada intento rechazado de escribir en prod.\n• Las credenciales **nunca** se escriben: los secrets se enmascaran y los client id se acortan.',
     help_flowbuilder_title:'Flow Builder',
     help_btn_title:'Cómo usar esta página',
+    rep_result:'{ok} republicado(s) · {fail} no se pudo',
+    rep_result_intro:'Volver a publicar toma la versión publicada y la publica de nuevo — y el flow se comprueba contra la org tal como está hoy. Lo que haya cambiado o se haya borrado desde la última publicación lo detiene.',
+    rep_why_tts_voice:'El flow usa la voz TTS "{value}" ({lang}), que la org ya no tiene.',
+    rep_why_tts_default:'La org no tiene voz TTS predeterminada para {lang}, que el flow admite.',
+    rep_fix_tts:'Elija una voz que exista en los idiomas del flow (Supported Languages) en Architect y publique.',
+    rep_why_missing:'El flow apunta a {what} que ya no existe en la org{where}.',
+    rep_fix_missing:'Vuelva a crearlo, o cambie el flow en Architect para que apunte a uno existente, y publique.',
+    rep_why_empty:'El campo "{field}" debe rellenarse pero está vacío{where}.',
+    rep_fix_empty:'Rellénelo en Architect y publique el flow.',
+    rep_why_locked:'El flow está bloqueado (checked out) en Architect.',
+    rep_fix_locked:'Haga que se libere en Architect y vuelva a intentarlo.',
+    rep_why_other:'Archy rechazó el flow.',
+    rep_fix_other:'Vea los detalles abajo, corrija el flow en Architect y vuelva a intentarlo.',
+    rep_what_queue:'una cola',
+    rep_what_user:'un usuario',
+    rep_what_datatable:'una tabla de datos',
+    rep_what_dataaction:'una data action',
+    rep_what_prompt:'un prompt',
+    rep_what_schedule:'un horario',
+    rep_what_flow:'un flow',
+    rep_what_other:'algo ("{field}")',
+    rep_where:' (en {where})',
+    rep_details:'Detalles de Archy',
+    rep_debug:'Registro completo de Archy',
     login_bar_needs:'🔒 "{env}" requiere iniciar sesión.',
     login_bar_btn:'Iniciar sesión',
     login_bar_done:'✓ Sesión iniciada en "{env}" — la página se recarga.',
@@ -9108,6 +9228,9 @@ function showRepublishModal(envId, moduleName, dependents, releaseRef, alertId =
   }
   document.getElementById('rep-btn-go').style.display = dependents.length ? '' : 'none';
   document.getElementById('rep-btn-go').disabled = false;
+  const skip = document.getElementById('rep-btn-skip');
+  skip.textContent = t('rep_skip');
+  skip.dataset.i18n = 'rep_skip';
   document.getElementById('rep-overlay').style.display = 'flex';
   return new Promise(res => { repResolver = res; });
 }
@@ -9118,6 +9241,8 @@ async function repResolve(go) {
     document.getElementById('rep-overlay').style.display = 'none';
     if (repResolver) { repResolver(results); repResolver = null; }
   };
+  // Står dialogen og viser et resultat, lukker knappen den bare.
+  if (repCtx?.results) { const r = repCtx.results; repCtx.results = null; return done(r); }
   if (!go || !picked.length) return done(null);
   const prod = isProdEnv(repCtx.envId);
   if (prod && !confirm(t('pl_prod_warn') + '\n\n' + envNameOf(repCtx.envId))) return;
@@ -9133,10 +9258,47 @@ async function repResolve(go) {
   if (r.error) { showAlert(repCtx.alertId, r.error, 'err'); return done(null); }
   const ok = (r.results || []).filter(x => x.ok).length;
   const fejl = (r.results || []).filter(x => !x.ok);
-  showAlert(repCtx.alertId, `🔁 ${ok} ${t('rep_done')}` +
-    (fejl.length ? '<br>' + fejl.map(x => `✗ ${escapeHtml(x.name)}: ${escapeHtml(x.error)}`).join('<br>') : ''),
-    fejl.length ? 'err' : 'ok');
-  done(r.results || []);
+  const opsummering = t('rep_result').replace('{ok}', ok).replace('{fail}', fejl.length);
+  showAlert(repCtx.alertId, '🔁 ' + escapeHtml(opsummering), fejl.length ? 'err' : 'ok');
+  if (!fejl.length) return done(r.results || []);
+  // Fejlede nogen, bliver dialogen stående med en forklaring pr. flow — den
+  // rå Archy-tekst alene siger ikke hvad man skal gøre.
+  repCtx.results = r.results;
+  document.getElementById('rep-body').innerHTML =
+    `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">${escapeHtml(t('rep_result_intro'))}</div>` +
+    r.results.map(repResultRow).join('');
+  document.getElementById('rep-btn-go').style.display = 'none';
+  const skip = document.getElementById('rep-btn-skip');
+  skip.textContent = t('help_close');
+  skip.dataset.i18n = 'help_close';
+}
+
+// Én linje pr. flow i resultatet: hvad der gik galt, og hvad man gør ved det.
+function repResultRow(x) {
+  const navn = `<span style="font-family:var(--mono)">${escapeHtml(x.name)}</span>`;
+  if (x.ok) return `<div style="padding:6px 0;font-size:13px;color:var(--green)">✓ ${navn}${x.version ? ` → v${escapeHtml(x.version)}` : ''}</div>`;
+  const e = x.explain || { kind: 'other', reason: x.error };
+  const hvor = e.where ? t('rep_where').replace('{where}', e.where) : '';
+  const fyld = str => str.replace('{value}', e.value || '').replace('{lang}', e.lang || '')
+    .replace('{field}', e.field || '').replace('{where}', hvor)
+    .replace('{what}', t('rep_what_' + (e.what || 'other')).replace('{field}', e.field || '?'));
+  const [hvorfor, gør] = {
+    'tts-voice':   ['rep_why_tts_voice', 'rep_fix_tts'],
+    'tts-default': ['rep_why_tts_default', 'rep_fix_tts'],
+    'missing-ref': ['rep_why_missing', 'rep_fix_missing'],
+    'empty-field': ['rep_why_empty', 'rep_fix_empty'],
+    'locked':      ['rep_why_locked', 'rep_fix_locked'],
+  }[e.kind] || ['rep_why_other', 'rep_fix_other'];
+  return `<div style="padding:8px 0;border-top:1px solid var(--border);font-size:13px">
+      <div style="color:var(--red)">✗ ${navn}</div>
+      <div style="margin:4px 0 2px 16px">${escapeHtml(fyld(t(hvorfor)))}</div>
+      <div style="margin:0 0 4px 16px;color:var(--muted);font-size:12px">→ ${escapeHtml(fyld(t(gør)))}</div>
+      <details style="margin-left:16px;font-size:11px;color:var(--muted)">
+        <summary style="cursor:pointer">${t('rep_details')}</summary>
+        <div style="font-family:var(--mono);margin-top:4px;word-break:break-word">${escapeHtml(e.reason || x.error || '')}</div>
+        ${e.debugFile ? `<div style="margin-top:4px">${t('rep_debug')}: <span style="font-family:var(--mono)">${escapeHtml(e.debugFile)}</span></div>` : ''}
+      </details>
+    </div>`;
 }
 
 // Genesys skriver typen "COMMONMODULE", Archy "commonModule".

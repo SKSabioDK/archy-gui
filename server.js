@@ -3475,7 +3475,7 @@ app.post('/api/flows/republish', async (req, res) => {
     } catch (e) {
       const msg = describeApiError(e);
       addLog('ERROR', `Could not republish "${f.name}" in ${env.name}: ${msg}`, env.name, 'REPUBLISH');
-      results.push({ name: f.name, type: f.type, ok: false, error: msg });
+      results.push({ name: f.name, type: f.type, ok: false, error: msg, explain: explainRepublishFailure(msg) });
     }
   }
   // Modulets egen release-note får listen med, så man kan se hvad ændringen
@@ -4703,6 +4703,43 @@ function archyValidationIssues(lines) {
     const hvor = [navn, sti].filter(Boolean).join(' i ');
     ud.push(hvor ? `${besked} (${hvor})` : besked);
   }
+  return ud;
+}
+
+// Hvorfor en genpublicering fejlede, i en form brugerfladen kan forklare.
+// Genpublicering eksporterer den publicerede udgave og importerer den igen —
+// og så valideres flowet mod org'en som den er NU. Peger det på en kø der er
+// slettet, eller en TTS-stemme org'en ikke har længere, afviser Archy det,
+// selvom flowet kører i dag. Teksten er archyErrorReason's, evt. med stien til
+// Archys debug-log på.
+const REF_KIND = [
+  [/queue/i, 'queue'], [/user/i, 'user'], [/datatable/i, 'datatable'],
+  [/dataaction|^action$/i, 'dataaction'], [/prompt|audio/i, 'prompt'],
+  [/schedule|emergency/i, 'schedule'], [/flow|module/i, 'flow']
+];
+function explainRepublishFailure(msg) {
+  const tekst = String(msg || '');
+  const debugFile = (tekst.match(/full Archy output:\s*(.+?\.txt)/i) || [])[1] || null;
+  const reason = tekst.replace(/\s*—\s*full Archy output:.*$/i, '').trim();
+  const [, field = null, sti = null] = reason.match(/\('([^']+)' i '([^']+)'\)/) || [];
+  // Hvor i flowet: det sidste navngivne element i stien, fx menu[EG_Demo_69].
+  // Archys egne løbenavne (_^_archy_…) siger ikke brugeren noget.
+  const navngivne = [...String(sti || '').matchAll(/(\w+)\[([^\]]+)\]/g)]
+    .filter(m => !m[2].startsWith('_^_archy'));
+  const where = navngivne.length ? `${navngivne.at(-1)[1]} "${navngivne.at(-1)[2]}"` : null;
+  const ud = { kind: 'other', field, where, path: sti, reason, debugFile };
+
+  let m;
+  if ((m = reason.match(/text to speech voice with the name '([^']+)'.*?language '([^']+)'/i)))
+    return { ...ud, kind: 'tts-voice', value: m[1], lang: m[2] };
+  if ((m = reason.match(/default voice was not found for engine '[^']+' and language '([^']+)'/i)))
+    return { ...ud, kind: 'tts-default', lang: m[1] };
+  if (/no matches/i.test(reason)) {
+    const hit = REF_KIND.find(([re]) => re.test(field || ''));
+    return { ...ud, kind: 'missing-ref', what: hit ? hit[1] : 'other' };
+  }
+  if (/expected an? \w+ but got null/i.test(reason)) return { ...ud, kind: 'empty-field' };
+  if (/checked out|locked/i.test(reason)) return { ...ud, kind: 'locked' };
   return ud;
 }
 
@@ -6102,6 +6139,7 @@ module.exports = {
   // Archy og fejltekster
   parseArchyOutput, truncateArchyError, archyErrorReason, describeApiError,
   archyDebugLog, withArchyLog,
+  explainRepublishFailure,
   archyCredFlags, archyArg, archyBareArg, archyVerb, archyVersionFlag,
   // filstier fra klienten
   insideFlowsDir, safeFileName, missingFields, FLOWS_DIR, moveCustomerFolder,
