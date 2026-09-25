@@ -324,7 +324,30 @@ const prefixOf = c => String(c.prefix || '');
 
 // Samme credentials = samme fysiske org. Det kan afgøres uden et opslag, og
 // bruges til at hente flowlisten én gang og dele den mellem søskendemiljøer.
-const orgKeyOf = c => isDemo(c) ? `demo:${c.demoOrg || c.id}` : `${c.clientId}|${c.region}`;
+//
+// Org-id'et fra Genesys er den rigtige nøgle. Client ID + region er kun en
+// nødløsning indtil id'et kendes: to miljøer i SAMME org kan sagtens have hver
+// sin OAuth-klient — fx dev med client credentials og prod med PKCE — og så
+// troede værktøjet at de lå i hver sin org, og prod så dev's flows.
+const orgKeyOf = c => isDemo(c) ? `demo:${c.demoOrg || c.id}`
+  : c.orgId ? `org:${c.orgId}` : `${c.clientId}|${c.region}`;
+
+// Husker org-id'et på miljøet — og på alle miljøer med samme klient, for de
+// ligger nødvendigvis i samme org. Sker én gang pr. miljø.
+function rememberOrgId(customer, orgId) {
+  if (!orgId || !customer || isDemo(customer)) return;
+  customer.orgId = orgId;
+  const all = loadCustomers();
+  let changed = false;
+  for (const c of all) {
+    const sameClient = c.clientId === customer.clientId && c.region === customer.region;
+    if ((c.id === customer.id || sameClient) && !isDemo(c) && c.orgId !== orgId) { c.orgId = orgId; changed = true; }
+  }
+  if (changed) {
+    saveCustomers(all);
+    addLog('INFO', `Org id recorded for ${customer.name}: ${orgId}`, customer.name, 'CUSTOMER');
+  }
+}
 
 // Hører flownavnet til dette miljø? Et præfikset miljø tager kun sine egne.
 // Prod har intet præfiks og tager alt DER IKKE bærer et søskendepræfiks —
@@ -1148,6 +1171,8 @@ app.post('/api/customers', (req, res) => {
   // Et prod-miljø med PKCE skal ikke have en secret liggende — så var der en
   // genvej uden om det personlige login.
   if (customer.stage === 'prod' && customer.authType === 'oauth') customer.clientSecret = '';
+  const kendt = customers.find(c => c.orgId && c.clientId === clientId && c.region === region);
+  if (kendt) customer.orgId = kendt.orgId;
   const clash = prefixClash(customer, customers);
   if (clash) return res.status(400).json({ error: clash });
   customers.push(customer);
@@ -1208,6 +1233,10 @@ app.put('/api/customers/:id', (req, res) => {
         .some(k => (before[k] || '') !== (updated[k] || ''))) {
     delete tokenStore[updated.id];
     delete _whoCache[updated.id];
+  }
+  if (['clientId', 'region'].some(k => (before[k] || '') !== (updated[k] || ''))) {
+    delete updated.orgId;
+    delete orgIdCache[updated.id];
   }
   const clash = prefixClash(updated, customers);
   if (clash) return res.status(400).json({ error: clash });
@@ -1455,6 +1484,7 @@ app.get('/auth/callback', async (req, res) => {
     const expiresAt = Date.now() + ((expires_in || 86400) * 1000) - 60000;
     tokenStore[customer.id] = { token: access_token, expiresAt };
     delete _whoCache[customer.id];
+    await getOrgId(customer);
     addLog('SUCCESS', `PKCE OAuth login succeeded for ${customer.name}`, customer.name, 'CUSTOMER');
 
     // I prod afgøres deploy-retten her, ved login — og kun her, så den altid
@@ -1756,6 +1786,11 @@ app.get('/api/customers/:id/flows', async (req, res) => {
 
   try {
     const { token, apiBase } = await getToken(customer);
+    // Deler flere miljøer org'en, skal hvert kun se sine egne flows — ellers
+    // viste DEV også prod's, og Export tilbød at eksportere dem.
+    await getOrgId(customer);
+    const soeskende = loadCustomers().filter(x => orgKeyOf(x) === orgKeyOf(customer));
+    const mine = f => belongsToEnv(f.name, customer, soeskende);
     // When name filter is given, do a single-page search instead of full pagination
     if (nameFilter) {
       const resp = await axios.get(`${apiBase}/api/v2/flows`, {
@@ -1763,9 +1798,10 @@ app.get('/api/customers/:id/flows', async (req, res) => {
         params: { pageSize: 50, pageNumber: 1, includeDraft: true, name: `*${nameFilter}*`,
                   ...(typeFilter ? { type: typeFilter } : {}) }
       });
-      const flows = (resp.data.entities || []).map(f => ({
+      const flows = (resp.data.entities || []).filter(mine).map(f => ({
         id: f.id, name: f.name, type: f.type,
         publishedVersion: f.publishedVersion?.name || f.publishedVersion?.commitVersion || null,
+        publishedAt: f.publishedVersion?.datePublished || null,
         savedVersion: f.checkedInVersion?.name || f.checkedInVersion?.commitVersion || null,
         // savedVersion findes kun mens et flow er tjekket ud, og dens name er et
         // GUID — ikke et versionsnummer. Vi melder det som udtjekket i stedet.
@@ -1782,11 +1818,12 @@ app.get('/api/customers/:id/flows', async (req, res) => {
         params: { pageSize: 100, pageNumber: page, includeDraft: true }
       });
       const flows = resp.data.entities || [];
-      allFlows = allFlows.concat(flows.map(f => ({
+      allFlows = allFlows.concat(flows.filter(mine).map(f => ({
         id: f.id,
         name: f.name,
         type: f.type,
         publishedVersion: f.publishedVersion?.name || f.publishedVersion?.commitVersion || null,
+        publishedAt: f.publishedVersion?.datePublished || null,
         savedVersion: f.checkedInVersion?.name || f.checkedInVersion?.commitVersion || null,
         // savedVersion findes kun mens et flow er tjekket ud, og dens name er et
         // GUID — ikke et versionsnummer. Vi melder det som udtjekket i stedet.
@@ -2315,6 +2352,14 @@ function targetFlowName(flowName, source, target) {
   return withEnvPrefix(stripEnvPrefix(flowName, source), target);
 }
 
+// Flowtypen står som første nøgle i Archys YAML ("commonModule:",
+// "inboundCall:" …) og navnet som det første indrykkede name:.
+function yamlFlowHeader(yaml) {
+  const kind = (String(yaml).match(/^([A-Za-z]+):[ \t]*$/m) || [])[1] || null;
+  const m = String(yaml).match(/^[ \t]{2,}name:[ \t]*(.+?)[ \t]*$/m);
+  return { kind, name: m ? m[1].replace(/^["']|["']$/g, '') : null };
+}
+
 function assertYamlIsFlow(yaml, flowName, fileName) {
   const m = String(yaml).match(/^[ \t]{2,}name:[ \t]*(.+?)[ \t]*$/m);
   if (!m) return;
@@ -2656,6 +2701,7 @@ async function getOrgId(customer) {
     const r = await axios.get(`${apiBase}/api/v2/organizations/me`,
       { headers: { Authorization: `Bearer ${token}` } });
     orgIdCache[customer.id] = r.data.id;
+    rememberOrgId(customer, r.data.id);
     return r.data.id;
   } catch (_) { return null; }
 }
@@ -3249,27 +3295,82 @@ async function dependentsOf(env, moduleName) {
 // publicering, men de flows der bruger modulet har brugt det længe — de står
 // der allerede. Kun flows der hører til MILJØET tages med: i en præfikset org
 // bruger TEST_-flowene TEST_-modulet, og dev's flows er ikke vores sag her.
-async function realDirectDependents(env, moduleName) {
-  const flows = await listAllFlows(env);
-  const mod = flows.find(f => f.name === moduleName && normType(f.type) === 'COMMONMODULE');
-  if (!mod) throw new Error(`Common module "${moduleName}" was not found in ${env.name}`);
+async function consumerIds(env, moduleId) {
   const { token, apiBase } = await getToken(env);
   const ids = new Set();
   for (let page = 1; page < 50; page++) {
     const r = await axios.get(`${apiBase}/api/v2/architect/dependencytracking/consumingresources`, {
       headers: { Authorization: `Bearer ${token}` },
-      params: { id: mod.id, objectType: 'COMMONMODULEFLOW', pageSize: 100, pageNumber: page }
+      params: { id: moduleId, objectType: 'COMMONMODULEFLOW', pageSize: 100, pageNumber: page }
     });
     const e = r.data.entities || [];
     for (const x of e) ids.add(x.id);
     if (e.length < 100) break;
   }
+  return ids;
+}
+
+// Et flow binder sig til den udgave af modulet der fandtes da FLOWET blev
+// publiceret. Afhængighedssporingen siger ikke hvilken udgave det er — men er
+// flowet publiceret før modulet sidst blev det, kører det på en ældre.
+const publishedAtMs = f => Date.parse(f?.publishedVersion?.datePublished || '') || null;
+function isBehindModule(flow, mod) {
+  const a = publishedAtMs(flow), b = publishedAtMs(mod);
+  return a !== null && b !== null && a < b;
+}
+
+async function realDirectDependents(env, moduleName) {
+  const flows = await listAllFlows(env);
+  const mod = flows.find(f => f.name === moduleName && normType(f.type) === 'COMMONMODULE');
+  if (!mod) throw new Error(`Common module "${moduleName}" was not found in ${env.name}`);
+  const ids = await consumerIds(env, mod.id);
   const siblings = loadCustomers().filter(c => orgKeyOf(c) === orgKeyOf(env));
   return flows
     .filter(f => ids.has(f.id) && f.id !== mod.id && belongsToEnv(f.name, env, siblings))
     .map(f => ({ name: f.name, type: f.type, published: versionLabel(f.publishedVersion),
-                 hasDraft: flowHasDraft(f), unpublished: !f.publishedVersion }));
+                 hasDraft: flowHasDraft(f), unpublished: !f.publishedVersion,
+                 behind: isBehindModule(f, mod) }));
 }
+
+// Alle common modules i miljøet der er publiceret EFTER mindst ét af de flows
+// der bruger dem. Det er dét man ikke kan se i Architect: modulet er rettet og
+// publiceret, men flowene kører videre på den gamle udgave.
+async function staleModules(env) {
+  if (isDemo(env)) return [];
+  await getOrgId(env);
+  const flows = await listAllFlows(env);
+  const siblings = loadCustomers().filter(c => orgKeyOf(c) === orgKeyOf(env));
+  const mine = flows.filter(f => belongsToEnv(f.name, env, siblings));
+  const byId = new Map(mine.map(f => [f.id, f]));
+  const modules = mine.filter(f => normType(f.type) === 'COMMONMODULE' && f.publishedVersion);
+  const out = [];
+  // Ét opslag pr. modul, fire ad gangen — en org med 30 moduler skal ikke
+  // tage et halvt minut.
+  for (let i = 0; i < modules.length; i += 4) {
+    await Promise.all(modules.slice(i, i + 4).map(async m => {
+      const ids = await consumerIds(env, m.id);
+      const behind = [...ids].map(id => byId.get(id))
+        .filter(f => f && f.id !== m.id && isBehindModule(f, m))
+        .map(f => ({ name: f.name, type: f.type, publishedAt: f.publishedVersion.datePublished,
+                     hasDraft: flowHasDraft(f) }));
+      if (behind.length)
+        out.push({ module: m.name, version: versionLabel(m.publishedVersion),
+                   publishedAt: m.publishedVersion.datePublished, behind });
+    }));
+  }
+  return out.sort((a, b) => a.module.localeCompare(b.module));
+}
+
+app.get('/api/customers/:id/stale-modules', async (req, res) => {
+  const env = loadCustomers().find(c => c.id === req.params.id);
+  if (!env) return res.status(404).json({ error: 'Not found' });
+  try {
+    res.json({ ok: true, modules: await staleModules(env) });
+  } catch (e) {
+    addLog('WARN', `Could not check common modules in ${env.name}: ${describeApiError(e)}`, env.name, 'REPUBLISH');
+    res.status(500).json({ error: describeApiError(e) });
+  }
+});
 
 app.post('/api/flows/dependents', async (req, res) => {
   const { envId, moduleName } = req.body;
@@ -4833,10 +4934,12 @@ app.post('/api/export-all', async (req, res) => {
 
   addLog('INFO', `Starting export of ALL flows for ${customer.name}`, customer.name, 'EXPORT');
 
-  // Fetch all flows first
+  // Fetch all flows first — kun miljøets egne, som i Flow Browser og Export.
   let allFlows = [];
   try {
     const { token, apiBase } = await getToken(customer);
+    await getOrgId(customer);
+    const soeskende = loadCustomers().filter(x => orgKeyOf(x) === orgKeyOf(customer));
     let page = 1;
     while (true) {
       const resp = await axios.get(`${apiBase}/api/v2/flows`, {
@@ -4844,7 +4947,8 @@ app.post('/api/export-all', async (req, res) => {
         params: { pageSize: 100, pageNumber: page, includeDraft: true }
       });
       const flows = resp.data.entities || [];
-      allFlows = allFlows.concat(flows.map(f => ({ name: f.name, type: f.type })));
+      allFlows = allFlows.concat(flows.filter(f => belongsToEnv(f.name, customer, soeskende))
+        .map(f => ({ name: f.name, type: f.type })));
       if (flows.length < 100) break;
       page++;
     }
@@ -5086,7 +5190,15 @@ app.post('/api/import', async (req, res) => {
   try {
     const out = await runArchy(`${cmd} --file ${archyArg(filePath, 'File path')}`, customer);
     addLog('SUCCESS', `Import ok: "${trygtNavn}" → ${customer.name}`, customer.name, 'IMPORT');
-    res.json({ ok: true, output: out });
+    // Et publiceret common module slår først igennem når de flows der kalder
+    // det, publiceres igen. Samme tilbud som efter en forfremmelse.
+    const hoved = yamlFlowHeader(yamlContent);
+    let dependents = [];
+    if (cmd === 'publish' && hoved.kind === 'commonModule' && hoved.name) {
+      try { dependents = await dependentsOf(customer, hoved.name); }
+      catch (e) { addLog('WARN', `Could not find the flows that use "${hoved.name}": ${describeApiError(e)}`, customer.name, 'REPUBLISH'); }
+    }
+    res.json({ ok: true, output: out, moduleName: hoved.name, dependents });
   } catch (e) {
     const msg = e.message || '';
     addLog('ERROR', `Import failed for "${trygtNavn}" to ${customer.name}: ${msg}`, customer.name, 'IMPORT');
@@ -5950,16 +6062,18 @@ module.exports = {
   compactRelease, trimOrgReleases, mergeReleases, ORG_RELEASES_MAX,
   parseFlowFileName, versionLabel, sanitizeName, normType,
   // miljøer og præfikser
-  prefixOf, orgKeyOf, belongsToEnv, stripEnvPrefix, withEnvPrefix, depNameIn,
+  prefixOf, orgKeyOf, rememberOrgId, belongsToEnv, stripEnvPrefix, withEnvPrefix, depNameIn,
   targetFlowName, prefixDependenciesInYaml, divisionOf,
   // hierarki og vagt
   tenantOf, groupOf, stageOf, stageOrder, sameGroup, buildHierarchy, migrationGuard,
   // YAML
-  renameFlowInYaml, setFlowDivisionInYaml, assertYamlIsFlow, normalizeFlowYaml,
+  renameFlowInYaml, setFlowDivisionInYaml, assertYamlIsFlow, yamlFlowHeader, normalizeFlowYaml,
   stripEnvPrefixesInYaml, flowContentHash, scanYamlDependencies, notMeta,
   stripFormIds, stripSchemaUris,
   // manifest
   orgManifestKey, findManifestEntry,
+  // common modules
+  isBehindModule, staleModules,
   // Archy og fejltekster
   parseArchyOutput, truncateArchyError, archyErrorReason, describeApiError,
   archyDebugLog, withArchyLog,

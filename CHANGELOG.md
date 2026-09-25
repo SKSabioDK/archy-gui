@@ -5,6 +5,56 @@
 
 ---
 
+### v1.44.0
+---
+**🇩🇰 Dansk**
+
+- **Common modules der er nyere end de flows der bruger dem, vises i Flow Browser.** Et flow bruger den udgave af modulet der fandtes da *flowet* blev publiceret. Retter og publicerer man modulet i Architect, kører flowene videre på den gamle udgave — og det kan man ikke se nogen steder. Nu tjekker Flow Browser det hver gang listen hentes: et gult felt pr. modul siger hvilke flows der er publiceret før modulet, med en **🔁 Genpublicér dem**-knap, og rækkerne er mærket ⚠. Afprøvet på Sabio's prod-flows, hvor det fandt at *SRD_VoiceFlow v1.0* er publiceret før både *SRD_setLanguage* og *SRD_scheduler*.
+
+- **Dialogen vælger dem der er bagud.** Flows der allerede er publiceret efter modulet, står i listen som "allerede publiceret efter modulet" og er ikke valgt.
+
+- **Flow Browser, Export og Export Alle viser kun miljøets egne flows.** Delte flere miljøer én org med præfikser, så DEV også prod's flows — 122 i stedet for 2 hos Sabio.
+
+- **Miljøer i samme org genkendes på org-id'et fra Genesys**, ikke på Client ID. Havde dev og prod hver sin OAuth-klient — som Sabio efter skiftet til PKCE — troede værktøjet de lå i hver sin org, og prod så dev's flows. Org-id'et slås op én gang og gemmes på miljøet; Client ID + region bruges kun indtil det kendes.
+
+- **Hjælpeteksterne er opdateret** på alle fem sprog: kun OAuth (PKCE) for nye miljøer, ⚙ Indstillinger, prod-login og deploy-ret, miljøfilteret, jokertegn i Export, kaskaden for common modules fra Flow Browser, Import og Migrer, og SECURITY i systemloggen.
+
+**3 nye tests**, i alt 203.
+
+**🇬🇧 English**
+- **Common modules newer than the flows that use them are shown in Flow Browser**, with a yellow box per module, a **🔁 Republish them** button and ⚠ on the rows. The republish dialog preselects only the flows that are behind.
+- **Flow Browser, Export and Export All show only the environment's own flows** when several environments share an org.
+- **Environments in the same org are recognised by the Genesys org id**, not the Client ID — dev and prod with different OAuth clients were treated as different orgs.
+- **Help texts updated** in all five languages.
+
+**3 new tests**, 203 in total.
+
+---
+
+### v1.43.0
+---
+**🇩🇰 Dansk**
+
+- **Export YAML viste ingen flows.** Listen kom først frem når man skrev i søgefeltet, så et nyvalgt miljø så tomt ud. Nu vises alle flows med det samme, sorteret efter navn. `*` viser alle, og en stjerne inde i teksten er et jokertegn — `DEV_*log` finder `DEV_Create Logitems`. Matcher intet, siges det.
+
+- **Tooltips på knapperne.** 98 af 114 knapper forklarer nu hvad de gør, på alle fem sprog — fx at **⇄** i Flow Browser sammenligner flowets indhold med samme flow i den org der er valgt under *Sammenlign mod org*. Knapper der tegnes senere, får deres tekst automatisk. En test fælder hvis en knap peger på en tekst der ikke findes, eller en tekst ikke længere bruges.
+
+- **Common modules: kaskaden virker nu også fra Flow Browser og Import.** Efter en forfremmelse, en rollback og fra 🔁 på tavlen blev man allerede tilbudt at genpublicere de flows der bruger modulet. Men publicerede man modulet i **Flow Browser** eller med **Import → publish**, skete der intet — og flowene blev ved med at køre på den gamle udgave. Nu får man samme dialog begge steder, og publicerede common modules i Flow Browser har en **🔁 Brugere**-knap til når modulet er rettet direkte i Architect.
+
+- **Auto-opdater i Systemlog** sprang tilbage til "Fra" når man skiftede sprog, mens den stadig kørte.
+
+**3 nye tests**, i alt 200.
+
+**🇬🇧 English**
+- **Export YAML showed no flows** until you typed. The list now shows at once, sorted; `*` shows all and works as a wildcard inside the text.
+- **Tooltips on buttons** — 98 of 114, in all five languages, with a test for missing or unused texts.
+- **Common modules: the republish cascade now also runs from Flow Browser and Import → publish**, and published common modules in Flow Browser get a **🔁 Users** button.
+- **Auto-refresh in System log** no longer flips back to "Off" on a language switch.
+
+**3 new tests**, 200 in total.
+
+---
+
 ### v1.42.3
 ---
 **🇩🇰 Dansk**

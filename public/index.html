@@ -492,7 +492,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.42.3 · Archy GUI</div>
+    <div class="version" id="app-version">v1.44.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -657,6 +657,7 @@
         </div>
       </div>
       <div id="flowAlert"></div>
+      <div id="fb-stale"></div>
       <div class="card" id="flowTableCard" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <div class="card-title" style="margin:0">FLOWS (<span id="flowCount">0</span>)</div>
@@ -786,7 +787,8 @@
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
             <div style="flex:1">
               <label data-i18n="label_search_flow">Søg og vælg flow</label>
-              <input id="ex-search" data-i18n-placeholder="placeholder_filter" placeholder="🔍  Skriv for at filtrere…" oninput="filterExportFlows(this.value)" autocomplete="off"/>
+              <input id="ex-search" data-i18n-placeholder="placeholder_filter" placeholder="🔍  Skriv for at filtrere…" oninput="filterExportFlows(this.value)" onfocus="filterExportFlows(this.value)"
+                     onblur="setTimeout(() => document.getElementById('ex-flowdropdown').style.display = 'none', 200)" autocomplete="off"/>
             </div>
             <div style="min-width:160px">
               <label data-i18n="label_flow_type">Flow Type <span style="color:var(--green);font-size:10px">(auto)</span></label>
@@ -1781,19 +1783,73 @@ const LANGS = {
     action_default_note:'publiceres som standard — flowet er i drift med det samme',
     action_prod_note:'prod: publiceres IKKE som standard — lægges som kladde du selv publicerer',
     tree_ungrouped:'Ikke grupperet',
-    help_customers:'Ét miljø er én Genesys-org med ét OAuth-sæt.\n• **Client Credentials** til automatik, **OAuth PKCE** når du vil logge ind som dig selv.\n• **Kunde + gruppe** afgør hvad der må migreres indbyrdes — gruppen er pipelinen, og den kan hedde et land eller et firma.\n• **Trin** er dev, test, uat eller prod og bestemmer rækkefølgen på pipelinen.\n• **Præfiks** bruges kun når flere miljøer deler den samme org og kendes på fx DEV_. Lad det stå tomt for prod.\n• **Division** følger miljøet: forfremmer du fra DEV til UAT, flytter flowet og tabellen med. Er der ingen sat, bruges Home.\n• **Demo-kunderne** er helt lokale — ingen credentials, ingen kald til Genesys.',
-    help_pipeline:'Flows som rækker, gruppens miljøer som kolonner i trin-rækkefølge.\n• Versionstallene kan **ikke** sammenlignes på tværs — de tælles pr. org. Brug **⇄ Tjek indhold**, som er det eneste der afgør om to miljøer er ens.\n• **Grøn** betyder publiceret ad den rigtige vej. **Rød** betyder enten publiceret uden om pipelinen, eller flere udgaver end trinnet før.\n• **⟶ Forfrem** flytter ét trin ad gangen. Kun en publiceret udgave kan forfremmes — en kladde er ikke testet.\n• **⟵ Hent hertil** henter et flow ned fra et senere trin, fx når dev lige er sat op.\n• **Delt manifest** lægger historikken i org\'en, så flere kan arbejde på samme kunde uden at se hver sin sandhed.',
-    help_flows:'Hent, søg og filtrér org\'ens flows.\n• Filtrér på **flowtype** — listen fyldes ud fra de typer org\'en faktisk har.\n• **Publicér** sætter en allerede migreret kladde i drift uden at hente noget fra kilden igen.\n• **⇄ Sammenlign** mod en anden org sammenligner **indholdet**, ikke versionsnumrene.\n• **📌 Sæt nulpunkt** noterer hvad org\'en indeholder nu, så værktøjet bagefter kan fange at nogen har publiceret direkte — også for flows det aldrig selv har migreret.',
+    help_customers:'Ét miljø er én Genesys-org set gennem én OAuth-klient.\n• Nye miljøer bruger altid **OAuth (PKCE)**: du logger ind i Genesys som dig selv, og der gemmes ingen secret. Ældre miljøer med client credentials er markeret med **gult**.\n• **⚙ Indstillinger** rummer navn, kunde, gruppe, trin, præfiks, division, godkendelse og krav til prod. Ulovlige tegn og navne der ville give samme mappe, afvises når du gemmer.\n• **Kunde + gruppe** afgør hvad der må migreres indbyrdes — gruppen er pipelinen, og den kan hedde et land eller et firma.\n• **Trin** er dev, test, uat eller prod og bestemmer rækkefølgen på pipelinen.\n• **Præfiks** bruges kun når flere miljøer deler den samme org og kendes på fx DEV_. Lad det stå tomt for prod.\n• **Prod kræver et prod-login**: ved login tjekkes at du har rettigheden (som standard architect:flow:publish) og evt. er med i en gruppe. Retten gælder 30 minutter. Trin, godkendelse og krav på et prod-miljø kan kun ændres med et gyldigt prod-login.\n• **Demo-kunderne** er helt lokale — intet login, ingen kald til Genesys.',
+    help_pipeline:'Flows som rækker, gruppens miljøer som kolonner i trin-rækkefølge.\n• Versionstallene kan **ikke** sammenlignes på tværs — de tælles pr. org. Brug **⇄ Tjek indhold**, som er det eneste der afgør om to miljøer er ens.\n• **Grøn** betyder publiceret ad den rigtige vej. **Rød** betyder enten publiceret uden om pipelinen, eller flere udgaver end trinnet før.\n• **⟶ Forfrem** flytter ét trin ad gangen. Kun en publiceret udgave kan forfremmes — en kladde er ikke testet. Til prod kræves dit prod-login.\n• **⟵ Hent hertil** henter et flow ned fra et senere trin, fx når dev lige er sat op.\n• **↩** ruller seneste forfremmelse tilbage, og **📝** viser release notes.\n• Forfremmes eller rulles et **common module** tilbage, tilbydes du at genpublicere de flows i miljøet der bruger det. **🔁** gør det samme når modulet er rettet direkte i Architect.\n• **Delt manifest** lægger historikken i org\'en, så flere kan arbejde på samme kunde uden at se hver sin sandhed.',
+    help_flows:'Hent, søg og filtrér miljøets flows. Deler flere miljøer org\'en, vises kun dette miljøs egne.\n• Filtrér på **flowtype** — listen fyldes ud fra de typer miljøet faktisk har.\n• **Publicér** sætter en allerede migreret kladde i drift uden at hente noget fra kilden igen. Er det et common module, tilbydes du bagefter at genpublicere de flows der bruger det.\n• **Common modules tjekkes** hver gang listen hentes: er et modul publiceret **efter** et flow der bruger det, kører flowet stadig på den gamle udgave. Det står i et gult felt med en knap der genpublicerer dem, og rækkerne er mærket ⚠.\n• **🔁 Brugere** på et common module viser alle de flows der bruger det.\n• **⇄ Sammenlign** mod en anden org sammenligner **indholdet**, ikke versionsnumrene.\n• **📌 Sæt nulpunkt** noterer hvad org\'en indeholder nu, så værktøjet bagefter kan fange at nogen har publiceret direkte — også for flows det aldrig selv har migreret.',
     help_cross:'Viser de flows der findes hos **flere kunder** — fx det samme common module hos ti kunder.\n• Oversigten bygger på ét kald pr. kunde og er derfor hurtig.\n• **⇄ Sammenlign indhold** eksporterer flowet fra hver kunde og sammenligner hashen. Det tager tid, så det køres kun for den række du beder om.\n• Kunne en org ikke læses, siges det — der står **aldrig** "identisk" hvis vi mangler svar fra nogen.',
-    help_migrate:'Eksport fra én org og import direkte til en anden. Kører i to faser.\n• **Tjek** — flowet eksporteres, og mål-org\'en undersøges for alt det refererer til. Der skrives intet endnu.\n• **Import** — først efter dit valg. Mangler noget, kan tabeller, data actions og common modules migreres med inden flowet.\n• Har målet et **præfiks** eller en anden **division**, omdøbes flowet og dets referencer undervejs.\n• **Import handling** vælges efter målet: alt andet end prod publiceres som standard, så det er i drift med det samme. Prod lægges som kladde du selv publicerer.\n• Køer, skills, wrap-up-koder og scripts skal oprettes manuelt — de kan ikke migreres.',
+    help_migrate:'Eksport fra én org og import direkte til en anden. Kører i to faser.\n• **Tjek** — flowet eksporteres, og mål-org\'en undersøges for alt det refererer til. Der skrives intet endnu.\n• **Import** — først efter dit valg. Mangler noget, kan tabeller, data actions og common modules migreres med inden flowet.\n• Har målet et **præfiks** eller en anden **division**, omdøbes flowet og dets referencer undervejs.\n• **Import handling** vælges efter målet: alt andet end prod publiceres som standard, så det er i drift med det samme. Prod lægges som kladde du selv publicerer.\n• Skrivning til **prod** kræver dit prod-login med rettigheden — du bliver tilbudt at logge ind hvis det mangler.\n• Migreres et **common module**, tilbydes du at genpublicere de flows i målet der bruger det.\n• Køer, skills, wrap-up-koder og scripts skal oprettes manuelt — de kan ikke migreres.',
     help_dataactions:'Migrerer det der ikke er flows: **Data Actions**, **Data Tabeller** og **User Prompts**.\n• Data Actions hører til en integration. Vælg kilde-integration, så vises kun actions derfra, og grupperingen bevares i målet.\n• Data Tabeller migrerer **strukturen** — kolonnerne. Rækkerne følger ikke med.\n• User Prompts tager både TTS-teksten og indtalt lyd med. Prompts med lyd er markeret 🔊.\n• **Function Data Actions kan ikke migreres** — deres URL er et id på en function der kun findes i kilde-org\'en.',
-    help_export:'Eksporterer flows til YAML-filer på denne maskine.\n• Vælg kunde og flow — typen sættes automatisk.\n• **Export Alle Flows** henter hele org\'en med en fremgangsindikator og kan afbrydes undervejs.\n• Filerne lander under `flows/<kunde>/` og bruges også af migrering og sammenligning.',
-    help_import:'Opret eller opdater et flow ud fra YAML.\n• Indsæt teksten, upload en fil eller træk den ind.\n• **🔍 Valider YAML** tjekker syntaksen i browseren uden at kalde noget.\n• **🌐 Tjek mod org** slår op om division, køer, tabeller, data actions og prompts findes i målet — **inden** du importerer.\n• **Import handling** vælger om flowet oprettes, opdateres eller oprettes og publiceres.',
+    help_export:'Eksporterer flows til YAML-filer på denne maskine.\n• Vælg miljø — listen over dets flows vises med det samme. Deler flere miljøer org\'en, vises kun dette miljøs egne.\n• Skriv for at filtrere. `*` viser alle, og en stjerne inde i teksten er et jokertegn: `DEV_*log` finder DEV_Create Logitems.\n• Typen sættes automatisk når du vælger flowet.\n• **Export Alle Flows** henter hele miljøet med en fremgangsindikator og kan afbrydes undervejs.\n• Filerne lander under `flows/<miljø>/` og bruges også af migrering og sammenligning.',
+    help_import:'Opret, opdater eller publicér et flow ud fra YAML.\n• Indsæt teksten, upload en fil eller træk den ind.\n• **🔍 Valider YAML** tjekker syntaksen i browseren uden at kalde noget.\n• **🌐 Tjek mod org** slår op om division, køer, tabeller, data actions og prompts findes i målet — **inden** du importerer.\n• **Import handling** vælger om flowet oprettes, opdateres eller oprettes og publiceres.\n• Publicerer du et **common module**, tilbydes du bagefter at genpublicere de flows der bruger det.\n• Import til **prod** kræver dit prod-login med rettigheden.',
     help_flowbuilder:'Bygger et YAML-skelet til et nyt flow, så du ikke skal skrive det i hånden.\n• Vælg flowtype og sprog, giv det et navn, og få en gyldig YAML tilbage.\n• Resultatet lander i Import YAML, hvor du kan rette det til inden du importerer.\n• Det er et **udgangspunkt**, ikke et færdigt flow — selve logikken bygger du i Architect eller ved at rette YAML\'en.',
     help_files:'De YAML-filer der ligger på denne maskine.\n• Filerne kommer fra Export YAML **og** fra migreringer og sammenligninger — derfor kan der dukke filer op du ikke selv har eksporteret.\n• Filtrér på kunde og type, og se kun den nyeste udgave af hvert flow.\n• **Send til import** lægger filen over på Import YAML-siden — den importerer ikke af sig selv.\n• **Oprydning** beholder de to nyeste udgaver af hvert flow, så du kan falde tilbage.',
-    help_syslog:'Alt hvad værktøjet har foretaget sig, nyeste øverst.\n• Filtrér på tidsrum, niveau, handling, kunde og fritekst.\n• Manglende afhængigheder ved en migrering havner her, så du kan finde dem igen bagefter.\n• Credentials skrives **aldrig** i loggen: hemmeligheder maskeres, og client-id\'er forkortes.',
+    help_syslog:'Alt hvad værktøjet har foretaget sig, nyeste øverst.\n• Filtrér på tidsrum, niveau, handling, kunde og fritekst.\n• Manglende afhængigheder ved en migrering havner her, så du kan finde dem igen bagefter.\n• **SECURITY** viser prod-login, hvem der fik eller ikke fik deploy-ret og hvorfor, og hvert forsøg på at skrive til prod der blev afvist.\n• Credentials skrives **aldrig** i loggen: hemmeligheder maskeres, og client-id\'er forkortes.',
     help_flowbuilder_title:'Flow Builder',
     help_btn_title:'Sådan bruges denne side',
+    stale_checking:'Tjekker om common modules er nyere end de flows der bruger dem…',
+    stale_ok:'✓ Alle flows er publiceret efter de common modules de bruger.',
+    stale_banner:'Common module "{module}" (v{v}, publiceret {when}) er nyere end {n} flow(s) der bruger det. De kører stadig på den gamle udgave:',
+    stale_btn:'🔁 Genpublicér dem',
+    stale_failed:'Kunne ikke tjekke common modules',
+    stale_badge_module:'⚠ {n} flow(s) ikke genpubliceret',
+    stale_badge_flow:'⚠ ældre end {module}',
+    rep_uptodate:'✓ allerede publiceret efter modulet',
+    tip_stale_btn:'Åbner listen over de flows der bruger modulet, med dem der kører på den gamle udgave valgt.',
+    tip_pl_show:'Henter alle miljøer i gruppen og viser flowene side om side.',
+    tip_fb_baseline:'Noterer hvordan sammenlignings-org\'ens flows ser ud nu, så senere ændringer uden om værktøjet kan opdages.',
+    tip_btn_reload:'Henter listen igen fra org\'en.',
+    tip_btn_run_migration:'Eksporterer de valgte flows fra kilden og importerer dem i målet.',
+    tip_btn_export:'Eksporterer det valgte flow som YAML via Archy.',
+    tip_btn_export_all:'Eksporterer alle flows i miljøet til flows-mappen.',
+    tip_btn_download:'Gemmer den eksporterede YAML som fil.',
+    tip_btn_choose_file:'Vælg en YAML-fil fra disken.',
+    tip_btn_import:'Importerer YAML\'en i den valgte org — opret, opdater eller publicér.',
+    tip_btn_validate_yaml:'Tjekker YAML\'ens syntaks lokalt uden at røre org\'en.',
+    tip_btn_check_org:'Tjekker at køer, datatabeller, prompts m.m. som flowet bruger, findes i org\'en.',
+    tip_da_migrate_btn:'Kopierer de valgte data actions til mål-org\'en.',
+    tip_dt_migrate_btn:'Kopierer de valgte datatabellers struktur til mål-org\'en.',
+    tip_pr_migrate_btn:'Kopierer de valgte prompts med lydfiler til mål-org\'en.',
+    tip_fl_cleanup:'Viser først hvilke gamle YAML-filer der kan slettes. Intet slettes uden bekræftelse.',
+    tip_btn_auto_refresh_off:'Opdaterer loggen automatisk hvert 5. sekund.',
+    tip_btn_auto_refresh_on:'Stopper den automatiske opdatering.',
+    tip_btn_clear_log:'Sletter systemloggen.',
+    tip_btn_update:'Henter loggen igen.',
+    tip_btn_check_update:'Tjekker GitHub for en nyere version af Archy GUI.',
+    tip_dep_btn_cancel:'Dropper dette flow og fortsætter med de næste.',
+    tip_dep_btn_continue:'Importerer flowet uden de manglende afhængigheder — Archy kan afvise det.',
+    tip_dep_btn_migrate:'Migrerer de valgte afhængigheder til målet først, og derefter flowet.',
+    tip_rel_copy_sel:'Kopierer release notes for de valgte til udklipsholderen.',
+    tip_rel_download:'Henter release notes for de valgte som Markdown-fil.',
+    tip_rep_skip:'Lukker uden at genpublicere noget.',
+    tip_rep_btn:'Genpublicerer de valgte flows, så de bruger den nye udgave af modulet.',
+    tip_btn_login:'Log ind i Genesys som dig selv (PKCE).',
+    tip_btn_test:'Tjekker forbindelsen og at klienten har de rettigheder Archy skal bruge.',
+    tip_btn_edit_grouping:'Navn, kunde, gruppe, trin, præfiks, division, godkendelse og krav til prod.',
+    tip_btn_flows_card:'Åbner miljøets flows i Flow Browser.',
+    tip_delete_env:'Fjerner miljøet fra Archy GUI. Intet slettes i Genesys.',
+    tip_btn_export_flow:'Åbner Export YAML med dette flow valgt.',
+    tip_compare:'Sammenligner flowets indhold med samme flow i den org der er valgt under "Sammenlign mod org".',
+    tip_fb_publish:'Publicerer den gemte kladde, så den kommer i drift.',
+    tip_view_file:'Viser filens indhold.',
+    tip_copy_to_import:'Lægger filen i Import YAML, klar til at importere.',
+    tip_pl_check:'Eksporterer flowet fra hvert miljø og sammenligner selve indholdet — versionsnumre kan ikke sammenlignes på tværs.',
+    tip_rel_title:'Release notes: hvad der er forfremmet hvorhen, hvornår og af hvem.',
+    tip_mf_create:'Opretter manifest-datatabellen i miljøet, så historikken deles mellem pc\'er.',
+    tip_btn_demo_reset:'Bygger demoens flows op fra bunden igen.',
+    tip_btn_demo_remove:'Fjerner demo-miljøerne. Påvirker ingen rigtig org.',
+    tip_btn_demo_create:'Opretter demo-miljøer der kun findes lokalt, så pipelinen kan prøves uden en org.',
+    ex_all_hint:'Viser {n} af {total} — skriv for at filtrere',
+    rep_fb:'🔁 Brugere',
     help_close:'Luk',
   },
   en: {
@@ -2278,19 +2334,73 @@ const LANGS = {
     action_default_note:'published by default — the flow is live straight away',
     action_prod_note:'prod: NOT published by default — left as a draft for you to publish',
     tree_ungrouped:'Not grouped',
-    help_customers:'One environment is one Genesys org with one OAuth client.\n• **Client Credentials** for automation, **OAuth PKCE** when you want to sign in as yourself.\n• **Customer + group** decide what may be migrated between — the group is the pipeline, and it can be named after a country or a company.\n• **Stage** is dev, test, uat or prod and sets the order along the pipeline.\n• **Prefix** is only for when several environments share one org and are told apart by e.g. DEV_. Leave it empty for prod.\n• **Division** follows the environment: promote from DEV to UAT and the flow and table move with it. If none is set, Home is used.\n• **The demo customers** are entirely local — no credentials, no calls to Genesys.',
-    help_pipeline:'Flows as rows, the group\'s environments as columns in stage order.\n• Version numbers **cannot** be compared across orgs — they are counted per org. Use **⇄ Check content**, which is the only thing that decides whether two environments are the same.\n• **Green** means published the right way. **Red** means either published outside the pipeline, or more versions than the stage before.\n• **⟶ Promote** moves one stage at a time. Only a published version can be promoted — a draft has not been tested.\n• **⟵ Bring here** fetches a flow down from a later stage, for instance when dev has just been set up.\n• **The shared manifest** puts the history in the org, so several people can work on the same customer without each seeing a different truth.',
-    help_flows:'Fetch, search and filter the org\'s flows.\n• Filter by **flow type** — the list is populated from the types the org actually has.\n• **Publish** puts an already-migrated draft live without fetching anything from the source again.\n• **⇄ Compare** against another org compares the **content**, not the version numbers.\n• **📌 Set baseline** records what the org holds now, so the tool can afterwards catch that someone published directly — including for flows it never migrated itself.',
+    help_customers:'One environment is one Genesys org seen through one OAuth client.\n• New environments always use **OAuth (PKCE)**: you log in to Genesys as yourself and no secret is stored. Older environments using client credentials are marked in **yellow**.\n• **⚙ Settings** holds name, customer, group, stage, prefix, division, authentication and prod requirements. Invalid characters, and names that would share a folder, are rejected on save.\n• **Customer + group** decide what may be migrated between — the group is the pipeline, named after a country or a company.\n• **Stage** is dev, test, uat or prod and sets the order on the pipeline.\n• **Prefix** is only used when several environments share one org, recognised by e.g. DEV_. Leave it empty for prod.\n• **Prod requires a prod login**: at login you are checked for the permission (architect:flow:publish by default) and optionally a group. The right lasts 30 minutes. Stage, authentication and requirements of a prod environment can only be changed with a valid prod login.\n• **Demo customers** are fully local — no login, no calls to Genesys.',
+    help_pipeline:'Flows as rows, the group\'s environments as columns in stage order.\n• Version numbers **cannot** be compared across orgs — they are counted per org. Use **⇄ Check content**, the only thing that decides whether two environments match.\n• **Green** means published the right way. **Red** means published outside the pipeline, or more versions than the stage before.\n• **⟶ Promote** moves one stage at a time. Only a published version can be promoted — a draft is untested. Prod requires your prod login.\n• **⟵ Pull here** fetches a flow from a later stage, e.g. when dev has just been set up.\n• **↩** rolls back the latest promotion, and **📝** shows release notes.\n• When a **common module** is promoted or rolled back, you are offered to republish the flows in that environment that use it. **🔁** does the same when the module was changed directly in Architect.\n• **Shared manifest** keeps history in the org, so several people can work on one customer and see the same truth.',
+    help_flows:'Fetch, search and filter the environment\'s flows. When several environments share an org, only this environment\'s own are shown.\n• Filter by **flow type** — the list is populated from the types the environment actually has.\n• **Publish** puts an already-migrated draft live without fetching anything from the source again. For a common module, you are then offered to republish the flows that use it.\n• **Common modules are checked** every time the list is fetched: if a module was published **after** a flow that uses it, the flow still runs the old version. This is shown in a yellow box with a button to republish them, and the rows are marked ⚠.\n• **🔁 Users** on a common module lists every flow that uses it.\n• **⇄ Compare** against another org compares **content**, not version numbers.\n• **📌 Set baseline** records what the org holds now, so the tool can later catch someone publishing directly — even for flows it never migrated itself.',
     help_cross:'Shows the flows that exist at **more than one customer** — the same common module at ten customers, say.\n• The overview rests on one call per customer and is therefore quick.\n• **⇄ Compare content** exports the flow from each customer and compares the hash. That takes time, so it runs only for the row you ask for.\n• If an org could not be read, it says so — it **never** reports "identical" when an answer is missing.',
-    help_migrate:'Export from one org and import straight into another. It runs in two phases.\n• **Check** — the flow is exported and the target org is examined for everything it references. Nothing is written yet.\n• **Import** — only after your decision. If something is missing, tables, data actions and common modules can be migrated first.\n• If the target has a **prefix** or a different **division**, the flow and its references are rewritten on the way.\n• **Import action** follows the target: everything but prod is published by default so it is live straight away. Prod is left as a draft for you to publish.\n• Queues, skills, wrap-up codes and scripts must be created by hand — they cannot be migrated.',
+    help_migrate:'Export from one org and import straight into another, in two phases.\n• **Check** — the flow is exported and the target org is examined for everything it references. Nothing is written yet.\n• **Import** — only after your choice. If something is missing, tables, data actions and common modules can be migrated before the flow.\n• If the target has a **prefix** or a different **division**, the flow and its references are renamed on the way.\n• **Import action** follows the target: anything but prod is published by default so it is live at once. Prod is left as a draft for you to publish.\n• Writing to **prod** requires your prod login with the permission — you are offered to log in if it is missing.\n• When a **common module** is migrated, you are offered to republish the flows in the target that use it.\n• Queues, skills, wrap-up codes and scripts must be created manually — they cannot be migrated.',
     help_dataactions:'Migrates what is not a flow: **Data Actions**, **Data Tables** and **User Prompts**.\n• Data Actions belong to an integration. Pick the source integration and only its actions are shown, so the grouping is kept in the target.\n• Data Tables migrate the **structure** — the columns. The rows do not come along.\n• User Prompts bring both the TTS text and recorded audio. Prompts with audio are marked 🔊.\n• **Function Data Actions cannot be migrated** — their URL is an id for a function that exists only in the source org.',
-    help_export:'Exports flows to YAML files on this machine.\n• Pick a customer and a flow — the type is set automatically.\n• **Export All Flows** fetches the whole org with a progress indicator and can be stopped along the way.\n• The files land under `flows/<customer>/` and are also used by migration and comparison.',
-    help_import:'Create or update a flow from YAML.\n• Paste the text, upload a file or drag one in.\n• **🔍 Validate YAML** checks the syntax in the browser without calling anything.\n• **🌐 Check against org** looks up whether the division, queues, tables, data actions and prompts exist in the target — **before** you import.\n• **Import action** decides whether the flow is created, updated, or created and published.',
+    help_export:'Exports flows to YAML files on this machine.\n• Choose an environment — its flows are listed at once. When several environments share an org, only this one\'s own are shown.\n• Type to filter. `*` shows all, and a star inside the text is a wildcard: `DEV_*log` finds DEV_Create Logitems.\n• The type is set automatically when you pick the flow.\n• **Export All Flows** fetches the whole environment with a progress indicator and can be cancelled.\n• Files land under `flows/<environment>/` and are also used by migration and comparison.',
+    help_import:'Create, update or publish a flow from YAML.\n• Paste the text, upload a file or drag it in.\n• **🔍 Validate YAML** checks the syntax in the browser without calling anything.\n• **🌐 Check against org** looks up whether division, queues, tables, data actions and prompts exist in the target — **before** you import.\n• **Import action** chooses whether the flow is created, updated, or created and published.\n• When you publish a **common module**, you are then offered to republish the flows that use it.\n• Importing to **prod** requires your prod login with the permission.',
     help_flowbuilder:'Builds a YAML skeleton for a new flow so you do not have to write it by hand.\n• Pick a flow type and language, give it a name, and get valid YAML back.\n• The result lands in Import YAML, where you can adjust it before importing.\n• It is a **starting point**, not a finished flow — the logic itself you build in Architect or by editing the YAML.',
     help_files:'The YAML files sitting on this machine.\n• The files come from Export YAML **and** from migrations and comparisons — which is why files can appear that you did not export yourself.\n• Filter by customer and type, and see only the newest version of each flow.\n• **Send to import** puts the file on the Import YAML page — it does not import on its own.\n• **Cleanup** keeps the two newest versions of each flow so you can fall back.',
-    help_syslog:'Everything the tool has done, newest first.\n• Filter by time range, level, action, customer and free text.\n• Missing dependencies from a migration end up here, so you can find them again afterwards.\n• Credentials are **never** written to the log: secrets are masked and client ids are shortened.',
+    help_syslog:'Everything the tool has done, newest first.\n• Filter by time span, level, action, customer and free text.\n• Missing dependencies during a migration end up here, so you can find them afterwards.\n• **SECURITY** shows prod logins, who did or did not get deploy rights and why, and every rejected attempt to write to prod.\n• Credentials are **never** written to the log: secrets are masked and client ids shortened.',
     help_flowbuilder_title:'Flow Builder',
     help_btn_title:'How to use this page',
+    stale_checking:'Checking whether common modules are newer than the flows that use them…',
+    stale_ok:'✓ Every flow is published after the common modules it uses.',
+    stale_banner:'Common module "{module}" (v{v}, published {when}) is newer than {n} flow(s) that use it. They still run the old version:',
+    stale_btn:'🔁 Republish them',
+    stale_failed:'Could not check common modules',
+    stale_badge_module:'⚠ {n} flow(s) not republished',
+    stale_badge_flow:'⚠ older than {module}',
+    rep_uptodate:'✓ already published after the module',
+    tip_stale_btn:'Opens the list of flows that use the module, with the ones on the old version selected.',
+    tip_pl_show:'Fetches every environment in the group and shows the flows side by side.',
+    tip_fb_baseline:'Records how the comparison org\'s flows look now, so later changes made outside the tool can be detected.',
+    tip_btn_reload:'Fetches the list again from the org.',
+    tip_btn_run_migration:'Exports the selected flows from the source and imports them into the target.',
+    tip_btn_export:'Exports the selected flow as YAML via Archy.',
+    tip_btn_export_all:'Exports every flow in the environment to the flows folder.',
+    tip_btn_download:'Saves the exported YAML as a file.',
+    tip_btn_choose_file:'Choose a YAML file from disk.',
+    tip_btn_import:'Imports the YAML into the selected org — create, update or publish.',
+    tip_btn_validate_yaml:'Checks the YAML syntax locally without touching the org.',
+    tip_btn_check_org:'Checks that the queues, data tables, prompts etc. the flow uses exist in the org.',
+    tip_da_migrate_btn:'Copies the selected data actions to the target org.',
+    tip_dt_migrate_btn:'Copies the selected data tables\' structure to the target org.',
+    tip_pr_migrate_btn:'Copies the selected prompts, with audio, to the target org.',
+    tip_fl_cleanup:'First shows which old YAML files can be deleted. Nothing is deleted without confirmation.',
+    tip_btn_auto_refresh_off:'Refreshes the log automatically every 5 seconds.',
+    tip_btn_auto_refresh_on:'Stops the automatic refresh.',
+    tip_btn_clear_log:'Clears the system log.',
+    tip_btn_update:'Fetches the log again.',
+    tip_btn_check_update:'Checks GitHub for a newer version of Archy GUI.',
+    tip_dep_btn_cancel:'Skips this flow and continues with the next ones.',
+    tip_dep_btn_continue:'Imports the flow without the missing dependencies — Archy may reject it.',
+    tip_dep_btn_migrate:'Migrates the selected dependencies to the target first, then the flow.',
+    tip_rel_copy_sel:'Copies the release notes for the selected ones to the clipboard.',
+    tip_rel_download:'Downloads the release notes for the selected ones as a Markdown file.',
+    tip_rep_skip:'Closes without republishing anything.',
+    tip_rep_btn:'Republishes the selected flows so they use the new version of the module.',
+    tip_btn_login:'Log in to Genesys as yourself (PKCE).',
+    tip_btn_test:'Checks the connection and that the client has the permissions Archy needs.',
+    tip_btn_edit_grouping:'Name, customer, group, stage, prefix, division, authentication and prod requirements.',
+    tip_btn_flows_card:'Opens the environment\'s flows in Flow Browser.',
+    tip_delete_env:'Removes the environment from Archy GUI. Nothing is deleted in Genesys.',
+    tip_btn_export_flow:'Opens Export YAML with this flow selected.',
+    tip_compare:'Compares the flow\'s content with the same flow in the org chosen under "Compare against org".',
+    tip_fb_publish:'Publishes the saved draft so it goes live.',
+    tip_view_file:'Shows the file\'s content.',
+    tip_copy_to_import:'Puts the file in Import YAML, ready to import.',
+    tip_pl_check:'Exports the flow from each environment and compares the content itself — version numbers cannot be compared across orgs.',
+    tip_rel_title:'Release notes: what was promoted where, when and by whom.',
+    tip_mf_create:'Creates the manifest data table in the environment, so history is shared between PCs.',
+    tip_btn_demo_reset:'Rebuilds the demo\'s flows from scratch.',
+    tip_btn_demo_remove:'Removes the demo environments. No real org is affected.',
+    tip_btn_demo_create:'Creates demo environments that exist only locally, so the pipeline can be tried without an org.',
+    ex_all_hint:'Showing {n} of {total} — type to filter',
+    rep_fb:'🔁 Users',
     help_close:'Close',
   },
   fr: {
@@ -2775,19 +2885,73 @@ const LANGS = {
     action_default_note:'publié par défaut — le flow est actif immédiatement',
     action_prod_note:'prod : NON publié par défaut — laissé en brouillon à publier vous-même',
     tree_ungrouped:'Non regroupé',
-    help_customers:'Un environnement est une org Genesys avec un client OAuth.\n• **Client Credentials** pour l\'automatisation, **OAuth PKCE** pour vous connecter en votre nom.\n• **Client + groupe** déterminent les migrations autorisées — le groupe est le pipeline, et peut porter le nom d\'un pays ou d\'une société.\n• **Étape** vaut dev, test, uat ou prod et fixe l\'ordre du pipeline.\n• **Préfixe** ne sert que si plusieurs environnements partagent une org et se distinguent par ex. par DEV_. Laissez vide pour la prod.\n• **Division** suit l\'environnement : une promotion de DEV vers UAT y déplace le flow et la table. Sans division définie, Home est utilisé.\n• **Les clients démo** sont purement locaux — aucun identifiant, aucun appel à Genesys.',
-    help_pipeline:'Les flows en lignes, les environnements du groupe en colonnes, par étape.\n• Les numéros de version ne sont **pas** comparables entre orgs — ils sont comptés par org. Utilisez **⇄ Vérifier le contenu**, la seule chose qui tranche.\n• **Vert** signifie publié par la bonne voie. **Rouge** signifie publié hors du pipeline, ou plus de versions que l\'étape précédente.\n• **⟶ Promouvoir** avance d\'une étape à la fois. Seule une version publiée peut être promue — un brouillon n\'a pas été testé.\n• **⟵ Rapatrier ici** descend un flow depuis une étape ultérieure, par exemple quand dev vient d\'être créé.\n• **Le manifeste partagé** place l\'historique dans l\'org, pour que plusieurs personnes travaillent sur le même client sans vérités divergentes.',
-    help_flows:'Récupérer, chercher et filtrer les flows de l\'org.\n• Filtrez par **type de flow** — la liste est remplie à partir des types réellement présents.\n• **Publier** met en service un brouillon déjà migré sans rien récupérer de la source.\n• **⇄ Comparer** avec une autre org compare le **contenu**, pas les numéros de version.\n• **📌 Définir la référence** note ce que contient l\'org maintenant, pour détecter ensuite qu\'on a publié directement — y compris pour des flows jamais migrés par l\'outil.',
+    help_customers:'Un environnement est une org Genesys vue à travers un client OAuth.\n• Les nouveaux environnements utilisent toujours **OAuth (PKCE)** : vous vous connectez à Genesys en votre nom et aucun secret n\'est stocké. Les anciens environnements en client credentials sont en **jaune**.\n• **⚙ Paramètres** contient nom, client, groupe, étape, préfixe, division, authentification et exigences prod. Les caractères interdits et les noms qui partageraient un dossier sont refusés à l\'enregistrement.\n• **Client + groupe** déterminent ce qui peut être migré entre eux — le groupe est le pipeline.\n• **Étape** vaut dev, test, uat ou prod et fixe l\'ordre du pipeline.\n• **Préfixe** ne sert que si plusieurs environnements partagent une org, reconnus par ex. DEV_. Laissez-le vide pour prod.\n• **Prod exige une connexion prod** : à la connexion, on vérifie la permission (architect:flow:publish par défaut) et éventuellement un groupe. Le droit dure 30 minutes. Étape, authentification et exigences d\'un environnement prod ne changent qu\'avec une connexion prod valide.\n• **Les clients démo** sont entièrement locaux — pas de connexion, aucun appel à Genesys.',
+    help_pipeline:'Les flows en lignes, les environnements du groupe en colonnes, par étape.\n• Les numéros de version ne sont **pas** comparables entre orgs — ils sont comptés par org. Utilisez **⇄ Vérifier le contenu**, seul juge de l\'égalité de deux environnements.\n• **Vert** : publié par le bon chemin. **Rouge** : publié hors du pipeline, ou plus de versions que l\'étape précédente.\n• **⟶ Promouvoir** avance d\'une étape à la fois. Seule une version publiée peut être promue. Prod exige votre connexion prod.\n• **⟵ Ramener ici** récupère un flow d\'une étape ultérieure, par ex. quand dev vient d\'être créé.\n• **↩** annule la dernière promotion, **📝** affiche les notes de version.\n• Quand un **common module** est promu ou annulé, on vous propose de republier les flows de l\'environnement qui l\'utilisent. **🔁** fait de même si le module a été modifié directement dans Architect.\n• **Le manifeste partagé** garde l\'historique dans l\'org, pour que chacun voie la même vérité.',
+    help_flows:'Récupérer, chercher et filtrer les flows de l\'environnement. Si plusieurs environnements partagent une org, seuls les siens sont affichés.\n• Filtrez par **type de flow** — la liste reprend les types réellement présents.\n• **Publier** met en service un brouillon déjà migré. Pour un common module, on vous propose ensuite de republier les flows qui l\'utilisent.\n• **Les common modules sont vérifiés** à chaque chargement : un module publié **après** un flow qui l\'utilise signifie que le flow tourne encore sur l\'ancienne version. C\'est signalé dans un encadré jaune avec un bouton pour les republier, et les lignes sont marquées ⚠.\n• **🔁 Utilisateurs** sur un common module liste tous les flows qui l\'utilisent.\n• **⇄ Comparer** avec une autre org compare le **contenu**, pas les numéros de version.\n• **📌 Point zéro** enregistre l\'état actuel de l\'org, pour repérer ensuite les publications directes.',
     help_cross:'Montre les flows présents chez **plusieurs clients** — par exemple le même common module chez dix clients.\n• La vue repose sur un appel par client et est donc rapide.\n• **⇄ Comparer le contenu** exporte le flow chez chaque client et compare l\'empreinte. C\'est long, donc réservé à la ligne demandée.\n• Si une org n\'a pas pu être lue, c\'est dit — il n\'affiche **jamais** « identique » quand une réponse manque.',
-    help_migrate:'Export depuis une org et import direct dans une autre, en deux phases.\n• **Vérification** — le flow est exporté et l\'org cible est examinée pour tout ce qu\'il référence. Rien n\'est encore écrit.\n• **Import** — seulement après votre choix. S\'il manque quelque chose, tables, data actions et common modules peuvent être migrés d\'abord.\n• Si la cible a un **préfixe** ou une autre **division**, le flow et ses références sont réécrits au passage.\n• **L\'action d\'import** suit la cible : tout sauf la prod est publié par défaut. La prod reste un brouillon que vous publiez vous-même.\n• Files d\'attente, compétences, codes de conclusion et scripts doivent être créés à la main.',
+    help_migrate:'Export depuis une org et import direct dans une autre, en deux phases.\n• **Vérification** — le flow est exporté et l\'org cible examinée pour tout ce qu\'il référence. Rien n\'est encore écrit.\n• **Import** — seulement après votre choix. S\'il manque quelque chose, tables, data actions et common modules peuvent être migrés avant le flow.\n• Si la cible a un **préfixe** ou une autre **division**, le flow et ses références sont renommés au passage.\n• **Action d\'import** selon la cible : tout sauf prod est publié par défaut. Prod reste en brouillon, à publier vous-même.\n• Écrire en **prod** exige votre connexion prod avec la permission — on vous propose de vous connecter si elle manque.\n• Si un **common module** est migré, on vous propose de republier les flows de la cible qui l\'utilisent.\n• Files, skills, codes de wrap-up et scripts doivent être créés manuellement.',
     help_dataactions:'Migre ce qui n\'est pas un flow : **Data Actions**, **tables de données** et **prompts utilisateur**.\n• Les Data Actions appartiennent à une intégration. Choisissez l\'intégration source : seules ses actions sont affichées et le regroupement est conservé.\n• Les tables de données migrent la **structure** — les colonnes. Les lignes ne suivent pas.\n• Les prompts emportent le texte TTS et l\'audio enregistré. Ceux avec audio sont marqués 🔊.\n• **Les Function Data Actions ne peuvent pas être migrées** — leur URL est l\'id d\'une fonction qui n\'existe que dans l\'org source.',
-    help_export:'Exporte des flows vers des fichiers YAML sur cette machine.\n• Choisissez un client et un flow — le type est déterminé automatiquement.\n• **Exporter tous les flows** récupère toute l\'org avec une barre de progression et peut être interrompu.\n• Les fichiers arrivent dans `flows/<client>/` et servent aussi à la migration et à la comparaison.',
-    help_import:'Créer ou mettre à jour un flow à partir de YAML.\n• Collez le texte, téléversez un fichier ou glissez-le.\n• **🔍 Valider le YAML** vérifie la syntaxe dans le navigateur, sans aucun appel.\n• **🌐 Vérifier contre l\'org** contrôle que division, files, tables, data actions et prompts existent dans la cible — **avant** l\'import.\n• **L\'action d\'import** choisit entre créer, mettre à jour, ou créer et publier.',
+    help_export:'Exporte les flows en fichiers YAML sur cette machine.\n• Choisissez un environnement — ses flows sont listés aussitôt. Si plusieurs environnements partagent une org, seuls les siens sont affichés.\n• Tapez pour filtrer. `*` affiche tout, et une étoile dans le texte est un joker : `DEV_*log` trouve DEV_Create Logitems.\n• Le type est défini automatiquement quand vous choisissez le flow.\n• **Exporter tous les flows** récupère tout l\'environnement avec une progression et peut être interrompu.\n• Les fichiers arrivent sous `flows/<environnement>/` et servent aussi à la migration et à la comparaison.',
+    help_import:'Créer, mettre à jour ou publier un flow à partir de YAML.\n• Collez le texte, téléversez un fichier ou glissez-le.\n• **🔍 Valider YAML** vérifie la syntaxe dans le navigateur sans rien appeler.\n• **🌐 Vérifier dans l\'org** contrôle que division, files, tables, data actions et prompts existent dans la cible — **avant** l\'import.\n• **Action d\'import** choisit de créer, mettre à jour, ou créer et publier.\n• Si vous publiez un **common module**, on vous propose ensuite de republier les flows qui l\'utilisent.\n• Importer en **prod** exige votre connexion prod avec la permission.',
     help_flowbuilder:'Construit un squelette YAML pour un nouveau flow, pour ne pas l\'écrire à la main.\n• Choisissez le type de flow et la langue, donnez-lui un nom, et récupérez un YAML valide.\n• Le résultat arrive dans Import YAML, où vous pouvez l\'ajuster avant d\'importer.\n• C\'est un **point de départ**, pas un flow fini — la logique se construit dans Architect ou en éditant le YAML.',
     help_files:'Les fichiers YAML présents sur cette machine.\n• Ils viennent d\'Export YAML **et** des migrations et comparaisons — d\'où des fichiers que vous n\'avez pas exportés vous-même.\n• Filtrez par client et par type, et ne voyez que la version la plus récente de chaque flow.\n• **Envoyer vers import** place le fichier sur la page Import YAML — il n\'importe pas tout seul.\n• **Nettoyage** conserve les deux versions les plus récentes de chaque flow, pour pouvoir revenir en arrière.',
-    help_syslog:'Tout ce que l\'outil a fait, le plus récent en haut.\n• Filtrez par période, niveau, action, client et texte libre.\n• Les dépendances manquantes d\'une migration atterrissent ici, pour les retrouver ensuite.\n• Les identifiants ne sont **jamais** écrits dans le journal : les secrets sont masqués et les client id abrégés.',
+    help_syslog:'Tout ce que l\'outil a fait, le plus récent en haut.\n• Filtrez par période, niveau, action, client et texte libre.\n• Les dépendances manquantes lors d\'une migration arrivent ici, pour les retrouver ensuite.\n• **SECURITY** montre les connexions prod, qui a obtenu ou non le droit de déployer et pourquoi, et chaque tentative d\'écriture en prod refusée.\n• Les identifiants ne sont **jamais** écrits : les secrets sont masqués et les client id raccourcis.',
     help_flowbuilder_title:'Flow Builder',
     help_btn_title:'Comment utiliser cette page',
+    stale_checking:'Vérification : des common modules sont-ils plus récents que les flows qui les utilisent…',
+    stale_ok:'✓ Tous les flows sont publiés après les common modules qu\'ils utilisent.',
+    stale_banner:'Le common module « {module} » (v{v}, publié {when}) est plus récent que {n} flow(s) qui l\'utilisent. Ils tournent encore sur l\'ancienne version :',
+    stale_btn:'🔁 Les republier',
+    stale_failed:'Impossible de vérifier les common modules',
+    stale_badge_module:'⚠ {n} flow(s) non republié(s)',
+    stale_badge_flow:'⚠ plus ancien que {module}',
+    rep_uptodate:'✓ déjà publié après le module',
+    tip_stale_btn:'Ouvre la liste des flows qui utilisent le module, ceux sur l\'ancienne version cochés.',
+    tip_pl_show:'Récupère tous les environnements du groupe et affiche les flows côte à côte.',
+    tip_fb_baseline:'Enregistre l\'état actuel des flows de l\'org de comparaison, pour détecter les changements faits hors de l\'outil.',
+    tip_btn_reload:'Récupère à nouveau la liste depuis l\'org.',
+    tip_btn_run_migration:'Exporte les flows sélectionnés depuis la source et les importe dans la cible.',
+    tip_btn_export:'Exporte le flow sélectionné en YAML via Archy.',
+    tip_btn_export_all:'Exporte tous les flows de l\'environnement dans le dossier flows.',
+    tip_btn_download:'Enregistre le YAML exporté dans un fichier.',
+    tip_btn_choose_file:'Choisir un fichier YAML sur le disque.',
+    tip_btn_import:'Importe le YAML dans l\'org choisie — créer, mettre à jour ou publier.',
+    tip_btn_validate_yaml:'Vérifie la syntaxe YAML localement sans toucher l\'org.',
+    tip_btn_check_org:'Vérifie que les files, tables de données, prompts etc. utilisés par le flow existent dans l\'org.',
+    tip_da_migrate_btn:'Copie les data actions sélectionnées vers l\'org cible.',
+    tip_dt_migrate_btn:'Copie la structure des tables de données sélectionnées vers l\'org cible.',
+    tip_pr_migrate_btn:'Copie les prompts sélectionnés, avec l\'audio, vers l\'org cible.',
+    tip_fl_cleanup:'Montre d\'abord quels anciens fichiers YAML peuvent être supprimés. Rien n\'est supprimé sans confirmation.',
+    tip_btn_auto_refresh_off:'Actualise le journal automatiquement toutes les 5 secondes.',
+    tip_btn_auto_refresh_on:'Arrête l\'actualisation automatique.',
+    tip_btn_clear_log:'Vide le journal système.',
+    tip_btn_update:'Récupère à nouveau le journal.',
+    tip_btn_check_update:'Vérifie sur GitHub s\'il existe une version plus récente d\'Archy GUI.',
+    tip_dep_btn_cancel:'Ignore ce flow et continue avec les suivants.',
+    tip_dep_btn_continue:'Importe le flow sans les dépendances manquantes — Archy peut le refuser.',
+    tip_dep_btn_migrate:'Migre d\'abord les dépendances sélectionnées vers la cible, puis le flow.',
+    tip_rel_copy_sel:'Copie les notes de version des éléments choisis dans le presse-papiers.',
+    tip_rel_download:'Télécharge les notes de version des éléments choisis en Markdown.',
+    tip_rep_skip:'Ferme sans rien republier.',
+    tip_rep_btn:'Republie les flows sélectionnés pour qu\'ils utilisent la nouvelle version du module.',
+    tip_btn_login:'Se connecter à Genesys en votre nom (PKCE).',
+    tip_btn_test:'Vérifie la connexion et que le client a les permissions nécessaires à Archy.',
+    tip_btn_edit_grouping:'Nom, client, groupe, étape, préfixe, division, authentification et exigences prod.',
+    tip_btn_flows_card:'Ouvre les flows de l\'environnement dans Flow Browser.',
+    tip_delete_env:'Retire l\'environnement d\'Archy GUI. Rien n\'est supprimé dans Genesys.',
+    tip_btn_export_flow:'Ouvre Export YAML avec ce flow sélectionné.',
+    tip_compare:'Compare le contenu du flow avec le même flow dans l\'org choisie sous « Comparer avec l\'org ».',
+    tip_fb_publish:'Publie le brouillon enregistré pour le mettre en service.',
+    tip_view_file:'Affiche le contenu du fichier.',
+    tip_copy_to_import:'Place le fichier dans Import YAML, prêt à importer.',
+    tip_pl_check:'Exporte le flow de chaque environnement et compare le contenu — les numéros de version ne sont pas comparables entre orgs.',
+    tip_rel_title:'Notes de version : ce qui a été promu où, quand et par qui.',
+    tip_mf_create:'Crée la table de manifeste dans l\'environnement, pour partager l\'historique entre PC.',
+    tip_btn_demo_reset:'Reconstruit les flows de la démo depuis zéro.',
+    tip_btn_demo_remove:'Supprime les environnements de démo. Aucune vraie org n\'est touchée.',
+    tip_btn_demo_create:'Crée des environnements de démo uniquement locaux, pour essayer le pipeline sans org.',
+    ex_all_hint:'{n} sur {total} affichés — tapez pour filtrer',
+    rep_fb:'🔁 Utilisateurs',
     help_close:'Fermer',
   },
   nl: {
@@ -3272,19 +3436,73 @@ const LANGS = {
     action_default_note:'standaard gepubliceerd — de flow is meteen live',
     action_prod_note:'prod: standaard NIET gepubliceerd — blijft een concept dat je zelf publiceert',
     tree_ungrouped:'Niet gegroepeerd',
-    help_customers:'Eén omgeving is één Genesys-org met één OAuth-client.\n• **Client Credentials** voor automatisering, **OAuth PKCE** om als jezelf in te loggen.\n• **Klant + groep** bepalen waartussen gemigreerd mag worden — de groep is de pipeline en kan naar een land of bedrijf heten.\n• **Fase** is dev, test, uat of prod en bepaalt de volgorde in de pipeline.\n• **Prefix** is alleen nodig als meerdere omgevingen één org delen en herkenbaar zijn aan bv. DEV_. Laat leeg voor prod.\n• **Divisie** volgt de omgeving: promoveer je van DEV naar UAT, dan verhuizen flow en tabel mee. Is er geen ingesteld, dan wordt Home gebruikt.\n• **De demoklanten** zijn volledig lokaal — geen credentials, geen aanroepen naar Genesys.',
-    help_pipeline:'Flows als rijen, de omgevingen van de groep als kolommen op fasevolgorde.\n• Versienummers zijn **niet** vergelijkbaar tussen orgs — ze tellen per org. Gebruik **⇄ Inhoud checken**, het enige dat uitsluitsel geeft.\n• **Groen** betekent langs de juiste weg gepubliceerd. **Rood** betekent buiten de pipeline gepubliceerd, of meer versies dan de vorige fase.\n• **⟶ Promoveren** gaat één fase per keer. Alleen een gepubliceerde versie kan promoveren — een concept is niet getest.\n• **⟵ Hierheen halen** haalt een flow op uit een latere fase, bijvoorbeeld als dev net is opgezet.\n• **Het gedeelde manifest** legt de historie in de org, zodat meerdere mensen aan dezelfde klant kunnen werken zonder elk een eigen waarheid.',
-    help_flows:'Flows van de org ophalen, zoeken en filteren.\n• Filter op **flowtype** — de lijst wordt gevuld met de typen die de org werkelijk heeft.\n• **Publiceren** zet een al gemigreerd concept live zonder opnieuw iets bij de bron op te halen.\n• **⇄ Vergelijken** met een andere org vergelijkt de **inhoud**, niet de versienummers.\n• **📌 Nulpunt zetten** legt vast wat de org nu bevat, zodat later te zien is dat iemand rechtstreeks heeft gepubliceerd — ook voor flows die het gereedschap nooit zelf migreerde.',
+    help_customers:'Eén omgeving is één Genesys-org gezien via één OAuth-client.\n• Nieuwe omgevingen gebruiken altijd **OAuth (PKCE)**: je logt in bij Genesys als jezelf en er wordt geen secret opgeslagen. Oudere omgevingen met client credentials zijn **geel** gemarkeerd.\n• **⚙ Instellingen** bevat naam, klant, groep, fase, voorvoegsel, divisie, authenticatie en prod-eisen. Ongeldige tekens en namen die een map zouden delen, worden bij opslaan geweigerd.\n• **Klant + groep** bepalen wat onderling gemigreerd mag worden — de groep is de pipeline.\n• **Fase** is dev, test, uat of prod en bepaalt de volgorde op de pipeline.\n• **Voorvoegsel** wordt alleen gebruikt als meerdere omgevingen één org delen, herkenbaar aan bv. DEV_. Laat het leeg voor prod.\n• **Prod vereist een prod-login**: bij inloggen wordt gecontroleerd of je de permissie hebt (standaard architect:flow:publish) en eventueel in een groep zit. Het recht geldt 30 minuten. Fase, authenticatie en eisen van een prod-omgeving kunnen alleen met een geldige prod-login worden gewijzigd.\n• **Demo-klanten** zijn volledig lokaal — geen login, geen aanroepen naar Genesys.',
+    help_pipeline:'Flows als rijen, de omgevingen van de groep als kolommen op fase-volgorde.\n• Versienummers zijn **niet** vergelijkbaar tussen orgs — ze worden per org geteld. Gebruik **⇄ Inhoud checken**, het enige dat bepaalt of twee omgevingen gelijk zijn.\n• **Groen** betekent langs de juiste weg gepubliceerd. **Rood** betekent buiten de pipeline om, of meer versies dan de vorige fase.\n• **⟶ Promoveren** gaat één fase tegelijk. Alleen een gepubliceerde versie kan worden gepromoveerd. Prod vereist je prod-login.\n• **⟵ Hierheen halen** haalt een flow op uit een latere fase, bv. als dev net is opgezet.\n• **↩** draait de laatste promotie terug, **📝** toont release notes.\n• Wordt een **common module** gepromoveerd of teruggedraaid, dan krijg je aangeboden de flows in die omgeving die hem gebruiken opnieuw te publiceren. **🔁** doet hetzelfde als de module direct in Architect is aangepast.\n• **Gedeeld manifest** bewaart de geschiedenis in de org, zodat iedereen dezelfde waarheid ziet.',
+    help_flows:'Flows van de omgeving ophalen, zoeken en filteren. Delen meerdere omgevingen een org, dan worden alleen de eigen getoond.\n• Filter op **flowtype** — de lijst wordt gevuld met de types die de omgeving echt heeft.\n• **Publiceren** zet een al gemigreerd concept live. Bij een common module krijg je daarna aangeboden de flows die hem gebruiken opnieuw te publiceren.\n• **Common modules worden gecontroleerd** bij elke keer ophalen: is een module **na** een flow die hem gebruikt gepubliceerd, dan draait die flow nog op de oude versie. Dat staat in een geel vak met een knap om ze opnieuw te publiceren, en de rijen zijn gemarkeerd met ⚠.\n• **🔁 Gebruikers** op een common module toont alle flows die hem gebruiken.\n• **⇄ Vergelijken** met een andere org vergelijkt de **inhoud**, niet de versienummers.\n• **📌 Nulpunt** legt vast wat de org nu bevat, zodat directe publicaties later opvallen.',
     help_cross:'Toont de flows die bij **meerdere klanten** bestaan — bijvoorbeeld dezelfde common module bij tien klanten.\n• Het overzicht steunt op één aanroep per klant en is dus snel.\n• **⇄ Inhoud vergelijken** exporteert de flow bij elke klant en vergelijkt de hash. Dat kost tijd, dus alleen voor de rij die je vraagt.\n• Kon een org niet gelezen worden, dan wordt dat gezegd — er staat **nooit** "identiek" als een antwoord ontbreekt.',
-    help_migrate:'Export uit de ene org en directe import in de andere, in twee fasen.\n• **Controle** — de flow wordt geëxporteerd en de doelorg wordt onderzocht op alles waarnaar hij verwijst. Er wordt nog niets geschreven.\n• **Import** — pas na jouw keuze. Ontbreekt er iets, dan kunnen tabellen, data actions en common modules eerst mee.\n• Heeft het doel een **prefix** of een andere **divisie**, dan worden de flow en zijn verwijzingen onderweg herschreven.\n• **De importactie** volgt het doel: alles behalve prod wordt standaard gepubliceerd. Prod blijft een concept dat je zelf publiceert.\n• Wachtrijen, skills, wrap-upcodes en scripts moeten met de hand worden aangemaakt.',
+    help_migrate:'Export uit één org en import direct in een andere, in twee fasen.\n• **Controle** — de flow wordt geëxporteerd en de doel-org onderzocht op alles waarnaar hij verwijst. Er wordt nog niets geschreven.\n• **Import** — pas na jouw keuze. Ontbreekt er iets, dan kunnen tabellen, data actions en common modules eerst mee.\n• Heeft het doel een **voorvoegsel** of een andere **divisie**, dan worden de flow en zijn verwijzingen onderweg hernoemd.\n• **Importactie** volgt het doel: alles behalve prod wordt standaard gepubliceerd. Prod blijft een concept dat je zelf publiceert.\n• Schrijven naar **prod** vereist je prod-login met de permissie — je krijgt aangeboden in te loggen als die ontbreekt.\n• Wordt een **common module** gemigreerd, dan krijg je aangeboden de flows in het doel die hem gebruiken opnieuw te publiceren.\n• Wachtrijen, skills, wrap-up-codes en scripts moeten handmatig worden aangemaakt.',
     help_dataactions:'Migreert wat geen flow is: **Data Actions**, **datatables** en **user prompts**.\n• Data Actions horen bij een integratie. Kies de bronintegratie en alleen die acties worden getoond, zodat de groepering in het doel blijft.\n• Datatables migreren de **structuur** — de kolommen. De rijen gaan niet mee.\n• User prompts nemen zowel de TTS-tekst als opgenomen audio mee. Prompts met audio zijn gemarkeerd met 🔊.\n• **Function Data Actions kunnen niet gemigreerd worden** — hun URL is een id van een functie die alleen in de bronorg bestaat.',
-    help_export:'Exporteert flows naar YAML-bestanden op deze machine.\n• Kies een klant en een flow — het type wordt automatisch bepaald.\n• **Alle flows exporteren** haalt de hele org op met een voortgangsindicator en kan onderweg gestopt worden.\n• De bestanden komen in `flows/<klant>/` en worden ook gebruikt door migratie en vergelijking.',
-    help_import:'Een flow aanmaken of bijwerken vanuit YAML.\n• Plak de tekst, upload een bestand of sleep er een in.\n• **🔍 YAML valideren** controleert de syntaxis in de browser zonder iets aan te roepen.\n• **🌐 Checken tegen org** kijkt of divisie, wachtrijen, tabellen, data actions en prompts in het doel bestaan — **vóór** je importeert.\n• **De importactie** kiest tussen aanmaken, bijwerken, of aanmaken en publiceren.',
+    help_export:'Exporteert flows naar YAML-bestanden op deze machine.\n• Kies een omgeving — de flows worden meteen getoond. Delen meerdere omgevingen een org, dan alleen de eigen.\n• Typ om te filteren. `*` toont alles, en een ster in de tekst is een jokerteken: `DEV_*log` vindt DEV_Create Logitems.\n• Het type wordt automatisch gezet als je de flow kiest.\n• **Alle flows exporteren** haalt de hele omgeving op met voortgang en kan worden afgebroken.\n• Bestanden komen in `flows/<omgeving>/` en worden ook gebruikt voor migratie en vergelijking.',
+    help_import:'Een flow aanmaken, bijwerken of publiceren vanuit YAML.\n• Plak de tekst, upload een bestand of sleep het erin.\n• **🔍 YAML valideren** controleert de syntaxis in de browser zonder iets aan te roepen.\n• **🌐 Controleren tegen org** kijkt of divisie, wachtrijen, tabellen, data actions en prompts in het doel bestaan — **voordat** je importeert.\n• **Importactie** kiest aanmaken, bijwerken, of aanmaken en publiceren.\n• Publiceer je een **common module**, dan krijg je daarna aangeboden de flows die hem gebruiken opnieuw te publiceren.\n• Importeren naar **prod** vereist je prod-login met de permissie.',
     help_flowbuilder:'Bouwt een YAML-skelet voor een nieuwe flow, zodat je het niet met de hand hoeft te schrijven.\n• Kies flowtype en taal, geef een naam, en krijg geldige YAML terug.\n• Het resultaat komt in Import YAML, waar je het kunt aanpassen voor je importeert.\n• Het is een **startpunt**, geen afgeronde flow — de logica bouw je in Architect of door de YAML te bewerken.',
     help_files:'De YAML-bestanden op deze machine.\n• Ze komen van Export YAML **en** van migraties en vergelijkingen — daarom kunnen er bestanden opduiken die je niet zelf exporteerde.\n• Filter op klant en type, en zie alleen de nieuwste versie van elke flow.\n• **Naar import sturen** zet het bestand op de Import YAML-pagina — het importeert niet vanzelf.\n• **Opruimen** houdt de twee nieuwste versies van elke flow, zodat je kunt terugvallen.',
-    help_syslog:'Alles wat het gereedschap heeft gedaan, nieuwste bovenaan.\n• Filter op periode, niveau, actie, klant en vrije tekst.\n• Ontbrekende afhankelijkheden uit een migratie belanden hier, zodat je ze later terugvindt.\n• Credentials worden **nooit** in het log geschreven: secrets worden gemaskeerd en client-id\'s ingekort.',
+    help_syslog:'Alles wat de tool heeft gedaan, nieuwste bovenaan.\n• Filter op periode, niveau, actie, klant en vrije tekst.\n• Ontbrekende afhankelijkheden bij een migratie komen hier terecht, zodat je ze later terugvindt.\n• **SECURITY** toont prod-logins, wie wel of geen deployrecht kreeg en waarom, en elke geweigerde poging om naar prod te schrijven.\n• Credentials worden **nooit** gelogd: secrets worden gemaskeerd en client-id\'s ingekort.',
     help_flowbuilder_title:'Flow Builder',
     help_btn_title:'Zo gebruik je deze pagina',
+    stale_checking:'Controleren of common modules nieuwer zijn dan de flows die ze gebruiken…',
+    stale_ok:'✓ Alle flows zijn gepubliceerd na de common modules die ze gebruiken.',
+    stale_banner:'Common module "{module}" (v{v}, gepubliceerd {when}) is nieuwer dan {n} flow(s) die hem gebruiken. Die draaien nog op de oude versie:',
+    stale_btn:'🔁 Opnieuw publiceren',
+    stale_failed:'Kon common modules niet controleren',
+    stale_badge_module:'⚠ {n} flow(s) niet opnieuw gepubliceerd',
+    stale_badge_flow:'⚠ ouder dan {module}',
+    rep_uptodate:'✓ al gepubliceerd na de module',
+    tip_stale_btn:'Opent de lijst met flows die de module gebruiken, met die op de oude versie geselecteerd.',
+    tip_pl_show:'Haalt alle omgevingen van de groep op en toont de flows naast elkaar.',
+    tip_fb_baseline:'Legt vast hoe de flows van de vergelijkingsorg er nu uitzien, zodat latere wijzigingen buiten de tool opvallen.',
+    tip_btn_reload:'Haalt de lijst opnieuw op uit de org.',
+    tip_btn_run_migration:'Exporteert de geselecteerde flows uit de bron en importeert ze in het doel.',
+    tip_btn_export:'Exporteert de geselecteerde flow als YAML via Archy.',
+    tip_btn_export_all:'Exporteert alle flows van de omgeving naar de flows-map.',
+    tip_btn_download:'Slaat de geëxporteerde YAML op als bestand.',
+    tip_btn_choose_file:'Kies een YAML-bestand van schijf.',
+    tip_btn_import:'Importeert de YAML in de gekozen org — aanmaken, bijwerken of publiceren.',
+    tip_btn_validate_yaml:'Controleert de YAML-syntaxis lokaal zonder de org aan te raken.',
+    tip_btn_check_org:'Controleert of de wachtrijen, datatabellen, prompts enz. die de flow gebruikt in de org bestaan.',
+    tip_da_migrate_btn:'Kopieert de geselecteerde data actions naar de doel-org.',
+    tip_dt_migrate_btn:'Kopieert de structuur van de geselecteerde datatabellen naar de doel-org.',
+    tip_pr_migrate_btn:'Kopieert de geselecteerde prompts met audio naar de doel-org.',
+    tip_fl_cleanup:'Toont eerst welke oude YAML-bestanden weg kunnen. Niets wordt verwijderd zonder bevestiging.',
+    tip_btn_auto_refresh_off:'Vernieuwt het logboek automatisch elke 5 seconden.',
+    tip_btn_auto_refresh_on:'Stopt het automatisch vernieuwen.',
+    tip_btn_clear_log:'Wist het systeemlogboek.',
+    tip_btn_update:'Haalt het logboek opnieuw op.',
+    tip_btn_check_update:'Controleert op GitHub of er een nieuwere versie van Archy GUI is.',
+    tip_dep_btn_cancel:'Slaat deze flow over en gaat verder met de volgende.',
+    tip_dep_btn_continue:'Importeert de flow zonder de ontbrekende afhankelijkheden — Archy kan hem weigeren.',
+    tip_dep_btn_migrate:'Migreert eerst de geselecteerde afhankelijkheden naar het doel, daarna de flow.',
+    tip_rel_copy_sel:'Kopieert de release notes van de geselecteerde naar het klembord.',
+    tip_rel_download:'Downloadt de release notes van de geselecteerde als Markdown-bestand.',
+    tip_rep_skip:'Sluit zonder iets opnieuw te publiceren.',
+    tip_rep_btn:'Publiceert de geselecteerde flows opnieuw zodat ze de nieuwe versie van de module gebruiken.',
+    tip_btn_login:'Log in bij Genesys als jezelf (PKCE).',
+    tip_btn_test:'Controleert de verbinding en of de client de permissies heeft die Archy nodig heeft.',
+    tip_btn_edit_grouping:'Naam, klant, groep, fase, voorvoegsel, divisie, authenticatie en prod-eisen.',
+    tip_btn_flows_card:'Opent de flows van de omgeving in Flow Browser.',
+    tip_delete_env:'Verwijdert de omgeving uit Archy GUI. Er wordt niets verwijderd in Genesys.',
+    tip_btn_export_flow:'Opent Export YAML met deze flow geselecteerd.',
+    tip_compare:'Vergelijkt de inhoud van de flow met dezelfde flow in de org gekozen bij "Vergelijk met org".',
+    tip_fb_publish:'Publiceert het opgeslagen concept zodat het live gaat.',
+    tip_view_file:'Toont de inhoud van het bestand.',
+    tip_copy_to_import:'Zet het bestand in Import YAML, klaar om te importeren.',
+    tip_pl_check:'Exporteert de flow uit elke omgeving en vergelijkt de inhoud — versienummers zijn niet vergelijkbaar tussen orgs.',
+    tip_rel_title:'Release notes: wat waarheen is gepromoveerd, wanneer en door wie.',
+    tip_mf_create:'Maakt de manifest-datatabel in de omgeving aan, zodat de geschiedenis tussen pc\'s wordt gedeeld.',
+    tip_btn_demo_reset:'Bouwt de flows van de demo opnieuw op.',
+    tip_btn_demo_remove:'Verwijdert de demo-omgevingen. Geen echte org wordt geraakt.',
+    tip_btn_demo_create:'Maakt demo-omgevingen die alleen lokaal bestaan, zodat de pipeline zonder org te proberen is.',
+    ex_all_hint:'{n} van {total} getoond — typ om te filteren',
+    rep_fb:'🔁 Gebruikers',
     help_close:'Sluiten',
   },
   es: {
@@ -3769,19 +3987,73 @@ const LANGS = {
     action_default_note:'publicado por defecto: el flow está activo de inmediato',
     action_prod_note:'prod: NO se publica por defecto: queda como borrador para que lo publique usted',
     tree_ungrouped:'Sin agrupar',
-    help_customers:'Un entorno es una org de Genesys con un cliente OAuth.\n• **Client Credentials** para automatización, **OAuth PKCE** para entrar como usted mismo.\n• **Cliente + grupo** determinan entre qué se puede migrar: el grupo es el pipeline y puede llamarse como un país o una empresa.\n• **Etapa** es dev, test, uat o prod y fija el orden del pipeline.\n• **Prefijo** solo se usa cuando varios entornos comparten una org y se distinguen por, p. ej., DEV_. Déjelo vacío para prod.\n• **División** sigue al entorno: al promover de DEV a UAT, el flow y la tabla se mueven con ella. Si no se define ninguna, se usa Home.\n• **Los clientes demo** son totalmente locales: sin credenciales ni llamadas a Genesys.',
-    help_pipeline:'Flows como filas, los entornos del grupo como columnas en orden de etapa.\n• Los números de versión **no** se pueden comparar entre orgs: se cuentan por org. Use **⇄ Comprobar contenido**, lo único que decide.\n• **Verde** significa publicado por la vía correcta. **Rojo** significa publicado fuera del pipeline, o más versiones que la etapa anterior.\n• **⟶ Promover** avanza una etapa cada vez. Solo se puede promover una versión publicada: un borrador no está probado.\n• **⟵ Traer aquí** baja un flow desde una etapa posterior, por ejemplo cuando dev se acaba de crear.\n• **El manifiesto compartido** guarda el historial en la org, para que varias personas trabajen en el mismo cliente sin verdades distintas.',
-    help_flows:'Obtener, buscar y filtrar los flows de la org.\n• Filtre por **tipo de flow**: la lista se rellena con los tipos que la org realmente tiene.\n• **Publicar** pone en marcha un borrador ya migrado sin volver a traer nada del origen.\n• **⇄ Comparar** con otra org compara el **contenido**, no los números de versión.\n• **📌 Fijar línea base** anota lo que la org contiene ahora, para detectar después que alguien publicó directamente, incluso en flows que la herramienta nunca migró.',
+    help_customers:'Un entorno es una org de Genesys vista a través de un cliente OAuth.\n• Los entornos nuevos usan siempre **OAuth (PKCE)**: inicia sesión en Genesys como usted mismo y no se guarda ningún secret. Los entornos antiguos con client credentials aparecen en **amarillo**.\n• **⚙ Configuración** contiene nombre, cliente, grupo, etapa, prefijo, división, autenticación y requisitos de prod. Los caracteres no válidos y los nombres que compartirían carpeta se rechazan al guardar.\n• **Cliente + grupo** deciden qué se puede migrar entre sí — el grupo es el pipeline.\n• **Etapa** es dev, test, uat o prod y fija el orden del pipeline.\n• **Prefijo** solo se usa cuando varios entornos comparten una org, reconocidos por p. ej. DEV_. Déjelo vacío para prod.\n• **Prod exige un inicio de sesión de prod**: al entrar se comprueba el permiso (architect:flow:publish por defecto) y opcionalmente un grupo. El derecho dura 30 minutos. Etapa, autenticación y requisitos de un entorno de prod solo se cambian con un inicio de sesión de prod válido.\n• **Los clientes demo** son totalmente locales — sin inicio de sesión ni llamadas a Genesys.',
+    help_pipeline:'Flows en filas, los entornos del grupo en columnas por orden de etapa.\n• Los números de versión **no** son comparables entre orgs — se cuentan por org. Use **⇄ Comprobar contenido**, lo único que decide si dos entornos son iguales.\n• **Verde**: publicado por el camino correcto. **Rojo**: publicado fuera del pipeline, o más versiones que la etapa anterior.\n• **⟶ Promover** avanza una etapa cada vez. Solo se puede promover una versión publicada. Prod exige su inicio de sesión de prod.\n• **⟵ Traer aquí** trae un flow de una etapa posterior, p. ej. cuando dev se acaba de crear.\n• **↩** revierte la última promoción y **📝** muestra las notas de versión.\n• Al promover o revertir un **common module**, se le ofrece volver a publicar los flows del entorno que lo usan. **🔁** hace lo mismo si el módulo se cambió directamente en Architect.\n• **El manifiesto compartido** guarda el historial en la org, para que todos vean la misma verdad.',
+    help_flows:'Obtener, buscar y filtrar los flows del entorno. Si varios entornos comparten una org, solo se muestran los propios.\n• Filtre por **tipo de flow** — la lista se llena con los tipos que el entorno tiene realmente.\n• **Publicar** pone en producción un borrador ya migrado. Si es un common module, se le ofrece después volver a publicar los flows que lo usan.\n• **Los common modules se comprueban** cada vez que se carga la lista: si un módulo se publicó **después** de un flow que lo usa, el flow sigue con la versión antigua. Se indica en un recuadro amarillo con un botón para volver a publicarlos, y las filas se marcan con ⚠.\n• **🔁 Usuarios** en un common module lista todos los flows que lo usan.\n• **⇄ Comparar** con otra org compara el **contenido**, no los números de versión.\n• **📌 Punto cero** registra lo que contiene la org ahora, para detectar después publicaciones directas.',
     help_cross:'Muestra los flows presentes en **varios clientes**, por ejemplo el mismo common module en diez clientes.\n• La vista se basa en una llamada por cliente, así que es rápida.\n• **⇄ Comparar contenido** exporta el flow de cada cliente y compara el hash. Lleva tiempo, así que solo se hace en la fila que pida.\n• Si una org no se pudo leer, se dice: **nunca** informa «idéntico» cuando falta una respuesta.',
-    help_migrate:'Exportar de una org e importar directamente en otra, en dos fases.\n• **Comprobación** — el flow se exporta y se examina la org destino en busca de todo lo que referencia. Todavía no se escribe nada.\n• **Importación** — solo tras su decisión. Si falta algo, tablas, data actions y common modules pueden migrarse antes.\n• Si el destino tiene **prefijo** u otra **división**, el flow y sus referencias se reescriben por el camino.\n• **La acción de importación** sigue al destino: todo salvo prod se publica por defecto. Prod queda como borrador que usted publica.\n• Colas, skills, códigos de cierre y scripts deben crearse a mano.',
+    help_migrate:'Exportación desde una org e importación directa en otra, en dos fases.\n• **Comprobación** — se exporta el flow y se examina la org de destino por todo lo que referencia. Aún no se escribe nada.\n• **Importación** — solo tras su elección. Si falta algo, tablas, data actions y common modules pueden migrarse antes del flow.\n• Si el destino tiene un **prefijo** u otra **división**, el flow y sus referencias se renombran por el camino.\n• **Acción de importación** según el destino: todo salvo prod se publica por defecto. Prod queda como borrador que publica usted.\n• Escribir en **prod** exige su inicio de sesión de prod con el permiso — se le ofrece iniciar sesión si falta.\n• Si se migra un **common module**, se le ofrece volver a publicar los flows del destino que lo usan.\n• Colas, skills, códigos de wrap-up y scripts deben crearse manualmente.',
     help_dataactions:'Migra lo que no es un flow: **Data Actions**, **tablas de datos** y **prompts de usuario**.\n• Las Data Actions pertenecen a una integración. Elija la integración de origen y solo se mostrarán sus acciones, conservando la agrupación.\n• Las tablas de datos migran la **estructura**: las columnas. Las filas no se llevan.\n• Los prompts llevan tanto el texto TTS como el audio grabado. Los que tienen audio están marcados con 🔊.\n• **Las Function Data Actions no se pueden migrar**: su URL es un id de una función que solo existe en la org de origen.',
-    help_export:'Exporta flows a archivos YAML en esta máquina.\n• Elija un cliente y un flow: el tipo se establece automáticamente.\n• **Exportar todos los flows** trae la org entera con un indicador de progreso y se puede detener.\n• Los archivos van a `flows/<cliente>/` y también los usan la migración y la comparación.',
-    help_import:'Crear o actualizar un flow a partir de YAML.\n• Pegue el texto, suba un archivo o arrástrelo.\n• **🔍 Validar YAML** comprueba la sintaxis en el navegador sin llamar a nada.\n• **🌐 Comprobar contra la org** verifica si la división, colas, tablas, data actions y prompts existen en el destino, **antes** de importar.\n• **La acción de importación** elige entre crear, actualizar, o crear y publicar.',
+    help_export:'Exporta flows a archivos YAML en esta máquina.\n• Elija un entorno — sus flows se listan al instante. Si varios entornos comparten una org, solo se muestran los propios.\n• Escriba para filtrar. `*` muestra todos, y un asterisco dentro del texto es un comodín: `DEV_*log` encuentra DEV_Create Logitems.\n• El tipo se fija automáticamente al elegir el flow.\n• **Exportar todos los flows** obtiene todo el entorno con progreso y se puede cancelar.\n• Los archivos quedan en `flows/<entorno>/` y también se usan en migración y comparación.',
+    help_import:'Crear, actualizar o publicar un flow a partir de YAML.\n• Pegue el texto, suba un archivo o arrástrelo.\n• **🔍 Validar YAML** comprueba la sintaxis en el navegador sin llamar a nada.\n• **🌐 Comprobar en la org** mira si división, colas, tablas, data actions y prompts existen en el destino — **antes** de importar.\n• **Acción de importación** elige crear, actualizar, o crear y publicar.\n• Si publica un **common module**, se le ofrece después volver a publicar los flows que lo usan.\n• Importar a **prod** exige su inicio de sesión de prod con el permiso.',
     help_flowbuilder:'Construye un esqueleto YAML para un flow nuevo, para no escribirlo a mano.\n• Elija tipo de flow e idioma, póngale nombre y obtenga un YAML válido.\n• El resultado llega a Import YAML, donde puede ajustarlo antes de importar.\n• Es un **punto de partida**, no un flow terminado: la lógica se construye en Architect o editando el YAML.',
     help_files:'Los archivos YAML que hay en esta máquina.\n• Vienen de Export YAML **y** de migraciones y comparaciones, por eso pueden aparecer archivos que usted no exportó.\n• Filtre por cliente y tipo, y vea solo la versión más reciente de cada flow.\n• **Enviar a importar** coloca el archivo en la página Import YAML: no importa por sí solo.\n• **Limpieza** conserva las dos versiones más recientes de cada flow para poder volver atrás.',
-    help_syslog:'Todo lo que la herramienta ha hecho, lo más reciente arriba.\n• Filtre por periodo, nivel, acción, cliente y texto libre.\n• Las dependencias que faltaban en una migración acaban aquí, para poder encontrarlas después.\n• Las credenciales **nunca** se escriben en el registro: los secretos se enmascaran y los client id se acortan.',
+    help_syslog:'Todo lo que ha hecho la herramienta, lo más reciente arriba.\n• Filtre por periodo, nivel, acción, cliente y texto libre.\n• Las dependencias que faltan en una migración acaban aquí, para encontrarlas después.\n• **SECURITY** muestra los inicios de sesión de prod, quién obtuvo o no el derecho de despliegue y por qué, y cada intento rechazado de escribir en prod.\n• Las credenciales **nunca** se escriben: los secrets se enmascaran y los client id se acortan.',
     help_flowbuilder_title:'Flow Builder',
     help_btn_title:'Cómo usar esta página',
+    stale_checking:'Comprobando si hay common modules más recientes que los flows que los usan…',
+    stale_ok:'✓ Todos los flows se publicaron después de los common modules que usan.',
+    stale_banner:'El common module "{module}" (v{v}, publicado {when}) es más reciente que {n} flow(s) que lo usan. Siguen con la versión antigua:',
+    stale_btn:'🔁 Volver a publicarlos',
+    stale_failed:'No se pudieron comprobar los common modules',
+    stale_badge_module:'⚠ {n} flow(s) sin volver a publicar',
+    stale_badge_flow:'⚠ más antiguo que {module}',
+    rep_uptodate:'✓ ya publicado después del módulo',
+    tip_stale_btn:'Abre la lista de flows que usan el módulo, con los de la versión antigua marcados.',
+    tip_pl_show:'Obtiene todos los entornos del grupo y muestra los flows lado a lado.',
+    tip_fb_baseline:'Registra cómo están ahora los flows de la org de comparación, para detectar cambios hechos fuera de la herramienta.',
+    tip_btn_reload:'Vuelve a obtener la lista desde la org.',
+    tip_btn_run_migration:'Exporta los flows seleccionados del origen y los importa en el destino.',
+    tip_btn_export:'Exporta el flow seleccionado como YAML mediante Archy.',
+    tip_btn_export_all:'Exporta todos los flows del entorno a la carpeta flows.',
+    tip_btn_download:'Guarda el YAML exportado como archivo.',
+    tip_btn_choose_file:'Elija un archivo YAML del disco.',
+    tip_btn_import:'Importa el YAML en la org elegida — crear, actualizar o publicar.',
+    tip_btn_validate_yaml:'Comprueba la sintaxis YAML localmente sin tocar la org.',
+    tip_btn_check_org:'Comprueba que las colas, tablas de datos, prompts, etc. que usa el flow existen en la org.',
+    tip_da_migrate_btn:'Copia las data actions seleccionadas a la org de destino.',
+    tip_dt_migrate_btn:'Copia la estructura de las tablas de datos seleccionadas a la org de destino.',
+    tip_pr_migrate_btn:'Copia los prompts seleccionados, con audio, a la org de destino.',
+    tip_fl_cleanup:'Muestra primero qué archivos YAML antiguos se pueden borrar. Nada se borra sin confirmación.',
+    tip_btn_auto_refresh_off:'Actualiza el registro automáticamente cada 5 segundos.',
+    tip_btn_auto_refresh_on:'Detiene la actualización automática.',
+    tip_btn_clear_log:'Vacía el registro del sistema.',
+    tip_btn_update:'Vuelve a obtener el registro.',
+    tip_btn_check_update:'Comprueba en GitHub si hay una versión más reciente de Archy GUI.',
+    tip_dep_btn_cancel:'Omite este flow y continúa con los siguientes.',
+    tip_dep_btn_continue:'Importa el flow sin las dependencias que faltan — Archy puede rechazarlo.',
+    tip_dep_btn_migrate:'Migra primero las dependencias seleccionadas al destino y después el flow.',
+    tip_rel_copy_sel:'Copia las notas de versión de los seleccionados al portapapeles.',
+    tip_rel_download:'Descarga las notas de versión de los seleccionados como archivo Markdown.',
+    tip_rep_skip:'Cierra sin volver a publicar nada.',
+    tip_rep_btn:'Vuelve a publicar los flows seleccionados para que usen la nueva versión del módulo.',
+    tip_btn_login:'Inicie sesión en Genesys como usted mismo (PKCE).',
+    tip_btn_test:'Comprueba la conexión y que el cliente tiene los permisos que necesita Archy.',
+    tip_btn_edit_grouping:'Nombre, cliente, grupo, etapa, prefijo, división, autenticación y requisitos de prod.',
+    tip_btn_flows_card:'Abre los flows del entorno en Flow Browser.',
+    tip_delete_env:'Quita el entorno de Archy GUI. No se borra nada en Genesys.',
+    tip_btn_export_flow:'Abre Export YAML con este flow seleccionado.',
+    tip_compare:'Compara el contenido del flow con el mismo flow en la org elegida en "Comparar con org".',
+    tip_fb_publish:'Publica el borrador guardado para ponerlo en producción.',
+    tip_view_file:'Muestra el contenido del archivo.',
+    tip_copy_to_import:'Coloca el archivo en Import YAML, listo para importar.',
+    tip_pl_check:'Exporta el flow de cada entorno y compara el contenido — los números de versión no son comparables entre orgs.',
+    tip_rel_title:'Notas de versión: qué se promovió adónde, cuándo y por quién.',
+    tip_mf_create:'Crea la tabla de manifiesto en el entorno, para compartir el historial entre PC.',
+    tip_btn_demo_reset:'Reconstruye desde cero los flows de la demo.',
+    tip_btn_demo_remove:'Quita los entornos de demo. No afecta a ninguna org real.',
+    tip_btn_demo_create:'Crea entornos de demo solo locales, para probar el pipeline sin una org.',
+    ex_all_hint:'Mostrando {n} de {total} — escriba para filtrar',
+    rep_fb:'🔁 Usuarios',
     help_close:'Cerrar',
   }
 };
@@ -3809,6 +4081,25 @@ window.fetch = async (...args) => {
   }
   return r;
 };
+
+// Tooltips. En statisk knap med data-i18n="X" får tip_X som title, hvis den
+// findes; en knap bygget i JS angiver selv data-tip="tip_…". Knapperne tegnes
+// løbende af tyve forskellige funktioner, så en MutationObserver fanger dem —
+// ellers skulle hver af dem huske at kalde noget bagefter.
+function applyTips(root = document) {
+  root.querySelectorAll('button[data-tip], button[data-i18n], .help-btn').forEach(el => {
+    const key = el.dataset.tip
+      || (el.dataset.i18n && 'tip_' + el.dataset.i18n)
+      || (el.classList.contains('help-btn') ? 'help_btn_title' : '');
+    if (key && key in LANGS.da) el.title = t(key);
+  });
+}
+let _tipsPending = false;
+new MutationObserver(() => {
+  if (_tipsPending) return;
+  _tipsPending = true;
+  requestAnimationFrame(() => { _tipsPending = false; applyTips(); });
+}).observe(document.documentElement, { childList: true, subtree: true });
 
 function prodMissingText(missing) {
   return (missing || []).map(m => t('prod_missing_' + m.kind).replace('{v}', m.value)).join(', ');
@@ -3846,6 +4137,7 @@ function applyLang() {
   populateCustomerSelects();
   populateMigrateSelects();
   populateSyslogCustomers();
+  applyTips();
 }
 
 function setLang(lang) {
@@ -4096,7 +4388,7 @@ function renderCustomerGrid() {
     const isOAuth = c.authType === 'oauth';
     const isCreds = !isOAuth && c.authType !== 'demo' && !c.demo;
     const loginBtn = isOAuth
-      ? `<button class="btn btn-secondary btn-sm" id="oauth-btn-${c.id}" onclick="oauthLogin('${c.id}')">${t('btn_login')}</button>`
+      ? `<button class="btn btn-secondary btn-sm" id="oauth-btn-${c.id}" data-tip="tip_btn_login" onclick="oauthLogin('${c.id}')">${t('btn_login')}</button>`
       : '';
     const authBadge = isOAuth
       ? `<span id="oauth-badge-${c.id}" style="font-size:10px;font-family:var(--mono);color:var(--muted)" title="OAuth PKCE">🌐 OAuth</span>`
@@ -4112,10 +4404,10 @@ function renderCustomerGrid() {
       <div id="card-archy-warn-${c.id}" style="display:none;margin-top:8px;padding:6px 10px;background:rgba(241,196,15,.1);border:1px solid rgba(241,196,15,.3);border-radius:5px;font-size:11px;color:var(--yellow);font-family:var(--mono)"></div>
       <div class="cc-actions" style="margin-top:14px">
         ${loginBtn}
-        <button class="btn btn-secondary btn-sm" onclick="testCustomer('${c.id}')">${t('btn_test')}</button>
-        <button class="btn btn-secondary btn-sm" onclick="toggleGrouping('${c.id}')">${t('btn_edit_grouping')}</button>
-        <button class="btn btn-blue btn-sm" onclick="quickViewFlows('${c.id}')">${t('btn_flows_card')}</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteCustomer('${c.id}')">✕</button>
+        <button class="btn btn-secondary btn-sm" data-tip="tip_btn_test" onclick="testCustomer('${c.id}')">${t('btn_test')}</button>
+        <button class="btn btn-secondary btn-sm" data-tip="tip_btn_edit_grouping" onclick="toggleGrouping('${c.id}')">${t('btn_edit_grouping')}</button>
+        <button class="btn btn-blue btn-sm" data-tip="tip_btn_flows_card" onclick="quickViewFlows('${c.id}')">${t('btn_flows_card')}</button>
+        <button class="btn btn-danger btn-sm" data-tip="tip_delete_env" onclick="deleteCustomer('${c.id}')">✕</button>
       </div>
     </div>`;
   }).join('');
@@ -4260,7 +4552,44 @@ async function loadFlows() {
   if (data.error) return showAlert('flowAlert', data.error, 'err');
   allFlows = data;
   showAlert('flowAlert', '');
+  fbStale = { modules: new Map(), flows: new Map() };
   populateFlowTypeFilter();
+  applyFlowFilter();
+  checkStaleModules(id);
+}
+
+// Er et common module publiceret EFTER de flows der bruger det, kører flowene
+// stadig på den gamle udgave — og det kan man ikke se i Architect. Tjekket
+// kører efter listen er vist, så listen ikke venter på det.
+let fbStale = { modules: new Map(), flows: new Map() };
+async function checkStaleModules(envId) {
+  const box = document.getElementById('fb-stale');
+  box.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-bottom:10px"><span class="spin"></span> ${t('stale_checking')}</div>`;
+  const r = await fetch(`/api/customers/${encodeURIComponent(envId)}/stale-modules`)
+    .then(x => x.json()).catch(e => ({ error: e.message }));
+  if (document.getElementById('fb-customer').value !== envId) return;   // brugeren har skiftet miljø
+  if (r.error) {
+    box.innerHTML = `<div style="font-size:12px;color:var(--yellow);margin-bottom:10px">${t('stale_failed')}: ${escapeHtml(r.error)}</div>`;
+    return;
+  }
+  const mods = r.modules || [];
+  fbStale = { modules: new Map(mods.map(m => [m.module, m])), flows: new Map() };
+  for (const m of mods) for (const f of m.behind) {
+    if (!fbStale.flows.has(f.name)) fbStale.flows.set(f.name, []);
+    fbStale.flows.get(f.name).push(m.module);
+  }
+  box.innerHTML = !mods.length
+    ? `<div style="font-size:12px;color:var(--green);margin-bottom:10px">${t('stale_ok')}</div>`
+    : mods.map(m => `
+      <div class="card" style="border-color:var(--yellow);background:color-mix(in srgb, var(--yellow) 7%, var(--card));padding:12px 16px;margin-bottom:10px">
+        <div style="font-size:12px;margin-bottom:6px">⚠ ${escapeHtml(t('stale_banner')
+          .replace('{module}', m.module).replace('{v}', m.version || '?')
+          .replace('{when}', new Date(m.publishedAt).toLocaleString()).replace('{n}', m.behind.length))}</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:8px">${
+          m.behind.map(f => escapeHtml(f.name)).join(' · ')}</div>
+        <button class="btn btn-secondary btn-sm" data-tip="tip_stale_btn"
+          onclick="republishDependents(${jsAttr(envId)}, ${jsAttr(m.module)}, 'flowAlert')">${t('stale_btn')}</button>
+      </div>`).join('');
   applyFlowFilter();
 }
 
@@ -4275,22 +4604,31 @@ function populateFlowTypeFilter() {
   if (cur) el.value = cur;
 }
 
+function fbStaleBadge(f) {
+  const m = fbStale.modules.get(f.name);
+  const brugt = fbStale.flows.get(f.name);
+  const b = txt => ` <span style="font-size:10px;color:var(--yellow);font-family:var(--mono)">${escapeHtml(txt)}</span>`;
+  return (m ? b(t('stale_badge_module').replace('{n}', m.behind.length)) : '')
+       + (brugt ? b(t('stale_badge_flow').replace('{module}', brugt.join(', '))) : '');
+}
+
 function renderFlowTable(flows) {
   document.getElementById('flowCount').textContent = flows.length;
   document.getElementById('flowTableCard').style.display = 'block';
   const tbody = document.getElementById('flowTableBody');
   tbody.innerHTML = flows.map(f => `
     <tr>
-      <td>${escapeHtml(f.name)}</td>
+      <td>${escapeHtml(f.name)}${fbStaleBadge(f)}</td>
       <td><span class="badge badge-blue">${escapeHtml(f.type)}</span></td>
       <td>${f.active ? `<span class="badge badge-green">${t('badge_published')}</span>` : `<span class="badge badge-gray">${t('badge_draft')}</span>`}</td>
       <td style="color:var(--muted)">${f.publishedVersion || f.savedVersion
         ? 'v' + (f.publishedVersion || f.savedVersion)
         : (f.checkedOut ? `<span class="badge badge-gray">${t('col_checked_out')}</span>` : '—')}</td>
       <td>
-        <button class="btn btn-secondary btn-sm" onclick="prefillExport(${jsAttr(f.name)},${jsAttr(f.type)})">${t('btn_export_flow')}</button>
-        ${document.getElementById('fb-compare')?.value ? `<button class="btn btn-secondary btn-sm" onclick="compareFlow(${jsAttr(encodeURIComponent(f.name))},${jsAttr(f.type)})">⇄</button>` : ''}
-        ${!f.active && f.savedVersion ? `<button class="btn btn-blue btn-sm" onclick="publishFlow(${jsAttr(f.id)},${jsAttr(encodeURIComponent(f.name))},${jsAttr(f.savedVersion)})">${t('fb_publish')}</button>` : ''}
+        <button class="btn btn-secondary btn-sm" data-tip="tip_btn_export_flow" onclick="prefillExport(${jsAttr(f.name)},${jsAttr(f.type)})">${t('btn_export_flow')}</button>
+        ${document.getElementById('fb-compare')?.value ? `<button class="btn btn-secondary btn-sm" data-tip="tip_compare" onclick="compareFlow(${jsAttr(encodeURIComponent(f.name))},${jsAttr(f.type)})">⇄</button>` : ''}
+        ${!f.active && f.savedVersion ? `<button class="btn btn-blue btn-sm" data-tip="tip_fb_publish" onclick="publishFlow(${jsAttr(f.id)},${jsAttr(encodeURIComponent(f.name))},${jsAttr(f.savedVersion)},${jsAttr(f.type)})">${t('fb_publish')}</button>` : ''}
+        ${f.active && normFlowType(f.type) === 'COMMONMODULE' ? `<button class="btn btn-secondary btn-sm" data-tip="rep_board_title" onclick="republishDependents(document.getElementById('fb-customer').value, ${jsAttr(f.name)}, 'flowAlert')">${t('rep_fb')}</button>` : ''}
       </td>
     </tr>`).join('');
 }
@@ -4674,15 +5012,31 @@ async function loadExportFlows() {
   if (data.error) return showAlert('ex-alert', data.error, 'err');
   exportFlows = data;
   document.getElementById('ex-flowpicker').style.display = 'block';
+  filterExportFlows('');
 }
 
+// Listen vises med det samme og ved fokus — før viste den intet før man skrev
+// noget, og så lignede det at miljøet var tomt. Et tomt felt eller "*" viser
+// alle; en stjerne inde i teksten er et jokertegn ("Main*v2").
+const EX_MAX = 200;
 function filterExportFlows(q) {
   const dd = document.getElementById('ex-flowdropdown');
-  if (!q) { dd.style.display = 'none'; return; }
-  const matches = exportFlows.filter(f => f.name.toLowerCase().includes(q.toLowerCase())).slice(0, 20);
-  if (!matches.length) { dd.style.display = 'none'; return; }
+  const raw = String(q || '').trim();
+  const alle = !raw || /^\*+$/.test(raw);
+  const re = alle ? null
+    : new RegExp(raw.split('*').map(x => x.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*'), 'i');
+  const hits = exportFlows.filter(f => !re || re.test(f.name))
+    .sort((a, b) => a.name.localeCompare(b.name));
   dd.style.display = 'block';
-  dd.innerHTML = matches.map(f => `
+  if (!hits.length) {
+    dd.innerHTML = `<div style="padding:9px 14px;font-size:12px;color:var(--muted)">${t('cross_none')}</div>`;
+    return;
+  }
+  const matches = hits.slice(0, EX_MAX);
+  const hint = hits.length > matches.length
+    ? `<div style="padding:6px 14px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border)">${
+        t('ex_all_hint').replace('{n}', matches.length).replace('{total}', hits.length)}</div>` : '';
+  dd.innerHTML = hint + matches.map(f => `
     <div data-fname="${escapeHtml(f.name)}" data-ftype="${escapeHtml(f.type)}"
          style="padding:9px 14px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center"
          onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background=''">
@@ -5114,6 +5468,8 @@ async function doImport() {
   } else {
     showAlert('im-alert', t('import_ok'), 'ok');
     logEl.style.display = 'none';
+    if ((data.dependents || []).length)
+      await showRepublishModal(customerId, data.moduleName, data.dependents, null, 'im-alert');
   }
 }
 
@@ -5381,8 +5737,8 @@ function renderFiles() {
         <div style="font-size:10px;color:var(--border2);font-family:var(--mono);margin-top:3px">${escapeHtml(f.fileName)}</div>
       </div>
       <div style="display:flex;gap:8px;flex-shrink:0">
-        <button class="btn btn-secondary btn-sm" onclick="previewFile(${jsAttr(encodeURIComponent(f.path))},${jsAttr(f.fileName)})">${t('view_file')}</button>
-        <button class="btn btn-blue btn-sm" onclick="copyFileToImport(${jsAttr(encodeURIComponent(f.path))},${jsAttr(f.fileName)})">${t('copy_to_import')}</button>
+        <button class="btn btn-secondary btn-sm" data-tip="tip_view_file" onclick="previewFile(${jsAttr(encodeURIComponent(f.path))},${jsAttr(f.fileName)})">${t('view_file')}</button>
+        <button class="btn btn-blue btn-sm" data-tip="tip_copy_to_import" onclick="copyFileToImport(${jsAttr(encodeURIComponent(f.path))},${jsAttr(f.fileName)})">${t('copy_to_import')}</button>
       </div>
     </div>`).join('');
 }
@@ -5526,11 +5882,13 @@ function toggleAutoRefresh() {
   if (syslogAutoTimer) {
     clearInterval(syslogAutoTimer);
     syslogAutoTimer = null;
+    btn.dataset.i18n = 'btn_auto_refresh_off';
     btn.textContent = t('btn_auto_refresh_off');
     btn.classList.remove('btn-primary');
     btn.classList.add('btn-secondary');
   } else {
     syslogAutoTimer = setInterval(loadLog, 5000);
+    btn.dataset.i18n = 'btn_auto_refresh_on';
     btn.textContent = t('btn_auto_refresh_on');
     btn.classList.remove('btn-secondary');
     btn.classList.add('btn-primary');
@@ -7203,7 +7561,7 @@ async function daMigrateSelected() {
 
 // Publicerer et flow der allerede ligger i org'en — fx efter en migrering
 // med handlingen "create", som lægger det ind som checked-in draft.
-async function publishFlow(flowId, nameEnc, version) {
+async function publishFlow(flowId, nameEnc, version, flowType) {
   const name = decodeURIComponent(nameEnc);
   const customerId = document.getElementById('fb-customer').value;
   if (!confirm(t('fb_publish_confirm').replace('{name}', name).replace('{v}', version))) return;
@@ -7219,6 +7577,10 @@ async function publishFlow(flowId, nameEnc, version) {
     else if (r.error) alert(r.error);
     else {
       alert(`${t('fb_publish_ok')}: ${r.name} v${r.version}`);
+      // Et common module slår først igennem i de flows der kalder det, når
+      // de publiceres igen — samme tilbud som efter en forfremmelse.
+      if (normFlowType(flowType) === 'COMMONMODULE')
+        await republishDependents(customerId, r.name || name, 'flowAlert');
       loadFlows();   // hent listen igen så status og version er opdateret
     }
   } catch (e) { alert(e.message); }
@@ -8235,9 +8597,9 @@ function renderPipeline() {
       ${problems}
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
         <span style="font-size:12px;color:var(--muted)">${rows.length} ${t('pl_count')} · ${Object.keys(pipelineHashes).length} ${t('pl_checked_count')}</span>
-        <button class="btn btn-secondary btn-sm" style="font-size:11px" onclick="checkAllShown()">${t('pl_check_all')}</button>
+        <button class="btn btn-secondary btn-sm" style="font-size:11px" data-tip="tip_pl_check" onclick="checkAllShown()">${t('pl_check_all')}</button>
         <button class="btn btn-secondary btn-sm" style="font-size:11px" title="${t('pl_csv_title')}" onclick="downloadPipelineCsv()">${t('pl_csv')}</button>
-        <button class="btn btn-secondary btn-sm" style="font-size:11px" onclick="openReleases({ tenant: ${jsAttr(d.tenant)}, group: ${jsAttr(d.group)} })">📝 ${t('rel_title')}</button>
+        <button class="btn btn-secondary btn-sm" style="font-size:11px" data-tip="tip_rel_title" onclick="openReleases({ tenant: ${jsAttr(d.tenant)}, group: ${jsAttr(d.group)} })">📝 ${t('rel_title')}</button>
       </div>
       <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
         <thead>${orgHead}<tr><th style="text-align:left;padding:8px 10px;font-size:11px;color:var(--muted);font-family:var(--mono)">${t('pl_flow')}</th>${head}</tr></thead>
@@ -8482,8 +8844,8 @@ async function rollbackRelease(ref, label, name) {
 // Et flow med en upubliceret kladde er fravalgt som standard: genpublicering
 // tager den publicerede udgave, og kladden ville blive erstattet.
 let repResolver = null, repCtx = null;
-function showRepublishModal(envId, moduleName, dependents, releaseRef) {
-  repCtx = { envId, moduleName, releaseRef };
+function showRepublishModal(envId, moduleName, dependents, releaseRef, alertId = 'pipelineAlert') {
+  repCtx = { envId, moduleName, releaseRef, alertId };
   const body = document.getElementById('rep-body');
   const intro = `<div style="font-size:12px;color:var(--muted);margin-bottom:10px">${escapeHtml(t('rep_intro')
     .replace('{env}', envNameOf(envId)).replace('{module}', moduleName))}</div>`;
@@ -8492,10 +8854,14 @@ function showRepublishModal(envId, moduleName, dependents, releaseRef) {
   } else {
     body.innerHTML = intro + dependents.map(f => {
       const blokeret = f.unpublished;
+      // behind === false: flowet er publiceret efter modulet og kører allerede
+      // den nye udgave. Det står i listen, men er ikke valgt.
+      const opdateret = f.behind === false && !f.via;
       const advar = f.hasDraft ? `<span style="font-size:11px;color:var(--yellow);margin-left:auto">⚠ ${t('rep_draft')}</span>`
-                  : blokeret ? `<span style="font-size:11px;color:var(--muted);margin-left:auto">${t('rep_unpublished')}</span>` : '';
+                  : blokeret ? `<span style="font-size:11px;color:var(--muted);margin-left:auto">${t('rep_unpublished')}</span>`
+                  : opdateret ? `<span style="font-size:11px;color:var(--green);margin-left:auto">${t('rep_uptodate')}</span>` : '';
       return `<label style="display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13px;cursor:pointer">
-        <input type="checkbox" style="width:auto" ${f.hasDraft || blokeret ? '' : 'checked'} ${blokeret ? 'disabled' : ''}
+        <input type="checkbox" style="width:auto" ${f.hasDraft || blokeret || opdateret ? '' : 'checked'} ${blokeret ? 'disabled' : ''}
           data-rep="${escapeHtml(JSON.stringify({ name: f.name, type: f.type }))}"/>
         <span style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:96px">${escapeHtml(f.type)}</span>
         <span style="font-family:var(--mono)">${escapeHtml(f.name)}</span>
@@ -8527,26 +8893,32 @@ async function repResolve(go) {
     body: JSON.stringify({ envId: repCtx.envId, moduleName: repCtx.moduleName, releaseRef: repCtx.releaseRef,
                            flows: picked, confirmProd: prod })
   }).then(x => x.json()).catch(e => ({ error: e.message }));
-  if (r.error) { showAlert('pipelineAlert', r.error, 'err'); return done(null); }
+  if (r.error) { showAlert(repCtx.alertId, r.error, 'err'); return done(null); }
   const ok = (r.results || []).filter(x => x.ok).length;
   const fejl = (r.results || []).filter(x => !x.ok);
-  showAlert('pipelineAlert', `🔁 ${ok} ${t('rep_done')}` +
+  showAlert(repCtx.alertId, `🔁 ${ok} ${t('rep_done')}` +
     (fejl.length ? '<br>' + fejl.map(x => `✗ ${escapeHtml(x.name)}: ${escapeHtml(x.error)}`).join('<br>') : ''),
     fejl.length ? 'err' : 'ok');
   done(r.results || []);
 }
 
-// Fra tavlen: find de flows der bruger et common module i ét miljø.
-async function republishDependents(envId, moduleName) {
-  showAlert('pipelineAlert', `<span class="spin"></span> ${t('rep_loading')}`, 'info');
+// Genesys skriver typen "COMMONMODULE", Archy "commonModule".
+const normFlowType = x => String(x || '').toUpperCase().replace(/[^A-Z]/g, '');
+
+// Find de flows der bruger et common module i ét miljø, og tilbyd at
+// genpublicere dem. Bruges fra tavlen og fra Flow Browser.
+async function republishDependents(envId, moduleName, alertId = 'pipelineAlert') {
+  showAlert(alertId, `<span class="spin"></span> ${t('rep_loading')}`, 'info');
   const r = await fetch('/api/flows/dependents', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ envId, moduleName })
   }).then(x => x.json()).catch(e => ({ error: e.message }));
-  if (r.error) return showAlert('pipelineAlert', r.error, 'err');
-  showAlert('pipelineAlert', '');
-  const res = await showRepublishModal(envId, moduleName, r.dependents || [], null);
-  if (res) { pipelineHashes = {}; await loadPipeline(); }
+  if (r.error) return showAlert(alertId, r.error, 'err');
+  showAlert(alertId, '');
+  const res = await showRepublishModal(envId, moduleName, r.dependents || [], null, alertId);
+  if (!res) return;
+  if (alertId === 'flowAlert') await loadFlows();
+  else { pipelineHashes = {}; await loadPipeline(); }
 }
 
 // ── Afvigelse mellem miljøer ──────────────────────────────────────────────────
@@ -8569,7 +8941,7 @@ function verdictCell(row) {
 
   const h = pipelineHashes[key];
   const btn = `<button class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 6px"
-      onclick="checkRow('${escapeHtml(row.flowName).replace(/'/g, "\\'")}','${row.flowType}')">${t('pl_check')}</button>`;
+      data-tip="tip_pl_check" onclick="checkRow('${escapeHtml(row.flowName).replace(/'/g, "\\'")}','${row.flowType}')">${t('pl_check')}</button>`;
 
   if (!h) return `<div style="margin-top:4px">${btn}</div>`;
 
@@ -8644,9 +9016,9 @@ async function renderDemoButtons() {
       <span style="min-width:250px;font-size:12px">${navn[d.which]}
         <div style="font-size:11px;color:var(--muted)">${desc[d.which]}</div></span>
       ${d.exists
-        ? `<button class="btn btn-secondary btn-sm" onclick="demoReset('${d.which}')">${t('btn_demo_reset')}</button>
-           <button class="btn btn-danger btn-sm" onclick="demoRemove('${d.which}')">${t('btn_demo_remove')}</button>`
-        : `<button class="btn btn-primary btn-sm" onclick="demoCreate('${d.which}')">${t('btn_demo_create')}</button>`}
+        ? `<button class="btn btn-secondary btn-sm" data-tip="tip_btn_demo_reset" onclick="demoReset('${d.which}')">${t('btn_demo_reset')}</button>
+           <button class="btn btn-danger btn-sm" data-tip="tip_btn_demo_remove" onclick="demoRemove('${d.which}')">${t('btn_demo_remove')}</button>`
+        : `<button class="btn btn-primary btn-sm" data-tip="tip_btn_demo_create" onclick="demoCreate('${d.which}')">${t('btn_demo_create')}</button>`}
     </div>`).join('');
 }
 
@@ -8716,7 +9088,7 @@ async function loadManifestStatus() {
            <span style="color:var(--muted)">· ${e.rows} ${t('mf_rows')}</span>`
         : `<span style="color:var(--yellow)">${t('mf_no_table')}</span>
            <button class="btn btn-secondary btn-sm" style="margin-left:8px;font-size:10px;padding:2px 8px"
-             onclick="createManifestTable('${e.id}')">${t('mf_create')}</button>`;
+             data-tip="tip_mf_create" onclick="createManifestTable('${e.id}')">${t('mf_create')}</button>`;
     return `<div style="display:flex;align-items:center;gap:10px;padding:5px 0;font-size:12px">
         <span style="font-family:var(--mono);color:var(--muted);min-width:44px">${(e.stage || '—').toUpperCase()}</span>
         <span style="min-width:190px">${escapeHtml(e.name)}</span>${state}</div>`;

@@ -195,3 +195,31 @@ test('findes den nye mappe allerede, flettes der ikke', () => {
     fs.rmSync(til, { recursive: true, force: true });
   }
 });
+
+// ── Hvilken org et miljø ligger i ────────────────────────────────────────────
+
+test('to miljøer med hver sin klient i samme org ses som samme org', () => {
+  // Dev med client credentials og prod med PKCE har hver sin OAuth-klient.
+  // Med Client ID som nøgle troede værktøjet de lå i hver sin org, og prod
+  // så dev's flows.
+  const dev  = { id: 'd', clientId: 'a', region: 'mypurecloud.de', prefix: 'DEV_', orgId: 'org1' };
+  const prod = { id: 'p', clientId: 'b', region: 'mypurecloud.de', prefix: '',     orgId: 'org1' };
+  assert.equal(s.orgKeyOf(dev), s.orgKeyOf(prod));
+  assert.equal(s.belongsToEnv('DEV_Hilsen', prod, [dev, prod]), false);
+  assert.equal(s.belongsToEnv('Hilsen', prod, [dev, prod]), true);
+});
+
+test('uden org-id falder nøglen tilbage på klient og region', () => {
+  assert.equal(s.orgKeyOf({ clientId: 'a', region: 'r' }), s.orgKeyOf({ clientId: 'a', region: 'r' }));
+  assert.notEqual(s.orgKeyOf({ clientId: 'a', region: 'r' }), s.orgKeyOf({ clientId: 'b', region: 'r' }));
+});
+
+// ── Common modules nyere end flowene der bruger dem ──────────────────────────
+
+test('et flow publiceret før modulet kører på den gamle udgave', () => {
+  const pub = d => ({ publishedVersion: { datePublished: d } });
+  assert.equal(s.isBehindModule(pub('2026-09-01T10:00:00Z'), pub('2026-09-02T10:00:00Z')), true);
+  assert.equal(s.isBehindModule(pub('2026-09-03T10:00:00Z'), pub('2026-09-02T10:00:00Z')), false);
+  // Uden datoer ved vi det ikke — og så påstår vi intet.
+  assert.equal(s.isBehindModule({}, pub('2026-09-02T10:00:00Z')), false);
+});

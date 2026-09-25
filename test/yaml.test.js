@@ -241,3 +241,12 @@ test('scanYamlDependencies finder en fast bruger i "Transfer to User"', () => {
   ].join('\n');
   assert.deepEqual(s.scanYamlDependencies(y).user, ['frederik.lysgaard@sabiogroup.com']);
 });
+
+test('yamlFlowHeader læser flowtypen og navnet', () => {
+  const s = require('../server.js');
+  assert.deepEqual(s.yamlFlowHeader('commonModule:\n  name: Create Logitems\n  division: Home\n'),
+                   { kind: 'commonModule', name: 'Create Logitems' });
+  assert.deepEqual(s.yamlFlowHeader('inboundCall:\r\n  name: "Main flow"\r\n'),
+                   { kind: 'inboundCall', name: 'Main flow' });
+  assert.deepEqual(s.yamlFlowHeader('ikke yaml'), { kind: null, name: null });
+});
