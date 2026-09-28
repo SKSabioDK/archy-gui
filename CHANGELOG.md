@@ -5,6 +5,24 @@
 
 ---
 
+### v1.46.2
+---
+**🇩🇰 Dansk**
+
+- **README'en var løbet fra programmet.** Toppen sagde den rigtige version, men den engelske del stod stadig på v1.33.0 — og store dele beskrev programmet som det var før v1.42. Nu passer den på begge sprog: nye miljøer bruger kun OAuth (PKCE), ⚙ Indstillinger, log ind hvor du står og 🔒 i sidebjælken, søgning blandt mange kunder, miljøer i samme org genkendt på org-id, miljøfilteret i Flow Browser og Export, jokertegn i Export, tjekket af common modules i Flow Browser og på tavlen, genpublicering fra Flow Browser, Import og Migrer og forklaringerne når den fejler, tid og SECURITY i systemloggen, låste prod-indstillinger og rettigheder pr. division.
+
+- **En test holder dem i takt.** `test/readme.test.js` fælder hvis README nævner en anden version end `package.json`, hvis brugerfladen eller den øverste version i `CHANGELOG.md` ikke er den samme, eller hvis antallet af tests i README ikke passer. Den engelske del gentager ikke længere versionen, men peger på toppen.
+
+**3 nye tests**, i alt 220.
+
+**🇬🇧 English**
+- **The README had drifted from the app** — the English part still said v1.33.0 and much of it described the app before v1.42. It is now current in both languages.
+- **A test keeps them in step**: `test/readme.test.js` fails if the README mentions another version than `package.json`, if the UI or the top of `CHANGELOG.md` differ, or if the test count in the README is wrong.
+
+**3 new tests**, 220 in total.
+
+---
+
 ### v1.46.1
 ---
 **🇩🇰 Dansk**

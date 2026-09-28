@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.46.1
+# Archy GUI — Flow Manager · v1.46.2
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.46.1**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.46.1**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.46.2**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.46.2**.
 
 ---
 
@@ -19,7 +19,7 @@ Et grafisk interface til [Archy](https://help.mypurecloud.com/articles/archy/) m
 ### Krav
 - **Node.js 18+**
 - **Archy** installeret og tilgængeligt i PATH (`archy version` skal returnere en version)
-- Genesys Cloud OAuth-klient per org (enten Client Credentials eller PKCE Code Authorization)
+- En Genesys Cloud OAuth-klient af typen **Code Authorization** (PKCE) pr. org, med redirect URI `http://localhost:3737/auth/callback`. Ældre miljøer med Client Credentials virker stadig, men nye oprettes altid med PKCE
 
 ### Installation
 
@@ -44,7 +44,7 @@ Alternativt manuelt: `node server.js`
 npm test
 ```
 
-217 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+220 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -54,6 +54,8 @@ Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun st
 
 `test/escape.test.js` læser `index.html` og fælder hvis et navn fra en org går uescapet ind i HTML — og prøver `escapeHtml` og `jsAttr` af med navne der ville køre kode.
 
+`test/prod-rettigheder.test.js` fælder hvis en ny rute der skriver til en org, ikke står bag prod-vagten. `test/syntaks.test.js` oversætter hvert script i `index.html`, så et enkelt forkert tegn ikke kan stoppe hele brugerfladen. `test/ui-sprog.test.js` og `test/tooltips.test.js` fanger dansk uden om oversættelserne og tooltips der peger på tekster der ikke findes. `test/readme.test.js` holder versionen og antallet af tests her i takt med `package.json`, brugerfladen og `CHANGELOG.md`.
+
 Testene ligger i `test/` og kræver ingen pakker ud over Node selv (`node --test`, Node 18+).
 
 ---
@@ -61,12 +63,13 @@ Testene ligger i `test/` og kræver ingen pakker ud over Node selv (`node --test
 ### Funktioner
 
 #### 🏢 Kunder
-Tilføj Genesys Cloud orgs med to auth-typer:
+Nye miljøer oprettes altid med **🌐 OAuth (PKCE)**: du logger ind i Genesys som dig selv, kun Client ID gemmes, og tokenet lever kun i serverens hukommelse. Ældre miljøer med **🔑 Client Credentials** (Client ID + secret i `customers.json`) virker stadig og er markeret med **gult**.
 
-| Auth-type | Hvornår | Hvad gemmes |
-|---|---|---|
-| **🔑 Client Credentials** | Scripts/automation | Client ID + Secret i `customers.json` |
-| **🌐 OAuth PKCE** | Personligt login | Kun Client ID — token i hukommelse |
+**⚙ Indstillinger** på hvert kort rummer navn, kunde, gruppe, trin, præfiks, division, godkendelse og krav til prod. Felterne tjekkes når de gemmes (se Sikkerhed), og omdøbes et miljø, flytter dets eksportmappe med.
+
+**Log ind hvor du står.** Mangler et miljø login, kommer der en bjælke øverst med en **Log ind**-knap — på alle sider, ikke kun Kunder — og siden hentes igen bagefter. 🔒 ved miljøet i sidebjælken logger også ind; 🟢 når man er logget ind.
+
+**Mange kunder.** Søgefeltet over kortene finder på navn, kunde, gruppe, trin og org-navn, og *Kun dem der kræver login* viser dem man mangler. Kortene sorteres efter kunde og trin, og formularen og demo-kunderne er foldet sammen.
 
 **Kunde → gruppe → miljø.** Én post er ét *miljø*. To niveauer ovenover afgør hvad der må migreres indbyrdes:
 
@@ -87,7 +90,7 @@ Vattenfall            Kunde 2 A/S
 | uat | `UAT_` | `UAT_Ordreflow` | `UAT_ArchyGUI_Manifest` |
 | prod | *(tomt)* | `Ordreflow` | `ArchyGUI_Manifest` |
 
-Opret ét miljø pr. præfiks med **samme credentials**. Programmet ser at de deler org, henter flowlisten én gang og deler den. Prod uden præfiks tager alt der **ikke** bærer et søskendepræfiks — ellers ville prod se hele orgen.
+Opret ét miljø pr. præfiks. Programmet slår **org-id'et** op i Genesys og ser dermed at de deler org — også når de bruger hver sin OAuth-klient, fx dev med client credentials og prod med PKCE. Hvert miljø ser kun sine egne flows i Flow Browser, Export og på tavlen. Prod uden præfiks tager alt der **ikke** bærer et søskendepræfiks — ellers ville prod se hele orgen.
 
 > **Præfikset skal ramme præcist.** Et flow der hedder `DEV Noget` med mellemrum i stedet for `DEV_Noget` hører til prod, ikke dev.
 
@@ -103,9 +106,11 @@ Opret ét miljø pr. præfiks med **samme credentials**. Programmet ser at de de
 Begge kan være oprettet samtidig. `↺ Nulstil` sætter tilbage, `✕ Fjern` sletter miljøer, flows og manifestlinjer.
 
 #### 📋 Flow Browser
-Hent, søg og filtrer flows. Filtrér på **flowtype** (listen fyldes ud fra de typer org'en faktisk har, med antal pr. type) og på fritekst. Klik **Export** direkte fra listen.
+Hent, søg og filtrer miljøets flows. Filtrér på **flowtype** (listen fyldes ud fra de typer miljøet faktisk har, med antal pr. type) og på fritekst. Klik **Export** direkte fra listen.
 
-**🚀 Publicér.** Flows der er migreret med handlingen `create` ligger som checked-in draft uden at være i drift. De får en **Publicér**-knap der publicerer den version der allerede er i org'en — uden at hente noget fra kilden igen. Flows der er tjekket ud af en bruger vises som **Udtjekket** i versionskolonnen.
+**⚠ Common modules der er nyere end deres flows.** Hver gang listen hentes, tjekkes om et common module er publiceret *efter* et flow der bruger det — så kører flowet stadig på den gamle udgave. Det står i et gult felt pr. modul med en **🔁 Genpublicér dem**-knap, og rækkerne er mærket ⚠. Publicerede common modules har desuden en **🔁 Brugere**-knap (se [Common modules](#-common-modules)).
+
+**🚀 Publicér.** Flows der er migreret med handlingen `create` ligger som checked-in draft uden at være i drift. De får en **Publicér**-knap der publicerer den version der allerede er i org'en — uden at hente noget fra kilden igen. Er det et common module, tilbydes du bagefter at genpublicere de flows der bruger det. Flows der er tjekket ud af en bruger vises som **Udtjekket** i versionskolonnen.
 
 **⇄ Sammenlign to orgs.** Vælg en org i *Sammenlign mod org*, og hver række får en ⇄-knap. Den eksporterer flowet fra begge orgs og sammenligner **indholdet** — ikke versionsnumrene, som er per-org tællere og intet siger om hvad flowet indeholder.
 
@@ -137,7 +142,9 @@ Hver celle viser flowets **navn i netop det miljø**, dets publicerede udgave og
 | ⚠ **findes kun i et senere trin** | bygget udenom kæden |
 | ? **ukendt** | org'en kunne ikke læses — vi ved ikke hvad der er i den |
 
-**Forfremmelse** går ét trin ad gangen og lander på *Migrer Flow* med kilde, mål og flow sat, så afhængighedstjek og divisionsvalg er som ellers. Kun en **publiceret** udgave kan forfremmes — en kladde er ikke testet.
+**Forfremmelse** går ét trin ad gangen og lander på *Migrer Flow* med kilde, mål og flow sat, så afhængighedstjek og divisionsvalg er som ellers. Kun en **publiceret** udgave kan forfremmes — en kladde er ikke testet. Til prod kræves dit prod-login (se Sikkerhed).
+
+**Common modules tjekkes også på tavlen.** Når den er hentet, tjekkes hvert miljø i gruppen: øverst står fx *⚠ Sabio APS - PROD: 2 common module(s) er nyere end 1 flow(s) der bruger dem*, modulets celle er mærket *⚠ N flow(s) ikke genpubliceret* med en gul 🔁, og flowets celle *⚠ ældre end …*. Kan et miljø ikke tjekkes — fx prod uden login — siges det.
 
 **Navnet bærer sin historik.** Ved forfremmelse får flowet kildens udgave sat på — `Ordreflow` → `Ordreflow_v10` — i **både** kilde og mål. Arbejder man videre i dev og publicerer, bliver navnet stående på `_v10` indtil næste forfremmelse. Så kan man på navnene alene se hvilket trin der er bagud.
 
@@ -167,7 +174,9 @@ For at kende "før" eksporteres målets publicerede udgave inden importen — é
 #### 🔁 Common modules
 Et common module slår først igennem i de flows der kalder det, **når de publiceres igen**. Forfremmes et modul (med handlingen *publish*), finder værktøjet de flows i målmiljøet der bruger det — via Genesys' afhængighedssporing, også gennem et andet modul — og tilbyder at genpublicere dem. Den publicerede udgave genpubliceres, ikke en kladde; har et flow en upubliceret kladde, er det fravalgt som standard, for kladden ville blive erstattet. Modulets release-note får listen med.
 
-Samme funktion ligger på tavlen som **🔁 Genpublicér brugere** på hver common module-celle — til når modulet er rettet direkte i et miljø.
+Samme tilbud kommer når et modul **publiceres i Flow Browser**, **importeres med publish** eller **migreres**. **🔁 Genpublicér brugere** på tavlen og **🔁 Brugere** i Flow Browser gør det samme til når modulet er rettet direkte i Architect — og begge steder vises det af sig selv når et modul er nyere end de flows der bruger det. I dialogen er de flows valgt der kører på en ældre udgave; dem der allerede er publiceret efter modulet, står der men er ikke valgt.
+
+**Når en genpublicering fejler.** Genpublicering tager den publicerede udgave og publicerer den igen — og så tjekkes flowet mod org'en som den er i dag. Dialogen bliver stående med én linje pr. flow: hvad der er galt og hvad man gør ved det — en TTS-stemme org'en ikke har, ingen standardstemme for et sprog, en kø, bruger, tabel, data action, prompt, tidsplan eller et flow der ikke findes længere (og hvor i flowet), et tomt felt der skal udfyldes, eller et låst flow. Archys rå tekst og stien til dens debug-log står under *Detaljer fra Archy*.
 
 **Filtre.** Fritekst på flownavn, **flowtype** (listen fyldes ud fra de typer gruppen faktisk har, med antal), og *Kun dem der mangler i et senere trin*. De virker sammen.
 
@@ -220,12 +229,13 @@ Alt hvad der mangler skrives også til **Systemloggen**, så du kan finde det ig
 > Den fil indeholder hele kørslen. Archy skriver én pr. kald.
 
 #### 📤 Export YAML
-Eksporter ét flow eller hele org'en med live fremgangsindikator.
+Eksporter ét flow eller hele miljøet med live fremgangsindikator. Listen over miljøets flows vises så snart miljøet er valgt; skriv for at filtrere. `*` viser alle, og en stjerne inde i teksten er et jokertegn — `DEV_*log` finder `DEV_Create Logitems`. Deler flere miljøer org'en, eksporteres kun dette miljøs egne.
 
 #### 📥 Import YAML
 - Indsæt YAML manuelt, upload `.yaml`-fil eller drag-and-drop
 - **🔍 Valider YAML** — syntax-tjek i browseren (ingen API-kald)
 - **🌐 Tjek mod org** — tjekker om alle ressourcer (division, køer, DataTables, Data Actions, Prompts) eksisterer i mål-org'en *inden* import
+- Publicerer du et **common module**, tilbydes du bagefter at genpublicere de flows der bruger det. Import til prod kræver dit prod-login
 
 #### ⚡ Migrér ressourcer
 Siden migrerer det der ikke er flows mellem to orgs, fordelt på tre faner: **Data Actions**, **Data Tabeller** og **User Prompts**. Kilde- og mål-org vælges ét sted og deles af alle tre.
@@ -267,7 +277,9 @@ Hver fil kan åbnes (**View**) eller sendes videre til Import-siden (**Import**)
 **🧹 Ryd op** fjerner gamle versioner: vælg hvor mange der skal beholdes pr. flow — 2 som standard, så du kan falde tilbage til en tidligere version — og godkend listen inden noget slettes. Filer uden versionsnummer røres ikke.
 
 #### 📋 Systemlog
-Alle handlinger logges i realtid. Filtrer på niveau, handling, kunde og fritekst.
+Alle handlinger logges i realtid. Filtrer på tidsrum, niveau, handling, kunde og fritekst. Tiden vises i maskinens egen tidszone (UTC står i tooltip); *15 min* og *1 time* går til og med nu, og *I dag* er fra midnat.
+
+**SECURITY** viser prod-login, hvem der fik eller ikke fik deploy-ret og hvorfor, og hvert forsøg på at skrive til prod der blev afvist.
 
 **Selve logteksten er altid engelsk**, uanset hvilket sprog brugerfladen står på. Kolonneoverskrifter og filtre følger sproget; linjerne gør ikke. Loggen bliver kopieret ind i en sag og læst af folk der ikke nødvendigvis kører programmet i samme sprog som den der lavede migreringen.
 <img width="1439" height="547" alt="image" src="https://github.com/user-attachments/assets/4d994a59-70b6-4886-be82-54876ff61193" />
@@ -287,7 +299,7 @@ Begge vælges i topbaren og gemmes i browserens `localStorage`, så valget huske
 
 Sabio-temaerne viser Sabios ordmærke i topbaren i stedet for "ArchyGUI" og bruger brandets skarpe hjørner.
 
-Sprog: 🇩🇰 Dansk · 🇬🇧 English · 🇫🇷 Français · 🇳🇱 Nederlands · 🇪🇸 Español.
+Sprog: 🇩🇰 Dansk · 🇬🇧 English · 🇫🇷 Français · 🇳🇱 Nederlands · 🇪🇸 Español. Knapperne har tooltips på alle fem sprog, og hver side har en **?**-hjælp.
 Tekniske betegnelser oversættes ikke — flow-typer (`InboundCall`, `Workflow` …), regionsnavne, logniveauer (`INFO`, `ERROR` …) og Genesys-kategorinavne vises som i API'et.
 
 ---
@@ -308,7 +320,8 @@ Tekniske betegnelser oversættes ikke — flow-typer (`InboundCall`, `Workflow` 
 ### Sikkerhed
 - Client Secrets vises aldrig i GUI efter gemning, og maskeres i logfil og systemlog
 - OAuth PKCE: ingen secret gemmes — token lever kun i serverens hukommelse
-- **Skrivning til prod kræver et personligt login.** Et prod-miljø skal bruge OAuth (PKCE); med client credentials kan det læses, men ikke skrives til. Ved login slår værktøjet brugeren op i Genesys og tjekker rettigheden — som standard `architect:flow:publish` — og eventuelt medlemskab af en gruppe. Begge sættes pr. miljø under **⚙ Indstillinger**. Deploy-retten gælder 30 minutter efter login; derefter logger man ind igen. Archy og API-kaldene kører med brugerens eget token, så Genesys håndhæver også selv rettighederne, og audit-loggen viser personen. Kræver en OAuth-klient af typen *Code Authorization* i prod-org'en med redirect URI `http://localhost:3737/auth/callback`
+- **Skrivning til prod kræver et personligt login.** Et prod-miljø skal bruge OAuth (PKCE); med client credentials kan det læses, men ikke skrives til. Ved login slår værktøjet brugeren op i Genesys og tjekker rettigheden — som standard `architect:flow:publish` — og eventuelt medlemskab af en gruppe. Begge sættes pr. miljø under **⚙ Indstillinger**. Deploy-retten gælder 30 minutter efter login; derefter logger man ind igen. Archy og API-kaldene kører med brugerens eget token, så Genesys håndhæver også selv rettighederne, og audit-loggen viser personen. Kræver en OAuth-klient af typen *Code Authorization* i prod-org'en med redirect URI `http://localhost:3737/auth/callback`. Rettigheder pr. division (`architect:flow:publish:<division-id'er>`) tæller med
+- Trin, godkendelse, Client ID, region og deploy-krav på et prod-miljø kan kun ændres med et gyldigt prod-login — ellers kunne man sætte trinnet til "uat", skrive, og sætte det tilbage. Redigering tager kun imod de felter der kan redigeres
 - Serveren binder til `127.0.0.1`. Sæt `HOST` hvis den bevidst skal nås udefra — men der er ingen adgangskontrol foran, så det bør ikke gøres uden
 - Filstier fra brugerfladen holdes inden for `flows/`, både ved læsning og skrivning
 - Felterne på et miljø tjekkes når de gemmes: navnet må ikke indeholde `< > : " \ | ? * % ! ^ $ '` samt backtick og kontroltegn, ikke være et reserveret Windows-navn og ikke give samme eksportmappe som et andet miljø; præfikset må kun være `A-Z 0-9 _ -`; Client ID skal være et GUID og regionen en kendt. `/` er tilladt, så "A/S" kan bruges
@@ -339,12 +352,12 @@ Archy-gui/
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
-> Current version: **v1.33.0** — see [Changelog](#changelog) above.
+> The current version and every change are in [CHANGELOG.md](CHANGELOG.md) — see the top of this page.
 
 ### Requirements
 - **Node.js 18+**
 - **Archy** installed and available in PATH
-- A Genesys Cloud OAuth client per org (Client Credentials or PKCE Code Authorization)
+- A Genesys Cloud OAuth client of type **Code Authorization** (PKCE) per org, with redirect URI `http://localhost:3737/auth/callback`. Older environments using Client Credentials still work, but new ones are always created with PKCE
 
 ### Installation
 
@@ -363,7 +376,7 @@ Double-click **`start.bat`** or run `node server.js` manually.
 npm test
 ```
 
-217 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+220 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 
@@ -373,6 +386,8 @@ A couple of them watch that **the stage order and the version suffix exist in on
 
 `test/escape.test.js` reads `index.html` and fails if a name from an org reaches the HTML unescaped — and exercises `escapeHtml` and `jsAttr` with names that would otherwise run code.
 
+`test/prod-rettigheder.test.js` fails if a new route that writes to an org is not behind the prod guard. `test/syntaks.test.js` compiles every script in `index.html`, so a single wrong character cannot stop the whole UI. `test/ui-sprog.test.js` and `test/tooltips.test.js` catch Danish bypassing the translations and tooltips pointing to texts that do not exist. `test/readme.test.js` keeps the version and the test count here in step with `package.json`, the UI and `CHANGELOG.md`.
+
 The tests live in `test/` and need nothing beyond Node itself (`node --test`, Node 18+).
 
 ---
@@ -380,7 +395,13 @@ The tests live in `test/` and need nothing beyond Node itself (`node --test`, No
 ### Features
 
 #### 🏢 Customers
-Add Genesys Cloud orgs with Client Credentials or OAuth PKCE.
+New environments are always created with **🌐 OAuth (PKCE)**: you log in to Genesys as yourself, only the Client ID is stored, and the token lives only in server memory. Older environments using **🔑 Client Credentials** (Client ID + secret in `customers.json`) still work and are marked in **yellow**.
+
+**⚙ Settings** on each card holds name, customer, group, stage, prefix, division, authentication and prod requirements. Fields are checked on save (see Security), and renaming an environment moves its export folder along.
+
+**Log in where you are.** When an environment needs a login, a bar with a **Log in** button appears at the top — on every page, not only Customers — and the page reloads afterwards. 🔒 next to the environment in the sidebar logs in too; 🟢 once logged in.
+
+**Many customers.** The search box above the cards matches name, customer, group, stage and org label, and *Only those requiring login* shows the ones still missing. Cards are sorted by customer and stage, and the form and demo customers are collapsed.
 
 **Customer → group → environment.** One record is one *environment*. Two levels above it decide what may be migrated between: the **group is the pipeline**, whether it is named after a country or a company. Each environment gets a stage from `dev → test → uat → prod`. With only one group, the picker is hidden.
 
@@ -393,7 +414,7 @@ Add Genesys Cloud orgs with Client Credentials or OAuth PKCE.
 | uat | `UAT_` | `UAT_Ordreflow` | `UAT_ArchyGUI_Manifest` |
 | prod | *(empty)* | `Ordreflow` | `ArchyGUI_Manifest` |
 
-Create one environment per prefix using the **same credentials**. The app sees that they share an org, fetches the flow list once and shares it. Prod without a prefix takes everything that does **not** carry a sibling prefix — otherwise prod would see the whole org.
+Create one environment per prefix. The app looks up the **org id** in Genesys and so sees that they share an org — even when they use different OAuth clients, e.g. dev with client credentials and prod with PKCE. Each environment only sees its own flows in Flow Browser, Export and on the board. Prod without a prefix takes everything that does **not** carry a sibling prefix — otherwise prod would see the whole org.
 
 > **The prefix must match exactly.** A flow named `DEV Something` with a space instead of `DEV_Something` belongs to prod, not dev.
 
@@ -409,9 +430,11 @@ Create one environment per prefix using the **same credentials**. The app sees t
 Both can exist at once. `↺ Reset` puts them back, `✕ Remove` deletes environments, flows and manifest rows.
 
 #### 📋 Flow Browser
-Fetch, search and filter flows. Filter by **flow type** (the list is populated from the types the org actually has, with a count each) and by free text. Click **Export** directly from the list.
+Fetch, search and filter the environment's flows. Filter by **flow type** (the list is populated from the types the environment actually has, with a count each) and by free text. Click **Export** directly from the list.
 
-**🚀 Publish.** Flows migrated with the `create` action sit as a checked-in draft without being live. They get a **Publish** button that publishes the version already in the org — without fetching anything from the source again. Flows checked out by a user read **Checked out** in the version column.
+**⚠ Common modules newer than their flows.** Every time the list is fetched, the tool checks whether a common module was published *after* a flow that uses it — the flow then still runs the old version. This is shown in a yellow box per module with a **🔁 Republish them** button, and the rows are marked ⚠. Published common modules also get a **🔁 Users** button (see [Common modules](#-common-modules-1)).
+
+**🚀 Publish.** Flows migrated with the `create` action sit as a checked-in draft without being live. They get a **Publish** button that publishes the version already in the org — without fetching anything from the source again. For a common module you are then offered to republish the flows that use it. Flows checked out by a user read **Checked out** in the version column.
 
 **⇄ Compare two orgs.** Pick an org under *Compare against org* and each row gets a ⇄ button. It exports the flow from both orgs and compares the **content** — not the version numbers, which are per-org counters and say nothing about what the flow contains.
 
@@ -443,7 +466,9 @@ Each cell shows the flow's **name in that environment**, its published version a
 | ⚠ **only exists in a later stage** | built outside the chain |
 | ? **unknown** | the org could not be read — we do not know what is in it |
 
-**Promotion** moves one stage at a time and lands on *Migrate Flow* with source, target and flow filled in, so dependency checks and division choices work as usual. Only a **published** version can be promoted — a draft has not been tested.
+**Promotion** moves one stage at a time and lands on *Migrate Flow* with source, target and flow filled in, so dependency checks and division choices work as usual. Only a **published** version can be promoted — a draft has not been tested. Prod requires your prod login (see Security).
+
+**Common modules are checked on the board too.** Once it is fetched, every environment in the group is checked: the top reads e.g. *⚠ Sabio APS - PROD: 2 common module(s) newer than 1 flow(s) that use them*, the module's cell is marked *⚠ N flow(s) not republished* with a yellow 🔁, and the flow's cell *⚠ older than …*. An environment that cannot be checked — prod without a login, say — is named.
 
 **The name carries its history.** On promotion the flow gets the source's version stamped on it — `Ordreflow` → `Ordreflow_v10` — in **both** source and target. Keep working in dev and publish, and the name stays at `_v10` until the next promotion. The names alone then show which stage is behind.
 
@@ -473,7 +498,9 @@ To know the "before", the target's published version is exported ahead of the im
 #### 🔁 Common modules
 A common module only takes effect in the flows that call it **once they are published again**. When a module is promoted (with the *publish* action), the tool finds the flows in the target environment that use it — through Genesys dependency tracking, including through another module — and offers to republish them. The published version is republished, never a draft; a flow with an unpublished draft is unticked by default, as the draft would be replaced. The module's release note records the list.
 
-The same function is on the board as **🔁 Republish users** on every common module cell — for when the module was changed directly in an environment.
+The same offer comes when a module is **published in Flow Browser**, **imported with publish** or **migrated**. **🔁 Republish users** on the board and **🔁 Users** in Flow Browser do the same for when the module was changed directly in Architect — and both places show it by themselves when a module is newer than the flows using it. The dialog preselects the flows running an older version; those already published after the module are listed but not selected.
+
+**When a republish fails.** Republishing takes the published version and publishes it again — and the flow is then checked against the org as it is today. The dialog stays open with one line per flow: what is wrong and what to do about it — a TTS voice the org lacks, no default voice for a language, a queue, user, table, data action, prompt, schedule or flow that no longer exists (and where in the flow), an empty required field, or a locked flow. Archy's raw text and the path to its debug log are under *Details from Archy*.
 
 **Filters.** Free text on the flow name, **flow type** (the list is built from the types the group actually has, with counts), and *Only those missing in a later stage*. They combine.
 
@@ -526,12 +553,13 @@ Everything missing is also written to the **System Log**, so you can find it aga
 > That file holds the whole run. Archy writes one per call.
 
 #### 📤 Export YAML
-Export a single flow or an entire org with live progress indicator.
+Export a single flow or the whole environment with a live progress indicator. The environment's flows are listed as soon as it is chosen; type to filter. `*` shows all, and a star inside the text is a wildcard — `DEV_*log` finds `DEV_Create Logitems`. When several environments share an org, only this environment's own are exported.
 
 #### 📥 Import YAML
 - Paste YAML, upload a `.yaml` file, or drag-and-drop
 - **🔍 Validate YAML** — browser-side syntax check (no API call)
 - **🌐 Check against org** — verifies that all resources referenced in the YAML (division, queues, DataTables, Data Actions, Prompts) exist in the target org *before* importing
+- When you publish a **common module**, you are then offered to republish the flows that use it. Importing to prod requires your prod login
 
 #### ⚡ Migrate resources
 This page migrates everything that is not a flow between two orgs, across three tabs: **Data Actions**, **Data Tables** and **User Prompts**. Source and target org are chosen once and shared by all three.
@@ -572,7 +600,9 @@ Each file can be opened (**View**) or sent on to the Import page (**Import**).
 **🧹 Clean up** removes old versions: choose how many to keep per flow — 2 by default, so you can fall back to an earlier version — and approve the list before anything is deleted. Files without a version number are left alone.
 
 #### 📋 System Log
-All actions logged in real time. Filter by level, action type, customer, and free text.
+All actions logged in real time. Filter by time span, level, action type, customer, and free text. Times are shown in the machine's own time zone (UTC in the tooltip); *15 min* and *1 hour* run up to now, and *Today* starts at midnight.
+
+**SECURITY** shows prod logins, who did or did not get deploy rights and why, and every rejected attempt to write to prod.
 
 **The log text itself is always English**, whatever language the interface is set to. Column headers and filters follow the language; the lines do not. The log gets pasted into a ticket and read by people who do not necessarily run the app in the same language as whoever ran the migration.
 
@@ -591,7 +621,7 @@ Both are chosen in the top bar and stored in the browser's `localStorage`, so yo
 
 The Sabio themes show the Sabio wordmark in the top bar instead of "ArchyGUI" and use the brand's square corners.
 
-Languages: 🇩🇰 Dansk · 🇬🇧 English · 🇫🇷 Français · 🇳🇱 Nederlands · 🇪🇸 Español.
+Languages: 🇩🇰 Dansk · 🇬🇧 English · 🇫🇷 Français · 🇳🇱 Nederlands · 🇪🇸 Español. Buttons have tooltips in all five languages, and every page has a **?** help.
 Technical identifiers are not translated — flow types (`InboundCall`, `Workflow` …), region names, log levels (`INFO`, `ERROR` …) and Genesys category names appear exactly as the API returns them.
 
 ---
@@ -612,7 +642,8 @@ Technical identifiers are not translated — flow types (`InboundCall`, `Workflo
 ### Security
 - Client Secrets never shown in the GUI after saving, and redacted in the log file and system log
 - OAuth PKCE: no secret stored — token lives only in server memory
-- **Writing to prod requires a personal login.** A prod environment must use OAuth (PKCE); with client credentials it can be read but not written to. At login the tool looks the user up in Genesys and checks the permission — `architect:flow:publish` by default — and optionally membership of a group. Both are set per environment under **⚙ Settings**. Deploy rights last 30 minutes after login; then you log in again. Archy and the API calls run with the user's own token, so Genesys enforces the permissions too and the audit log shows the person. Needs a *Code Authorization* OAuth client in the prod org with redirect URI `http://localhost:3737/auth/callback`
+- **Writing to prod requires a personal login.** A prod environment must use OAuth (PKCE); with client credentials it can be read but not written to. At login the tool looks the user up in Genesys and checks the permission — `architect:flow:publish` by default — and optionally membership of a group. Both are set per environment under **⚙ Settings**. Deploy rights last 30 minutes after login; then you log in again. Archy and the API calls run with the user's own token, so Genesys enforces the permissions too and the audit log shows the person. Needs a *Code Authorization* OAuth client in the prod org with redirect URI `http://localhost:3737/auth/callback`. Division-scoped permissions (`architect:flow:publish:<division ids>`) count
+- Stage, authentication, Client ID, region and deploy requirements of a prod environment can only be changed with a valid prod login — otherwise one could set the stage to "uat", write, and set it back. Editing only accepts the editable fields
 - The server binds to `127.0.0.1`. Set `HOST` to expose it deliberately — but there is no access control in front of it
 - File paths from the UI are confined to `flows/`, for both reading and writing
 - Environment fields are checked on save: the name may not contain `< > : " \ | ? * % ! ^ $ '`, backtick or control characters, be a reserved Windows name, or map to the same export folder as another environment; the prefix may only be `A-Z 0-9 _ -`; the Client ID must be a GUID and the region a known one. `/` is allowed, so "A/S" works
