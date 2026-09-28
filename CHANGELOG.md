@@ -5,6 +5,24 @@
 
 ---
 
+### v1.46.4
+---
+**🇩🇰 Dansk**
+
+- **Nye skærmbilleder af Data Actions og Systemlog** i README'en, taget af den aktuelle version og lagt i `docs/` i stedet for på GitHub — så de også vises på README-siden i programmet. Data Actions-billedet bruger kun Sabio's egen org, ingen kundeorg'er.
+
+- **Systemloggen kendte ikke alle sine egne kategorier.** RELEASE, ROLLBACK, REPUBLISH, MANIFEST, SECURITY og DEMO stod som almindelig tekst uden mærke og kunne ikke vælges i filteret *Handling*. Nu har de alle et mærke — SECURITY i rødt — og står i filteret. En ny test finder hver kategori serveren logger med og fælder hvis brugerfladen ikke kender den.
+
+**1 ny test**, i alt 221.
+
+**🇬🇧 English**
+- **New screenshots of Data Actions and the System Log** in the README, stored in `docs/` so they also show on the in-app README page.
+- **The System Log did not know all its own categories**: RELEASE, ROLLBACK, REPUBLISH, MANIFEST, SECURITY and DEMO had no badge and were missing from the filter. A test now keeps the UI in step with the categories the server logs.
+
+**1 new test**, 221 in total.
+
+---
+
 ### v1.46.3
 ---
 **🇩🇰 Dansk**

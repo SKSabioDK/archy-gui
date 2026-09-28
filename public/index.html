@@ -493,7 +493,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.46.3 · Archy GUI</div>
+    <div class="version" id="app-version">v1.46.4 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1092,6 +1092,12 @@
               <option value="EXPORT">EXPORT</option>
               <option value="IMPORT">IMPORT</option>
               <option value="MIGRATE">MIGRATE</option>
+              <option value="RELEASE">RELEASE</option>
+              <option value="ROLLBACK">ROLLBACK</option>
+              <option value="REPUBLISH">REPUBLISH</option>
+              <option value="MANIFEST">MANIFEST</option>
+              <option value="SECURITY">SECURITY</option>
+              <option value="DEMO">DEMO</option>
             </select>
           </div>
           <div>
@@ -6070,6 +6076,12 @@ const ACTION_BADGE = {
   EXPORT:   '<span class="badge badge-green">EXPORT</span>',
   IMPORT:   '<span class="badge badge-orange">IMPORT</span>',
   MIGRATE:  '<span class="badge badge-orange">MIGRATE</span>',
+  RELEASE:  '<span class="badge badge-green">RELEASE</span>',
+  ROLLBACK: '<span class="badge badge-orange">ROLLBACK</span>',
+  REPUBLISH:'<span class="badge badge-blue">REPUBLISH</span>',
+  MANIFEST: '<span class="badge badge-gray">MANIFEST</span>',
+  SECURITY: '<span class="badge badge-red">SECURITY</span>',
+  DEMO:     '<span class="badge badge-gray">DEMO</span>',
 };
 
 function populateSyslogCustomers() {
