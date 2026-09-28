@@ -1,13 +1,18 @@
-# Archy GUI — Flow Manager · v1.46.2
+# Archy GUI — Flow Manager · v1.46.3
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
+
+![Pipeline med Demo 2](docs/pipeline-demo2.png)
+
+*Pipeline med Demo 2 — det man ser når programmet åbnes. Miljøerne står som kolonner i trin-rækkefølge, flowene som rækker.*
+*Pipeline with Demo 2 — what you see when the app opens. The environments are columns in stage order, the flows are rows.*
 
 ---
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.46.2**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.46.2**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.46.3**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.46.3**.
 
 ---
 
@@ -38,27 +43,15 @@ Dobbeltklik på **`start.bat`** — den:
 
 Alternativt manuelt: `node server.js`
 
-### Test
-
-```bash
-npm test
-```
-
-220 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
-
-Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
-
-`test/sikkerhed.test.js` spærrer for tre huller der har været åbne: læsning uden for `flows/`, skrivning uden for `flows/`, og kommandoindsprøjtning gennem et flownavn. De er skrevet mod de angreb der faktisk virkede.
-
-`test/log-engelsk.test.js` læser `server.js` og fælder hvis en dansk besked er sluppet ind i systemloggen — også ad bagvejen gennem en kastet fejl.
-
-`test/escape.test.js` læser `index.html` og fælder hvis et navn fra en org går uescapet ind i HTML — og prøver `escapeHtml` og `jsAttr` af med navne der ville køre kode.
-
-`test/prod-rettigheder.test.js` fælder hvis en ny rute der skriver til en org, ikke står bag prod-vagten. `test/syntaks.test.js` oversætter hvert script i `index.html`, så et enkelt forkert tegn ikke kan stoppe hele brugerfladen. `test/ui-sprog.test.js` og `test/tooltips.test.js` fanger dansk uden om oversættelserne og tooltips der peger på tekster der ikke findes. `test/readme.test.js` holder versionen og antallet af tests her i takt med `package.json`, brugerfladen og `CHANGELOG.md`.
-
-Testene ligger i `test/` og kræver ingen pakker ud over Node selv (`node --test`, Node 18+).
+Er der sat grupper op, **åbner programmet på Pipeline** med den kunde du sidst arbejdede med — som på billedet øverst. Tavlen hentes når du trykker *Vis pipeline*.
 
 ---
+
+### Sådan hænger det sammen
+
+![Sådan hænger Archy GUI sammen](docs/overblik.da.svg)
+
+En **kunde** har én eller flere **grupper**, og hver gruppe er en **pipeline** af miljøer: dev → test → uat → prod. Et miljø er én Genesys-org set gennem én OAuth-klient. Deler flere miljøer samme org, kendes de på et **præfiks** i flownavnet. Flows **forfremmes** ét trin ad gangen, og hvert miljø holder sin egen historik i en **manifest-tabel** — en Genesys Data Table i org'en. Prod er låst bag et personligt login, og ændres et **common module**, genpubliceres de flows der bruger det, i samme miljø.
 
 ### Funktioner
 
@@ -184,7 +177,39 @@ Samme tilbud kommer når et modul **publiceres i Flow Browser**, **importeres me
 
 **Vagter, håndhævet på serveren:** migrering på tværs af grupper er spærret; prod kræver en bevidst bekræftelse **og et personligt login med rettigheden** (se Sikkerhed); kilden skal være publiceret; kilde og mål må ikke være samme miljø.
 
-**Delt manifest.** Hvert miljø kan have en datatabel — `ArchyGUI_Manifest`, med præfiks hvis miljøet har et — der beskriver **sig selv**: hvad org'en indeholder, hvornår det kom hertil og hvem der gjorde det. Fordi hver org kun skriver om sig selv, kan to personer på hver sin pc aldrig sige hver sit om samme celle. Tabellen oprettes med en knap, aldrig af sig selv.
+**Delt manifest.** Hvert miljø kan have en **Genesys Data Table** i sin org — den samme slags tabel man ser under *Architect → Data Tables* — der hedder `ArchyGUI_Manifest`, med præfiks hvis miljøet har et. Den beskriver **sig selv**: hvad org'en indeholder, hvornår det kom hertil og hvem der gjorde det. Fordi hver org kun skriver om sig selv, kan to personer på hver sin pc aldrig sige hver sit om samme celle. Tabellen oprettes med knappen under *Delt manifest* på Pipeline, aldrig af sig selv, og kræver rettigheden `architect:datatable:add`. Uden tabellen falder værktøjet tilbage på en lokal fil, som ikke er delt.
+
+Tabellen har to kolonner:
+
+| Kolonne | Type | Indhold |
+|---|---|---|
+| `key` | tekst (Lookup Key), op til 256 tegn | Flowets **grundnavn uden præfiks** og typen: `Ordreflow\|INBOUNDCALL` |
+| `Data` | tekst, op til 256 KB | JSON med hvad miljøet indeholder og dets historik |
+
+Én række pr. flow. `Data` for `UAT_Ordreflow` ser fx sådan ud:
+
+```json
+{
+  "flowName": "UAT_Ordreflow",
+  "version": "2.0",
+  "publishedAt": "2026-09-08T10:12:00Z",
+  "promotedFrom": "Kunde 2 A/S — TEST",
+  "promotedAt": "2026-09-08T10:12:00Z",
+  "sourceVersion": "2.0",
+  "hash": "9f3c…",
+  "kind": "migration",
+  "by": "anna@kunde.dk",
+  "bySource": "genesys",
+  "at": 1788516720000,
+  "releases": [
+    { "id": "…", "at": 1788516720000, "kind": "migration", "sourceName": "Kunde 2 A/S — TEST",
+      "prevVersion": "1.0", "newVersion": "2.0", "by": "anna@kunde.dk", "note": "CHG-1234",
+      "diffSummary": { "added": 4, "removed": 1 }, "cascade": [], "rolledBackBy": null }
+  ]
+}
+```
+
+`by` er Genesys-brugeren når miljøet er logget ind med PKCE (`bySource: "genesys"`), ellers pc-brugeren (`"machine"`). `releases` holder de seneste 20 forfremmelser, genpubliceringer og rollbacks — det er dem **📝** og **↩** bygger på. Ret ikke rækkerne i hånden; værktøjet skriver dem.
 
 > **Ét manifest pr. miljø, ikke pr. org.** Deler flere virtuelle miljøer den samme org, skal hvert af dem have sin egen tabel: `DEV_ArchyGUI_Manifest`, `TEST_ArchyGUI_Manifest`, og `ArchyGUI_Manifest` for prod.
 >
@@ -262,7 +287,9 @@ Der kopieres navn, kategori, input/output-schema, request-config (URL, metode, h
 
 > **Bemærk:** Kategori-navne skal matche mellem orgs. Hvis kilden bruger `Genesys Cloud Data Actions - QM` men målet kun har `Genesys Cloud Data Actions`, skal du enten omdøbe integrationen i mål-org'en eller justere YAML'en før import.
 
-#### 🧙 Flow Builder
+#### 🧙 Flow Builder · Beta
+> **Beta.** Flow Builder er stadig under udvikling. Tjek altid YAML'en med **🔍 Valider YAML** og **🌐 Tjek mod org** før du importerer.
+
 Wizard til at bygge Archy YAML trin for trin uden at skrive YAML i hånden. Understøtter alle 16 flow-typer, Data Tables, Data Actions med schema-hentning, og transfer/disconnect-handling.
 
 #### 🗂 YAML Filer
@@ -342,8 +369,31 @@ Archy-gui/
 │   └── index.html     # Frontend SPA
 ├── test/              # Enhedstests (npm test)
 │   └── *.test.js
+├── docs/              # Skærmbillede og infografik til README
 └── package.json
 ```
+
+### Tests (for udviklere)
+
+Du behøver **ikke** køre testene for at bruge programmet. De er til den der ændrer i koden: kør dem før du committer, så opdager du hvis en ændring har ødelagt noget der virkede.
+
+```bash
+npm test
+```
+
+220 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+
+Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
+
+`test/sikkerhed.test.js` spærrer for tre huller der har været åbne: læsning uden for `flows/`, skrivning uden for `flows/`, og kommandoindsprøjtning gennem et flownavn. De er skrevet mod de angreb der faktisk virkede.
+
+`test/log-engelsk.test.js` læser `server.js` og fælder hvis en dansk besked er sluppet ind i systemloggen — også ad bagvejen gennem en kastet fejl.
+
+`test/escape.test.js` læser `index.html` og fælder hvis et navn fra en org går uescapet ind i HTML — og prøver `escapeHtml` og `jsAttr` af med navne der ville køre kode.
+
+`test/prod-rettigheder.test.js` fælder hvis en ny rute der skriver til en org, ikke står bag prod-vagten. `test/syntaks.test.js` oversætter hvert script i `index.html`, så et enkelt forkert tegn ikke kan stoppe hele brugerfladen. `test/ui-sprog.test.js` og `test/tooltips.test.js` fanger dansk uden om oversættelserne og tooltips der peger på tekster der ikke findes. `test/readme.test.js` holder versionen og antallet af tests her i takt med `package.json`, brugerfladen og `CHANGELOG.md`.
+
+Testene ligger i `test/` og kræver ingen pakker ud over Node selv (`node --test`, Node 18+).
 
 ---
 
@@ -370,27 +420,15 @@ npm install
 
 Double-click **`start.bat`** or run `node server.js` manually.
 
-### Tests
-
-```bash
-npm test
-```
-
-220 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
-
-A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
-
-`test/sikkerhed.test.js` guards three holes that were open: reading outside `flows/`, writing outside `flows/`, and command injection through a flow name. They are written against the attacks that actually worked.
-
-`test/log-engelsk.test.js` reads `server.js` and fails if a Danish message has slipped into the system log — including by way of a thrown error.
-
-`test/escape.test.js` reads `index.html` and fails if a name from an org reaches the HTML unescaped — and exercises `escapeHtml` and `jsAttr` with names that would otherwise run code.
-
-`test/prod-rettigheder.test.js` fails if a new route that writes to an org is not behind the prod guard. `test/syntaks.test.js` compiles every script in `index.html`, so a single wrong character cannot stop the whole UI. `test/ui-sprog.test.js` and `test/tooltips.test.js` catch Danish bypassing the translations and tooltips pointing to texts that do not exist. `test/readme.test.js` keeps the version and the test count here in step with `package.json`, the UI and `CHANGELOG.md`.
-
-The tests live in `test/` and need nothing beyond Node itself (`node --test`, Node 18+).
+When groups are set up, **the app opens on Pipeline** with the customer you last worked on — as in the picture at the top. The board is fetched when you press *Show pipeline*.
 
 ---
+
+### How it fits together
+
+![How Archy GUI fits together](docs/overblik.en.svg)
+
+A **customer** has one or more **groups**, and each group is a **pipeline** of environments: dev → test → uat → prod. An environment is one Genesys org seen through one OAuth client. When several environments share an org, they are told apart by a **prefix** in the flow name. Flows are **promoted** one stage at a time, and each environment keeps its own history in a **manifest table** — a Genesys Data Table in the org. Prod is locked behind a personal login, and when a **common module** changes, the flows that use it are republished in the same environment.
 
 ### Features
 
@@ -508,7 +546,39 @@ The same offer comes when a module is **published in Flow Browser**, **imported 
 
 **Guards, enforced on the server:** migrating across groups is blocked; prod requires a deliberate confirmation **and a personal login with the permission** (see Security); the source must be published; source and target cannot be the same environment.
 
-**Shared manifest.** Each environment can have a datatable — `ArchyGUI_Manifest`, prefixed if the environment has a prefix — describing **itself**: what the org holds, when it arrived, and who did it. Because each org only writes about itself, two people on different PCs can never disagree about the same cell. The table is created with a button, never on its own.
+**Shared manifest.** Each environment can have a **Genesys Data Table** in its org — the same kind of table you see under *Architect → Data Tables* — named `ArchyGUI_Manifest`, prefixed if the environment has a prefix. It describes **itself**: what the org holds, when it arrived, and who did it. Because each org only writes about itself, two people on different PCs can never disagree about the same cell. The table is created with the button under *Shared manifest* on Pipeline, never on its own, and needs the permission `architect:datatable:add`. Without it the tool falls back on a local file that is not shared.
+
+The table has two columns:
+
+| Column | Type | Content |
+|---|---|---|
+| `key` | string (Lookup Key), up to 256 characters | The flow's **base name without prefix** and its type: `Ordreflow\|INBOUNDCALL` |
+| `Data` | string, up to 256 KB | JSON with what the environment holds and its history |
+
+One row per flow. `Data` for `UAT_Ordreflow` looks like this:
+
+```json
+{
+  "flowName": "UAT_Ordreflow",
+  "version": "2.0",
+  "publishedAt": "2026-09-08T10:12:00Z",
+  "promotedFrom": "Kunde 2 A/S — TEST",
+  "promotedAt": "2026-09-08T10:12:00Z",
+  "sourceVersion": "2.0",
+  "hash": "9f3c…",
+  "kind": "migration",
+  "by": "anna@kunde.dk",
+  "bySource": "genesys",
+  "at": 1788516720000,
+  "releases": [
+    { "id": "…", "at": 1788516720000, "kind": "migration", "sourceName": "Kunde 2 A/S — TEST",
+      "prevVersion": "1.0", "newVersion": "2.0", "by": "anna@kunde.dk", "note": "CHG-1234",
+      "diffSummary": { "added": 4, "removed": 1 }, "cascade": [], "rolledBackBy": null }
+  ]
+}
+```
+
+`by` is the Genesys user when the environment is logged in with PKCE (`bySource: "genesys"`), otherwise the PC user (`"machine"`). `releases` holds the latest 20 promotions, republishes and rollbacks — they are what **📝** and **↩** build on. Do not edit the rows by hand; the tool writes them.
 
 > **One manifest per environment, not per org.** If several virtual environments share one org, each needs its own table: `DEV_ArchyGUI_Manifest`, `TEST_ArchyGUI_Manifest`, and `ArchyGUI_Manifest` for prod.
 >
@@ -585,7 +655,9 @@ Name, category, input/output schema, request config (URL, method, headers) and t
 
 > **Note:** Category names must match between orgs. If the source uses `Genesys Cloud Data Actions - QM` but the target only has `Genesys Cloud Data Actions`, either rename the integration in the target org or adjust the category in your YAML before importing.
 
-#### 🧙 Flow Builder
+#### 🧙 Flow Builder · Beta
+> **Beta.** Flow Builder is still in development. Always check the YAML with **🔍 Validate YAML** and **🌐 Check against org** before importing.
+
 Step-by-step wizard to build Archy YAML without writing it by hand. Supports all 16 flow types, Data Tables, Data Actions with schema fetching, and transfer/disconnect handling.
 
 #### 🗂 YAML Files
@@ -664,5 +736,28 @@ Archy-gui/
 │   └── index.html     # Frontend SPA
 ├── test/              # Unit tests (npm test)
 │   └── *.test.js
+├── docs/              # Screenshot and infographic for the README
 └── package.json
 ```
+
+### Tests (for developers)
+
+You do **not** need to run the tests to use the app. They are for whoever changes the code: run them before committing, and you find out if a change broke something that worked.
+
+```bash
+npm test
+```
+
+220 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+
+A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
+
+`test/sikkerhed.test.js` guards three holes that were open: reading outside `flows/`, writing outside `flows/`, and command injection through a flow name. They are written against the attacks that actually worked.
+
+`test/log-engelsk.test.js` reads `server.js` and fails if a Danish message has slipped into the system log — including by way of a thrown error.
+
+`test/escape.test.js` reads `index.html` and fails if a name from an org reaches the HTML unescaped — and exercises `escapeHtml` and `jsAttr` with names that would otherwise run code.
+
+`test/prod-rettigheder.test.js` fails if a new route that writes to an org is not behind the prod guard. `test/syntaks.test.js` compiles every script in `index.html`, so a single wrong character cannot stop the whole UI. `test/ui-sprog.test.js` and `test/tooltips.test.js` catch Danish bypassing the translations and tooltips pointing to texts that do not exist. `test/readme.test.js` keeps the version and the test count here in step with `package.json`, the UI and `CHANGELOG.md`.
+
+The tests live in `test/` and need nothing beyond Node itself (`node --test`, Node 18+).

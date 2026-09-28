@@ -18,6 +18,9 @@ app.use(express.json({ limit: '25mb' }));
 // rettigheden. Selve vagten står ved OAuth-koden længere nede.
 app.use((req, res, next) => prodWriteGate(req, res, next));
 app.use(express.static(path.join(__dirname, 'public')));
+// Skærmbilleder og infografik som README'en viser — også på README-siden i
+// programmet, hvor de ellers ville mangle.
+app.use('/docs', express.static(path.join(__dirname, 'docs')));
 
 const CUSTOMERS_FILE = path.join(__dirname, 'customers.json');
 const FLOWS_DIR = path.join(__dirname, 'flows');

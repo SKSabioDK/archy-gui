@@ -387,6 +387,7 @@
 
   /* ── Markdown / README viewer ── */
   .md-body { max-width: 820px; line-height: 1.75; font-family: var(--sans); font-size: 14px; }
+  .md-body img { max-width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--border); margin: 8px 0; }
   .md-body h1 { font-size: 26px; font-weight: 800; margin: 0 0 6px; }
   .md-body h2 { font-size: 19px; font-weight: 700; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); color: var(--accent); }
   .md-body h3 { font-size: 14px; font-weight: 700; margin: 22px 0 8px; color: var(--text); }
@@ -492,7 +493,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.46.2 · Archy GUI</div>
+    <div class="version" id="app-version">v1.46.3 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1236,8 +1237,10 @@
   <div class="wiz-modal">
     <div class="wiz-header">
       <div>
-        <div style="font-size:16px;font-weight:800">📝 Flow YAML Builder</div>
+        <div style="font-size:16px;font-weight:800">📝 Flow YAML Builder
+          <span style="font-size:10px;font-weight:700;letter-spacing:1px;padding:2px 6px;margin-left:6px;border:1px solid var(--yellow);color:var(--yellow);border-radius:4px;vertical-align:middle">BETA</span></div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px" id="wiz-hdr-sub"></div>
+        <div style="font-size:11px;color:var(--yellow);margin-top:4px" data-i18n="wiz_beta_note">Beta — tjek altid YAML'en med 🔍 Valider YAML og 🌐 Tjek mod org før du importerer.</div>
       </div>
       <button onclick="closeYamlWizard()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;line-height:1;padding:2px 6px">✕</button>
     </div>
@@ -1366,7 +1369,7 @@ const LANGS = {
     btn_login:'🔑 Login', auth_status_connected:'Forbundet',
     err_fields_required:'Alle felter er påkrævet', msg_customer_added:'Kunde tilføjet:',
     nav_readme:'README', page_readme_sub:'Dokumentation & hjælp', loading_readme:'Henter README…',
-    btn_yaml_builder:'📝 Flow Builder',
+    btn_yaml_builder:'📝 Flow Builder · Beta',
     opt_select_customer:'— Vælg kunde —',
     err_select_customer_flow:'Vælg kunde og flow', err_select_customer_yaml:'Vælg kunde og indsæt YAML',
     wiz_step1:'1 · Flow info', wiz_step2:'2 · Datatabeller', wiz_step3:'3 · Ekstra', wiz_step4:'4 · Preview',
@@ -1804,7 +1807,8 @@ const LANGS = {
     help_dataactions:'Migrerer det der ikke er flows: **Data Actions**, **Data Tabeller** og **User Prompts**.\n• Data Actions hører til en integration. Vælg kilde-integration, så vises kun actions derfra, og grupperingen bevares i målet.\n• Data Tabeller migrerer **strukturen** — kolonnerne. Rækkerne følger ikke med.\n• User Prompts tager både TTS-teksten og indtalt lyd med. Prompts med lyd er markeret 🔊.\n• **Function Data Actions kan ikke migreres** — deres URL er et id på en function der kun findes i kilde-org\'en.',
     help_export:'Eksporterer flows til YAML-filer på denne maskine.\n• Vælg miljø — listen over dets flows vises med det samme. Deler flere miljøer org\'en, vises kun dette miljøs egne.\n• Skriv for at filtrere. `*` viser alle, og en stjerne inde i teksten er et jokertegn: `DEV_*log` finder DEV_Create Logitems.\n• Typen sættes automatisk når du vælger flowet.\n• **Export Alle Flows** henter hele miljøet med en fremgangsindikator og kan afbrydes undervejs.\n• Filerne lander under `flows/<miljø>/` og bruges også af migrering og sammenligning.',
     help_import:'Opret, opdater eller publicér et flow ud fra YAML.\n• Indsæt teksten, upload en fil eller træk den ind.\n• **🔍 Valider YAML** tjekker syntaksen i browseren uden at kalde noget.\n• **🌐 Tjek mod org** slår op om division, køer, tabeller, data actions og prompts findes i målet — **inden** du importerer.\n• **Import handling** vælger om flowet oprettes, opdateres eller oprettes og publiceres.\n• Publicerer du et **common module**, tilbydes du bagefter at genpublicere de flows der bruger det.\n• Import til **prod** kræver dit prod-login med rettigheden.',
-    help_flowbuilder:'Bygger et YAML-skelet til et nyt flow, så du ikke skal skrive det i hånden.\n• Vælg flowtype og sprog, giv det et navn, og få en gyldig YAML tilbage.\n• Resultatet lander i Import YAML, hvor du kan rette det til inden du importerer.\n• Det er et **udgangspunkt**, ikke et færdigt flow — selve logikken bygger du i Architect eller ved at rette YAML\'en.',
+    wiz_beta_note:'Beta — tjek altid YAML\'en med 🔍 Valider YAML og 🌐 Tjek mod org før du importerer.',
+    help_flowbuilder:'**Beta.** Bygger et YAML-skelet til et nyt flow, så du ikke skal skrive det i hånden.\n• Funktionen er stadig i beta — tjek altid resultatet før du importerer.\n• Vælg flowtype og sprog, giv det et navn, og få en gyldig YAML tilbage.\n• Resultatet lander i Import YAML, hvor du kan rette det til inden du importerer.\n• Det er et **udgangspunkt**, ikke et færdigt flow — selve logikken bygger du i Architect eller ved at rette YAML\'en.',
     help_files:'De YAML-filer der ligger på denne maskine.\n• Filerne kommer fra Export YAML **og** fra migreringer og sammenligninger — derfor kan der dukke filer op du ikke selv har eksporteret.\n• Filtrér på kunde og type, og se kun den nyeste udgave af hvert flow.\n• **Send til import** lægger filen over på Import YAML-siden — den importerer ikke af sig selv.\n• **Oprydning** beholder de to nyeste udgaver af hvert flow, så du kan falde tilbage.',
     help_syslog:'Alt hvad værktøjet har foretaget sig, nyeste øverst.\n• Filtrér på tidsrum, niveau, handling, kunde og fritekst.\n• Manglende afhængigheder ved en migrering havner her, så du kan finde dem igen bagefter.\n• **SECURITY** viser prod-login, hvem der fik eller ikke fik deploy-ret og hvorfor, og hvert forsøg på at skrive til prod der blev afvist.\n• Credentials skrives **aldrig** i loggen: hemmeligheder maskeres, og client-id\'er forkortes.',
     help_flowbuilder_title:'Flow Builder',
@@ -1953,7 +1957,7 @@ const LANGS = {
     btn_login:'🔑 Login', auth_status_connected:'Connected',
     err_fields_required:'All fields are required', msg_customer_added:'Customer added:',
     nav_readme:'README', page_readme_sub:'Documentation & help', loading_readme:'Loading README…',
-    btn_yaml_builder:'📝 Flow Builder',
+    btn_yaml_builder:'📝 Flow Builder · Beta',
     opt_select_customer:'— Select customer —',
     err_select_customer_flow:'Select customer and flow', err_select_customer_yaml:'Select customer and paste YAML',
     wiz_step1:'1 · Flow info', wiz_step2:'2 · Data & Actions', wiz_step3:'3 · Extra', wiz_step4:'4 · Preview',
@@ -2391,7 +2395,8 @@ const LANGS = {
     help_dataactions:'Migrates what is not a flow: **Data Actions**, **Data Tables** and **User Prompts**.\n• Data Actions belong to an integration. Pick the source integration and only its actions are shown, so the grouping is kept in the target.\n• Data Tables migrate the **structure** — the columns. The rows do not come along.\n• User Prompts bring both the TTS text and recorded audio. Prompts with audio are marked 🔊.\n• **Function Data Actions cannot be migrated** — their URL is an id for a function that exists only in the source org.',
     help_export:'Exports flows to YAML files on this machine.\n• Choose an environment — its flows are listed at once. When several environments share an org, only this one\'s own are shown.\n• Type to filter. `*` shows all, and a star inside the text is a wildcard: `DEV_*log` finds DEV_Create Logitems.\n• The type is set automatically when you pick the flow.\n• **Export All Flows** fetches the whole environment with a progress indicator and can be cancelled.\n• Files land under `flows/<environment>/` and are also used by migration and comparison.',
     help_import:'Create, update or publish a flow from YAML.\n• Paste the text, upload a file or drag it in.\n• **🔍 Validate YAML** checks the syntax in the browser without calling anything.\n• **🌐 Check against org** looks up whether division, queues, tables, data actions and prompts exist in the target — **before** you import.\n• **Import action** chooses whether the flow is created, updated, or created and published.\n• When you publish a **common module**, you are then offered to republish the flows that use it.\n• Importing to **prod** requires your prod login with the permission.',
-    help_flowbuilder:'Builds a YAML skeleton for a new flow so you do not have to write it by hand.\n• Pick a flow type and language, give it a name, and get valid YAML back.\n• The result lands in Import YAML, where you can adjust it before importing.\n• It is a **starting point**, not a finished flow — the logic itself you build in Architect or by editing the YAML.',
+    wiz_beta_note:'Beta — always check the YAML with 🔍 Validate YAML and 🌐 Check against org before importing.',
+    help_flowbuilder:'**Beta.** Builds a YAML skeleton for a new flow so you do not have to write it by hand.\n• The feature is still in beta — always check the result before importing.\n• Pick a flow type and language, give it a name, and get valid YAML back.\n• The result lands in Import YAML, where you can adjust it before importing.\n• It is a **starting point**, not a finished flow — the logic itself you build in Architect or by editing the YAML.',
     help_files:'The YAML files sitting on this machine.\n• The files come from Export YAML **and** from migrations and comparisons — which is why files can appear that you did not export yourself.\n• Filter by customer and type, and see only the newest version of each flow.\n• **Send to import** puts the file on the Import YAML page — it does not import on its own.\n• **Cleanup** keeps the two newest versions of each flow so you can fall back.',
     help_syslog:'Everything the tool has done, newest first.\n• Filter by time span, level, action, customer and free text.\n• Missing dependencies during a migration end up here, so you can find them afterwards.\n• **SECURITY** shows prod logins, who did or did not get deploy rights and why, and every rejected attempt to write to prod.\n• Credentials are **never** written to the log: secrets are masked and client ids shortened.',
     help_flowbuilder_title:'Flow Builder',
@@ -2540,7 +2545,7 @@ const LANGS = {
     btn_login:'🔑 Connexion', auth_status_connected:'Connecté',
     err_fields_required:'Tous les champs sont requis', msg_customer_added:'Client ajouté :',
     nav_readme:'README', page_readme_sub:'Documentation & aide', loading_readme:'Chargement du README…',
-    btn_yaml_builder:'📝 Flow Builder',
+    btn_yaml_builder:'📝 Flow Builder · Beta',
     opt_select_customer:'— Sélectionner un client —',
     err_select_customer_flow:'Sélectionnez un client et un flow', err_select_customer_yaml:'Sélectionnez un client et collez le YAML',
     wiz_step1:'1 · Flow info', wiz_step2:'2 · Données & Actions', wiz_step3:'3 · Extra', wiz_step4:'4 · Aperçu',
@@ -2978,7 +2983,8 @@ const LANGS = {
     help_dataactions:'Migre ce qui n\'est pas un flow : **Data Actions**, **tables de données** et **prompts utilisateur**.\n• Les Data Actions appartiennent à une intégration. Choisissez l\'intégration source : seules ses actions sont affichées et le regroupement est conservé.\n• Les tables de données migrent la **structure** — les colonnes. Les lignes ne suivent pas.\n• Les prompts emportent le texte TTS et l\'audio enregistré. Ceux avec audio sont marqués 🔊.\n• **Les Function Data Actions ne peuvent pas être migrées** — leur URL est l\'id d\'une fonction qui n\'existe que dans l\'org source.',
     help_export:'Exporte les flows en fichiers YAML sur cette machine.\n• Choisissez un environnement — ses flows sont listés aussitôt. Si plusieurs environnements partagent une org, seuls les siens sont affichés.\n• Tapez pour filtrer. `*` affiche tout, et une étoile dans le texte est un joker : `DEV_*log` trouve DEV_Create Logitems.\n• Le type est défini automatiquement quand vous choisissez le flow.\n• **Exporter tous les flows** récupère tout l\'environnement avec une progression et peut être interrompu.\n• Les fichiers arrivent sous `flows/<environnement>/` et servent aussi à la migration et à la comparaison.',
     help_import:'Créer, mettre à jour ou publier un flow à partir de YAML.\n• Collez le texte, téléversez un fichier ou glissez-le.\n• **🔍 Valider YAML** vérifie la syntaxe dans le navigateur sans rien appeler.\n• **🌐 Vérifier dans l\'org** contrôle que division, files, tables, data actions et prompts existent dans la cible — **avant** l\'import.\n• **Action d\'import** choisit de créer, mettre à jour, ou créer et publier.\n• Si vous publiez un **common module**, on vous propose ensuite de republier les flows qui l\'utilisent.\n• Importer en **prod** exige votre connexion prod avec la permission.',
-    help_flowbuilder:'Construit un squelette YAML pour un nouveau flow, pour ne pas l\'écrire à la main.\n• Choisissez le type de flow et la langue, donnez-lui un nom, et récupérez un YAML valide.\n• Le résultat arrive dans Import YAML, où vous pouvez l\'ajuster avant d\'importer.\n• C\'est un **point de départ**, pas un flow fini — la logique se construit dans Architect ou en éditant le YAML.',
+    wiz_beta_note:'Bêta — vérifiez toujours le YAML avec 🔍 Valider YAML et 🌐 Vérifier dans l\'org avant d\'importer.',
+    help_flowbuilder:'**Bêta.** Construit un squelette YAML pour un nouveau flow, pour ne pas l\'écrire à la main.\n• La fonction est encore en bêta — vérifiez toujours le résultat avant d\'importer.\n• Choisissez le type de flow et la langue, donnez-lui un nom, et récupérez un YAML valide.\n• Le résultat arrive dans Import YAML, où vous pouvez l\'ajuster avant d\'importer.\n• C\'est un **point de départ**, pas un flow fini — la logique se construit dans Architect ou en éditant le YAML.',
     help_files:'Les fichiers YAML présents sur cette machine.\n• Ils viennent d\'Export YAML **et** des migrations et comparaisons — d\'où des fichiers que vous n\'avez pas exportés vous-même.\n• Filtrez par client et par type, et ne voyez que la version la plus récente de chaque flow.\n• **Envoyer vers import** place le fichier sur la page Import YAML — il n\'importe pas tout seul.\n• **Nettoyage** conserve les deux versions les plus récentes de chaque flow, pour pouvoir revenir en arrière.',
     help_syslog:'Tout ce que l\'outil a fait, le plus récent en haut.\n• Filtrez par période, niveau, action, client et texte libre.\n• Les dépendances manquantes lors d\'une migration arrivent ici, pour les retrouver ensuite.\n• **SECURITY** montre les connexions prod, qui a obtenu ou non le droit de déployer et pourquoi, et chaque tentative d\'écriture en prod refusée.\n• Les identifiants ne sont **jamais** écrits : les secrets sont masqués et les client id raccourcis.',
     help_flowbuilder_title:'Flow Builder',
@@ -3127,7 +3133,7 @@ const LANGS = {
     btn_login:'🔑 Inloggen', auth_status_connected:'Verbonden',
     err_fields_required:'Alle velden zijn verplicht', msg_customer_added:'Klant toegevoegd:',
     nav_readme:'README', page_readme_sub:'Documentatie & hulp', loading_readme:'README laden…',
-    btn_yaml_builder:'📝 Flow Builder',
+    btn_yaml_builder:'📝 Flow Builder · Beta',
     opt_select_customer:'— Klant selecteren —',
     err_select_customer_flow:'Klant en flow selecteren', err_select_customer_yaml:'Klant selecteren en YAML invoegen',
     wiz_step1:'1 · Flow info', wiz_step2:'2 · Gegevens & Acties', wiz_step3:'3 · Extra', wiz_step4:'4 · Preview',
@@ -3565,7 +3571,8 @@ const LANGS = {
     help_dataactions:'Migreert wat geen flow is: **Data Actions**, **datatables** en **user prompts**.\n• Data Actions horen bij een integratie. Kies de bronintegratie en alleen die acties worden getoond, zodat de groepering in het doel blijft.\n• Datatables migreren de **structuur** — de kolommen. De rijen gaan niet mee.\n• User prompts nemen zowel de TTS-tekst als opgenomen audio mee. Prompts met audio zijn gemarkeerd met 🔊.\n• **Function Data Actions kunnen niet gemigreerd worden** — hun URL is een id van een functie die alleen in de bronorg bestaat.',
     help_export:'Exporteert flows naar YAML-bestanden op deze machine.\n• Kies een omgeving — de flows worden meteen getoond. Delen meerdere omgevingen een org, dan alleen de eigen.\n• Typ om te filteren. `*` toont alles, en een ster in de tekst is een jokerteken: `DEV_*log` vindt DEV_Create Logitems.\n• Het type wordt automatisch gezet als je de flow kiest.\n• **Alle flows exporteren** haalt de hele omgeving op met voortgang en kan worden afgebroken.\n• Bestanden komen in `flows/<omgeving>/` en worden ook gebruikt voor migratie en vergelijking.',
     help_import:'Een flow aanmaken, bijwerken of publiceren vanuit YAML.\n• Plak de tekst, upload een bestand of sleep het erin.\n• **🔍 YAML valideren** controleert de syntaxis in de browser zonder iets aan te roepen.\n• **🌐 Controleren tegen org** kijkt of divisie, wachtrijen, tabellen, data actions en prompts in het doel bestaan — **voordat** je importeert.\n• **Importactie** kiest aanmaken, bijwerken, of aanmaken en publiceren.\n• Publiceer je een **common module**, dan krijg je daarna aangeboden de flows die hem gebruiken opnieuw te publiceren.\n• Importeren naar **prod** vereist je prod-login met de permissie.',
-    help_flowbuilder:'Bouwt een YAML-skelet voor een nieuwe flow, zodat je het niet met de hand hoeft te schrijven.\n• Kies flowtype en taal, geef een naam, en krijg geldige YAML terug.\n• Het resultaat komt in Import YAML, waar je het kunt aanpassen voor je importeert.\n• Het is een **startpunt**, geen afgeronde flow — de logica bouw je in Architect of door de YAML te bewerken.',
+    wiz_beta_note:'Bèta — controleer de YAML altijd met 🔍 YAML valideren en 🌐 Controleren tegen org voordat je importeert.',
+    help_flowbuilder:'**Bèta.** Bouwt een YAML-skelet voor een nieuwe flow, zodat je het niet met de hand hoeft te schrijven.\n• De functie is nog in bèta — controleer het resultaat altijd voordat je importeert.\n• Kies flowtype en taal, geef een naam, en krijg geldige YAML terug.\n• Het resultaat komt in Import YAML, waar je het kunt aanpassen voor je importeert.\n• Het is een **startpunt**, geen afgeronde flow — de logica bouw je in Architect of door de YAML te bewerken.',
     help_files:'De YAML-bestanden op deze machine.\n• Ze komen van Export YAML **en** van migraties en vergelijkingen — daarom kunnen er bestanden opduiken die je niet zelf exporteerde.\n• Filter op klant en type, en zie alleen de nieuwste versie van elke flow.\n• **Naar import sturen** zet het bestand op de Import YAML-pagina — het importeert niet vanzelf.\n• **Opruimen** houdt de twee nieuwste versies van elke flow, zodat je kunt terugvallen.',
     help_syslog:'Alles wat de tool heeft gedaan, nieuwste bovenaan.\n• Filter op periode, niveau, actie, klant en vrije tekst.\n• Ontbrekende afhankelijkheden bij een migratie komen hier terecht, zodat je ze later terugvindt.\n• **SECURITY** toont prod-logins, wie wel of geen deployrecht kreeg en waarom, en elke geweigerde poging om naar prod te schrijven.\n• Credentials worden **nooit** gelogd: secrets worden gemaskeerd en client-id\'s ingekort.',
     help_flowbuilder_title:'Flow Builder',
@@ -3714,7 +3721,7 @@ const LANGS = {
     btn_login:'🔑 Iniciar sesión', auth_status_connected:'Conectado',
     err_fields_required:'Todos los campos son obligatorios', msg_customer_added:'Cliente añadido:',
     nav_readme:'README', page_readme_sub:'Documentación y ayuda', loading_readme:'Cargando README…',
-    btn_yaml_builder:'📝 Flow Builder',
+    btn_yaml_builder:'📝 Flow Builder · Beta',
     opt_select_customer:'— Seleccionar cliente —',
     err_select_customer_flow:'Selecciona cliente y flow', err_select_customer_yaml:'Selecciona cliente e inserta YAML',
     wiz_step1:'1 · Flow info', wiz_step2:'2 · Datos & Acciones', wiz_step3:'3 · Extra', wiz_step4:'4 · Vista previa',
@@ -4152,7 +4159,8 @@ const LANGS = {
     help_dataactions:'Migra lo que no es un flow: **Data Actions**, **tablas de datos** y **prompts de usuario**.\n• Las Data Actions pertenecen a una integración. Elija la integración de origen y solo se mostrarán sus acciones, conservando la agrupación.\n• Las tablas de datos migran la **estructura**: las columnas. Las filas no se llevan.\n• Los prompts llevan tanto el texto TTS como el audio grabado. Los que tienen audio están marcados con 🔊.\n• **Las Function Data Actions no se pueden migrar**: su URL es un id de una función que solo existe en la org de origen.',
     help_export:'Exporta flows a archivos YAML en esta máquina.\n• Elija un entorno — sus flows se listan al instante. Si varios entornos comparten una org, solo se muestran los propios.\n• Escriba para filtrar. `*` muestra todos, y un asterisco dentro del texto es un comodín: `DEV_*log` encuentra DEV_Create Logitems.\n• El tipo se fija automáticamente al elegir el flow.\n• **Exportar todos los flows** obtiene todo el entorno con progreso y se puede cancelar.\n• Los archivos quedan en `flows/<entorno>/` y también se usan en migración y comparación.',
     help_import:'Crear, actualizar o publicar un flow a partir de YAML.\n• Pegue el texto, suba un archivo o arrástrelo.\n• **🔍 Validar YAML** comprueba la sintaxis en el navegador sin llamar a nada.\n• **🌐 Comprobar en la org** mira si división, colas, tablas, data actions y prompts existen en el destino — **antes** de importar.\n• **Acción de importación** elige crear, actualizar, o crear y publicar.\n• Si publica un **common module**, se le ofrece después volver a publicar los flows que lo usan.\n• Importar a **prod** exige su inicio de sesión de prod con el permiso.',
-    help_flowbuilder:'Construye un esqueleto YAML para un flow nuevo, para no escribirlo a mano.\n• Elija tipo de flow e idioma, póngale nombre y obtenga un YAML válido.\n• El resultado llega a Import YAML, donde puede ajustarlo antes de importar.\n• Es un **punto de partida**, no un flow terminado: la lógica se construye en Architect o editando el YAML.',
+    wiz_beta_note:'Beta — compruebe siempre el YAML con 🔍 Validar YAML y 🌐 Comprobar en la org antes de importar.',
+    help_flowbuilder:'**Beta.** Construye un esqueleto YAML para un flow nuevo, para no escribirlo a mano.\n• La función sigue en beta — compruebe siempre el resultado antes de importar.\n• Elija tipo de flow e idioma, póngale nombre y obtenga un YAML válido.\n• El resultado llega a Import YAML, donde puede ajustarlo antes de importar.\n• Es un **punto de partida**, no un flow terminado: la lógica se construye en Architect o editando el YAML.',
     help_files:'Los archivos YAML que hay en esta máquina.\n• Vienen de Export YAML **y** de migraciones y comparaciones, por eso pueden aparecer archivos que usted no exportó.\n• Filtre por cliente y tipo, y vea solo la versión más reciente de cada flow.\n• **Enviar a importar** coloca el archivo en la página Import YAML: no importa por sí solo.\n• **Limpieza** conserva las dos versiones más recientes de cada flow para poder volver atrás.',
     help_syslog:'Todo lo que ha hecho la herramienta, lo más reciente arriba.\n• Filtre por periodo, nivel, acción, cliente y texto libre.\n• Las dependencias que faltan en una migración acaban aquí, para encontrarlas después.\n• **SECURITY** muestra los inicios de sesión de prod, quién obtuvo o no el derecho de despliegue y por qué, y cada intento rechazado de escribir en prod.\n• Las credenciales **nunca** se escriben: los secrets se enmascaran y los client id se acortan.',
     help_flowbuilder_title:'Flow Builder',

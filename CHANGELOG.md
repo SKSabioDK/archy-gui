@@ -5,6 +5,27 @@
 
 ---
 
+### v1.46.3
+---
+**🇩🇰 Dansk**
+
+- **README'en har fået billeder.** Øverst et skærmbillede af Pipeline med Demo 2 — det man ser når programmet åbnes — og før funktionerne en infografik (`docs/overblik.da.svg` og `.en.svg`) der viser hvordan kunde, gruppe, miljøer, Genesys-org'er, præfikser, forfremmelse, manifest-tabellerne, prod-låsen og common modules hænger sammen.
+
+- **Delt manifest er beskrevet ordentligt.** Det står nu at det er en **Genesys Data Table** i org'en (den samme slags som under *Architect → Data Tables*), hvordan den oprettes og hvilken rettighed det kræver, hvilke to kolonner den har (`key` og `Data`), og et eksempel på en række med hele JSON-strukturen.
+
+- **Tests er flyttet til sidst** i hver sprogdel og hedder nu *Tests (for udviklere)* — de er ikke noget man skal køre for at bruge programmet.
+
+- **Flow Builder er mærket Beta** i README'en og i programmet: på knappen, i guidens overskrift med en note om at tjekke YAML'en før import, og i hjælpeteksten på alle fem sprog.
+
+- **Billederne vises også på README-siden i programmet** — serveren udleverer nu `docs/`.
+
+**🇬🇧 English**
+- **The README has pictures**: a screenshot of Pipeline with Demo 2 at the top, and an infographic of how customer, group, environments, orgs, prefixes, promotion, manifest tables, the prod lock and common modules fit together.
+- **The shared manifest is described properly**: a Genesys Data Table, how it is created, its two columns and an example row with the full JSON.
+- **Tests moved to the end** as *Tests (for developers)*. **Flow Builder is marked Beta** in the README and in the app. Images also show on the in-app README page.
+
+---
+
 ### v1.46.2
 ---
 **🇩🇰 Dansk**
