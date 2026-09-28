@@ -5,6 +5,23 @@
 
 ---
 
+### v1.46.5
+---
+**🇩🇰 Dansk**
+
+- **Data Actions sagde ingenting når mål-org'en ikke kunne læses.** Valgte man fx *Sabio APS - PROD* som mål uden at være logget ind, svarede serveren med en fejl, men brugerfladen ventede en liste — feltet til mål-integrationen forsvandt bare, uden besked. Nu står fejlen under valget, og Log ind-bjælken kommer frem.
+
+- **Data Actions-siden hentes igen efter login.** Flow Browser, Export, Pipeline og Migrer gjorde det allerede, men Data Actions var ikke med — så *OAuth token missing* blev stående selvom man lige var logget ind. Nu hentes kilde og mål igen, hver for sig.
+
+- **Pipeline-billedet fra v1.46.3 er fjernet fra git-historikken.** Det viste kundenavne i sidebjælken. De to commits er skrevet om, så de bruger det rensede billede; intet andet er ændret.
+
+**🇬🇧 English**
+- **Data Actions said nothing when the target org could not be read** (e.g. prod without a login) — the target integration field just vanished. The error is now shown, and the Log in bar appears.
+- **The Data Actions page reloads after login**, so a stale *OAuth token missing* no longer lingers.
+- **The v1.46.3 Pipeline screenshot was removed from git history** — it showed customer names in the sidebar.
+
+---
+
 ### v1.46.4
 ---
 **🇩🇰 Dansk**

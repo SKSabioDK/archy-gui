@@ -493,7 +493,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.46.4 · Archy GUI</div>
+    <div class="version" id="app-version">v1.46.5 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1819,6 +1819,7 @@ const LANGS = {
     help_syslog:'Alt hvad værktøjet har foretaget sig, nyeste øverst.\n• Filtrér på tidsrum, niveau, handling, kunde og fritekst.\n• Manglende afhængigheder ved en migrering havner her, så du kan finde dem igen bagefter.\n• **SECURITY** viser prod-login, hvem der fik eller ikke fik deploy-ret og hvorfor, og hvert forsøg på at skrive til prod der blev afvist.\n• Credentials skrives **aldrig** i loggen: hemmeligheder maskeres, og client-id\'er forkortes.',
     help_flowbuilder_title:'Flow Builder',
     help_btn_title:'Sådan bruges denne side',
+    da_target_failed:'Mål-org\'en kunne ikke læses.',
     rep_result:'{ok} genpubliceret · {fail} kunne ikke',
     rep_result_intro:'Genpublicering tager den publicerede udgave og publicerer den igen — og så tjekkes flowet mod org\'en som den er i dag. Det der er ændret eller slettet siden flowet sidst blev publiceret, stopper det.',
     rep_why_tts_voice:'Flowet bruger TTS-stemmen "{value}" ({lang}), som org\'en ikke har længere.',
@@ -2407,6 +2408,7 @@ const LANGS = {
     help_syslog:'Everything the tool has done, newest first.\n• Filter by time span, level, action, customer and free text.\n• Missing dependencies during a migration end up here, so you can find them afterwards.\n• **SECURITY** shows prod logins, who did or did not get deploy rights and why, and every rejected attempt to write to prod.\n• Credentials are **never** written to the log: secrets are masked and client ids shortened.',
     help_flowbuilder_title:'Flow Builder',
     help_btn_title:'How to use this page',
+    da_target_failed:'The target org could not be read.',
     rep_result:'{ok} republished · {fail} could not be',
     rep_result_intro:'Republishing takes the published version and publishes it again — and the flow is then checked against the org as it is today. Anything changed or deleted since the flow was last published stops it.',
     rep_why_tts_voice:'The flow uses the TTS voice "{value}" ({lang}), which the org no longer has.',
@@ -2995,6 +2997,7 @@ const LANGS = {
     help_syslog:'Tout ce que l\'outil a fait, le plus récent en haut.\n• Filtrez par période, niveau, action, client et texte libre.\n• Les dépendances manquantes lors d\'une migration arrivent ici, pour les retrouver ensuite.\n• **SECURITY** montre les connexions prod, qui a obtenu ou non le droit de déployer et pourquoi, et chaque tentative d\'écriture en prod refusée.\n• Les identifiants ne sont **jamais** écrits : les secrets sont masqués et les client id raccourcis.',
     help_flowbuilder_title:'Flow Builder',
     help_btn_title:'Comment utiliser cette page',
+    da_target_failed:'L\'org cible n\'a pas pu être lue.',
     rep_result:'{ok} republié(s) · {fail} impossible(s)',
     rep_result_intro:'Republier reprend la version publiée et la publie à nouveau — le flow est alors vérifié contre l\'org telle qu\'elle est aujourd\'hui. Tout ce qui a changé ou été supprimé depuis la dernière publication le bloque.',
     rep_why_tts_voice:'Le flow utilise la voix TTS « {value} » ({lang}), que l\'org n\'a plus.',
@@ -3583,6 +3586,7 @@ const LANGS = {
     help_syslog:'Alles wat de tool heeft gedaan, nieuwste bovenaan.\n• Filter op periode, niveau, actie, klant en vrije tekst.\n• Ontbrekende afhankelijkheden bij een migratie komen hier terecht, zodat je ze later terugvindt.\n• **SECURITY** toont prod-logins, wie wel of geen deployrecht kreeg en waarom, en elke geweigerde poging om naar prod te schrijven.\n• Credentials worden **nooit** gelogd: secrets worden gemaskeerd en client-id\'s ingekort.',
     help_flowbuilder_title:'Flow Builder',
     help_btn_title:'Zo gebruik je deze pagina',
+    da_target_failed:'De doel-org kon niet worden gelezen.',
     rep_result:'{ok} opnieuw gepubliceerd · {fail} niet gelukt',
     rep_result_intro:'Opnieuw publiceren neemt de gepubliceerde versie en publiceert die opnieuw — en dan wordt de flow getoetst aan de org zoals die nu is. Wat sinds de laatste publicatie is gewijzigd of verwijderd, houdt hem tegen.',
     rep_why_tts_voice:'De flow gebruikt de TTS-stem "{value}" ({lang}), die de org niet meer heeft.',
@@ -4171,6 +4175,7 @@ const LANGS = {
     help_syslog:'Todo lo que ha hecho la herramienta, lo más reciente arriba.\n• Filtre por periodo, nivel, acción, cliente y texto libre.\n• Las dependencias que faltan en una migración acaban aquí, para encontrarlas después.\n• **SECURITY** muestra los inicios de sesión de prod, quién obtuvo o no el derecho de despliegue y por qué, y cada intento rechazado de escribir en prod.\n• Las credenciales **nunca** se escriben: los secrets se enmascaran y los client id se acortan.',
     help_flowbuilder_title:'Flow Builder',
     help_btn_title:'Cómo usar esta página',
+    da_target_failed:'No se pudo leer la org de destino.',
     rep_result:'{ok} republicado(s) · {fail} no se pudo',
     rep_result_intro:'Volver a publicar toma la versión publicada y la publica de nuevo — y el flow se comprueba contra la org tal como está hoy. Lo que haya cambiado o se haya borrado desde la última publicación lo detiene.',
     rep_why_tts_voice:'El flow usa la voz TTS "{value}" ({lang}), que la org ya no tiene.',
@@ -4347,6 +4352,11 @@ function afterLogin(envId) {
     'page-export':   () => document.getElementById('ex-customer').value && loadExportFlows(),
     'page-pipeline': () => pipelineData && loadPipeline(),
     'page-migrate':  () => document.getElementById('m-source').value && onMigrateSourceChange(),
+    // Kilde og mål hentes hver for sig — det er ofte kun den ene der manglede login
+    'page-dataactions': () => {
+      if (document.getElementById('da-source').value) daSourceChanged();
+      if (document.getElementById('da-target').value) daLoadTargetIntegrations();
+    },
   }[side];
   if (igen) igen();
 }
@@ -7689,9 +7699,18 @@ async function daLoadTargetIntegrations() {
   daTargetInts = [];
   if (!id) { daUpdateReady(); return; }
 
+  const note = document.getElementById('da-int-note');
   try {
     const res  = await fetch(`/api/customers/${id}/integrations`);
     const data = await res.json();
+    // Kunne målet ikke læses — fx et prod-miljø uden login — skal det siges.
+    // Før faldt svaret igennem som en tom liste, og feltet forsvandt bare.
+    if (!Array.isArray(data)) {
+      if (note) { note.style.display = 'block'; note.style.color = 'var(--red)';
+                  note.textContent = '✗ ' + (data && data.error || t('da_target_failed')); }
+      daUpdateReady();
+      return;
+    }
     // Alle data-action-typer, ikke kun purecloud: en org kan også have
     // custom-rest-actions (Web Services) og function-data-actions.
     const daInts = (data || []).filter(i => /data-actions|rest-actions/.test(i.integrationType || ''));
