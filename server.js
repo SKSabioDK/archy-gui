@@ -1379,6 +1379,92 @@ function permissionGranted(held, wanted) {
   return h.slice(0, 3).every((x, i) => x === '*' || x.toLowerCase() === w[i].toLowerCase());
 }
 
+// Hvad hver funktion i programmet kræver i Genesys. Forbindelsestesten holder
+// miljøets rettigheder op mod listen, så man ser HVILKEN funktion der vil
+// fejle — før man står midt i en migrering. credsOnly gælder kun client
+// credentials (Archy slår sin egen klient op).
+const PERMISSION_CHECKS = [
+  { area: 'flows_read',    perms: ['architect:flow:view'] },
+  { area: 'flows_write',   perms: ['architect:flow:add', 'architect:flow:edit'] },
+  { area: 'flows_publish', perms: ['architect:flow:publish'] },
+  { area: 'archy_client',  perms: ['oauth:client:view'], credsOnly: true },
+  { area: 'datatables',    perms: ['architect:datatable:view', 'architect:datatable:add',
+                                   'architect:datatableRow:view', 'architect:datatableRow:add', 'architect:datatableRow:edit'] },
+  { area: 'dataactions',   perms: ['integrations:integration:view', 'integrations:action:view', 'integrations:action:add'] },
+  { area: 'prompts',       perms: ['architect:userPrompt:view', 'architect:userPrompt:add'] },
+  { area: 'divisions',     perms: ['authorization:division:view'] },
+  { area: 'queues',        perms: ['routing:queue:view'] },
+  { area: 'users',         perms: ['directory:user:view'] },
+  { area: 'dependencies',  perms: ['architect:dependencyTracking:view'] },
+];
+
+// Ren vurdering: held er rettighederne som "domæne:entitet:handling[:division]".
+function evaluatePermissions(held, authType) {
+  return PERMISSION_CHECKS
+    .filter(c => !(c.credsOnly && authType === 'oauth'))
+    .map(c => {
+      const missing = c.perms.filter(p => !held.some(h => permissionGranted(h, p)));
+      return { area: c.area, ok: missing.length === 0, missing };
+    });
+}
+
+// En rolles permissionPolicies som rettighedsstrenge.
+const rolePermissions = role => (role?.permissionPolicies || []).flatMap(p =>
+  (p.actionSet || []).map(a => `${p.domain}:${p.entityName}:${a}`));
+
+// Miljøets faktiske rettigheder. En person (PKCE) slås op direkte; en klient
+// (client credentials) via sine roller, hvilket kræver oauth:client:view og
+// authorization:role:view. Kan de ikke læses, returneres null.
+async function heldPermissions(customer, token, apiBase) {
+  const H = { headers: { Authorization: `Bearer ${token}` } };
+  if (customer.authType === 'oauth') {
+    const me = await axios.get(`${apiBase}/api/v2/users/me`, { ...H, params: { expand: 'authorization' } });
+    return me.data.authorization?.permissions || [];
+  }
+  try {
+    const cl = await axios.get(`${apiBase}/api/v2/oauth/clients/${encodeURIComponent(customer.clientId)}`, H);
+    const roleIds = [...new Set((cl.data.roleDivisions || []).map(r => r.roleId).filter(Boolean))];
+    const roles = await Promise.all(roleIds.map(id =>
+      axios.get(`${apiBase}/api/v2/authorization/roles/${encodeURIComponent(id)}`, H).then(r => r.data)));
+    return roles.flatMap(rolePermissions);
+  } catch (_) { return null; }
+}
+
+// Uden adgang til rollerne prøves læsningen af i stedet. Skriverettigheder kan
+// ikke prøves uden at skrive, så de meldes som ukendte — ikke som i orden.
+const READ_PROBES = {
+  flows_read:   ['architect:flow:view',             '/api/v2/flows'],
+  datatables:   ['architect:datatable:view',        '/api/v2/flows/datatables'],
+  dataactions:  ['integrations:action:view',        '/api/v2/integrations/actions'],
+  prompts:      ['architect:userPrompt:view',       '/api/v2/architect/prompts'],
+  divisions:    ['authorization:division:view',     '/api/v2/authorization/divisions'],
+  queues:       ['routing:queue:view',              '/api/v2/routing/queues'],
+  users:        ['directory:user:view',             '/api/v2/users'],
+};
+async function probePermissions(customer, token, apiBase) {
+  const H = { headers: { Authorization: `Bearer ${token}` }, params: { pageSize: 1 } };
+  const out = [];
+  for (const c of PERMISSION_CHECKS) {
+    if (c.credsOnly && customer.authType === 'oauth') continue;
+    const probe = READ_PROBES[c.area];
+    if (c.area === 'archy_client') {
+      try { await axios.get(`${apiBase}/api/v2/oauth/clients/${encodeURIComponent(customer.clientId)}`, H);
+            out.push({ area: c.area, ok: true, missing: [] }); }
+      catch (e) { out.push(e.response?.status === 403
+        ? { area: c.area, ok: false, missing: c.perms } : { area: c.area, ok: false, unknown: true, missing: [] }); }
+      continue;
+    }
+    if (!probe) { out.push({ area: c.area, ok: false, unknown: true, missing: [] }); continue; }
+    try { await axios.get(apiBase + probe[1], H); out.push({ area: c.area, ok: true, missing: [] }); }
+    catch (e) {
+      out.push(e.response?.status === 403
+        ? { area: c.area, ok: false, missing: [probe[0]] }
+        : { area: c.area, ok: false, unknown: true, missing: [] });
+    }
+  }
+  return out;
+}
+
 // Ren vurdering af /users/me?expand=authorization,groups mod kravene.
 // groupIds er id'erne på grupper med det krævede navn (null = ikke slået op).
 function evaluateDeployRights(me, need, groupIds, now = Date.now(), lookupError = null) {
@@ -1757,44 +1843,29 @@ app.post('/api/customers/:id/test', async (req, res) => {
       });
       orgName = org.data.name || '?';
       name    = '(Client Credentials)';
-      // Verify oauth:client:view — Archy requires this for Client Credentials (exit 99 without it).
-      try {
-        await axios.get(`${apiBase}/api/v2/oauth/clients/${customer.clientId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      } catch (e) {
-        if (e.response?.status === 403) {
-          archyReady = false;
-          addLog('WARN', `${customer.name}: missing oauth:client:view permission — Archy will fail (exit 99)`, customer.name, 'TEST');
-        }
-      }
     }
 
-    // Verify architect:flow:view for ALL auth types — required for import/export.
-    try {
-      await axios.get(`${apiBase}/api/v2/architect/flows`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { pageSize: 1, pageNumber: 1 }
-      });
-    } catch (e) {
-      if (e.response?.status === 403) {
-        archyFlowReady = false;
-        addLog('WARN', `${customer.name}: missing architect:flow:view permission — import/export will fail with access denied`, customer.name, 'TEST');
-      }
-    }
+    // Rettighederne holdes op mod hver funktion. Kan rollerne ikke læses,
+    // prøves læsningen af, og det der ikke kan prøves, meldes som ukendt.
+    const held = await heldPermissions(customer, token, apiBase);
+    const checks = held ? evaluatePermissions(held, customer.authType)
+                        : await probePermissions(customer, token, apiBase);
+    const source = customer.authType === 'oauth' ? 'user' : held ? 'roles' : 'probe';
+    const missing = checks.filter(c => !c.ok && !c.unknown);
+    const unknown = checks.filter(c => c.unknown);
+    archyReady     = !missing.some(c => c.area === 'archy_client');
+    archyFlowReady = !missing.some(c => c.area === 'flows_read');
 
-    const warns = [
-      ...(archyReady     ? [] : ['missing oauth:client:view']),
-      ...(archyFlowReady ? [] : ['missing architect:flow:view']),
-    ];
     addLog(
-      warns.length ? 'WARN' : 'SUCCESS',
-      `Connected to ${customer.name} — ${customer.authType === 'oauth' ? `user: ${name}, ` : ''}org: ${orgName}${warns.length ? ' ⚠ ' + warns.join(', ') : ''}`,
+      missing.length ? 'WARN' : 'SUCCESS',
+      `Connected to ${customer.name} — ${customer.authType === 'oauth' ? `user: ${name}, ` : ''}org: ${orgName}` +
+      (missing.length ? ` ⚠ missing ${missing.flatMap(c => c.missing).join(', ')}` : ', all permissions present') +
+      (unknown.length ? ` (not verifiable: ${unknown.map(c => c.area).join(', ')})` : ''),
       customer.name, 'TEST'
     );
-    res.json({ ok: true, name, org: orgName, archyReady, archyFlowReady });
+    res.json({ ok: true, name, org: orgName, archyReady, archyFlowReady, checks, source });
   } catch (e) {
-    const errMsg = e.response?.data?.message || e.message;
+    const errMsg = describeApiError(e);
     addLog('ERROR', `Connection error for ${customer.name}: ${errMsg}`, customer.name, 'TEST');
     res.status(401).json({ error: errMsg });
   }
@@ -6282,5 +6353,5 @@ module.exports = {
   redactSecrets,
   // prod kræver et personligt login med rettigheden
   PROD_WRITE_ROUTES, PROD_DEPLOY_WINDOW, DEFAULT_DEPLOY_PERMISSION,
-  deployRequirements, permissionGranted, evaluateDeployRights, prodWriteBlock, prodSettingsBlock
+  deployRequirements, permissionGranted, evaluateDeployRights, evaluatePermissions, rolePermissions, PERMISSION_CHECKS, prodWriteBlock, prodSettingsBlock
 };

@@ -5,6 +5,26 @@
 
 ---
 
+### v1.46.8
+---
+**🇩🇰 Dansk**
+
+- **🔌 Test tjekker nu alle de rettigheder programmet bruger.** Før prøvede testen kun to — `oauth:client:view` og `architect:flow:view` — og meldte i orden, selvom fx publicering, datatabeller eller Data Actions ville fejle. Nu slås miljøets faktiske rettigheder op (for en person direkte, for client credentials via klientens roller) og holdes op mod hver funktion. Kortet viser en liste med ✓/✗ pr. funktion og de rettigheder der mangler; systemloggen får det samme.
+
+- **Kan rollerne ikke læses,** prøves læseadgangen af i stedet, og skriverettigheder står som *kunne ikke afgøres* — ikke som i orden.
+
+- **Fejler forbindelsen, står fejlen på kortet.** Før stod der bare *Fejl*, og man måtte lede i systemloggen.
+
+- **Statusteksten overlapper ikke længere kundenavnet.** Et langt navn som *VF NL Test Archy OAuth* løb ind i *(Client Credentials)* øverst på kortet. Nu står de i hver sin kolonne, navnet ombrydes, og statusteksten afkortes med den fulde tekst som tooltip.
+
+**🇬🇧 English**
+- **🔌 Test now checks every permission the app uses** — per feature, with a ✓/✗ list and the missing permissions on the card. It used to check only two.
+- **If the roles cannot be read,** read access is probed and write permissions are shown as *could not be verified*.
+- **A failed connection shows its error on the card** instead of just *Error*.
+- **The status text no longer overlaps the customer name** on the card.
+
+---
+
 ### v1.46.7
 ---
 **🇩🇰 Dansk**

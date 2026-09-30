@@ -150,3 +150,39 @@ test('at gøre et miljø TIL prod kræver intet login', () => {
   assert.equal(s.prodSettingsBlock({ ...PROD, stage: 'uat' }, { stage: 'prod' }, null, NU), null);
   assert.equal(s.prodSettingsBlock({ ...PROD, demo: true }, { stage: 'uat' }, null, NU), null);
 });
+
+// ── Forbindelsestesten: hvilke funktioner vil fejle ─────────────────────────
+
+test('forbindelsestesten navngiver hver funktion der mangler rettigheder', () => {
+  // Før tjekkede testen kun to rettigheder og meldte "i orden" selvom fx
+  // Data Actions eller datatabeller ville fejle.
+  const held = ['architect:flow:view', 'architect:flow:add', 'architect:flow:edit', 'oauth:client:view'];
+  const r = s.evaluatePermissions(held, 'credentials');
+  const af = a => r.find(c => c.area === a);
+  assert.equal(af('flows_read').ok, true);
+  assert.equal(af('flows_publish').ok, false);
+  assert.deepEqual(af('flows_publish').missing, ['architect:flow:publish']);
+  assert.equal(af('dataactions').ok, false);
+  assert.ok(af('dataactions').missing.includes('integrations:action:view'));
+  // Alle områder er med, så intet falder stille ud af testen.
+  assert.equal(r.length, s.PERMISSION_CHECKS.length);
+});
+
+test('wildcards og divisionsrettigheder tæller med', () => {
+  const r = s.evaluatePermissions(['architect:*:*', 'integrations:*:*:div-1', '*:*:*'], 'credentials');
+  assert.ok(r.every(c => c.ok));
+});
+
+test('Archys klientopslag kræves kun ved client credentials', () => {
+  assert.ok(s.evaluatePermissions([], 'credentials').some(c => c.area === 'archy_client'));
+  assert.ok(!s.evaluatePermissions([], 'oauth').some(c => c.area === 'archy_client'));
+});
+
+test('en rolles politikker bliver til rettighedsstrenge', () => {
+  const role = { permissionPolicies: [
+    { domain: 'architect', entityName: 'flow', actionSet: ['view', 'publish'] },
+    { domain: 'routing', entityName: 'queue', actionSet: ['*'] } ] };
+  assert.deepEqual(s.rolePermissions(role),
+    ['architect:flow:view', 'architect:flow:publish', 'routing:queue:*']);
+  assert.deepEqual(s.rolePermissions(null), []);
+});

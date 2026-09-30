@@ -368,7 +368,11 @@
   .customer-card .cc-name { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
   .customer-card .cc-region { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-bottom: 14px; }
   .customer-card .cc-actions { display: flex; gap: 8px; }
-  .cc-status { position: absolute; top: 20px; right: 20px; font-size: 10px; font-family: var(--mono); color: var(--muted); display: flex; align-items: center; gap: 5px; }
+  .cc-head { display: flex; align-items: flex-start; gap: 10px; }
+  .cc-head .cc-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .cc-status { flex: 0 1 45%; min-width: 0; margin-top: 4px; justify-content: flex-end; font-size: 10px; font-family: var(--mono); color: var(--muted); display: flex; align-items: center; gap: 5px; }
+  .cc-status span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cc-status .dot { flex: none; }
 
   /* scrollbar */
   ::-webkit-scrollbar { width: 5px; }
@@ -502,7 +506,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.46.7 · Archy GUI</div>
+    <div class="version" id="app-version">v1.46.8 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1832,6 +1836,24 @@ const LANGS = {
     oauth_client_login:'Log ind på miljøet for at se OAuth-klientens navn i Genesys.',
     oauth_client_forbidden:'Klientens navn kan ikke læses — brugeren eller klienten mangler rettigheden oauth:client:view.',
     oauth_client_failed:'Klientens navn kunne ikke hentes: {err}',
+    perm_area_flows_read:'Læse og eksportere flows',
+    perm_area_flows_write:'Importere og migrere flows',
+    perm_area_flows_publish:'Publicere flows',
+    perm_area_archy_client:'Archy (slår sin egen klient op)',
+    perm_area_datatables:'Datatabeller og manifest',
+    perm_area_dataactions:'Data Actions',
+    perm_area_prompts:'Prompts',
+    perm_area_divisions:'Divisioner',
+    perm_area_queues:'Køer (afhængigheder)',
+    perm_area_users:'Brugere (afhængigheder)',
+    perm_area_dependencies:'Afhængigheder på tværs af flows',
+    perm_missing_title:'⚠ Mangler rettigheder — {n} funktion(er) vil fejle',
+    perm_all_ok:'✓ Forbindelse og alle rettigheder er i orden',
+    perm_ok_partial:'✓ Ingen manglende rettigheder fundet — men ikke alt kunne afgøres',
+    perm_missing:'mangler',
+    perm_unknown:'kunne ikke afgøres',
+    perm_source_probe:'Klientens roller kunne ikke læses (kræver oauth:client:view og authorization:role:view), så kun læseadgang er prøvet af.',
+    perm_close:'Luk',
     env_color_label:'Farve', color_auto:'Trinnets farve', color_green:'Grøn', color_yellow:'Gul', color_orange:'Orange', color_red:'Rød', color_blue:'Blå', color_grey:'Grå',
     prod_deploy_perm:'Kræver rettighed: architect:flow:publish',
     prod_deploy_group:'Kræver gruppe (valgfri)',
@@ -2446,6 +2468,24 @@ const LANGS = {
     oauth_client_login:'Log in to the environment to see the OAuth client\'s name in Genesys.',
     oauth_client_forbidden:'The client\'s name cannot be read — the user or client lacks the oauth:client:view permission.',
     oauth_client_failed:'The client\'s name could not be fetched: {err}',
+    perm_area_flows_read:'Read and export flows',
+    perm_area_flows_write:'Import and migrate flows',
+    perm_area_flows_publish:'Publish flows',
+    perm_area_archy_client:'Archy (looks up its own client)',
+    perm_area_datatables:'Data tables and manifest',
+    perm_area_dataactions:'Data Actions',
+    perm_area_prompts:'Prompts',
+    perm_area_divisions:'Divisions',
+    perm_area_queues:'Queues (dependencies)',
+    perm_area_users:'Users (dependencies)',
+    perm_area_dependencies:'Dependencies across flows',
+    perm_missing_title:'⚠ Missing permissions — {n} feature(s) will fail',
+    perm_all_ok:'✓ Connection and all permissions are fine',
+    perm_ok_partial:'✓ No missing permissions found — but not everything could be verified',
+    perm_missing:'missing',
+    perm_unknown:'could not be verified',
+    perm_source_probe:'The client\'s roles could not be read (needs oauth:client:view and authorization:role:view), so only read access was tried.',
+    perm_close:'Close',
     env_color_label:'Colour', color_auto:'Stage colour', color_green:'Green', color_yellow:'Yellow', color_orange:'Orange', color_red:'Red', color_blue:'Blue', color_grey:'Grey',
     prod_deploy_perm:'Requires permission: architect:flow:publish',
     prod_deploy_group:'Requires group (optional)',
@@ -3060,6 +3100,24 @@ const LANGS = {
     oauth_client_login:'Connectez-vous à l\'environnement pour voir le nom du client OAuth dans Genesys.',
     oauth_client_forbidden:'Le nom du client est illisible — l\'utilisateur ou le client n\'a pas la permission oauth:client:view.',
     oauth_client_failed:'Le nom du client n\'a pas pu être récupéré : {err}',
+    perm_area_flows_read:'Lire et exporter des flows',
+    perm_area_flows_write:'Importer et migrer des flows',
+    perm_area_flows_publish:'Publier des flows',
+    perm_area_archy_client:'Archy (consulte son propre client)',
+    perm_area_datatables:'Tables de données et manifeste',
+    perm_area_dataactions:'Data Actions',
+    perm_area_prompts:'Prompts',
+    perm_area_divisions:'Divisions',
+    perm_area_queues:'Files (dépendances)',
+    perm_area_users:'Utilisateurs (dépendances)',
+    perm_area_dependencies:'Dépendances entre flows',
+    perm_missing_title:'⚠ Permissions manquantes — {n} fonction(s) échoueront',
+    perm_all_ok:'✓ Connexion et permissions en ordre',
+    perm_ok_partial:'✓ Aucune permission manquante trouvée — mais tout n\'a pas pu être vérifié',
+    perm_missing:'manque',
+    perm_unknown:'impossible à vérifier',
+    perm_source_probe:'Les rôles du client sont illisibles (il faut oauth:client:view et authorization:role:view) ; seule la lecture a été testée.',
+    perm_close:'Fermer',
     env_color_label:'Couleur', color_auto:'Couleur de l\'étape', color_green:'Vert', color_yellow:'Jaune', color_orange:'Orange', color_red:'Rouge', color_blue:'Bleu', color_grey:'Gris',
     prod_deploy_perm:'Permission requise : architect:flow:publish',
     prod_deploy_group:'Groupe requis (facultatif)',
@@ -3674,6 +3732,24 @@ const LANGS = {
     oauth_client_login:'Log in op de omgeving om de naam van de OAuth-client in Genesys te zien.',
     oauth_client_forbidden:'De naam van de client kan niet worden gelezen — de gebruiker of client mist de permissie oauth:client:view.',
     oauth_client_failed:'De naam van de client kon niet worden opgehaald: {err}',
+    perm_area_flows_read:'Flows lezen en exporteren',
+    perm_area_flows_write:'Flows importeren en migreren',
+    perm_area_flows_publish:'Flows publiceren',
+    perm_area_archy_client:'Archy (zoekt zijn eigen client op)',
+    perm_area_datatables:'Datatabellen en manifest',
+    perm_area_dataactions:'Data Actions',
+    perm_area_prompts:'Prompts',
+    perm_area_divisions:'Divisies',
+    perm_area_queues:'Wachtrijen (afhankelijkheden)',
+    perm_area_users:'Gebruikers (afhankelijkheden)',
+    perm_area_dependencies:'Afhankelijkheden tussen flows',
+    perm_missing_title:'⚠ Ontbrekende permissies — {n} functie(s) zullen falen',
+    perm_all_ok:'✓ Verbinding en alle permissies in orde',
+    perm_ok_partial:'✓ Geen ontbrekende permissies gevonden — maar niet alles kon worden gecontroleerd',
+    perm_missing:'ontbreekt',
+    perm_unknown:'niet te controleren',
+    perm_source_probe:'De rollen van de client konden niet worden gelezen (vereist oauth:client:view en authorization:role:view), dus alleen leestoegang is getest.',
+    perm_close:'Sluiten',
     env_color_label:'Kleur', color_auto:'Kleur van de fase', color_green:'Groen', color_yellow:'Geel', color_orange:'Oranje', color_red:'Rood', color_blue:'Blauw', color_grey:'Grijs',
     prod_deploy_perm:'Vereiste permissie: architect:flow:publish',
     prod_deploy_group:'Vereiste groep (optioneel)',
@@ -4288,6 +4364,24 @@ const LANGS = {
     oauth_client_login:'Inicie sesión en el entorno para ver el nombre del cliente OAuth en Genesys.',
     oauth_client_forbidden:'No se puede leer el nombre del cliente — el usuario o el cliente no tiene el permiso oauth:client:view.',
     oauth_client_failed:'No se pudo obtener el nombre del cliente: {err}',
+    perm_area_flows_read:'Leer y exportar flows',
+    perm_area_flows_write:'Importar y migrar flows',
+    perm_area_flows_publish:'Publicar flows',
+    perm_area_archy_client:'Archy (consulta su propio cliente)',
+    perm_area_datatables:'Tablas de datos y manifiesto',
+    perm_area_dataactions:'Data Actions',
+    perm_area_prompts:'Prompts',
+    perm_area_divisions:'Divisiones',
+    perm_area_queues:'Colas (dependencias)',
+    perm_area_users:'Usuarios (dependencias)',
+    perm_area_dependencies:'Dependencias entre flows',
+    perm_missing_title:'⚠ Faltan permisos — {n} función(es) fallarán',
+    perm_all_ok:'✓ Conexión y todos los permisos en orden',
+    perm_ok_partial:'✓ No se encontraron permisos faltantes — pero no todo pudo verificarse',
+    perm_missing:'falta',
+    perm_unknown:'no se pudo verificar',
+    perm_source_probe:'No se pudieron leer los roles del cliente (requiere oauth:client:view y authorization:role:view), así que solo se probó la lectura.',
+    perm_close:'Cerrar',
     env_color_label:'Color', color_auto:'Color de la etapa', color_green:'Verde', color_yellow:'Amarillo', color_orange:'Naranja', color_red:'Rojo', color_blue:'Azul', color_grey:'Gris',
     prod_deploy_perm:'Permiso requerido: architect:flow:publish',
     prod_deploy_group:'Grupo requerido (opcional)',
@@ -4885,8 +4979,10 @@ function renderCustomerGrid() {
       : `<span style="font-size:10px;font-family:var(--mono);color:${isCreds ? 'var(--yellow)' : 'var(--muted)'}">${t(isCreds ? 'card_badge_creds' : 'card_badge_demo')}</span>`;
     return `
     <div class="customer-card${isCreds ? ' creds' : ''}">
-      <div class="cc-status"><div class="dot" id="card-dot-${c.id}"></div><span id="card-status-${c.id}">–</span></div>
-      <div class="cc-name">${escapeHtml(c.name)}</div>
+      <div class="cc-head">
+        <div class="cc-name">${escapeHtml(c.name)}</div>
+        <div class="cc-status"><div class="dot" id="card-dot-${c.id}"></div><span id="card-status-${c.id}">–</span></div>
+      </div>
       <div class="cc-region" style="display:flex;align-items:center;gap:8px">${escapeHtml(c.region)} ${authBadge}</div>
       <div style="margin-top:6px;font-size:11px;font-family:var(--mono)">${groupingBadge(c)}</div>
       ${c.stage === 'prod' && c.authType !== 'demo' ? `<div id="prod-lock-${c.id}" style="margin-top:6px;font-size:11px;font-family:var(--mono);color:var(--muted)"></div>` : ''}
@@ -4989,30 +5085,52 @@ async function testCustomer(id) {
   const txt    = document.getElementById('card-status-' + id);
   const warnEl = document.getElementById('card-archy-warn-' + id);
   dot.className = 'dot';
+  dot.style.background = '';
   txt.textContent = '…';
   if (warnEl) warnEl.style.display = 'none';
-  const res  = await fetch('/api/customers/' + id + '/test', {method:'POST'});
-  const data = await res.json();
-  if (data.ok) {
-    dot.classList.add('ok');
-    txt.textContent = data.name;
-    document.getElementById('chip-' + id)?.classList.add('online');
-    if (warnEl) {
-      const warns = [];
-      if (data.archyReady     === false) warns.push(t('warn_missing_oauth_view'));
-      if (data.archyFlowReady === false) warns.push(t('warn_missing_architect_perm'));
-      if (warns.length) {
-        warnEl.innerHTML = warns.join('<br>');
-        warnEl.style.display = 'block';
-      } else {
-        warnEl.style.display = 'none';
-      }
-    }
-  } else {
+  let data;
+  try { data = await fetch('/api/customers/' + id + '/test', {method:'POST'}).then(r => r.json()); }
+  catch (e) { data = { error: e.message }; }
+  if (!data.ok) {
     dot.style.background = 'var(--red)';
     txt.textContent = t('err_label');
-    if (warnEl) warnEl.style.display = 'none';
+    // Fejlen står på kortet — før stod der bare "Fejl", og man måtte lede i systemloggen.
+    showTestResult(warnEl, 'err', escapeHtml(data.error || t('err_label')));
+    return;
   }
+  dot.classList.add('ok');
+  txt.textContent = data.name;
+  txt.title = [data.name, data.org].filter(Boolean).join(' · ');
+  document.getElementById('chip-' + id)?.classList.add('online');
+  if (data.demo || !data.checks) { if (warnEl) warnEl.style.display = 'none'; return; }
+
+  // Én row pr. funktion: ✓ i orden, ✗ med de rettigheder der missingAreas, ? når
+  // det ikke kunne afgøres. Kun det der ikke er i orden, står øverst.
+  const missingAreas = data.checks.filter(c => !c.ok && !c.unknown);
+  const unknownAreas  = data.checks.filter(c => c.unknown);
+  const row = c => {
+    const label = t('perm_area_' + c.area);
+    if (c.ok) return `<div style="color:var(--green)">✓ ${label}</div>`;
+    if (c.unknown) return `<div style="color:var(--muted)">? ${label} — ${t('perm_unknown')}</div>`;
+    return `<div style="color:var(--red)">✗ ${label} — ${t('perm_missing')}: ${c.missing.map(escapeHtml).join(', ')}</div>`;
+  };
+  const sourceNote = data.source === 'probe' ? `<div style="color:var(--muted);margin-bottom:4px">${t('perm_source_probe')}</div>` : '';
+  const top = missingAreas.length
+    ? `<div style="font-weight:700;color:var(--red);margin-bottom:4px">${t('perm_missing_title').replace('{n}', missingAreas.length)}</div>`
+    : `<div style="font-weight:700;color:var(--green);margin-bottom:4px">${t(unknownAreas.length ? 'perm_ok_partial' : 'perm_all_ok')}</div>`;
+  const ordered = [...missingAreas, ...unknownAreas, ...data.checks.filter(c => c.ok)];
+  showTestResult(warnEl, missingAreas.length ? 'warn' : 'ok', top + sourceNote + ordered.map(row).join(''));
+}
+
+function showTestResult(el, kind, html) {
+  if (!el) return;
+  const rgb = { ok: '46,204,113', warn: '241,196,15', err: '231,76,60' }[kind];
+  el.style.background = `rgba(${rgb},.08)`;
+  el.style.borderColor = `rgba(${rgb},.35)`;
+  el.style.color = 'var(--text)';
+  el.style.lineHeight = '1.55';
+  el.innerHTML = html + `<div style="margin-top:6px;text-align:right"><a href="#" style="color:var(--muted)" onclick="this.closest('div').parentElement.style.display='none';return false">${t('perm_close')}</a></div>`;
+  el.style.display = 'block';
 }
 
 // ── Flow Browser ──────────────────────────────────────────────────────────────

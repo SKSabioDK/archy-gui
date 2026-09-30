@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.46.7
+# Archy GUI — Flow Manager · v1.46.8
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -11,8 +11,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.46.7**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.46.7**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.46.8**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.46.8**.
 
 ---
 
@@ -63,6 +63,8 @@ Nye miljøer oprettes altid med **🌐 OAuth (PKCE)**: du logger ind i Genesys s
 **Hjælp ved hvert felt.** Alle felter — både når man opretter et miljø og under ⚙ Indstillinger — har en etiket og et **ⓘ**. Hold musen over ⓘ for at se hvad feltet bruges til, eller klik for at folde forklaringen ud under etiketten.
 
 **Godkendelse og Client ID.** *Godkendelse* viser miljøets nuværende valg — nye miljøer får altid OAuth (PKCE), og står et ældre miljø på client credentials, siger en note at PKCE anbefales. Client ID står udfyldt, og under feltet vises **navnet på OAuth-klienten i Genesys** og dens type, så man kan finde den igen blandt kundens klienter (kræver login og `oauth:client:view`). Feltet til secret vises kun ved client credentials, og deploy-kravene kun på prod.
+
+**🔌 Test** kontrollerer forbindelsen og **rettighederne**. Programmet slår miljøets faktiske rettigheder op — for en person (PKCE) direkte, for client credentials via klientens roller — og holder dem op mod hver funktion: læse, importere og publicere flows, Archy, datatabeller og manifest, Data Actions, prompts, divisioner, køer, brugere og afhængigheder. Kortet viser en liste med ✓ og ✗ og de rettigheder der mangler. Kan klientens roller ikke læses (kræver `oauth:client:view` og `authorization:role:view`), prøves læseadgangen af i stedet, og det der ikke kan prøves uden at skrive, står som *kunne ikke afgøres*. Fejler forbindelsen, står fejlen på kortet.
 
 **Log ind hvor du står.** Mangler et miljø login, kommer der en bjælke øverst med en **Log ind**-knap — på alle sider, ikke kun Kunder — og siden hentes igen bagefter. 🔒 ved miljøet i sidebjælken logger også ind; 🟢 når man er logget ind. Hold musen over 🟢 — eller se login-mærket på kortet — for at se hvilken org man er logget ind i.
 
@@ -392,7 +394,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-227 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+231 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -451,6 +453,8 @@ New environments are always created with **🌐 OAuth (PKCE)**: you log in to Ge
 **Help on every field.** Every field — when creating an environment and under ⚙ Settings — has a label and an **ⓘ**. Hover ⓘ to see what the field is for, or click it to unfold the explanation below the label.
 
 **Authentication and Client ID.** *Authentication* shows the environment's current choice — new environments always get OAuth (PKCE), and when an older one uses client credentials, a note says PKCE is recommended. The Client ID is filled in, and below it the **name of the OAuth client in Genesys** and its type are shown, so you can find it again among the customer's clients (requires a login and `oauth:client:view`). The secret field only appears for client credentials, and the deploy requirements only on prod.
+
+**🔌 Test** checks the connection and the **permissions**. The app looks up the environment's actual permissions — directly for a person (PKCE), via the client's roles for client credentials — and holds them against each feature: reading, importing and publishing flows, Archy, data tables and manifest, Data Actions, prompts, divisions, queues, users and dependencies. The card shows a ✓/✗ list with the missing permissions. If the client's roles cannot be read (needs `oauth:client:view` and `authorization:role:view`), read access is tried instead, and what cannot be tried without writing is shown as *could not be verified*. If the connection fails, the error is shown on the card.
 
 **Log in where you are.** When an environment needs a login, a bar with a **Log in** button appears at the top — on every page, not only Customers — and the page reloads afterwards. 🔒 next to the environment in the sidebar logs in too; 🟢 once logged in. Hover 🟢 — or look at the login badge on the card — to see which org you are logged into.
 
@@ -772,7 +776,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-227 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+231 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 
