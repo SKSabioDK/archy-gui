@@ -1384,8 +1384,10 @@ function permissionGranted(held, wanted) {
 // fejle — før man står midt i en migrering. credsOnly gælder kun client
 // credentials (Archy slår sin egen klient op).
 const PERMISSION_CHECKS = [
-  { area: 'flows_read',    perms: ['architect:flow:view'] },
-  { area: 'flows_write',   perms: ['architect:flow:add', 'architect:flow:edit'] },
+  // Archy eksporterer og importerer gennem Architects egen brugerflade og
+  // fejler uden architect:ui:view — også når API'et gerne viser flowene.
+  { area: 'flows_read',    perms: ['architect:flow:view', 'architect:ui:view'] },
+  { area: 'flows_write',   perms: ['architect:flow:add', 'architect:flow:edit', 'architect:ui:view'] },
   { area: 'flows_publish', perms: ['architect:flow:publish'] },
   { area: 'archy_client',  perms: ['oauth:client:view'], credsOnly: true },
   { area: 'datatables',    perms: ['architect:datatable:view', 'architect:datatable:add',

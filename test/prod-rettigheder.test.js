@@ -156,7 +156,7 @@ test('at gøre et miljø TIL prod kræver intet login', () => {
 test('forbindelsestesten navngiver hver funktion der mangler rettigheder', () => {
   // Før tjekkede testen kun to rettigheder og meldte "i orden" selvom fx
   // Data Actions eller datatabeller ville fejle.
-  const held = ['architect:flow:view', 'architect:flow:add', 'architect:flow:edit', 'oauth:client:view'];
+  const held = ['architect:flow:view', 'architect:ui:view', 'architect:flow:add', 'architect:flow:edit', 'oauth:client:view'];
   const r = s.evaluatePermissions(held, 'credentials');
   const af = a => r.find(c => c.area === a);
   assert.equal(af('flows_read').ok, true);
@@ -166,6 +166,16 @@ test('forbindelsestesten navngiver hver funktion der mangler rettigheder', () =>
   assert.ok(af('dataactions').missing.includes('integrations:action:view'));
   // Alle områder er med, så intet falder stille ud af testen.
   assert.equal(r.length, s.PERMISSION_CHECKS.length);
+});
+
+test('eksport kræver architect:ui:view — ellers fejler Archy trods adgang til API\'et', () => {
+  // Vattenfall DE Test: testen meldte ✓ for eksport, men Archy fejlede med
+  // "missing the 'architect:ui:view' permission".
+  const r = s.evaluatePermissions(['architect:flow:view', 'oauth:client:view', 'routing:queue:view'], 'credentials');
+  const read = r.find(c => c.area === 'flows_read');
+  assert.equal(read.ok, false);
+  assert.deepEqual(read.missing, ['architect:ui:view']);
+  assert.ok(r.find(c => c.area === 'flows_write').missing.includes('architect:ui:view'));
 });
 
 test('wildcards og divisionsrettigheder tæller med', () => {

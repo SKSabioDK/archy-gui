@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.46.8
+# Archy GUI — Flow Manager · v1.46.9
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -11,8 +11,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.46.8**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.46.8**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.46.9**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.46.9**.
 
 ---
 
@@ -37,9 +37,11 @@ npm install
 
 Dobbeltklik på **`start.bat`** — den:
 1. Stopper eventuel tidligere instans på port 3737
-2. Starter serveren i baggrunden (`server.log` logges)
-3. Venter til serveren er klar
-4. Åbner automatisk **http://localhost:3737** i browseren
+2. Starter serveren **skjult i baggrunden** — output i `server.log`, fejl i `server.err.log`
+3. Venter til serveren er klar (højst 30 sekunder — ellers vises de sidste linjer af `server.err.log`)
+4. Åbner automatisk **http://localhost:3737** i browseren og lukker sit eget vindue
+
+Serveren kører videre, når vinduet er lukket. **`stop.bat`** stopper den. Kører man `start.bat` igen, genstartes serveren — fx efter en opdatering.
 
 Alternativt manuelt: `node server.js`
 
@@ -372,7 +374,8 @@ Tekniske betegnelser oversættes ikke — flow-typer (`InboundCall`, `Workflow` 
 ```
 Archy-gui/
 ├── server.js          # Express backend
-├── start.bat          # Start server + åbn browser
+├── start.bat          # Start server skjult i baggrunden + åbn browser
+├── stop.bat           # Stop serveren
 ├── customers.json     # Kunder (auto-genereret)
 ├── server.log         # Server-output
 ├── flows/             # Lokale YAML-filer
@@ -394,7 +397,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-231 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+232 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -431,7 +434,7 @@ npm install
 
 ### Starting the app
 
-Double-click **`start.bat`** or run `node server.js` manually.
+Double-click **`start.bat`** or run `node server.js` manually. `start.bat` starts the server **hidden in the background** (output in `server.log`, errors in `server.err.log`), opens **http://localhost:3737** and closes its own window — the server keeps running. **`stop.bat`** stops it, and running `start.bat` again restarts it, e.g. after an update.
 
 When groups are set up, **the app opens on Pipeline** with the customer you last worked on — as in the picture at the top. The board is fetched when you press *Show pipeline*.
 
@@ -754,7 +757,8 @@ Technical identifiers are not translated — flow types (`InboundCall`, `Workflo
 ```
 Archy-gui/
 ├── server.js          # Express backend
-├── start.bat          # Start server + open browser
+├── start.bat          # Start the server hidden in the background + open browser
+├── stop.bat           # Stop the server
 ├── customers.json     # Customer data (auto-generated)
 ├── server.log         # Server output
 ├── flows/             # Local YAML files per customer
@@ -776,7 +780,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-231 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+232 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 

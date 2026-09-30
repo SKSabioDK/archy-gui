@@ -5,6 +5,29 @@
 
 ---
 
+### v1.46.9
+---
+**🇩🇰 Dansk**
+
+- **`start.bat` behøver ikke længere et åbent vindue.** Serveren blev startet med `start /B`, som hænger på vinduet — lukkede man det, døde serveren. Nu startes den skjult som sin egen proces, browseren åbnes, og vinduet lukker sig selv. Output står i `server.log`, fejl i `server.err.log`.
+
+- **Ny `stop.bat`** stopper serveren. `start.bat` genstarter den, hvis den allerede kører.
+
+- **`start.bat` giver op efter 30 sekunder** og viser de sidste linjer af `server.err.log`, i stedet for at vente for evigt, hvis serveren ikke kan starte.
+
+- **Kun processen der lytter på porten stoppes.** Før kunne også en browserfane med forbindelse til port 3737 blive ramt.
+
+- **🔌 Test fanger nu at Archy mangler `architect:ui:view`.** Archy eksporterer og importerer gennem Architects brugerflade og fejler uden den — også når API'et gerne viser flowene. Testen meldte derfor ✓ for eksport på *Vattenfall DE Test*, mens eksporten fejlede. Rettigheden kræves nu både til at læse/eksportere og til at importere flows.
+
+**🇬🇧 English**
+- **`start.bat` no longer needs an open window** — the server runs hidden in the background and survives closing it.
+- **New `stop.bat`** stops the server; `start.bat` restarts it.
+- **`start.bat` gives up after 30 seconds** and shows the end of `server.err.log`.
+- **Only the process listening on the port is stopped.**
+- **🔌 Test now catches a missing `architect:ui:view`**, which Archy needs to export and import.
+
+---
+
 ### v1.46.8
 ---
 **🇩🇰 Dansk**
