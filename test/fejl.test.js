@@ -381,7 +381,21 @@ test('archyCredFlags nægter at bygge en kommando uden gyldigt OAuth-token', () 
   // hvor beskeden ikke fortæller at man skal logge ind igen.
   assert.throws(
     () => s.archyCredFlags({ name: 'X', authType: 'oauth', region: 'mypurecloud.de' }),
-    /log in again/
+    /Login button|log in again/
+  );
+  // Et token fra en anden org end miljøets må heller ikke nå Archy — Archy
+  // hentede før tokenet uden om org-tjekket, og kunne importere i kundens org.
+  s.tokenStore['fremmed'] = { token: 'kundens', expiresAt: Date.now() + 60000, orgId: 'kunde' };
+  assert.throws(
+    () => s.archyCredFlags({ id: 'fremmed', name: 'X', authType: 'oauth', region: 'mypurecloud.de', orgId: 'sabio' }),
+    /another org/
+  );
+  assert.equal(s.tokenStore['fremmed'], undefined, 'tokenet kasseres');
+  // Og et token uden kendt org bruges ikke.
+  s.tokenStore['uden-org'] = { token: 't', expiresAt: Date.now() + 60000 };
+  assert.throws(
+    () => s.archyCredFlags({ id: 'uden-org', name: 'X', authType: 'oauth', region: 'mypurecloud.de', orgId: 'sabio' }),
+    /another org/
   );
   s.tokenStore['udloebet'] = { token: 'gammelt', expiresAt: Date.now() - 1000 };
   assert.throws(

@@ -214,6 +214,53 @@ test('uden org-id falder nøglen tilbage på klient og region', () => {
   assert.notEqual(s.orgKeyOf({ clientId: 'a', region: 'r' }), s.orgKeyOf({ clientId: 'b', region: 'r' }));
 });
 
+test('et login i en anden org end miljøets kendte afvises', () => {
+  // Med PKCE og trusted orgs vælger brugeren org'en på login-siden. Et login i
+  // en kundes org gjorde før prod til kundens søskende.
+  const prod = { id: 'p', name: 'Prod', authType: 'oauth', orgId: 'sabio' };
+  assert.equal(s.wrongOrg(prod, 'kunde'), true);
+  assert.equal(s.wrongOrg(prod, 'sabio'), false);
+  // Uden kendt org-id er der intet at sammenligne med.
+  assert.equal(s.wrongOrg({ ...prod, orgId: '' }, 'kunde'), false);
+  assert.equal(s.wrongOrg(prod, null), false);
+});
+
+test('kun client credentials binder klienten til én org', () => {
+  // Et PKCE-login kan lande i en trusted org, så samme klient ≠ samme org.
+  assert.equal(s.clientPinsOrg({ authType: 'credentials' }), true);
+  assert.equal(s.clientPinsOrg({ authType: 'oauth' }), false);
+  assert.equal(s.clientPinsOrg({ demo: true }), false);
+});
+
+test('to PKCE-miljøer på samme klient deler ikke flowliste før org\'en kendes', () => {
+  // Pipelinen henter flowlisten én gang pr. org-nøgle. Med én PKCE-klient der
+  // kan logge ind i flere orgs, ville nøglen "klient|region" blande orgs.
+  const a = { id: 'a', authType: 'oauth', clientId: 'pkce', region: 'r' };
+  const b = { id: 'b', authType: 'oauth', clientId: 'pkce', region: 'r' };
+  assert.notEqual(s.orgKeyOf(a), s.orgKeyOf(b));
+  // Når login'et har vist org'en, deles den som normalt.
+  assert.equal(s.orgKeyOf({ ...a, orgId: 'o' }), s.orgKeyOf({ ...b, orgId: 'o' }));
+});
+
+test('pipeline med fire orgs: hvert miljø holder sig til sin egen org', () => {
+  const sabioDev  = { id: 'sd', tenant: 'Sabio', authType: 'credentials', clientId: 'c1', region: 'r', prefix: 'DEV_', orgId: 'sabio' };
+  const sabioProd = { id: 'sp', tenant: 'Sabio', authType: 'oauth',       clientId: 'p1', region: 'r', orgId: 'sabio' };
+  const kundeTest = { id: 'kt', tenant: 'Kunde', authType: 'oauth',       clientId: 'p1', region: 'r', orgId: 'kunde-test' };
+  const kundeProd = { id: 'kp', tenant: 'Kunde', authType: 'oauth',       clientId: 'p1', region: 'r', orgId: 'kunde-prod' };
+  const alle = [sabioDev, sabioProd, kundeTest, kundeProd];
+  const noegler = new Set(alle.map(s.orgKeyOf));
+  assert.equal(noegler.size, 3);  // Sabio's to miljøer deler org, kundens to gør ikke
+  // Et login i kundens org, mens man troede man loggede ind på Sabio prod, afvises.
+  assert.equal(s.wrongOrg(sabioProd, 'kunde-prod'), true);
+  // Et nyt Sabio-miljø uden org-id må ikke tage kundens org …
+  const nyt = { id: 'n', tenant: 'Sabio', authType: 'oauth', clientId: 'p1', region: 'r' };
+  assert.equal(s.orgOwnedElsewhere(nyt, 'kunde-prod', alle)?.id, 'kp');
+  // … men gerne Sabio's egen, som dev og prod allerede deler.
+  assert.equal(s.orgOwnedElsewhere(nyt, 'sabio', alle), null);
+  // Og en helt ny org er fri.
+  assert.equal(s.orgOwnedElsewhere(nyt, 'ukendt', alle), null);
+});
+
 // ── Common modules nyere end flowene der bruger dem ──────────────────────────
 
 test('et flow publiceret før modulet kører på den gamle udgave', () => {

@@ -201,7 +201,12 @@ const FORBIDDEN_LIST = '< > : " \\ | ? * % ! ^ ` $ \'';
 // Felterne PUT tager imod. Alt andet — fx "demo": true, som ville få
 // prod-vagten til at se bort fra miljøet — ignoreres.
 const EDITABLE_FIELDS = ['name', 'tenant', 'group', 'stage', 'prefix', 'orgLabel', 'division',
-  'clientId', 'region', 'authType', 'deployPermission', 'deployGroup', 'newClientSecret'];
+  'clientId', 'region', 'authType', 'deployPermission', 'deployGroup', 'newClientSecret', 'color'];
+
+// Farven et miljø vises med på tavlen og i sidebjælken. Tomt betyder trinnets
+// egen farve (dev grøn, test gul, uat orange, prod rød). Navne, ikke hex-koder,
+// så farven følger temaet.
+const ENV_COLORS = ['', 'green', 'yellow', 'orange', 'red', 'blue', 'grey'];
 
 function textError(label, v, max) {
   if (v.length > max) return `${label} må højst være ${max} tegn (er ${v.length}).`;
@@ -235,6 +240,8 @@ function envFieldError(fields, others = []) {
   }
   for (const [k, label, max] of [['tenant', 'Kunde', 40], ['group', 'Gruppe', 40], ['orgLabel', 'Org-navn', 60]])
     if (has(k)) { const e = textError(label, String(fields[k]), max); if (e) return e; }
+  if (has('color') && !ENV_COLORS.includes(String(fields.color)))
+    return `Ukendt farve "${fields.color}" — vælg en af: ${ENV_COLORS.filter(Boolean).join(', ')}.`;
   if (has('prefix')) {
     const p = String(fields.prefix);
     if (p.length > 20) return `Præfikset må højst være 20 tegn (er ${p.length}).`;
@@ -303,6 +310,7 @@ app.get('/konventioner.js', (req, res) => {
     '// Genereret af serveren — se STAGES og VERSION_SUFFIX i server.js.\n' +
     'window.KONVENTIONER = ' + JSON.stringify({
       stages: STAGES,
+      envColors: ENV_COLORS,
       versionSuffix: VERSION_SUFFIX.source,
       versionSuffixFlags: VERSION_SUFFIX.flags
     }) + ';\n'
@@ -332,19 +340,51 @@ const prefixOf = c => String(c.prefix || '');
 // nødløsning indtil id'et kendes: to miljøer i SAMME org kan sagtens have hver
 // sin OAuth-klient — fx dev med client credentials og prod med PKCE — og så
 // troede værktøjet at de lå i hver sin org, og prod så dev's flows.
+//
+// Et PKCE-miljø uden kendt org får sin egen nøgle: klienten kan logge ind i
+// flere orgs via trusted orgs, så to miljøer på samme PKCE-klient må ikke dele
+// flowliste før org'en er set ved login.
 const orgKeyOf = c => isDemo(c) ? `demo:${c.demoOrg || c.id}`
-  : c.orgId ? `org:${c.orgId}` : `${c.clientId}|${c.region}`;
+  : c.orgId ? `org:${c.orgId}`
+  : c.authType === 'oauth' ? `env:${c.id}` : `${c.clientId}|${c.region}`;
 
-// Husker org-id'et på miljøet — og på alle miljøer med samme klient, for de
-// ligger nødvendigvis i samme org. Sker én gang pr. miljø.
+// Et miljø der endnu ikke kender sin org, må ikke tage en org der allerede
+// hører til en anden kunde (tenant). Søskende i samme tenant deler gerne org —
+// Sabio's dev og prod gør — men en kundes org i Sabio's pipeline er et fejlvalg
+// på login-siden.
+const orgOwnedElsewhere = (customer, orgId, all) => !customer?.orgId && orgId
+  ? all.find(c => c.id !== customer.id && !isDemo(c) && c.orgId === orgId && tenantOf(c) !== tenantOf(customer)) || null
+  : null;
+
+// Står et token i en anden org end den miljøet allerede er kendt i? Med PKCE
+// vælger BRUGEREN org'en på Genesys' login-side — og med trusted orgs kan en
+// Sabio-bruger vælge en kundes org. Klienten binder ikke org'en; det gør kun
+// login'et. Et miljø uden kendt org-id kan ikke afsløre noget.
+const wrongOrg = (customer, orgId) => !!(customer?.orgId && orgId && customer.orgId !== orgId);
+
+// Kun client credentials er bundet til klientens egen org. Et PKCE-login kan
+// lande i en trusted org, så samme klient siger intet om samme org der.
+const clientPinsOrg = c => !isDemo(c) && c.authType !== 'oauth';
+
+// Husker org-id'et på miljøet — og på alle miljøer med samme client
+// credentials-klient, for de ligger nødvendigvis i samme org. Sker én gang pr.
+// miljø. Et kendt org-id overskrives ALDRIG: et login i en anden org gjorde
+// før prod til et søskende af kundens org, og så hentedes kundens flows som
+// prod's. Skifter et miljø reelt org, ændrer man klient eller region, og så
+// nulstilles id'et dér.
 function rememberOrgId(customer, orgId) {
   if (!orgId || !customer || isDemo(customer)) return;
+  if (wrongOrg(customer, orgId)) {
+    addLog('ERROR', `Refused to change the org id of ${customer.name}: known ${customer.orgId}, got ${orgId}`, customer.name, 'SECURITY');
+    return;
+  }
   customer.orgId = orgId;
   const all = loadCustomers();
   let changed = false;
   for (const c of all) {
-    const sameClient = c.clientId === customer.clientId && c.region === customer.region;
-    if ((c.id === customer.id || sameClient) && !isDemo(c) && c.orgId !== orgId) { c.orgId = orgId; changed = true; }
+    const sameClient = clientPinsOrg(customer) && clientPinsOrg(c) &&
+                       c.clientId === customer.clientId && c.region === customer.region;
+    if ((c.id === customer.id || sameClient) && !isDemo(c) && !c.orgId) { c.orgId = orgId; changed = true; }
   }
   if (changed) {
     saveCustomers(all);
@@ -1145,7 +1185,7 @@ app.post('/api/customers', (req, res) => {
   const tr = v => String(v ?? '').trim();
   const name = tr(req.body.name), clientId = tr(req.body.clientId), region = tr(req.body.region);
   const tenant = tr(req.body.tenant), group = tr(req.body.group), prefix = tr(req.body.prefix);
-  const orgLabel = tr(req.body.orgLabel);
+  const orgLabel = tr(req.body.orgLabel), color = tr(req.body.color);
   const deployPermission = tr(req.body.deployPermission), deployGroup = tr(req.body.deployGroup);
   const isOAuth = authType === 'oauth';
   if (authType !== undefined && !['credentials', 'oauth'].includes(authType))
@@ -1155,7 +1195,7 @@ app.post('/api/customers', (req, res) => {
   if (stage && !STAGES.includes(String(stage).toLowerCase()))
     return res.status(400).json({ error: `Ukendt trin "${stage}" — vælg et af: ${STAGES.join(', ')}` });
   const customers = loadCustomers();
-  const fejl = envFieldError({ name, clientId, region, tenant, group, prefix, orgLabel,
+  const fejl = envFieldError({ name, clientId, region, tenant, group, prefix, orgLabel, color,
                                deployPermission, deployGroup }, customers);
   if (fejl) return res.status(400).json({ error: fejl });
   const customer = {
@@ -1167,6 +1207,7 @@ app.post('/api/customers', (req, res) => {
     stage:  String(stage || '').toLowerCase() || '',
     prefix:   (prefix   || '').trim(),
     orgLabel: (orgLabel || '').trim(),
+    color,
     division: (division || '').trim(),
     deployPermission: (deployPermission || '').trim(),
     deployGroup:      (deployGroup      || '').trim()
@@ -1174,7 +1215,8 @@ app.post('/api/customers', (req, res) => {
   // Et prod-miljø med PKCE skal ikke have en secret liggende — så var der en
   // genvej uden om det personlige login.
   if (customer.stage === 'prod' && customer.authType === 'oauth') customer.clientSecret = '';
-  const kendt = customers.find(c => c.orgId && c.clientId === clientId && c.region === region);
+  const kendt = clientPinsOrg(customer) &&
+    customers.find(c => c.orgId && clientPinsOrg(c) && c.clientId === clientId && c.region === region);
   if (kendt) customer.orgId = kendt.orgId;
   const clash = prefixClash(customer, customers);
   if (clash) return res.status(400).json({ error: clash });
@@ -1206,7 +1248,7 @@ app.put('/api/customers/:id', (req, res) => {
     patch.stage = s;
   }
   for (const k of ['name', 'tenant', 'group', 'prefix', 'orgLabel', 'division', 'clientId',
-                   'region', 'deployPermission', 'deployGroup'])
+                   'region', 'deployPermission', 'deployGroup', 'color'])
     if (patch[k] !== undefined) patch[k] = String(patch[k] || '').trim();
   if (patch.authType !== undefined && !['credentials', 'oauth'].includes(patch.authType))
     return res.status(400).json({ error: `Ukendt godkendelse "${patch.authType}"` });
@@ -1432,7 +1474,13 @@ app.get('/api/auth/login/:id', (req, res) => {
     `&client_id=${encodeURIComponent(customer.clientId)}` +
     `&redirect_uri=${encodeURIComponent(redirectUri)}` +
     `&code_challenge=${challenge}&code_challenge_method=S256` +
-    `&state=${encodeURIComponent(customer.id)}`;
+    `&state=${encodeURIComponent(customer.id)}` +
+    // Er man logget ind i flere orgs, genbrugte Genesys ellers den husket
+    // session — og login til miljø nr. 2 landede stille i org nr. 1.
+    // prompt=login beder altid om et nyt login; target peger på den org
+    // miljøet er kendt i. Callback'en tjekker org'en uanset hvad.
+    `&prompt=login` +
+    (customer.orgId ? `&target=${encodeURIComponent(customer.orgId)}` : '');
 
   addLog('INFO', `PKCE login initiated for ${customer.name}`, customer.name, 'CUSTOMER');
   res.json({ url });
@@ -1490,11 +1538,45 @@ app.get('/auth/callback', async (req, res) => {
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
     const { access_token, expires_in } = resp.data;
+    const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+    // Hvilken org landede login'et i? Det vælger brugeren på Genesys' side, og
+    // med trusted orgs kan det være en kundes. Tokenet gemmes først når org'en
+    // passer — ellers ville miljøet læse og skrive i den forkerte org.
+    const me = await axios.get(`${apiBase}/api/v2/users/me`,
+      { headers: { Authorization: `Bearer ${access_token}` }, params: { expand: 'organization' } });
+    const org = me.data.organization || {};
+    if (!org.id) throw new Error('Genesys did not say which org the login belongs to');
+    if (wrongOrg(customer, org.id)) {
+      delete tokenStore[customer.id];
+      delete _whoCache[customer.id];
+      addLog('ERROR', `PKCE login for ${customer.name} refused: ${me.data.name} logged into org "${org.name}" (${org.id}), ` +
+        `but the environment belongs to org ${customer.orgId}`, customer.name, 'SECURITY');
+      return page(false, 'Wrong organisation',
+        `You logged into <b>${esc(org.name || org.id)}</b>, but <b>${esc(customer.name)}</b> belongs to another org ` +
+        `(${esc(customer.orgId)}). The login was discarded — nothing was read or written.<br><br>` +
+        `Log out of Genesys Cloud (or use a private window) and log in again, choosing the right organisation.`);
+    }
+    const owner = orgOwnedElsewhere(customer, org.id, loadCustomers());
+    if (owner) {
+      delete tokenStore[customer.id];
+      delete _whoCache[customer.id];
+      addLog('ERROR', `PKCE login for ${customer.name} refused: org "${org.name}" (${org.id}) belongs to ${owner.name} ` +
+        `(tenant ${tenantOf(owner)}), not tenant ${tenantOf(customer)}`, customer.name, 'SECURITY');
+      return page(false, 'Wrong organisation',
+        `You logged into <b>${esc(org.name || org.id)}</b>, which is the org of <b>${esc(owner.name)}</b> ` +
+        `— another customer than <b>${esc(customer.name)}</b>. The login was discarded — nothing was read or written.<br><br>` +
+        `Log in again and choose the right organisation.`);
+    }
+
     const expiresAt = Date.now() + ((expires_in || 86400) * 1000) - 60000;
-    tokenStore[customer.id] = { token: access_token, expiresAt };
+    tokenStore[customer.id] = { token: access_token, expiresAt, orgId: org.id, orgName: org.name || '' };
     delete _whoCache[customer.id];
-    await getOrgId(customer);
-    addLog('SUCCESS', `PKCE OAuth login succeeded for ${customer.name}`, customer.name, 'CUSTOMER');
+    // Manifest-tabellens id er slået op med det forrige login — måske i en anden org.
+    delete _mfTableCache[customer.id];
+    orgIdCache[customer.id] = org.id;
+    rememberOrgId(customer, org.id);
+    addLog('SUCCESS', `PKCE OAuth login succeeded for ${customer.name}: ${me.data.name} in org "${org.name}"`, customer.name, 'CUSTOMER');
 
     // I prod afgøres deploy-retten her, ved login — og kun her, så den altid
     // hviler på et frisk login og ikke på et døgngammelt token.
@@ -1507,12 +1589,12 @@ app.get('/auth/callback', async (req, res) => {
       addLog(d.ok ? 'SUCCESS' : 'WARN',
         `Prod deploy rights for ${customer.name}: ${d.who} ${d.ok ? 'allowed' : 'denied — missing ' + d.missing.map(missingLog).join(', ')}`,
         customer.name, 'SECURITY');
-      const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
       extra = d.ok
         ? `<br><br>🔓 ${esc(d.who)} may deploy to prod for ${PROD_DEPLOY_WINDOW / 60000} minutes.`
         : `<br><br>⛔ ${esc(d.who)} may NOT deploy to prod — missing ${esc(d.missing.map(missingLog).join(', '))}.`;
     }
-    page(true, 'Logged in!', 'You can close this window and return to Archy GUI.' + extra);
+    page(true, 'Logged in!', `Organisation: <b>${esc(org.name || org.id)}</b><br>` +
+      'You can close this window and return to Archy GUI.' + extra);
   } catch (e) {
     const msg = e.response?.data?.description || e.response?.data?.error || e.message;
     addLog('ERROR', `PKCE token exchange failed for ${customer.name}: ${msg}`, customer.name, 'CUSTOMER');
@@ -1530,7 +1612,7 @@ app.get('/api/auth/status', (req, res) => {
     if (c.authType !== 'oauth') continue;
     const st = tokenStore[c.id];
     if (!st || now > st.expiresAt) { out[c.id] = { authenticated: false }; continue; }
-    const o = { authenticated: true, expiresIn: Math.floor((st.expiresAt - now) / 1000) };
+    const o = { authenticated: true, expiresIn: Math.floor((st.expiresAt - now) / 1000), orgName: st.orgName || '' };
     if (stageOf(c) === 'prod' && st.deploy)
       o.deploy = { ok: st.deploy.ok, who: st.deploy.who, missing: st.deploy.missing,
                    expiresIn: Math.max(0, Math.floor((st.deploy.checkedAt + PROD_DEPLOY_WINDOW - now) / 1000)) };
@@ -1547,7 +1629,7 @@ app.get('/api/auth/status/:id', (req, res) => {
     delete tokenStore[req.params.id];
     return res.json({ authenticated: false, expired: true });
   }
-  const out = { authenticated: true, expiresIn: Math.floor((stored.expiresAt - Date.now()) / 1000) };
+  const out = { authenticated: true, expiresIn: Math.floor((stored.expiresAt - Date.now()) / 1000), orgName: stored.orgName || '' };
   const env = loadCustomers().find(c => c.id === req.params.id);
   if (env && stageOf(env) === 'prod' && !isDemo(env) && stored.deploy) {
     const d = stored.deploy;
@@ -1558,6 +1640,25 @@ app.get('/api/auth/status/:id', (req, res) => {
 });
 
 // ── Token helper ────────────────────────────────────────────────────────────
+
+// Det eneste sted et PKCE-token hentes fra — både API-kald og Archy går herigennem.
+// Archy fik før tokenet direkte fra tokenStore, uden om org-tjekket.
+function oauthToken(customer) {
+  const stored = tokenStore[customer.id];
+  if (!stored) throw new Error(`OAuth token missing for "${customer.name}" — click the Login button`);
+  if (Date.now() > stored.expiresAt) {
+    delete tokenStore[customer.id];
+    throw new Error(`OAuth token expired for "${customer.name}" — please log in again`);
+  }
+  // Anden linje i forsvaret: login'et tjekkes ved callback, men miljøets
+  // org-id kan være rettet siden. Et token uden kendt org, eller fra en anden
+  // org, bruges aldrig.
+  if (!stored.orgId || wrongOrg(customer, stored.orgId)) {
+    delete tokenStore[customer.id];
+    throw new Error(`The login for "${customer.name}" belongs to another org — please log in again`);
+  }
+  return stored.token;
+}
 
 async function getToken(customer) {
   // Et demo-miljø har ingen org. Uden denne vagt endte hvert eneste opslag
@@ -1577,6 +1678,12 @@ async function getToken(customer) {
     if (Date.now() > stored.expiresAt) {
       delete tokenStore[customer.id];
       throw new Error(`OAuth token expired for "${customer.name}" — please log in again`);
+    }
+    // Anden linje i forsvaret: login'et tjekkes ved callback, men miljøets
+    // org-id kan være rettet siden. Et token fra en anden org bruges aldrig.
+    if (!stored.orgId || wrongOrg(customer, stored.orgId)) {
+      delete tokenStore[customer.id];
+      throw new Error(`The login for "${customer.name}" belongs to another org — please log in again`);
     }
     return { token: stored.token, apiBase };
   }
@@ -2728,6 +2835,7 @@ async function getOrgId(customer) {
     const { token, apiBase } = await getToken(customer);
     const r = await axios.get(`${apiBase}/api/v2/organizations/me`,
       { headers: { Authorization: `Bearer ${token}` } });
+    if (wrongOrg(customer, r.data.id)) { rememberOrgId(customer, r.data.id); return null; }
     orgIdCache[customer.id] = r.data.id;
     rememberOrgId(customer, r.data.id);
     return r.data.id;
@@ -4019,7 +4127,8 @@ app.get('/api/pipeline', async (req, res) => {
       id: c.id, name: c.name, stage: stageOf(c), region: c.region,
       prefix: prefixOf(c) || null,
       orgKey: orgKeyOf(c),
-      orgLabel: (c.orgLabel || '').trim() || c.name
+      orgLabel: (c.orgLabel || '').trim() || c.name,
+      color: c.color || ''
     })),
     rows, problems
   });
@@ -4594,12 +4703,8 @@ function archyVerb(handling) {
 // Build credential flags for archy CLI (no config file needed)
 function archyCredFlags(customer) {
   // OAuth customers: use stored bearer token
-  if (customer.authType === 'oauth') {
-    const stored = tokenStore[customer.id];
-    if (!stored || Date.now() > stored.expiresAt)
-      throw new Error(`OAuth token missing or expired for "${customer.name}" — please log in again`);
-    return `--authToken ${archyArg(stored.token, 'Token')} --location ${archyArg(customer.region, 'Region')}`;
-  }
+  if (customer.authType === 'oauth')
+    return `--authToken ${archyArg(oauthToken(customer), 'Token')} --location ${archyArg(customer.region, 'Region')}`;
 
   // Client credentials. Tidligere blev " erstattet med \" — den escape virker i
   // en POSIX-skal, men ikke i cmd.exe, så et secret med et anførselstegn ville
@@ -6127,7 +6232,7 @@ module.exports = {
   compactRelease, trimOrgReleases, mergeReleases, ORG_RELEASES_MAX,
   parseFlowFileName, versionLabel, sanitizeName, normType,
   // miljøer og præfikser
-  prefixOf, orgKeyOf, rememberOrgId, belongsToEnv, stripEnvPrefix, withEnvPrefix, depNameIn,
+  prefixOf, orgKeyOf, rememberOrgId, wrongOrg, clientPinsOrg, orgOwnedElsewhere, belongsToEnv, stripEnvPrefix, withEnvPrefix, depNameIn,
   targetFlowName, prefixDependenciesInYaml, divisionOf,
   // hierarki og vagt
   tenantOf, groupOf, stageOf, stageOrder, sameGroup, buildHierarchy, migrationGuard,

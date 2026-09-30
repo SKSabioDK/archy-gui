@@ -75,3 +75,10 @@ test('PUT tager kun imod felter der kan redigeres', () => {
   // "demo": true ville få prod-vagten til at se bort fra miljøet.
   for (const k of ['demo', 'id', 'clientSecret']) assert.ok(!s.EDITABLE_FIELDS.includes(k), k);
 });
+
+test('miljøets farve skal være en af de kendte', () => {
+  // Navne, ikke hex-koder — så farven følger temaet og ikke kan bære HTML ind.
+  for (const c of ['', 'green', 'yellow', 'orange', 'red', 'blue', 'grey']) ok({ color: c });
+  nej({ color: 'pink' }, /Ukendt farve/);
+  nej({ color: 'red;background:url(x)' }, /Ukendt farve/);
+});

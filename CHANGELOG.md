@@ -5,6 +5,41 @@
 
 ---
 
+### v1.46.6
+---
+**🇩🇰 Dansk**
+
+- **Et PKCE-login i den forkerte org afvises.** Med trusted orgs vælger man selv org'en på Genesys' login-side, og en Sabio-bruger kan vælge en kundes. Valgte man forkert ved login til *Sabio APS - PROD*, blev kundens org-id gemt på prod — og prod hentede kundens flows som sine egne, med et token der også kunne skrive dér. Nu slår login'et op hvilken org det landede i, og passer den ikke med miljøets kendte org, kasseres tokenet med en besked om hvilken org man ramte. Login-vinduet viser altid org'en.
+
+- **Et kendt org-id overskrives aldrig.** Skifter et miljø reelt org, ændrer man klient eller region, og så nulstilles id'et. Og et token fra en anden org bruges ikke, selvom det skulle ligge i hukommelsen.
+
+- **Samme klient betyder kun samme org ved client credentials.** Et PKCE-login kan lande i en trusted org, så org-id'et deles ikke længere mellem miljøer bare fordi de bruger samme PKCE-klient. I pipelinen deler to PKCE-miljøer heller ikke flowliste før login'et har vist deres org.
+
+- **Logget ind i flere orgs på én gang.** Login'et beder nu altid om et nyt login (`prompt=login`) og peger på miljøets kendte org (`target`), så Genesys ikke stille genbruger sessionen fra den forrige org. Et nyt miljø uden kendt org må ikke tage en org der allerede hører til en anden kunde.
+
+- **Archy går også gennem org-tjekket.** Import og publicering hentede før PKCE-tokenet direkte, uden om tjekket — nu bruger Archy og API-kaldene samme vej, og et token uden kendt org bruges aldrig. Manifest-tabellens id glemmes ved hvert nyt login.
+
+- **Org'en vises ved miljøet.** Er man logget ind, står org'ens navn ved login-mærket på kortet og i tooltip'en i sidebjælken.
+
+- **Farve pr. miljø.** Hvert miljø vises i sit trins farve — dev grøn, test gul, uat orange, prod rød — som en stribe og et farvet trin øverst i pipelinen, i sidebjælken og på kortene. Under ⚙ Indstillinger kan man vælge en anden (grøn, gul, orange, rød, blå, grå), og farven kan også vælges når miljøet oprettes. Farverne følger temaet.
+
+- **Hjælp ved hvert felt.** Under ⚙ Indstillinger var felterne kun pladsholdere — så snart de var udfyldt, kunne man ikke se hvad der var hvad. Nu har hvert felt en etiket og et **ⓘ**, både her og når man opretter et miljø. Hold musen over ⓘ for forklaringen, eller klik for at folde den ud. Teksterne findes på alle fem sprog.
+
+- **README og hjælpeteksterne** beskriver org-tjekket ved login, farverne og ⓘ ved felterne.
+
+**🇬🇧 English**
+- **A PKCE login into the wrong org is refused.** With trusted orgs you pick the org on Genesys' login page; picking a customer's org when logging into *Sabio APS - PROD* used to record the customer's org id on prod, which then listed the customer's flows as its own. The login now checks its org and discards the token on a mismatch; the login window always shows the org.
+- **A known org id is never overwritten**, and a token from another org is never used.
+- **Same client means same org only for client credentials**, not for PKCE — and PKCE environments don't share a pipeline flow list until their org is known.
+- **Logged into several orgs at once:** logins now force a fresh sign-in (`prompt=login`) aimed at the known org (`target`), and a new environment cannot claim another customer's org.
+- **Archy goes through the org check too** — import and publish used to read the PKCE token directly.
+- **The org is shown next to the environment** once logged in.
+- **Colour per environment** — stage colours by default (dev green, test yellow, uat orange, prod red), selectable under ⚙ Settings and when creating an environment.
+- **Help on every field:** each field has a label and an **ⓘ** (hover or click) when creating an environment and under ⚙ Settings, in all five languages.
+- **README and help texts** cover the login org check, the colours and the field help.
+
+---
+
 ### v1.46.5
 ---
 **🇩🇰 Dansk**

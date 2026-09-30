@@ -26,3 +26,13 @@ test('hver tip_-tekst hører til en knap', () => {
   const doede = tips.filter(k => !brugt(k));
   assert.deepEqual(doede, [], 'tip_-tekster ingen knap bruger:\n  ' + doede.join('\n  '));
 });
+
+test('hvert ⓘ ved et felt har en forklaring og en etiket', () => {
+  // data-fh på de statiske felter, fl('etiket', 'fh_…') i ⚙ Indstillinger.
+  const statiske = [...HTML.matchAll(/data-fh="([a-z_]+)"/g)].map(m => m[1]);
+  const par = [...HTML.matchAll(/fl\('([a-z_]+)', '([a-z_]+)'\)/g)];
+  assert.ok(statiske.length >= 10, `fandt kun ${statiske.length} statiske ⓘ`);
+  assert.ok(par.length >= 13, `fandt kun ${par.length} felter i ⚙ Indstillinger`);
+  const mangler = [...statiske, ...par.flatMap(m => [m[1], m[2]])].filter(k => !findes(k));
+  assert.deepEqual([...new Set(mangler)], [], 'nøgler uden tekst i LANGS:\n  ' + mangler.join('\n  '));
+});
