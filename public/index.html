@@ -259,6 +259,7 @@
   label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 6px; letter-spacing: .5px; }
   .fh-i { display:inline-block; margin-left:6px; color:var(--blue); cursor:help; font-size:12px; line-height:1; user-select:none; }
   .fh-i:hover, .fh-i:focus-visible, .fh-i.open { color:var(--accent); outline:none; }
+  .fh-note { font-size:11px; line-height:1.4; color:var(--muted); margin:0 0 8px; }
   .fh-text { font-size:11px; line-height:1.45; color:var(--text); background:var(--hover); border-left:2px solid var(--blue);
              padding:6px 9px; border-radius:4px; margin:-2px 0 6px; }
   input, select, textarea {
@@ -501,7 +502,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.46.6 · Archy GUI</div>
+    <div class="version" id="app-version">v1.46.7 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1812,7 +1813,7 @@ const LANGS = {
     fh_more:'Vis forklaring',
     fh_name:'Miljøets navn, som det vises overalt i programmet — fx "Sabio APS - PROD". Bruges også som mappenavn til eksporter, så to miljøer kan ikke hedde næsten det samme.',
     fh_region:'Genesys-regionen org\'en ligger i. Den står i adressen når du er logget ind i Genesys, fx apps.mypurecloud.de = EU Frankfurt.',
-    fh_clientid:'ID\'et på OAuth-klienten i Genesys (Admin → Integrations → OAuth). Til PKCE: typen "Code Authorization" med PKCE og redirect-URI http://localhost:3737/auth/callback.',
+    fh_clientid:'ID\'et på OAuth-klienten i Genesys (Admin → Integrations → OAuth). Under feltet står klientens navn, så du kan finde den igen blandt kundens klienter. Til PKCE: typen "Code Authorization" med PKCE og redirect-URI http://localhost:3737/auth/callback.',
     fh_tenant:'Kunden miljøet hører til. Miljøer med samme kunde samles i sidebjælken, og et login må aldrig lande i en anden kundes org.',
     fh_group:'Pipelinen. Kun miljøer med samme kunde + gruppe kan forfremmes mellem hinanden — fx et land, et brand eller en afdeling.',
     fh_stage:'Hvor miljøet står i pipelinen: dev → test → uat → prod. Prod kræver et personligt login med deploy-ret for at skrive.',
@@ -1822,13 +1823,19 @@ const LANGS = {
     fh_color:'Farven miljøet vises med på pipelinen, i sidebjælken og på kortene. Standard er trinnets farve: dev grøn, test gul, uat orange, prod rød.',
     fh_auth:'OAuth (PKCE): du logger ind som dig selv, og der gemmes ingen secret — påkrævet for at skrive til prod. Client credentials: klient-id og secret gemmes lokalt.',
     fh_secret:'Kun ved client credentials. Lad feltet stå tomt for at beholde den nuværende secret — den vises aldrig igen.',
-    fh_deployperm:'Den rettighed man skal have i Genesys for at deploye til dette prod-miljø. Tomt = architect:flow:publish.',
-    fh_deploygroup:'Valgfrit: en Genesys-gruppe man også skal være medlem af for at deploye til prod.',
+    fh_deployperm:'Ved login til prod tjekker værktøjet, at din Genesys-bruger har denne rettighed — ellers må du læse, men ikke deploye. Lad feltet stå tomt for at bruge standarden architect:flow:publish (retten til at publicere flows). Skriv kun noget, hvis kunden kræver en anden eller strengere rettighed.',
+    fh_deploygroup:'Valgfrit. Skriv navnet på en gruppe i Genesys, hvis kun dens medlemmer må deploye til prod — fx "Prod Release". Tomt = ingen krav om gruppe.',
+    auth_recommended:'anbefalet',
+    auth_creds_note:'Dette miljø bruger client credentials (ældre opsætning). OAuth (PKCE) anbefales: vælg det ovenfor og angiv Client ID på en PKCE-klient i samme org.',
+    auth_creds_note_prod:'Prod med client credentials kan kun læses, ikke skrives til. Skift til OAuth (PKCE) og angiv Client ID på en PKCE-klient i prod-org\'en.',
+    oauth_client_name:'OAuth-klient i Genesys: {name} · {type}',
+    oauth_client_login:'Log ind på miljøet for at se OAuth-klientens navn i Genesys.',
+    oauth_client_forbidden:'Klientens navn kan ikke læses — brugeren eller klienten mangler rettigheden oauth:client:view.',
+    oauth_client_failed:'Klientens navn kunne ikke hentes: {err}',
     env_color_label:'Farve', color_auto:'Trinnets farve', color_green:'Grøn', color_yellow:'Gul', color_orange:'Orange', color_red:'Rød', color_blue:'Blå', color_grey:'Grå',
     prod_deploy_perm:'Kræver rettighed: architect:flow:publish',
     prod_deploy_group:'Kræver gruppe (valgfri)',
     prod_auth_label:'Godkendelse',
-    prod_clientid_ph:'Client ID (tom = uændret)',
     prod_secret_ph:'Ny secret (ved skift til credentials)',
     prod_lock_creds:'🔒 Prod med client credentials: kan læses, men ikke skrives til. Skift til OAuth (PKCE) under ⚙ Indstillinger.',
     prod_lock_login:'🔒 Log ind for at deploye til prod',
@@ -2420,7 +2427,7 @@ const LANGS = {
     fh_more:'Show explanation',
     fh_name:'The environment\'s name as shown everywhere in the app — e.g. "Sabio APS - PROD". Also used as the export folder name, so two environments cannot have near-identical names.',
     fh_region:'The Genesys region the org lives in. It is in the address when you are logged into Genesys, e.g. apps.mypurecloud.de = EU Frankfurt.',
-    fh_clientid:'The ID of the OAuth client in Genesys (Admin → Integrations → OAuth). For PKCE: type "Code Authorization" with PKCE and redirect URI http://localhost:3737/auth/callback.',
+    fh_clientid:'The ID of the OAuth client in Genesys (Admin → Integrations → OAuth). The client\'s name is shown below the field, so you can find it again among the customer\'s clients. For PKCE: type "Code Authorization" with PKCE and redirect URI http://localhost:3737/auth/callback.',
     fh_tenant:'The customer the environment belongs to. Environments of one customer are grouped in the sidebar, and a login may never land in another customer\'s org.',
     fh_group:'The pipeline. Only environments with the same customer + group can be promoted between — e.g. a country, a brand or a department.',
     fh_stage:'Where the environment sits in the pipeline: dev → test → uat → prod. Prod requires a personal login with deploy rights to write.',
@@ -2430,13 +2437,19 @@ const LANGS = {
     fh_color:'The colour the environment is shown with on the pipeline, in the sidebar and on the cards. Default is the stage colour: dev green, test yellow, uat orange, prod red.',
     fh_auth:'OAuth (PKCE): you log in as yourself and no secret is stored — required to write to prod. Client credentials: client ID and secret are stored locally.',
     fh_secret:'Client credentials only. Leave empty to keep the current secret — it is never shown again.',
-    fh_deployperm:'The permission you need in Genesys to deploy to this prod environment. Empty = architect:flow:publish.',
-    fh_deploygroup:'Optional: a Genesys group you must also be a member of to deploy to prod.',
+    fh_deployperm:'At a prod login the tool checks that your Genesys user has this permission — otherwise you can read but not deploy. Leave empty to use the default architect:flow:publish (the right to publish flows). Only fill it in if the customer requires a different or stricter permission.',
+    fh_deploygroup:'Optional. Enter the name of a Genesys group if only its members may deploy to prod — e.g. "Prod Release". Empty = no group required.',
+    auth_recommended:'recommended',
+    auth_creds_note:'This environment uses client credentials (older setup). OAuth (PKCE) is recommended: pick it above and enter the Client ID of a PKCE client in the same org.',
+    auth_creds_note_prod:'Prod with client credentials can only be read, not written to. Switch to OAuth (PKCE) and enter the Client ID of a PKCE client in the prod org.',
+    oauth_client_name:'OAuth client in Genesys: {name} · {type}',
+    oauth_client_login:'Log in to the environment to see the OAuth client\'s name in Genesys.',
+    oauth_client_forbidden:'The client\'s name cannot be read — the user or client lacks the oauth:client:view permission.',
+    oauth_client_failed:'The client\'s name could not be fetched: {err}',
     env_color_label:'Colour', color_auto:'Stage colour', color_green:'Green', color_yellow:'Yellow', color_orange:'Orange', color_red:'Red', color_blue:'Blue', color_grey:'Grey',
     prod_deploy_perm:'Requires permission: architect:flow:publish',
     prod_deploy_group:'Requires group (optional)',
     prod_auth_label:'Authentication',
-    prod_clientid_ph:'Client ID (empty = unchanged)',
     prod_secret_ph:'New secret (when switching to credentials)',
     prod_lock_creds:'🔒 Prod with client credentials: readable, but writes are blocked. Switch to OAuth (PKCE) under ⚙ Settings.',
     prod_lock_login:'🔒 Log in to deploy to prod',
@@ -3028,7 +3041,7 @@ const LANGS = {
     fh_more:'Afficher l\'explication',
     fh_name:'Le nom de l\'environnement, affiché partout dans l\'application — par ex. "Sabio APS - PROD". Sert aussi de nom de dossier d\'export, donc deux environnements ne peuvent pas avoir des noms presque identiques.',
     fh_region:'La région Genesys de l\'org. Elle figure dans l\'adresse quand vous êtes connecté à Genesys, par ex. apps.mypurecloud.de = EU Francfort.',
-    fh_clientid:'L\'ID du client OAuth dans Genesys (Admin → Integrations → OAuth). Pour PKCE : type "Code Authorization" avec PKCE et l\'URI de redirection http://localhost:3737/auth/callback.',
+    fh_clientid:'L\'ID du client OAuth dans Genesys (Admin → Integrations → OAuth). Le nom du client s\'affiche sous le champ, pour le retrouver parmi les clients du client. Pour PKCE : type "Code Authorization" avec PKCE et l\'URI de redirection http://localhost:3737/auth/callback.',
     fh_tenant:'Le client auquel appartient l\'environnement. Les environnements d\'un client sont regroupés dans la barre latérale, et une connexion ne doit jamais aboutir dans l\'org d\'un autre client.',
     fh_group:'Le pipeline. Seuls les environnements de même client + groupe peuvent être promus entre eux — par ex. un pays, une marque ou un service.',
     fh_stage:'La place de l\'environnement dans le pipeline : dev → test → uat → prod. Prod exige une connexion personnelle avec droit de déploiement pour écrire.',
@@ -3038,13 +3051,19 @@ const LANGS = {
     fh_color:'La couleur de l\'environnement sur le pipeline, dans la barre latérale et sur les cartes. Par défaut, celle de l\'étape : dev vert, test jaune, uat orange, prod rouge.',
     fh_auth:'OAuth (PKCE) : vous vous connectez en votre nom, aucun secret n\'est stocké — requis pour écrire en prod. Client credentials : l\'ID client et le secret sont stockés localement.',
     fh_secret:'Uniquement pour client credentials. Laissez vide pour garder le secret actuel — il n\'est jamais réaffiché.',
-    fh_deployperm:'La permission Genesys requise pour déployer dans cet environnement prod. Vide = architect:flow:publish.',
-    fh_deploygroup:'Facultatif : un groupe Genesys dont il faut aussi être membre pour déployer en prod.',
+    fh_deployperm:'À la connexion prod, l\'outil vérifie que votre utilisateur Genesys a cette permission — sinon vous pouvez lire mais pas déployer. Laissez vide pour la valeur par défaut architect:flow:publish (le droit de publier des flows). Ne remplissez que si le client exige une autre permission, plus stricte.',
+    fh_deploygroup:'Facultatif. Saisissez le nom d\'un groupe Genesys si seuls ses membres peuvent déployer en prod — par ex. "Prod Release". Vide = aucun groupe requis.',
+    auth_recommended:'recommandé',
+    auth_creds_note:'Cet environnement utilise client credentials (ancienne configuration). OAuth (PKCE) est recommandé : choisissez-le ci-dessus et saisissez le Client ID d\'un client PKCE de la même org.',
+    auth_creds_note_prod:'Un prod en client credentials est en lecture seule. Passez à OAuth (PKCE) et saisissez le Client ID d\'un client PKCE de l\'org prod.',
+    oauth_client_name:'Client OAuth dans Genesys : {name} · {type}',
+    oauth_client_login:'Connectez-vous à l\'environnement pour voir le nom du client OAuth dans Genesys.',
+    oauth_client_forbidden:'Le nom du client est illisible — l\'utilisateur ou le client n\'a pas la permission oauth:client:view.',
+    oauth_client_failed:'Le nom du client n\'a pas pu être récupéré : {err}',
     env_color_label:'Couleur', color_auto:'Couleur de l\'étape', color_green:'Vert', color_yellow:'Jaune', color_orange:'Orange', color_red:'Rouge', color_blue:'Bleu', color_grey:'Gris',
     prod_deploy_perm:'Permission requise : architect:flow:publish',
     prod_deploy_group:'Groupe requis (facultatif)',
     prod_auth_label:'Authentification',
-    prod_clientid_ph:'Client ID (vide = inchangé)',
     prod_secret_ph:'Nouveau secret (passage en credentials)',
     prod_lock_creds:'🔒 Prod avec client credentials : lecture seule, écriture bloquée. Passez en OAuth (PKCE) via ⚙ Paramètres.',
     prod_lock_login:'🔒 Connectez-vous pour déployer en prod',
@@ -3636,7 +3655,7 @@ const LANGS = {
     fh_more:'Toon uitleg',
     fh_name:'De naam van de omgeving zoals overal in de app getoond — bv. "Sabio APS - PROD". Wordt ook gebruikt als exportmap, dus twee omgevingen kunnen geen bijna gelijke naam hebben.',
     fh_region:'De Genesys-regio van de org. Die staat in het adres als je bent ingelogd in Genesys, bv. apps.mypurecloud.de = EU Frankfurt.',
-    fh_clientid:'Het ID van de OAuth-client in Genesys (Admin → Integrations → OAuth). Voor PKCE: type "Code Authorization" met PKCE en redirect-URI http://localhost:3737/auth/callback.',
+    fh_clientid:'Het ID van de OAuth-client in Genesys (Admin → Integrations → OAuth). Onder het veld staat de naam van de client, zodat je hem terugvindt tussen de clients van de klant. Voor PKCE: type "Code Authorization" met PKCE en redirect-URI http://localhost:3737/auth/callback.',
     fh_tenant:'De klant waar de omgeving bij hoort. Omgevingen van één klant staan samen in de zijbalk, en een login mag nooit in de org van een andere klant landen.',
     fh_group:'De pipeline. Alleen omgevingen met dezelfde klant + groep kunnen onderling gepromoveerd worden — bv. een land, merk of afdeling.',
     fh_stage:'Waar de omgeving in de pipeline staat: dev → test → uat → prod. Prod vereist een persoonlijke login met deploy-recht om te schrijven.',
@@ -3646,13 +3665,19 @@ const LANGS = {
     fh_color:'De kleur van de omgeving op de pipeline, in de zijbalk en op de kaarten. Standaard de kleur van de fase: dev groen, test geel, uat oranje, prod rood.',
     fh_auth:'OAuth (PKCE): je logt in als jezelf en er wordt geen secret opgeslagen — vereist om naar prod te schrijven. Client credentials: client-ID en secret worden lokaal opgeslagen.',
     fh_secret:'Alleen bij client credentials. Laat leeg om het huidige secret te behouden — het wordt nooit meer getoond.',
-    fh_deployperm:'De permissie die je in Genesys nodig hebt om naar deze prod-omgeving te deployen. Leeg = architect:flow:publish.',
-    fh_deploygroup:'Optioneel: een Genesys-groep waar je ook lid van moet zijn om naar prod te deployen.',
+    fh_deployperm:'Bij een prod-login controleert de tool of je Genesys-gebruiker deze permissie heeft — anders mag je lezen maar niet deployen. Laat leeg voor de standaard architect:flow:publish (het recht om flows te publiceren). Vul alleen iets in als de klant een andere of strengere permissie eist.',
+    fh_deploygroup:'Optioneel. Vul de naam in van een Genesys-groep als alleen de leden ervan naar prod mogen deployen — bv. "Prod Release". Leeg = geen groep vereist.',
+    auth_recommended:'aanbevolen',
+    auth_creds_note:'Deze omgeving gebruikt client credentials (oudere opzet). OAuth (PKCE) wordt aanbevolen: kies het hierboven en vul het Client ID in van een PKCE-client in dezelfde org.',
+    auth_creds_note_prod:'Prod met client credentials is alleen-lezen. Stap over op OAuth (PKCE) en vul het Client ID in van een PKCE-client in de prod-org.',
+    oauth_client_name:'OAuth-client in Genesys: {name} · {type}',
+    oauth_client_login:'Log in op de omgeving om de naam van de OAuth-client in Genesys te zien.',
+    oauth_client_forbidden:'De naam van de client kan niet worden gelezen — de gebruiker of client mist de permissie oauth:client:view.',
+    oauth_client_failed:'De naam van de client kon niet worden opgehaald: {err}',
     env_color_label:'Kleur', color_auto:'Kleur van de fase', color_green:'Groen', color_yellow:'Geel', color_orange:'Oranje', color_red:'Rood', color_blue:'Blauw', color_grey:'Grijs',
     prod_deploy_perm:'Vereiste permissie: architect:flow:publish',
     prod_deploy_group:'Vereiste groep (optioneel)',
     prod_auth_label:'Authenticatie',
-    prod_clientid_ph:'Client ID (leeg = ongewijzigd)',
     prod_secret_ph:'Nieuw secret (bij overstap naar credentials)',
     prod_lock_creds:'🔒 Prod met client credentials: leesbaar, schrijven geblokkeerd. Stap over op OAuth (PKCE) via ⚙ Instellingen.',
     prod_lock_login:'🔒 Log in om naar prod te deployen',
@@ -4244,7 +4269,7 @@ const LANGS = {
     fh_more:'Mostrar explicación',
     fh_name:'El nombre del entorno tal como se muestra en toda la aplicación — p. ej. "Sabio APS - PROD". También es el nombre de la carpeta de exportación, así que dos entornos no pueden tener nombres casi iguales.',
     fh_region:'La región de Genesys de la org. Aparece en la dirección cuando ha iniciado sesión en Genesys, p. ej. apps.mypurecloud.de = EU Fráncfort.',
-    fh_clientid:'El ID del cliente OAuth en Genesys (Admin → Integrations → OAuth). Para PKCE: tipo "Code Authorization" con PKCE y URI de redirección http://localhost:3737/auth/callback.',
+    fh_clientid:'El ID del cliente OAuth en Genesys (Admin → Integrations → OAuth). Bajo el campo aparece el nombre del cliente, para encontrarlo entre los clientes del cliente. Para PKCE: tipo "Code Authorization" con PKCE y URI de redirección http://localhost:3737/auth/callback.',
     fh_tenant:'El cliente al que pertenece el entorno. Los entornos de un cliente se agrupan en la barra lateral, y un inicio de sesión nunca debe acabar en la org de otro cliente.',
     fh_group:'El pipeline. Solo los entornos con el mismo cliente + grupo pueden promoverse entre sí — p. ej. un país, una marca o un departamento.',
     fh_stage:'Dónde está el entorno en el pipeline: dev → test → uat → prod. Prod exige un inicio de sesión personal con derecho de despliegue para escribir.',
@@ -4254,13 +4279,19 @@ const LANGS = {
     fh_color:'El color del entorno en el pipeline, la barra lateral y las tarjetas. Por defecto, el de la etapa: dev verde, test amarillo, uat naranja, prod rojo.',
     fh_auth:'OAuth (PKCE): inicia sesión como usted mismo y no se guarda ningún secret — necesario para escribir en prod. Client credentials: el ID de cliente y el secret se guardan localmente.',
     fh_secret:'Solo con client credentials. Déjelo vacío para conservar el secret actual — nunca se vuelve a mostrar.',
-    fh_deployperm:'El permiso de Genesys necesario para desplegar en este entorno de prod. Vacío = architect:flow:publish.',
-    fh_deploygroup:'Opcional: un grupo de Genesys del que también hay que ser miembro para desplegar en prod.',
+    fh_deployperm:'Al iniciar sesión en prod, la herramienta comprueba que su usuario de Genesys tiene este permiso — si no, puede leer pero no desplegar. Déjelo vacío para usar el predeterminado architect:flow:publish (el derecho a publicar flows). Rellénelo solo si el cliente exige otro permiso más estricto.',
+    fh_deploygroup:'Opcional. Escriba el nombre de un grupo de Genesys si solo sus miembros pueden desplegar en prod — p. ej. "Prod Release". Vacío = sin grupo requerido.',
+    auth_recommended:'recomendado',
+    auth_creds_note:'Este entorno usa client credentials (configuración antigua). Se recomienda OAuth (PKCE): elíjalo arriba e indique el Client ID de un cliente PKCE de la misma org.',
+    auth_creds_note_prod:'Un prod con client credentials solo se puede leer, no escribir. Cambie a OAuth (PKCE) e indique el Client ID de un cliente PKCE de la org de prod.',
+    oauth_client_name:'Cliente OAuth en Genesys: {name} · {type}',
+    oauth_client_login:'Inicie sesión en el entorno para ver el nombre del cliente OAuth en Genesys.',
+    oauth_client_forbidden:'No se puede leer el nombre del cliente — el usuario o el cliente no tiene el permiso oauth:client:view.',
+    oauth_client_failed:'No se pudo obtener el nombre del cliente: {err}',
     env_color_label:'Color', color_auto:'Color de la etapa', color_green:'Verde', color_yellow:'Amarillo', color_orange:'Naranja', color_red:'Rojo', color_blue:'Azul', color_grey:'Gris',
     prod_deploy_perm:'Permiso requerido: architect:flow:publish',
     prod_deploy_group:'Grupo requerido (opcional)',
     prod_auth_label:'Autenticación',
-    prod_clientid_ph:'Client ID (vacío = sin cambios)',
     prod_secret_ph:'Nuevo secret (al cambiar a credentials)',
     prod_lock_creds:'🔒 Prod con client credentials: lectura sí, escritura bloqueada. Cambie a OAuth (PKCE) en ⚙ Configuración.',
     prod_lock_login:'🔒 Inicie sesión para desplegar en prod',
@@ -8642,7 +8673,8 @@ function toggleGrouping(id) {
   const opt = v => `<option value="${v}"${(c.stage || '') === v ? ' selected' : ''}>${v || t('stage_none')}</option>`;
   box.style.display = 'block';
   // Hvert felt har en etiket og et ⓘ — med kun pladsholdere kunne man ikke
-  // se hvad der var hvad, så snart felterne var udfyldt.
+  // se hvad der var hvad, så snart felterne var udfyldt. Godkendelsen viser
+  // miljøets NUVÆRENDE valg, ikke en standard — nye miljøer får altid PKCE.
   const fl = (label, help) => fieldLabel(label, help);
   box.innerHTML = `
     ${fl('label_customername', 'fh_name')}
@@ -8652,7 +8684,7 @@ function toggleGrouping(id) {
     ${fl('label_group', 'fh_group')}
     <input id="grp-group-${id}"  list="groupList"  value="${escapeHtml(c.group  || '')}" maxlength="40" style="margin-bottom:8px" />
     ${fl('label_stage', 'fh_stage')}
-    <select id="grp-stage-${id}" style="margin-bottom:8px">${['', ...STAGES].map(opt).join('')}</select>
+    <select id="grp-stage-${id}" style="margin-bottom:8px" onchange="grpAuthHints('${id}')">${['', ...STAGES].map(opt).join('')}</select>
     ${fl('label_prefix', 'fh_prefix')}
     <input id="grp-prefix-${id}" placeholder="DEV_" value="${escapeHtml(c.prefix || '')}" maxlength="20" style="margin-bottom:8px" />
     ${fl('label_orglabel', 'fh_orglabel')}
@@ -8666,21 +8698,66 @@ function toggleGrouping(id) {
     </select>
     ${c.authType === 'demo' ? '' : `
     ${fl('prod_auth_label', 'fh_auth')}
-    <select id="grp-auth-${id}" style="margin-bottom:8px">
+    <select id="grp-auth-${id}" style="margin-bottom:4px" onchange="grpAuthHints('${id}')">
+      <option value="oauth"${c.authType === 'oauth' ? ' selected' : ''}>🌐 OAuth (PKCE) — ${t('auth_recommended')}</option>
       <option value="credentials"${c.authType !== 'oauth' ? ' selected' : ''}>🔑 Client Credentials</option>
-      <option value="oauth"${c.authType === 'oauth' ? ' selected' : ''}>🌐 OAuth (PKCE)</option>
     </select>
+    <div id="grp-authnote-${id}" class="fh-note" style="display:none"></div>
     ${fl('label_clientid', 'fh_clientid')}
-    <input id="grp-clientid-${id}" placeholder="${t('prod_clientid_ph')}" maxlength="36" style="margin-bottom:8px" />
-    ${fl('label_newsecret', 'fh_secret')}
-    <input id="grp-secret-${id}" type="password" placeholder="${t('prod_secret_ph')}" style="margin-bottom:8px" />
-    ${fl('label_deployperm', 'fh_deployperm')}
-    <input id="grp-deployperm-${id}" placeholder="architect:flow:publish" value="${escapeHtml(c.deployPermission || '')}" style="margin-bottom:8px" />
-    ${fl('label_deploygroup', 'fh_deploygroup')}
-    <input id="grp-deploygroup-${id}" placeholder="${t('prod_deploy_group')}" value="${escapeHtml(c.deployGroup || '')}" maxlength="100" style="margin-bottom:10px" />`}
+    <input id="grp-clientid-${id}" value="${escapeHtml(c.clientId || '')}" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" maxlength="36" style="margin-bottom:4px" />
+    <div id="grp-clientname-${id}" class="fh-note"></div>
+    <div id="grp-secretbox-${id}">
+      ${fl('label_newsecret', 'fh_secret')}
+      <input id="grp-secret-${id}" type="password" placeholder="${t('prod_secret_ph')}" style="margin-bottom:8px" />
+    </div>
+    <div id="grp-deploybox-${id}">
+      ${fl('label_deployperm', 'fh_deployperm')}
+      <input id="grp-deployperm-${id}" placeholder="architect:flow:publish" value="${escapeHtml(c.deployPermission || '')}" style="margin-bottom:8px" />
+      ${fl('label_deploygroup', 'fh_deploygroup')}
+      <input id="grp-deploygroup-${id}" placeholder="${t('prod_deploy_group')}" value="${escapeHtml(c.deployGroup || '')}" maxlength="100" style="margin-bottom:10px" />
+    </div>`}
     <div id="grp-err-${id}" style="display:none;margin-bottom:8px;font-size:11px;color:var(--red)"></div>
     <button class="btn btn-primary btn-sm" onclick="saveGrouping('${id}')">${t('btn_save_grouping')}</button>`;
   fillDivisions('grp-division-' + id, id, c.division || '');
+  grpAuthHints(id);
+  fillClientName(id);
+}
+
+// Hvad der vises afhænger af valget: secret kun ved client credentials,
+// deploy-krav kun på prod, og en note når et miljø står på client credentials.
+function grpAuthHints(id) {
+  const auth = document.getElementById('grp-auth-' + id);
+  if (!auth) return;
+  const creds = auth.value === 'credentials';
+  const prod  = document.getElementById('grp-stage-' + id)?.value === 'prod';
+  document.getElementById('grp-secretbox-' + id).style.display = creds ? '' : 'none';
+  document.getElementById('grp-deploybox-' + id).style.display = prod ? '' : 'none';
+  const note = document.getElementById('grp-authnote-' + id);
+  note.style.display = creds ? '' : 'none';
+  note.textContent = creds ? t(prod ? 'auth_creds_note_prod' : 'auth_creds_note') : '';
+  note.style.color = creds && prod ? 'var(--red)' : 'var(--yellow)';
+}
+
+// Navnet på OAuth-klienten i Genesys. Med 20-30 klienter i en kundes org er
+// et GUID ikke til at finde igen — navnet er.
+async function fillClientName(id) {
+  const el = document.getElementById('grp-clientname-' + id);
+  if (!el) return;
+  el.textContent = '…';
+  try {
+    const r = await fetch('/api/customers/' + encodeURIComponent(id) + '/oauth-client').then(x => x.json());
+    if (r.name) {
+      el.textContent = t('oauth_client_name').replace('{name}', r.name).replace('{type}', r.grantType || '?');
+      el.style.color = 'var(--muted)';
+      return;
+    }
+    el.textContent = r.code === 'login' ? t('oauth_client_login')
+                   : r.code === 'forbidden' ? t('oauth_client_forbidden')
+                   : t('oauth_client_failed').replace('{err}', r.error || '?');
+    el.style.color = 'var(--muted)';
+  } catch (e) {
+    el.textContent = t('oauth_client_failed').replace('{err}', e.message);
+  }
 }
 
 // Rullelisten fyldes fra org'en, så man kun kan vælge noget der findes. Kan

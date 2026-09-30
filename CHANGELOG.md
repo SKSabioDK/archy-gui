@@ -5,6 +5,26 @@
 
 ---
 
+### v1.46.7
+---
+**🇩🇰 Dansk**
+
+- **Godkendelse viser miljøets nuværende valg — og siger det.** Under ⚙ Indstillinger lignede *Client Credentials* en standard. Det var miljøets eget valg (fx Sabio's DEV), men nu står OAuth (PKCE) øverst som *anbefalet*, og et miljø på client credentials får en note om at skifte — rød på prod, hvor client credentials kun kan læse.
+
+- **Client ID står udfyldt, med OAuth-klientens navn fra Genesys.** Før var feltet tomt ("tom = uændret"), og med 20-30 klienter hos en kunde var det umuligt at finde den rigtige igen. Nu vises ID'et, og under feltet navnet og typen på klienten, fx *CallFLowVisualizer · Client Credentials*. Mangler login eller rettigheden `oauth:client:view`, siges det.
+
+- **Kun de felter der gælder, vises.** Secret kun ved client credentials, deploy-rettighed og deploy-gruppe kun når trinnet er prod — og det skifter med valget.
+
+- **Deploy-rettighed forklaret tydeligere.** Hjælpeteksten siger nu hvad der sker: ved login til prod tjekkes det at din Genesys-bruger har rettigheden, ellers kan du læse men ikke deploye; tomt betyder standarden `architect:flow:publish`. Deploy-gruppe er forklaret på samme måde.
+
+**🇬🇧 English**
+- **Authentication shows the environment's current choice, and says so** — OAuth (PKCE) is listed first as *recommended*, and a client-credentials environment gets a note to switch.
+- **The Client ID is filled in, with the OAuth client's name from Genesys** below it, so it can be found among 20-30 clients.
+- **Only relevant fields are shown:** secret for client credentials, deploy requirements for prod.
+- **Clearer help for the deploy permission and group.**
+
+---
+
 ### v1.46.6
 ---
 **🇩🇰 Dansk**

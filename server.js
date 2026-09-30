@@ -1081,6 +1081,30 @@ app.get('/api/customers/:id/divisions', async (req, res) => {
   }
 });
 
+// Navnet på miljøets OAuth-klient i Genesys. En kunde kan have 20-30 klienter,
+// og et GUID er ikke til at finde igen i Admin — navnet er. Svaret bærer en
+// kode, så brugerfladen kan sige hvad der mangler på brugerens eget sprog.
+const GRANT_NAMES = { 'CODE': 'Code Authorization', 'CLIENT-CREDENTIALS': 'Client Credentials',
+                      'TOKEN': 'Token Implicit Grant', 'SAML2-BEARER': 'SAML2 Bearer', 'PASSWORD': 'Password' };
+app.get('/api/customers/:id/oauth-client', async (req, res) => {
+  const c = loadCustomers().find(x => x.id === req.params.id);
+  if (!c) return res.status(404).json({ error: 'Ukendt miljø' });
+  if (isDemo(c) || !c.clientId) return res.json({ ok: false, code: 'none' });
+  if (c.authType === 'oauth' && !tokenStore[c.id]) return res.json({ ok: false, code: 'login' });
+  try {
+    const { token, apiBase } = await getToken(c);
+    const r = await axios.get(`${apiBase}/api/v2/oauth/clients/${encodeURIComponent(c.clientId)}`,
+      { headers: { Authorization: `Bearer ${token}` } });
+    const g = r.data.authorizedGrantType;
+    res.json({ ok: true, name: r.data.name || c.clientId, grantType: GRANT_NAMES[g] || g || '' });
+  } catch (e) {
+    const st = e.response?.status;
+    if (st === 403) return res.json({ ok: false, code: 'forbidden' });
+    if (/OAuth token (missing|expired)|another org/.test(e.message)) return res.json({ ok: false, code: 'login' });
+    res.json({ ok: false, code: 'error', error: describeApiError(e) });
+  }
+});
+
 app.get('/api/hierarchy', (req, res) => {
   res.json({ ok: true, stages: STAGES, tenants: buildHierarchy(loadCustomers()) });
 });
