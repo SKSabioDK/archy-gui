@@ -367,7 +367,10 @@
   .customer-chip.creds span:last-child { color: var(--yellow); }
   .customer-card .cc-name { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
   .customer-card .cc-region { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-bottom: 14px; }
-  .customer-card .cc-actions { display: flex; gap: 8px; }
+  /* Med en Log ind- eller Connected-knap er der fem knapper, og en smal kolonne
+     har ikke plads til dem. Rækken ombrydes, og ✕ står altid yderst til højre. */
+  .customer-card .cc-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .customer-card .cc-actions .btn-danger { margin-left: auto; }
   .cc-head { display: flex; align-items: flex-start; gap: 10px; }
   .cc-head .cc-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
   .cc-status { flex: 0 1 45%; min-width: 0; margin-top: 4px; justify-content: flex-end; font-size: 10px; font-family: var(--mono); color: var(--muted); display: flex; align-items: center; gap: 5px; }
@@ -506,7 +509,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.46.9 · Archy GUI</div>
+    <div class="version" id="app-version">v1.46.10 · Archy GUI</div>
   </div>
 
   <!-- Main -->

@@ -5,6 +5,17 @@
 
 ---
 
+### v1.46.10
+---
+**🇩🇰 Dansk**
+
+- **✕ blev skubbet ud af kortet.** Med en *Log ind*- eller *Forbundet*-knap er der fem knapper på et miljøkort, og rækken kunne ikke ombrydes — så ✕ havnede uden for kortets kant. Nu ombrydes rækken, når der ikke er plads, og ✕ står altid yderst til højre.
+
+**🇬🇧 English**
+- **✕ was pushed outside the card** when a *Log in* or *Connected* button was present. The button row now wraps, and ✕ always sits at the far right.
+
+---
+
 ### v1.46.9
 ---
 **🇩🇰 Dansk**
