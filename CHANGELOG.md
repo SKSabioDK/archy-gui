@@ -5,6 +5,26 @@
 
 ---
 
+### v1.47.1
+---
+**🇩🇰 Dansk**
+
+- **Knapperne på tavlen siger hvad de gør, før de gør det.** ⟶ Forfrem, ⟵ Hent hertil, ⟵ Hent tilbage, ↩ og ▲ Publicér (demo) åbner nu en dialog med flowet, fra- og til-miljøet, hvad der sker trin for trin, og hvad man skal passe på — og man vælger at udføre eller annullere. Før gjorde knapperne det bare, og *Forfrem* til et prod der var løbet foran, så ud som enhver anden forfremmelse.
+
+- **Advarslerne bygger på det tavlen allerede ved:** målet er prod; målet er publiceret uden om pipelinen siden sidste forfremmelse; målet er N udgaver foran trinnet før, så rettelser direkte i målet går tabt; eller ⇄ Tjek indhold har fundet en forskel. Er der en advarsel, er udfør-knappen rød.
+
+- **? Knapperne** i tavlens værktøjslinje forklarer alle knapper på tavlen.
+
+- **▲ Publicér i demoen** siger nu tydeligt at det er en simulering, og antallet vælges i dialogen.
+
+**🇬🇧 English**
+- **Board buttons say what they do before they do it** — a dialog with flow, source, target, steps and warnings, with go-ahead or cancel.
+- **Warnings** cover prod, changes outside the pipeline, a target that is ahead, and content differences.
+- **? Buttons** in the board toolbar explains every button.
+- **▲ Publish in the demo** is clearly marked as a simulation.
+
+---
+
 ### v1.47.0
 ---
 **🇩🇰 Dansk**

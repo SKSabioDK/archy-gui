@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.47.0
+# Archy GUI — Flow Manager · v1.47.1
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -11,8 +11,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.47.0**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.47.0**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.47.1**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.47.1**.
 
 ---
 
@@ -150,6 +150,8 @@ Hver celle viser flowets **navn i netop det miljø**, dets publicerede udgave og
 | ? **ukendt** | org'en kunne ikke læses — vi ved ikke hvad der er i den |
 
 **Forfremmelse** går ét trin ad gangen og lander på *Migrer Flow* med kilde, mål og flow sat, så afhængighedstjek og divisionsvalg er som ellers. Kun en **publiceret** udgave kan forfremmes — en kladde er ikke testet. Til prod kræves dit prod-login (se Sikkerhed).
+
+**Hver knap siger hvad den gør, før den gør det.** ⟶ Forfrem, ⟵ Hent hertil, ⟵ Hent tilbage, ↩ og ▲ Publicér (demo) åbner en dialog med flowet, fra- og til-miljøet, hvad der sker trin for trin, og hvad man skal passe på: at målet er prod, at målet er publiceret uden om pipelinen eller er flere udgaver foran — så de ændringer går tabt — eller at ⇄ Tjek indhold har fundet en forskel. Man vælger **Udfør** eller **Annullér**. **? Knapperne** i tavlens værktøjslinje forklarer alle knapper.
 
 **Common modules tjekkes også på tavlen.** Når den er hentet, tjekkes hvert miljø i gruppen: øverst står fx *⚠ Sabio APS - PROD: 2 common module(s) er nyere end 1 flow(s) der bruger dem*, modulets celle er mærket *⚠ N flow(s) ikke genpubliceret* med en gul 🔁, og flowets celle *⚠ ældre end …*. Kan et miljø ikke tjekkes — fx prod uden login — siges det.
 
@@ -536,6 +538,8 @@ Each cell shows the flow's **name in that environment**, its published version a
 | ? **unknown** | the org could not be read — we do not know what is in it |
 
 **Promotion** moves one stage at a time and lands on *Migrate Flow* with source, target and flow filled in, so dependency checks and division choices work as usual. Only a **published** version can be promoted — a draft has not been tested. Prod requires your prod login (see Security).
+
+**Every button says what it does before it does it.** ⟶ Promote, ⟵ Pull here, ⟵ Pull back, ↩ and ▲ Publish (demo) open a dialog with the flow, source and target, what happens step by step, and what to watch out for: the target is prod, the target was published outside the pipeline or is versions ahead — so those changes are lost — or ⇄ Check content found a difference. You choose to go ahead or **Cancel**. **? Buttons** in the board toolbar explains every button.
 
 **Common modules are checked on the board too.** Once it is fetched, every environment in the group is checked: the top reads e.g. *⚠ Sabio APS - PROD: 2 common module(s) newer than 1 flow(s) that use them*, the module's cell is marked *⚠ N flow(s) not republished* with a yellow 🔁, and the flow's cell *⚠ older than …*. An environment that cannot be checked — prod without a login, say — is named.
 

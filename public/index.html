@@ -509,7 +509,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.47.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.47.1 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1255,6 +1255,17 @@
   </div>
 </div>
 <!-- Genpublicering af de flows der bruger et common module -->
+<!-- Bekræftelse af en handling på tavlen: hvad sker der, og hvad skal man passe på -->
+<div class="wiz-overlay" id="act-overlay">
+  <div class="wiz-modal" style="width:620px;max-width:calc(100vw - 32px)">
+    <div style="padding:20px 24px 0"><div id="act-title" style="font-size:16px;font-weight:700;line-height:1.35"></div></div>
+    <div id="act-body" style="padding:14px 24px;overflow-y:auto;flex:1;font-size:13px;line-height:1.55"></div>
+    <div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-secondary btn-sm" id="act-cancel" onclick="actResolve(false)" data-i18n="act_cancel">Annullér</button>
+      <button class="btn btn-primary btn-sm" id="act-ok" onclick="actResolve(true)"></button>
+    </div>
+  </div>
+</div>
 <div class="wiz-overlay" id="rep-overlay">
   <div class="wiz-modal" style="width:640px;max-width:calc(100vw - 32px)">
     <div style="padding:20px 24px 0">
@@ -1796,7 +1807,6 @@ const LANGS = {
     demo_badge:'DEMO — rører ingen rigtig org',
     demo_publish:'Publicér',
     demo_publish_title:'Kun demo: lad som om nogen har arbejdet videre og publiceret igen. Navnet bliver stående.',
-    demo_publish_prompt:'Hvor mange gange skal der publiceres?',
     pl_unpromoted:'{n} udgave(r) ikke forfremmet',
     pl_published_title:'Miljøets egen publicerede udgave — ikke det samme som versionsendelsen i navnet',
     pl_changed_since_title:'Vi efterlod miljøet på v{v} ({when}). Det står højere nu, så nogen har publiceret her siden.',
@@ -1887,6 +1897,58 @@ const LANGS = {
     tip_stage_up:'Flyt trinnet tidligere i pipelinen',
     tip_stage_down:'Flyt trinnet senere i pipelinen',
     tip_stage_remove:'Fjern trinnet — kun muligt når intet miljø bruger det',
+    act_cancel:'Annullér',
+    act_close:'Luk',
+    act_what:'Det sker der:',
+    act_watch:'Vær opmærksom på:',
+    act_promote_title:'⟶ Forfrem {flow} fra {from} til {to}',
+    act_promote_s1:'Den publicerede udgave v{v} af {name} eksporteres fra {from}.',
+    act_promote_s2_exists:'Den importeres i {to} og publiceres som en ny udgave. {to} står i dag på v{tv} som {tname}.',
+    act_promote_s2_new:'Flowet findes ikke i {to} endnu — det oprettes og publiceres.',
+    act_real_route:'Du kommer til Migrer Flow med kilde, mål og flow valgt. Afhængigheder og division tjekkes dér, før noget skrives til {to}.',
+    act_demo_route:'Demo: det sker kun i demofilen på denne maskine — intet sendes til Genesys.',
+    act_module_after:'Det er et common module: bagefter kan du genpublicere de flows i {to}, der bruger det.',
+    act_warn_prod:'Målet er prod: det kræver dit prod-login, og ændringen rammer den kørende drift.',
+    act_warn_past:'{to} er publiceret uden om pipelinen siden sidste forfremmelse. De ændringer bliver overskrevet.',
+    act_warn_ahead:'{to} er {n} udgave(r) foran {from}. Er det fordi nogen har rettet direkte i {to}, går rettelserne tabt — brug ⇄ Tjek indhold og ⟵ Hent tilbage først, hvis du vil se dem.',
+    act_btn_promote:'⟶ Forfrem',
+    act_pull_title:'⟵ Hent {flow} fra {from} til {to}',
+    act_pull_s1:'Flowet findes kun i et senere trin. Den publicerede udgave hentes fra {from}.',
+    act_pull_s2:'Det oprettes i {to} og publiceres, så kæden kan begynde herfra.',
+    act_pull_prefix:'Navnet får præfikset {p}.',
+    act_back_title:'⟵ Hent {flow} tilbage fra {from} til {to}',
+    act_back_s1:'Indholdet i {to} og {from} er forskelligt (fundet med ⇄ Tjek indhold).',
+    act_back_s2:'Udgaven i {from} importeres i {to} og publiceres, så du kan se og arbejde videre med det der faktisk kører i {from}.',
+    act_warn_back:'Det der står i {to} nu, bliver erstattet. Det kan rulles tilbage med ↩ bagefter.',
+    act_btn_pull:'⟵ Hent',
+    act_rb_title:'↩ Rul {flow} tilbage i {env}',
+    act_rb_s1:'Udgaven fra før seneste forfremmelse ({label}) importeres og publiceres igen i {env}.',
+    act_rb_s2:'Det bliver en ny udgave i Genesys — historikken og release notes bevares.',
+    act_btn_rb:'↩ Rul tilbage',
+    act_demo_pub_title:'▲ Publicér {flow} i {env} (demo)',
+    act_demo_pub_s1:'Lader som om nogen har arbejdet videre og publiceret flowet — kun i demoen, intet sendes til Genesys.',
+    act_demo_pub_s2:'Udgaven stiger, men navnet bliver stående. Så kan du se hvordan tavlen reagerer, når et miljø løber foran.',
+    act_demo_pub_count:'Antal publiceringer',
+    act_btn_demo_pub:'▲ Publicér',
+    pl_buttons_help:'? Knapperne',
+    tip_pl_buttons_help:'Hvad hver knap på tavlen gør',
+    pl_buttons_help_title:'Knapperne på tavlen',
+    plb_promote_btn:'⟶ Forfrem',
+    plb_promote:'Flytter den publicerede udgave ét trin frem — fra kolonnen til venstre hertil. Kun en publiceret udgave kan forfremmes. Du ser altid hvad der sker, før det sker.',
+    plb_pull_here_btn:'⟵ Hent hertil',
+    plb_pull_here:'Flowet findes kun i et senere trin. Henter det ned hertil, fx når dev lige er sat op.',
+    plb_pull_back_btn:'⟵ Hent tilbage',
+    plb_pull_back:'Vises når ⇄ Tjek indhold har fundet en forskel. Henter det næste trins udgave tilbage hertil, så du kan se hvad der er ændret.',
+    plb_check_btn:'⇄ Tjek indhold',
+    plb_check:'Eksporterer flowet fra hvert miljø og sammenligner indholdet. Skriver intet. Versionsnumre kan ikke sammenlignes på tværs af orgs.',
+    plb_rollback_btn:'↩',
+    plb_rollback:'Ruller seneste forfremmelse til dette miljø tilbage til udgaven før.',
+    plb_republish_btn:'🔁 Brugere',
+    plb_republish:'Kun common modules: genpublicerer de flows i miljøet, der bruger modulet, så de kører den nye udgave.',
+    plb_notes_btn:'📝',
+    plb_notes:'Release notes: hvad hver forfremmelse ændrede, hvem og hvornår.',
+    plb_demo_publish_btn:'▲ Publicér',
+    plb_demo_publish:'Kun i demo-miljøer: lader som om nogen har publiceret flowet N gange, så du kan se hvordan tavlen reagerer.',
     env_color_label:'Farve', color_auto:'Trinnets farve', color_green:'Grøn', color_yellow:'Gul', color_orange:'Orange', color_red:'Rød', color_blue:'Blå', color_grey:'Grå',
     prod_deploy_perm:'Kræver rettighed: architect:flow:publish',
     prod_deploy_group:'Kræver gruppe (valgfri)',
@@ -1919,7 +1981,7 @@ const LANGS = {
     action_prod_note:'prod: publiceres IKKE som standard — lægges som kladde du selv publicerer',
     tree_ungrouped:'Ikke grupperet',
     help_customers:'Ét miljø er én Genesys-org set gennem én OAuth-klient.\n• Nye miljøer bruger altid **OAuth (PKCE)**: du logger ind i Genesys som dig selv, og der gemmes ingen secret. Ældre miljøer med client credentials er markeret med **gult**.\n• **⚙ Indstillinger** rummer navn, kunde, gruppe, trin, præfiks, org-navn, farve, division, godkendelse og krav til prod. Hvert felt har et **ⓘ** — hold musen over eller klik for at se hvad det bruges til. Ulovlige tegn og navne der ville give samme mappe, afvises når du gemmer.\n• **Kunde + gruppe** afgør hvad der må migreres indbyrdes — gruppen er pipelinen, og den kan hedde et land eller et firma.\n• **Trin** er dev, test, uat eller prod og bestemmer rækkefølgen på pipelinen. Under **Trin** nederst på siden kan du tilføje egne, fx staging eller preprod — prod står altid sidst.\n• **Farve**: hvert miljø vises i sit trins farve — dev grøn, test gul, uat orange, prod rød — på pipelinen, i sidebjælken og på kortene. Vælg en anden under ⚙ Indstillinger.\n• **Rigtig org ved login**: login\'et tjekker hvilken org du landede i. Vælger du en forkert på Genesys\' login-side (fx en kundes via trusted org), afvises det. Org\'en står ved miljøet når du er logget ind.\n• **Præfiks** bruges kun når flere miljøer deler den samme org og kendes på fx DEV_. Lad det stå tomt for prod.\n• **Prod kræver et prod-login**: ved login tjekkes at du har rettigheden (som standard architect:flow:publish) og evt. er med i en gruppe. Retten gælder 30 minutter. Trin, godkendelse og krav på et prod-miljø kan kun ændres med et gyldigt prod-login.\n• **Log ind hvor du står**: mangler et miljø login, kommer der en bjælke øverst med en Log ind-knap — på alle sider. 🔒 ved miljøet i sidebjælken logger også ind, og siden hentes igen bagefter.\n• **Søg** i miljøerne over kortene, eller vis kun dem der kræver login. Formularen og demo-kunderne kan foldes ud.\n• **Demo-kunderne** er helt lokale — intet login, ingen kald til Genesys.',
-    help_pipeline:'Flows som rækker, gruppens miljøer som kolonner i trin-rækkefølge.\n• Versionstallene kan **ikke** sammenlignes på tværs — de tælles pr. org. Brug **⇄ Tjek indhold**, som er det eneste der afgør om to miljøer er ens.\n• **Grøn** betyder publiceret ad den rigtige vej. **Rød** betyder enten publiceret uden om pipelinen, eller flere udgaver end trinnet før.\n• **⟶ Forfrem** flytter ét trin ad gangen. Kun en publiceret udgave kan forfremmes — en kladde er ikke testet. Til prod kræves dit prod-login.\n• **⟵ Hent hertil** henter et flow ned fra et senere trin, fx når dev lige er sat op.\n• **↩** ruller seneste forfremmelse tilbage, og **📝** viser release notes.\n• Forfremmes eller rulles et **common module** tilbage, tilbydes du at genpublicere de flows i miljøet der bruger det. **🔁** gør det samme når modulet er rettet direkte i Architect. Er et modul publiceret efter flows der bruger det, står det øverst på tavlen, cellerne er mærket ⚠, og 🔁 er gul.\n• **Delt manifest** lægger historikken i org\'en, så flere kan arbejde på samme kunde uden at se hver sin sandhed.',
+    help_pipeline:'Flows som rækker, gruppens miljøer som kolonner i trin-rækkefølge.\n• Versionstallene kan **ikke** sammenlignes på tværs — de tælles pr. org. Brug **⇄ Tjek indhold**, som er det eneste der afgør om to miljøer er ens.\n• **Grøn** betyder publiceret ad den rigtige vej. **Rød** betyder enten publiceret uden om pipelinen, eller flere udgaver end trinnet før.\n• **Hver knap viser først hvad der sker** — flow, fra og til, og advarsler om prod eller ændringer der går tabt — og du kan annullere. **? Knapperne** forklarer dem alle.\n• **⟶ Forfrem** flytter ét trin ad gangen. Kun en publiceret udgave kan forfremmes — en kladde er ikke testet. Til prod kræves dit prod-login.\n• **⟵ Hent hertil** henter et flow ned fra et senere trin, fx når dev lige er sat op.\n• **↩** ruller seneste forfremmelse tilbage, og **📝** viser release notes.\n• Forfremmes eller rulles et **common module** tilbage, tilbydes du at genpublicere de flows i miljøet der bruger det. **🔁** gør det samme når modulet er rettet direkte i Architect. Er et modul publiceret efter flows der bruger det, står det øverst på tavlen, cellerne er mærket ⚠, og 🔁 er gul.\n• **Delt manifest** lægger historikken i org\'en, så flere kan arbejde på samme kunde uden at se hver sin sandhed.',
     help_flows:'Hent, søg og filtrér miljøets flows. Deler flere miljøer org\'en, vises kun dette miljøs egne.\n• Filtrér på **flowtype** — listen fyldes ud fra de typer miljøet faktisk har.\n• **Publicér** sætter en allerede migreret kladde i drift uden at hente noget fra kilden igen. Er det et common module, tilbydes du bagefter at genpublicere de flows der bruger det.\n• **Common modules tjekkes** hver gang listen hentes: er et modul publiceret **efter** et flow der bruger det, kører flowet stadig på den gamle udgave. Det står i et gult felt med en knap der genpublicerer dem, og rækkerne er mærket ⚠.\n• **🔁 Brugere** på et common module viser alle de flows der bruger det.\n• **⇄ Sammenlign** mod en anden org sammenligner **indholdet**, ikke versionsnumrene.\n• **📌 Sæt nulpunkt** noterer hvad org\'en indeholder nu, så værktøjet bagefter kan fange at nogen har publiceret direkte — også for flows det aldrig selv har migreret.',
     help_cross:'Viser de flows der findes hos **flere kunder** — fx det samme common module hos ti kunder.\n• Oversigten bygger på ét kald pr. kunde og er derfor hurtig.\n• **⇄ Sammenlign indhold** eksporterer flowet fra hver kunde og sammenligner hashen. Det tager tid, så det køres kun for den række du beder om.\n• Kunne en org ikke læses, siges det — der står **aldrig** "identisk" hvis vi mangler svar fra nogen.',
     help_migrate:'Eksport fra én org og import direkte til en anden. Kører i to faser.\n• **Tjek** — flowet eksporteres, og mål-org\'en undersøges for alt det refererer til. Der skrives intet endnu.\n• **Import** — først efter dit valg. Mangler noget, kan tabeller, data actions og common modules migreres med inden flowet.\n• Har målet et **præfiks** eller en anden **division**, omdøbes flowet og dets referencer undervejs.\n• **Import handling** vælges efter målet: alt andet end prod publiceres som standard, så det er i drift med det samme. Prod lægges som kladde du selv publicerer.\n• Skrivning til **prod** kræver dit prod-login med rettigheden — du bliver tilbudt at logge ind hvis det mangler.\n• Migreres et **common module**, tilbydes du at genpublicere de flows i målet der bruger det.\n• Køer, skills, wrap-up-koder og scripts skal oprettes manuelt — de kan ikke migreres.',
@@ -2442,7 +2504,6 @@ const LANGS = {
     demo_badge:'DEMO — touches no real org',
     demo_publish:'Publish',
     demo_publish_title:'Demo only: pretend someone kept working and published again. The name stays put.',
-    demo_publish_prompt:'How many times should it be published?',
     pl_unpromoted:'{n} version(s) not promoted',
     pl_published_title:'The environment\'s own published version — not the same as the version suffix in the name',
     pl_changed_since_title:'We left this environment at v{v} ({when}). It is higher now, so someone has published here since.',
@@ -2533,6 +2594,58 @@ const LANGS = {
     tip_stage_up:'Move the stage earlier in the pipeline',
     tip_stage_down:'Move the stage later in the pipeline',
     tip_stage_remove:'Remove the stage — only possible when no environment uses it',
+    act_cancel:'Cancel',
+    act_close:'Close',
+    act_what:'What happens:',
+    act_watch:'Watch out:',
+    act_promote_title:'⟶ Promote {flow} from {from} to {to}',
+    act_promote_s1:'The published version v{v} of {name} is exported from {from}.',
+    act_promote_s2_exists:'It is imported into {to} and published as a new version. {to} is currently at v{tv} as {tname}.',
+    act_promote_s2_new:'The flow does not exist in {to} yet — it is created and published.',
+    act_real_route:'You go to Migrate Flow with source, target and flow selected. Dependencies and division are checked there before anything is written to {to}.',
+    act_demo_route:'Demo: this happens only in the demo file on this machine — nothing is sent to Genesys.',
+    act_module_after:'It is a common module: afterwards you can republish the flows in {to} that use it.',
+    act_warn_prod:'The target is prod: it requires your prod login, and the change hits live operations.',
+    act_warn_past:'{to} has been published outside the pipeline since the last promotion. Those changes will be overwritten.',
+    act_warn_ahead:'{to} is {n} version(s) ahead of {from}. If someone has edited {to} directly, those edits are lost — use ⇄ Check content and ⟵ Pull back first if you want to see them.',
+    act_btn_promote:'⟶ Promote',
+    act_pull_title:'⟵ Pull {flow} from {from} to {to}',
+    act_pull_s1:'The flow only exists in a later stage. The published version is fetched from {from}.',
+    act_pull_s2:'It is created in {to} and published, so the chain can start from here.',
+    act_pull_prefix:'The name gets the prefix {p}.',
+    act_back_title:'⟵ Pull {flow} back from {from} to {to}',
+    act_back_s1:'The content in {to} and {from} differs (found by ⇄ Check content).',
+    act_back_s2:'The version in {from} is imported into {to} and published, so you can see and work with what actually runs in {from}.',
+    act_warn_back:'What is in {to} now will be replaced. It can be rolled back with ↩ afterwards.',
+    act_btn_pull:'⟵ Pull',
+    act_rb_title:'↩ Roll back {flow} in {env}',
+    act_rb_s1:'The version from before the latest promotion ({label}) is imported and published again in {env}.',
+    act_rb_s2:'It becomes a new version in Genesys — history and release notes are kept.',
+    act_btn_rb:'↩ Roll back',
+    act_demo_pub_title:'▲ Publish {flow} in {env} (demo)',
+    act_demo_pub_s1:'Pretends someone kept working and published the flow — demo only, nothing is sent to Genesys.',
+    act_demo_pub_s2:'The version rises but the name stays, so you can see how the board reacts when an environment runs ahead.',
+    act_demo_pub_count:'Number of publishes',
+    act_btn_demo_pub:'▲ Publish',
+    pl_buttons_help:'? Buttons',
+    tip_pl_buttons_help:'What each button on the board does',
+    pl_buttons_help_title:'The buttons on the board',
+    plb_promote_btn:'⟶ Promote',
+    plb_promote:'Moves the published version one stage forward — from the column on the left to here. Only a published version can be promoted. You always see what happens before it happens.',
+    plb_pull_here_btn:'⟵ Pull here',
+    plb_pull_here:'The flow only exists in a later stage. Fetches it down here, e.g. when dev has just been set up.',
+    plb_pull_back_btn:'⟵ Pull back',
+    plb_pull_back:'Shown when ⇄ Check content found a difference. Fetches the next stage\'s version back here so you can see what changed.',
+    plb_check_btn:'⇄ Check content',
+    plb_check:'Exports the flow from each environment and compares the content. Writes nothing. Version numbers cannot be compared across orgs.',
+    plb_rollback_btn:'↩',
+    plb_rollback:'Rolls the latest promotion into this environment back to the version before.',
+    plb_republish_btn:'🔁 Users',
+    plb_republish:'Common modules only: republishes the flows in the environment that use the module, so they run the new version.',
+    plb_notes_btn:'📝',
+    plb_notes:'Release notes: what each promotion changed, who and when.',
+    plb_demo_publish_btn:'▲ Publish',
+    plb_demo_publish:'Demo environments only: pretends someone published the flow N times, so you can see how the board reacts.',
     env_color_label:'Colour', color_auto:'Stage colour', color_green:'Green', color_yellow:'Yellow', color_orange:'Orange', color_red:'Red', color_blue:'Blue', color_grey:'Grey',
     prod_deploy_perm:'Requires permission: architect:flow:publish',
     prod_deploy_group:'Requires group (optional)',
@@ -2565,7 +2678,7 @@ const LANGS = {
     action_prod_note:'prod: NOT published by default — left as a draft for you to publish',
     tree_ungrouped:'Not grouped',
     help_customers:'One environment is one Genesys org seen through one OAuth client.\n• New environments always use **OAuth (PKCE)**: you log in to Genesys as yourself and no secret is stored. Older environments using client credentials are marked in **yellow**.\n• **⚙ Settings** holds name, customer, group, stage, prefix, org label, colour, division, authentication and prod requirements. Every field has an **ⓘ** — hover or click it to see what it is for. Invalid characters, and names that would share a folder, are rejected on save.\n• **Customer + group** decide what may be migrated between — the group is the pipeline, named after a country or a company.\n• **Stage** is dev, test, uat or prod and sets the order on the pipeline. Under **Stages** at the bottom of the page you can add your own, e.g. staging or preprod — prod is always last.\n• **Colour**: each environment shows in its stage colour — dev green, test yellow, uat orange, prod red — on the pipeline, in the sidebar and on the cards. Pick another under ⚙ Settings.\n• **Right org at login**: the login checks which org you landed in. Picking the wrong one on Genesys\' login page (e.g. a customer\'s via trusted org) is refused. The org is shown next to the environment once logged in.\n• **Prefix** is only used when several environments share one org, recognised by e.g. DEV_. Leave it empty for prod.\n• **Prod requires a prod login**: at login you are checked for the permission (architect:flow:publish by default) and optionally a group. The right lasts 30 minutes. Stage, authentication and requirements of a prod environment can only be changed with a valid prod login.\n• **Log in where you are**: when an environment needs a login, a bar with a Log in button appears at the top — on every page. 🔒 next to the environment in the sidebar logs in too, and the page reloads afterwards.\n• **Search** the environments above the cards, or show only those requiring login. The form and the demo customers can be expanded.\n• **Demo customers** are fully local — no login, no calls to Genesys.',
-    help_pipeline:'Flows as rows, the group\'s environments as columns in stage order.\n• Version numbers **cannot** be compared across orgs — they are counted per org. Use **⇄ Check content**, the only thing that decides whether two environments match.\n• **Green** means published the right way. **Red** means published outside the pipeline, or more versions than the stage before.\n• **⟶ Promote** moves one stage at a time. Only a published version can be promoted — a draft is untested. Prod requires your prod login.\n• **⟵ Pull here** fetches a flow from a later stage, e.g. when dev has just been set up.\n• **↩** rolls back the latest promotion, and **📝** shows release notes.\n• When a **common module** is promoted or rolled back, you are offered to republish the flows in that environment that use it. **🔁** does the same when the module was changed directly in Architect. If a module was published after flows that use it, this is listed at the top of the board, the cells are marked ⚠ and 🔁 turns yellow.\n• **Shared manifest** keeps history in the org, so several people can work on one customer and see the same truth.',
+    help_pipeline:'Flows as rows, the group\'s environments as columns in stage order.\n• Version numbers **cannot** be compared across orgs — they are counted per org. Use **⇄ Check content**, the only thing that decides whether two environments match.\n• **Green** means published the right way. **Red** means published outside the pipeline, or more versions than the stage before.\n• **Every button first shows what will happen** — flow, from and to, and warnings about prod or changes that would be lost — and you can cancel. **? Buttons** explains them all.\n• **⟶ Promote** moves one stage at a time. Only a published version can be promoted — a draft is untested. Prod requires your prod login.\n• **⟵ Pull here** fetches a flow from a later stage, e.g. when dev has just been set up.\n• **↩** rolls back the latest promotion, and **📝** shows release notes.\n• When a **common module** is promoted or rolled back, you are offered to republish the flows in that environment that use it. **🔁** does the same when the module was changed directly in Architect. If a module was published after flows that use it, this is listed at the top of the board, the cells are marked ⚠ and 🔁 turns yellow.\n• **Shared manifest** keeps history in the org, so several people can work on one customer and see the same truth.',
     help_flows:'Fetch, search and filter the environment\'s flows. When several environments share an org, only this environment\'s own are shown.\n• Filter by **flow type** — the list is populated from the types the environment actually has.\n• **Publish** puts an already-migrated draft live without fetching anything from the source again. For a common module, you are then offered to republish the flows that use it.\n• **Common modules are checked** every time the list is fetched: if a module was published **after** a flow that uses it, the flow still runs the old version. This is shown in a yellow box with a button to republish them, and the rows are marked ⚠.\n• **🔁 Users** on a common module lists every flow that uses it.\n• **⇄ Compare** against another org compares **content**, not version numbers.\n• **📌 Set baseline** records what the org holds now, so the tool can later catch someone publishing directly — even for flows it never migrated itself.',
     help_cross:'Shows the flows that exist at **more than one customer** — the same common module at ten customers, say.\n• The overview rests on one call per customer and is therefore quick.\n• **⇄ Compare content** exports the flow from each customer and compares the hash. That takes time, so it runs only for the row you ask for.\n• If an org could not be read, it says so — it **never** reports "identical" when an answer is missing.',
     help_migrate:'Export from one org and import straight into another, in two phases.\n• **Check** — the flow is exported and the target org is examined for everything it references. Nothing is written yet.\n• **Import** — only after your choice. If something is missing, tables, data actions and common modules can be migrated before the flow.\n• If the target has a **prefix** or a different **division**, the flow and its references are renamed on the way.\n• **Import action** follows the target: anything but prod is published by default so it is live at once. Prod is left as a draft for you to publish.\n• Writing to **prod** requires your prod login with the permission — you are offered to log in if it is missing.\n• When a **common module** is migrated, you are offered to republish the flows in the target that use it.\n• Queues, skills, wrap-up codes and scripts must be created manually — they cannot be migrated.',
@@ -3088,7 +3201,6 @@ const LANGS = {
     demo_badge:'DÉMO — ne touche aucune org réelle',
     demo_publish:'Publier',
     demo_publish_title:'Démo uniquement : simuler que quelqu\'un a continué et republié. Le nom ne change pas.',
-    demo_publish_prompt:'Combien de fois faut-il publier ?',
     pl_unpromoted:'{n} version(s) non promue(s)',
     pl_published_title:'La version publiée propre à l\'environnement — à ne pas confondre avec le suffixe du nom',
     pl_changed_since_title:'Nous avons laissé cet environnement en v{v} ({when}). Il est plus élevé maintenant : quelqu\'un a publié depuis.',
@@ -3179,6 +3291,58 @@ const LANGS = {
     tip_stage_up:'Avancer l\'étape dans le pipeline',
     tip_stage_down:'Reculer l\'étape dans le pipeline',
     tip_stage_remove:'Supprimer l\'étape — possible seulement si aucun environnement ne l\'utilise',
+    act_cancel:'Annuler',
+    act_close:'Fermer',
+    act_what:'Ce qui se passe :',
+    act_watch:'Attention :',
+    act_promote_title:'⟶ Promouvoir {flow} de {from} vers {to}',
+    act_promote_s1:'La version publiée v{v} de {name} est exportée de {from}.',
+    act_promote_s2_exists:'Elle est importée dans {to} et publiée comme nouvelle version. {to} est actuellement en v{tv} sous le nom {tname}.',
+    act_promote_s2_new:'Le flow n\'existe pas encore dans {to} — il est créé et publié.',
+    act_real_route:'Vous arrivez sur Migrer un flow avec source, cible et flow sélectionnés. Dépendances et division y sont vérifiées avant toute écriture dans {to}.',
+    act_demo_route:'Démo : cela se passe uniquement dans le fichier démo de cette machine — rien n\'est envoyé à Genesys.',
+    act_module_after:'C\'est un common module : vous pourrez ensuite republier les flows de {to} qui l\'utilisent.',
+    act_warn_prod:'La cible est prod : votre connexion prod est requise, et le changement touche l\'exploitation.',
+    act_warn_past:'{to} a été publié hors du pipeline depuis la dernière promotion. Ces changements seront écrasés.',
+    act_warn_ahead:'{to} a {n} version(s) d\'avance sur {from}. Si quelqu\'un a modifié {to} directement, ces modifications seront perdues — utilisez d\'abord ⇄ Vérifier le contenu et ⟵ Rapatrier pour les voir.',
+    act_btn_promote:'⟶ Promouvoir',
+    act_pull_title:'⟵ Ramener {flow} de {from} vers {to}',
+    act_pull_s1:'Le flow n\'existe que dans une étape ultérieure. La version publiée est récupérée de {from}.',
+    act_pull_s2:'Il est créé dans {to} et publié, pour que la chaîne puisse partir d\'ici.',
+    act_pull_prefix:'Le nom reçoit le préfixe {p}.',
+    act_back_title:'⟵ Rapatrier {flow} de {from} vers {to}',
+    act_back_s1:'Le contenu de {to} et de {from} diffère (trouvé par ⇄ Vérifier le contenu).',
+    act_back_s2:'La version de {from} est importée dans {to} et publiée, pour voir et reprendre ce qui tourne vraiment dans {from}.',
+    act_warn_back:'Ce qui se trouve dans {to} sera remplacé. Cela peut être annulé avec ↩ ensuite.',
+    act_btn_pull:'⟵ Ramener',
+    act_rb_title:'↩ Annuler {flow} dans {env}',
+    act_rb_s1:'La version d\'avant la dernière promotion ({label}) est importée et republiée dans {env}.',
+    act_rb_s2:'Cela crée une nouvelle version dans Genesys — l\'historique et les notes sont conservés.',
+    act_btn_rb:'↩ Annuler la promotion',
+    act_demo_pub_title:'▲ Publier {flow} dans {env} (démo)',
+    act_demo_pub_s1:'Simule que quelqu\'un a continué et publié le flow — démo seulement, rien n\'est envoyé à Genesys.',
+    act_demo_pub_s2:'La version augmente mais le nom reste, pour voir comment le tableau réagit quand un environnement prend de l\'avance.',
+    act_demo_pub_count:'Nombre de publications',
+    act_btn_demo_pub:'▲ Publier',
+    pl_buttons_help:'? Boutons',
+    tip_pl_buttons_help:'Ce que fait chaque bouton du tableau',
+    pl_buttons_help_title:'Les boutons du tableau',
+    plb_promote_btn:'⟶ Promouvoir',
+    plb_promote:'Avance la version publiée d\'une étape — de la colonne de gauche vers ici. Seule une version publiée peut être promue. Vous voyez toujours ce qui va se passer avant.',
+    plb_pull_here_btn:'⟵ Ramener ici',
+    plb_pull_here:'Le flow n\'existe que dans une étape ultérieure. Le ramène ici, par ex. quand dev vient d\'être créé.',
+    plb_pull_back_btn:'⟵ Rapatrier',
+    plb_pull_back:'Affiché quand ⇄ Vérifier le contenu a trouvé une différence. Ramène la version de l\'étape suivante ici pour voir ce qui a changé.',
+    plb_check_btn:'⇄ Vérifier le contenu',
+    plb_check:'Exporte le flow de chaque environnement et compare le contenu. N\'écrit rien. Les numéros de version ne sont pas comparables entre orgs.',
+    plb_rollback_btn:'↩',
+    plb_rollback:'Annule la dernière promotion vers cet environnement et revient à la version précédente.',
+    plb_republish_btn:'🔁 Utilisateurs',
+    plb_republish:'Common modules uniquement : republie les flows de l\'environnement qui utilisent le module, pour qu\'ils exécutent la nouvelle version.',
+    plb_notes_btn:'📝',
+    plb_notes:'Notes de version : ce que chaque promotion a changé, qui et quand.',
+    plb_demo_publish_btn:'▲ Publier',
+    plb_demo_publish:'Environnements démo uniquement : simule N publications du flow pour voir la réaction du tableau.',
     env_color_label:'Couleur', color_auto:'Couleur de l\'étape', color_green:'Vert', color_yellow:'Jaune', color_orange:'Orange', color_red:'Rouge', color_blue:'Bleu', color_grey:'Gris',
     prod_deploy_perm:'Permission requise : architect:flow:publish',
     prod_deploy_group:'Groupe requis (facultatif)',
@@ -3211,7 +3375,7 @@ const LANGS = {
     action_prod_note:'prod : NON publié par défaut — laissé en brouillon à publier vous-même',
     tree_ungrouped:'Non regroupé',
     help_customers:'Un environnement est une org Genesys vue à travers un client OAuth.\n• Les nouveaux environnements utilisent toujours **OAuth (PKCE)** : vous vous connectez à Genesys en votre nom et aucun secret n\'est stocké. Les anciens environnements en client credentials sont en **jaune**.\n• **⚙ Paramètres** contient nom, client, groupe, étape, préfixe, nom de l\'org, couleur, division, authentification et exigences prod. Chaque champ a un **ⓘ** — survolez-le ou cliquez pour voir à quoi il sert. Les caractères interdits et les noms qui partageraient un dossier sont refusés à l\'enregistrement.\n• **Client + groupe** déterminent ce qui peut être migré entre eux — le groupe est le pipeline.\n• **Étape** vaut dev, test, uat ou prod et fixe l\'ordre du pipeline. Sous **Étapes** en bas de page, vous pouvez en ajouter, par ex. staging ou preprod — prod reste en dernier.\n• **Couleur** : chaque environnement a la couleur de son étape — dev vert, test jaune, uat orange, prod rouge — sur le pipeline, dans la barre latérale et sur les cartes. Choisissez-en une autre dans ⚙ Paramètres.\n• **Bonne org à la connexion** : la connexion vérifie dans quelle org vous êtes arrivé. Une mauvaise org choisie sur la page de connexion Genesys (par ex. celle d\'un client via trusted org) est refusée. L\'org s\'affiche près de l\'environnement une fois connecté.\n• **Préfixe** ne sert que si plusieurs environnements partagent une org, reconnus par ex. DEV_. Laissez-le vide pour prod.\n• **Prod exige une connexion prod** : à la connexion, on vérifie la permission (architect:flow:publish par défaut) et éventuellement un groupe. Le droit dure 30 minutes. Étape, authentification et exigences d\'un environnement prod ne changent qu\'avec une connexion prod valide.\n• **Connectez-vous où vous êtes** : si un environnement demande une connexion, une barre avec un bouton apparaît en haut — sur toutes les pages. 🔒 dans la barre latérale connecte aussi, puis la page se recharge.\n• **Cherchez** parmi les environnements, ou affichez seulement ceux à connecter. Le formulaire et les démos se déplient.\n• **Les clients démo** sont entièrement locaux — pas de connexion, aucun appel à Genesys.',
-    help_pipeline:'Les flows en lignes, les environnements du groupe en colonnes, par étape.\n• Les numéros de version ne sont **pas** comparables entre orgs — ils sont comptés par org. Utilisez **⇄ Vérifier le contenu**, seul juge de l\'égalité de deux environnements.\n• **Vert** : publié par le bon chemin. **Rouge** : publié hors du pipeline, ou plus de versions que l\'étape précédente.\n• **⟶ Promouvoir** avance d\'une étape à la fois. Seule une version publiée peut être promue. Prod exige votre connexion prod.\n• **⟵ Ramener ici** récupère un flow d\'une étape ultérieure, par ex. quand dev vient d\'être créé.\n• **↩** annule la dernière promotion, **📝** affiche les notes de version.\n• Quand un **common module** est promu ou annulé, on vous propose de republier les flows de l\'environnement qui l\'utilisent. **🔁** fait de même si le module a été modifié directement dans Architect. Si un module a été publié après des flows qui l\'utilisent, c\'est indiqué en haut du tableau, les cellules sont marquées ⚠ et 🔁 devient jaune.\n• **Le manifeste partagé** garde l\'historique dans l\'org, pour que chacun voie la même vérité.',
+    help_pipeline:'Les flows en lignes, les environnements du groupe en colonnes, par étape.\n• Les numéros de version ne sont **pas** comparables entre orgs — ils sont comptés par org. Utilisez **⇄ Vérifier le contenu**, seul juge de l\'égalité de deux environnements.\n• **Vert** : publié par le bon chemin. **Rouge** : publié hors du pipeline, ou plus de versions que l\'étape précédente.\n• **Chaque bouton montre d\'abord ce qui va se passer** — flow, source et cible, et avertissements sur prod ou des changements perdus — et vous pouvez annuler. **? Boutons** les explique tous.\n• **⟶ Promouvoir** avance d\'une étape à la fois. Seule une version publiée peut être promue. Prod exige votre connexion prod.\n• **⟵ Ramener ici** récupère un flow d\'une étape ultérieure, par ex. quand dev vient d\'être créé.\n• **↩** annule la dernière promotion, **📝** affiche les notes de version.\n• Quand un **common module** est promu ou annulé, on vous propose de republier les flows de l\'environnement qui l\'utilisent. **🔁** fait de même si le module a été modifié directement dans Architect. Si un module a été publié après des flows qui l\'utilisent, c\'est indiqué en haut du tableau, les cellules sont marquées ⚠ et 🔁 devient jaune.\n• **Le manifeste partagé** garde l\'historique dans l\'org, pour que chacun voie la même vérité.',
     help_flows:'Récupérer, chercher et filtrer les flows de l\'environnement. Si plusieurs environnements partagent une org, seuls les siens sont affichés.\n• Filtrez par **type de flow** — la liste reprend les types réellement présents.\n• **Publier** met en service un brouillon déjà migré. Pour un common module, on vous propose ensuite de republier les flows qui l\'utilisent.\n• **Les common modules sont vérifiés** à chaque chargement : un module publié **après** un flow qui l\'utilise signifie que le flow tourne encore sur l\'ancienne version. C\'est signalé dans un encadré jaune avec un bouton pour les republier, et les lignes sont marquées ⚠.\n• **🔁 Utilisateurs** sur un common module liste tous les flows qui l\'utilisent.\n• **⇄ Comparer** avec une autre org compare le **contenu**, pas les numéros de version.\n• **📌 Point zéro** enregistre l\'état actuel de l\'org, pour repérer ensuite les publications directes.',
     help_cross:'Montre les flows présents chez **plusieurs clients** — par exemple le même common module chez dix clients.\n• La vue repose sur un appel par client et est donc rapide.\n• **⇄ Comparer le contenu** exporte le flow chez chaque client et compare l\'empreinte. C\'est long, donc réservé à la ligne demandée.\n• Si une org n\'a pas pu être lue, c\'est dit — il n\'affiche **jamais** « identique » quand une réponse manque.',
     help_migrate:'Export depuis une org et import direct dans une autre, en deux phases.\n• **Vérification** — le flow est exporté et l\'org cible examinée pour tout ce qu\'il référence. Rien n\'est encore écrit.\n• **Import** — seulement après votre choix. S\'il manque quelque chose, tables, data actions et common modules peuvent être migrés avant le flow.\n• Si la cible a un **préfixe** ou une autre **division**, le flow et ses références sont renommés au passage.\n• **Action d\'import** selon la cible : tout sauf prod est publié par défaut. Prod reste en brouillon, à publier vous-même.\n• Écrire en **prod** exige votre connexion prod avec la permission — on vous propose de vous connecter si elle manque.\n• Si un **common module** est migré, on vous propose de republier les flows de la cible qui l\'utilisent.\n• Files, skills, codes de wrap-up et scripts doivent être créés manuellement.',
@@ -3734,7 +3898,6 @@ const LANGS = {
     demo_badge:'DEMO — raakt geen echte org aan',
     demo_publish:'Publiceren',
     demo_publish_title:'Alleen demo: doe alsof iemand is doorgegaan en opnieuw heeft gepubliceerd. De naam blijft staan.',
-    demo_publish_prompt:'Hoe vaak moet er gepubliceerd worden?',
     pl_unpromoted:'{n} versie(s) niet gepromoveerd',
     pl_published_title:'De eigen gepubliceerde versie van de omgeving — niet hetzelfde als het versiesuffix in de naam',
     pl_changed_since_title:'We lieten deze omgeving achter op v{v} ({when}). Die staat nu hoger, dus iemand heeft hier sindsdien gepubliceerd.',
@@ -3825,6 +3988,58 @@ const LANGS = {
     tip_stage_up:'Fase eerder in de pipeline zetten',
     tip_stage_down:'Fase later in de pipeline zetten',
     tip_stage_remove:'Fase verwijderen — alleen als geen omgeving hem gebruikt',
+    act_cancel:'Annuleren',
+    act_close:'Sluiten',
+    act_what:'Dit gebeurt er:',
+    act_watch:'Let op:',
+    act_promote_title:'⟶ Promoveer {flow} van {from} naar {to}',
+    act_promote_s1:'De gepubliceerde versie v{v} van {name} wordt geëxporteerd uit {from}.',
+    act_promote_s2_exists:'Ze wordt geïmporteerd in {to} en gepubliceerd als nieuwe versie. {to} staat nu op v{tv} als {tname}.',
+    act_promote_s2_new:'De flow bestaat nog niet in {to} — hij wordt aangemaakt en gepubliceerd.',
+    act_real_route:'Je gaat naar Flow migreren met bron, doel en flow geselecteerd. Afhankelijkheden en divisie worden daar gecontroleerd voordat er iets naar {to} wordt geschreven.',
+    act_demo_route:'Demo: dit gebeurt alleen in het demobestand op deze machine — er gaat niets naar Genesys.',
+    act_module_after:'Het is een common module: daarna kun je de flows in {to} die hem gebruiken opnieuw publiceren.',
+    act_warn_prod:'Het doel is prod: je prod-login is vereist, en de wijziging raakt de lopende productie.',
+    act_warn_past:'{to} is buiten de pipeline om gepubliceerd sinds de laatste promotie. Die wijzigingen worden overschreven.',
+    act_warn_ahead:'{to} loopt {n} versie(s) voor op {from}. Heeft iemand {to} rechtstreeks aangepast, dan gaan die aanpassingen verloren — gebruik eerst ⇄ Inhoud checken en ⟵ Terughalen als je ze wilt zien.',
+    act_btn_promote:'⟶ Promoveren',
+    act_pull_title:'⟵ Haal {flow} van {from} naar {to}',
+    act_pull_s1:'De flow bestaat alleen in een latere fase. De gepubliceerde versie wordt opgehaald uit {from}.',
+    act_pull_s2:'Hij wordt aangemaakt in {to} en gepubliceerd, zodat de keten hier kan beginnen.',
+    act_pull_prefix:'De naam krijgt het voorvoegsel {p}.',
+    act_back_title:'⟵ Haal {flow} terug van {from} naar {to}',
+    act_back_s1:'De inhoud in {to} en {from} verschilt (gevonden met ⇄ Inhoud checken).',
+    act_back_s2:'De versie uit {from} wordt geïmporteerd in {to} en gepubliceerd, zodat je kunt zien en verder werken met wat echt in {from} draait.',
+    act_warn_back:'Wat nu in {to} staat, wordt vervangen. Het kan daarna met ↩ worden teruggedraaid.',
+    act_btn_pull:'⟵ Ophalen',
+    act_rb_title:'↩ Draai {flow} terug in {env}',
+    act_rb_s1:'De versie van vóór de laatste promotie ({label}) wordt opnieuw geïmporteerd en gepubliceerd in {env}.',
+    act_rb_s2:'Het wordt een nieuwe versie in Genesys — geschiedenis en release notes blijven bewaard.',
+    act_btn_rb:'↩ Terugdraaien',
+    act_demo_pub_title:'▲ Publiceer {flow} in {env} (demo)',
+    act_demo_pub_s1:'Doet alsof iemand verder heeft gewerkt en de flow heeft gepubliceerd — alleen in de demo, er gaat niets naar Genesys.',
+    act_demo_pub_s2:'De versie stijgt maar de naam blijft, zodat je ziet hoe het bord reageert als een omgeving voorloopt.',
+    act_demo_pub_count:'Aantal publicaties',
+    act_btn_demo_pub:'▲ Publiceren',
+    pl_buttons_help:'? Knoppen',
+    tip_pl_buttons_help:'Wat elke knop op het bord doet',
+    pl_buttons_help_title:'De knoppen op het bord',
+    plb_promote_btn:'⟶ Promoveren',
+    plb_promote:'Zet de gepubliceerde versie één fase verder — van de kolom links naar hier. Alleen een gepubliceerde versie kan worden gepromoveerd. Je ziet altijd vooraf wat er gebeurt.',
+    plb_pull_here_btn:'⟵ Hierheen halen',
+    plb_pull_here:'De flow bestaat alleen in een latere fase. Haalt hem hierheen, bv. als dev net is opgezet.',
+    plb_pull_back_btn:'⟵ Terughalen',
+    plb_pull_back:'Verschijnt als ⇄ Inhoud checken een verschil vond. Haalt de versie van de volgende fase hierheen zodat je ziet wat er veranderd is.',
+    plb_check_btn:'⇄ Inhoud checken',
+    plb_check:'Exporteert de flow uit elke omgeving en vergelijkt de inhoud. Schrijft niets. Versienummers zijn niet vergelijkbaar tussen orgs.',
+    plb_rollback_btn:'↩',
+    plb_rollback:'Draait de laatste promotie naar deze omgeving terug naar de vorige versie.',
+    plb_republish_btn:'🔁 Gebruikers',
+    plb_republish:'Alleen common modules: publiceert de flows in de omgeving die de module gebruiken opnieuw, zodat ze de nieuwe versie draaien.',
+    plb_notes_btn:'📝',
+    plb_notes:'Release notes: wat elke promotie veranderde, wie en wanneer.',
+    plb_demo_publish_btn:'▲ Publiceren',
+    plb_demo_publish:'Alleen demo-omgevingen: doet alsof de flow N keer is gepubliceerd, zodat je ziet hoe het bord reageert.',
     env_color_label:'Kleur', color_auto:'Kleur van de fase', color_green:'Groen', color_yellow:'Geel', color_orange:'Oranje', color_red:'Rood', color_blue:'Blauw', color_grey:'Grijs',
     prod_deploy_perm:'Vereiste permissie: architect:flow:publish',
     prod_deploy_group:'Vereiste groep (optioneel)',
@@ -3857,7 +4072,7 @@ const LANGS = {
     action_prod_note:'prod: standaard NIET gepubliceerd — blijft een concept dat je zelf publiceert',
     tree_ungrouped:'Niet gegroepeerd',
     help_customers:'Eén omgeving is één Genesys-org gezien via één OAuth-client.\n• Nieuwe omgevingen gebruiken altijd **OAuth (PKCE)**: je logt in bij Genesys als jezelf en er wordt geen secret opgeslagen. Oudere omgevingen met client credentials zijn **geel** gemarkeerd.\n• **⚙ Instellingen** bevat naam, klant, groep, fase, voorvoegsel, org-naam, kleur, divisie, authenticatie en prod-eisen. Elk veld heeft een **ⓘ** — beweeg erover of klik om te zien waarvoor het dient. Ongeldige tekens en namen die een map zouden delen, worden bij opslaan geweigerd.\n• **Klant + groep** bepalen wat onderling gemigreerd mag worden — de groep is de pipeline.\n• **Fase** is dev, test, uat of prod en bepaalt de volgorde op de pipeline. Onder **Fasen** onderaan de pagina voeg je eigen fasen toe, bv. staging of preprod — prod blijft laatste.\n• **Kleur**: elke omgeving krijgt de kleur van haar fase — dev groen, test geel, uat oranje, prod rood — op de pipeline, in de zijbalk en op de kaarten. Kies een andere onder ⚙ Instellingen.\n• **Juiste org bij inloggen**: de login controleert in welke org je bent beland. Een verkeerde org op de Genesys-loginpagina (bv. die van een klant via trusted org) wordt geweigerd. De org staat bij de omgeving zodra je bent ingelogd.\n• **Voorvoegsel** wordt alleen gebruikt als meerdere omgevingen één org delen, herkenbaar aan bv. DEV_. Laat het leeg voor prod.\n• **Prod vereist een prod-login**: bij inloggen wordt gecontroleerd of je de permissie hebt (standaard architect:flow:publish) en eventueel in een groep zit. Het recht geldt 30 minuten. Fase, authenticatie en eisen van een prod-omgeving kunnen alleen met een geldige prod-login worden gewijzigd.\n• **Log in waar je bent**: heeft een omgeving een login nodig, dan verschijnt bovenaan een balk met een inlogknop — op elke pagina. 🔒 in de zijbalk logt ook in, en daarna wordt de pagina opnieuw geladen.\n• **Zoek** in de omgevingen, of toon alleen die login vereisen. Het formulier en de demo-klanten klap je open.\n• **Demo-klanten** zijn volledig lokaal — geen login, geen aanroepen naar Genesys.',
-    help_pipeline:'Flows als rijen, de omgevingen van de groep als kolommen op fase-volgorde.\n• Versienummers zijn **niet** vergelijkbaar tussen orgs — ze worden per org geteld. Gebruik **⇄ Inhoud checken**, het enige dat bepaalt of twee omgevingen gelijk zijn.\n• **Groen** betekent langs de juiste weg gepubliceerd. **Rood** betekent buiten de pipeline om, of meer versies dan de vorige fase.\n• **⟶ Promoveren** gaat één fase tegelijk. Alleen een gepubliceerde versie kan worden gepromoveerd. Prod vereist je prod-login.\n• **⟵ Hierheen halen** haalt een flow op uit een latere fase, bv. als dev net is opgezet.\n• **↩** draait de laatste promotie terug, **📝** toont release notes.\n• Wordt een **common module** gepromoveerd of teruggedraaid, dan krijg je aangeboden de flows in die omgeving die hem gebruiken opnieuw te publiceren. **🔁** doet hetzelfde als de module direct in Architect is aangepast. Is een module gepubliceerd na flows die hem gebruiken, dan staat dat bovenaan het bord, zijn de cellen gemarkeerd met ⚠ en wordt 🔁 geel.\n• **Gedeeld manifest** bewaart de geschiedenis in de org, zodat iedereen dezelfde waarheid ziet.',
+    help_pipeline:'Flows als rijen, de omgevingen van de groep als kolommen op fase-volgorde.\n• Versienummers zijn **niet** vergelijkbaar tussen orgs — ze worden per org geteld. Gebruik **⇄ Inhoud checken**, het enige dat bepaalt of twee omgevingen gelijk zijn.\n• **Groen** betekent langs de juiste weg gepubliceerd. **Rood** betekent buiten de pipeline om, of meer versies dan de vorige fase.\n• **Elke knop toont eerst wat er gebeurt** — flow, van en naar, en waarschuwingen over prod of wijzigingen die verloren gaan — en je kunt annuleren. **? Knoppen** legt ze allemaal uit.\n• **⟶ Promoveren** gaat één fase tegelijk. Alleen een gepubliceerde versie kan worden gepromoveerd. Prod vereist je prod-login.\n• **⟵ Hierheen halen** haalt een flow op uit een latere fase, bv. als dev net is opgezet.\n• **↩** draait de laatste promotie terug, **📝** toont release notes.\n• Wordt een **common module** gepromoveerd of teruggedraaid, dan krijg je aangeboden de flows in die omgeving die hem gebruiken opnieuw te publiceren. **🔁** doet hetzelfde als de module direct in Architect is aangepast. Is een module gepubliceerd na flows die hem gebruiken, dan staat dat bovenaan het bord, zijn de cellen gemarkeerd met ⚠ en wordt 🔁 geel.\n• **Gedeeld manifest** bewaart de geschiedenis in de org, zodat iedereen dezelfde waarheid ziet.',
     help_flows:'Flows van de omgeving ophalen, zoeken en filteren. Delen meerdere omgevingen een org, dan worden alleen de eigen getoond.\n• Filter op **flowtype** — de lijst wordt gevuld met de types die de omgeving echt heeft.\n• **Publiceren** zet een al gemigreerd concept live. Bij een common module krijg je daarna aangeboden de flows die hem gebruiken opnieuw te publiceren.\n• **Common modules worden gecontroleerd** bij elke keer ophalen: is een module **na** een flow die hem gebruikt gepubliceerd, dan draait die flow nog op de oude versie. Dat staat in een geel vak met een knap om ze opnieuw te publiceren, en de rijen zijn gemarkeerd met ⚠.\n• **🔁 Gebruikers** op een common module toont alle flows die hem gebruiken.\n• **⇄ Vergelijken** met een andere org vergelijkt de **inhoud**, niet de versienummers.\n• **📌 Nulpunt** legt vast wat de org nu bevat, zodat directe publicaties later opvallen.',
     help_cross:'Toont de flows die bij **meerdere klanten** bestaan — bijvoorbeeld dezelfde common module bij tien klanten.\n• Het overzicht steunt op één aanroep per klant en is dus snel.\n• **⇄ Inhoud vergelijken** exporteert de flow bij elke klant en vergelijkt de hash. Dat kost tijd, dus alleen voor de rij die je vraagt.\n• Kon een org niet gelezen worden, dan wordt dat gezegd — er staat **nooit** "identiek" als een antwoord ontbreekt.',
     help_migrate:'Export uit één org en import direct in een andere, in twee fasen.\n• **Controle** — de flow wordt geëxporteerd en de doel-org onderzocht op alles waarnaar hij verwijst. Er wordt nog niets geschreven.\n• **Import** — pas na jouw keuze. Ontbreekt er iets, dan kunnen tabellen, data actions en common modules eerst mee.\n• Heeft het doel een **voorvoegsel** of een andere **divisie**, dan worden de flow en zijn verwijzingen onderweg hernoemd.\n• **Importactie** volgt het doel: alles behalve prod wordt standaard gepubliceerd. Prod blijft een concept dat je zelf publiceert.\n• Schrijven naar **prod** vereist je prod-login met de permissie — je krijgt aangeboden in te loggen als die ontbreekt.\n• Wordt een **common module** gemigreerd, dan krijg je aangeboden de flows in het doel die hem gebruiken opnieuw te publiceren.\n• Wachtrijen, skills, wrap-up-codes en scripts moeten handmatig worden aangemaakt.',
@@ -4380,7 +4595,6 @@ const LANGS = {
     demo_badge:'DEMO: no toca ninguna org real',
     demo_publish:'Publicar',
     demo_publish_title:'Solo demo: simula que alguien siguió trabajando y volvió a publicar. El nombre se mantiene.',
-    demo_publish_prompt:'¿Cuántas veces se debe publicar?',
     pl_unpromoted:'{n} versión(es) sin promover',
     pl_published_title:'La versión publicada propia del entorno: no es lo mismo que el sufijo de versión del nombre',
     pl_changed_since_title:'Dejamos este entorno en v{v} ({when}). Ahora está más alto, así que alguien ha publicado aquí desde entonces.',
@@ -4471,6 +4685,58 @@ const LANGS = {
     tip_stage_up:'Mover la etapa antes en el pipeline',
     tip_stage_down:'Mover la etapa después en el pipeline',
     tip_stage_remove:'Eliminar la etapa — solo si ningún entorno la usa',
+    act_cancel:'Cancelar',
+    act_close:'Cerrar',
+    act_what:'Qué ocurre:',
+    act_watch:'Atención:',
+    act_promote_title:'⟶ Promover {flow} de {from} a {to}',
+    act_promote_s1:'Se exporta la versión publicada v{v} de {name} desde {from}.',
+    act_promote_s2_exists:'Se importa en {to} y se publica como nueva versión. {to} está ahora en v{tv} como {tname}.',
+    act_promote_s2_new:'El flow aún no existe en {to}: se crea y se publica.',
+    act_real_route:'Irá a Migrar flow con origen, destino y flow seleccionados. Allí se comprueban dependencias y división antes de escribir nada en {to}.',
+    act_demo_route:'Demo: ocurre solo en el archivo demo de esta máquina; no se envía nada a Genesys.',
+    act_module_after:'Es un common module: después podrá volver a publicar los flows de {to} que lo usan.',
+    act_warn_prod:'El destino es prod: requiere su inicio de sesión de prod, y el cambio afecta a la operación en vivo.',
+    act_warn_past:'{to} se ha publicado fuera del pipeline desde la última promoción. Esos cambios se sobrescribirán.',
+    act_warn_ahead:'{to} va {n} versión(es) por delante de {from}. Si alguien ha editado {to} directamente, esos cambios se pierden: use primero ⇄ Comprobar contenido y ⟵ Traer de vuelta si quiere verlos.',
+    act_btn_promote:'⟶ Promover',
+    act_pull_title:'⟵ Traer {flow} de {from} a {to}',
+    act_pull_s1:'El flow solo existe en una etapa posterior. Se obtiene la versión publicada de {from}.',
+    act_pull_s2:'Se crea en {to} y se publica, para que la cadena pueda empezar aquí.',
+    act_pull_prefix:'El nombre recibe el prefijo {p}.',
+    act_back_title:'⟵ Traer {flow} de vuelta de {from} a {to}',
+    act_back_s1:'El contenido de {to} y {from} difiere (detectado con ⇄ Comprobar contenido).',
+    act_back_s2:'La versión de {from} se importa en {to} y se publica, para ver y seguir trabajando con lo que realmente se ejecuta en {from}.',
+    act_warn_back:'Lo que hay ahora en {to} se reemplaza. Puede revertirse con ↩ después.',
+    act_btn_pull:'⟵ Traer',
+    act_rb_title:'↩ Revertir {flow} en {env}',
+    act_rb_s1:'La versión de antes de la última promoción ({label}) se importa y se vuelve a publicar en {env}.',
+    act_rb_s2:'Será una nueva versión en Genesys; el historial y las notas se conservan.',
+    act_btn_rb:'↩ Revertir',
+    act_demo_pub_title:'▲ Publicar {flow} en {env} (demo)',
+    act_demo_pub_s1:'Simula que alguien siguió trabajando y publicó el flow; solo en la demo, no se envía nada a Genesys.',
+    act_demo_pub_s2:'La versión sube pero el nombre se mantiene, para ver cómo reacciona el tablero cuando un entorno se adelanta.',
+    act_demo_pub_count:'Número de publicaciones',
+    act_btn_demo_pub:'▲ Publicar',
+    pl_buttons_help:'? Botones',
+    tip_pl_buttons_help:'Qué hace cada botón del tablero',
+    pl_buttons_help_title:'Los botones del tablero',
+    plb_promote_btn:'⟶ Promover',
+    plb_promote:'Avanza la versión publicada una etapa, de la columna de la izquierda a esta. Solo se puede promover una versión publicada. Siempre verá qué ocurrirá antes.',
+    plb_pull_here_btn:'⟵ Traer aquí',
+    plb_pull_here:'El flow solo existe en una etapa posterior. Lo trae aquí, p. ej. cuando dev se acaba de crear.',
+    plb_pull_back_btn:'⟵ Traer de vuelta',
+    plb_pull_back:'Aparece cuando ⇄ Comprobar contenido encontró una diferencia. Trae aquí la versión de la etapa siguiente para ver qué cambió.',
+    plb_check_btn:'⇄ Comprobar contenido',
+    plb_check:'Exporta el flow de cada entorno y compara el contenido. No escribe nada. Los números de versión no son comparables entre orgs.',
+    plb_rollback_btn:'↩',
+    plb_rollback:'Revierte la última promoción a este entorno a la versión anterior.',
+    plb_republish_btn:'🔁 Usuarios',
+    plb_republish:'Solo common modules: vuelve a publicar los flows del entorno que usan el módulo, para que ejecuten la nueva versión.',
+    plb_notes_btn:'📝',
+    plb_notes:'Notas de versión: qué cambió cada promoción, quién y cuándo.',
+    plb_demo_publish_btn:'▲ Publicar',
+    plb_demo_publish:'Solo entornos demo: simula que el flow se publicó N veces, para ver cómo reacciona el tablero.',
     env_color_label:'Color', color_auto:'Color de la etapa', color_green:'Verde', color_yellow:'Amarillo', color_orange:'Naranja', color_red:'Rojo', color_blue:'Azul', color_grey:'Gris',
     prod_deploy_perm:'Permiso requerido: architect:flow:publish',
     prod_deploy_group:'Grupo requerido (opcional)',
@@ -4503,7 +4769,7 @@ const LANGS = {
     action_prod_note:'prod: NO se publica por defecto: queda como borrador para que lo publique usted',
     tree_ungrouped:'Sin agrupar',
     help_customers:'Un entorno es una org de Genesys vista a través de un cliente OAuth.\n• Los entornos nuevos usan siempre **OAuth (PKCE)**: inicia sesión en Genesys como usted mismo y no se guarda ningún secret. Los entornos antiguos con client credentials aparecen en **amarillo**.\n• **⚙ Configuración** contiene nombre, cliente, grupo, etapa, prefijo, nombre de la org, color, división, autenticación y requisitos de prod. Cada campo tiene un **ⓘ** — pase el ratón o haga clic para ver para qué sirve. Los caracteres no válidos y los nombres que compartirían carpeta se rechazan al guardar.\n• **Cliente + grupo** deciden qué se puede migrar entre sí — el grupo es el pipeline.\n• **Etapa** es dev, test, uat o prod y fija el orden del pipeline. En **Etapas**, al final de la página, puede añadir otras, p. ej. staging o preprod — prod siempre va al final.\n• **Color**: cada entorno se muestra con el color de su etapa — dev verde, test amarillo, uat naranja, prod rojo — en el pipeline, la barra lateral y las tarjetas. Elija otro en ⚙ Configuración.\n• **Org correcta al iniciar sesión**: el inicio de sesión comprueba en qué org ha entrado. Una org equivocada en la página de Genesys (p. ej. la de un cliente vía trusted org) se rechaza. La org aparece junto al entorno una vez dentro.\n• **Prefijo** solo se usa cuando varios entornos comparten una org, reconocidos por p. ej. DEV_. Déjelo vacío para prod.\n• **Prod exige un inicio de sesión de prod**: al entrar se comprueba el permiso (architect:flow:publish por defecto) y opcionalmente un grupo. El derecho dura 30 minutos. Etapa, autenticación y requisitos de un entorno de prod solo se cambian con un inicio de sesión de prod válido.\n• **Inicie sesión donde esté**: si un entorno necesita inicio de sesión, aparece arriba una barra con un botón — en todas las páginas. 🔒 en la barra lateral también inicia sesión, y la página se recarga después.\n• **Busque** entre los entornos, o muestre solo los que requieren inicio de sesión. El formulario y los clientes demo se despliegan.\n• **Los clientes demo** son totalmente locales — sin inicio de sesión ni llamadas a Genesys.',
-    help_pipeline:'Flows en filas, los entornos del grupo en columnas por orden de etapa.\n• Los números de versión **no** son comparables entre orgs — se cuentan por org. Use **⇄ Comprobar contenido**, lo único que decide si dos entornos son iguales.\n• **Verde**: publicado por el camino correcto. **Rojo**: publicado fuera del pipeline, o más versiones que la etapa anterior.\n• **⟶ Promover** avanza una etapa cada vez. Solo se puede promover una versión publicada. Prod exige su inicio de sesión de prod.\n• **⟵ Traer aquí** trae un flow de una etapa posterior, p. ej. cuando dev se acaba de crear.\n• **↩** revierte la última promoción y **📝** muestra las notas de versión.\n• Al promover o revertir un **common module**, se le ofrece volver a publicar los flows del entorno que lo usan. **🔁** hace lo mismo si el módulo se cambió directamente en Architect. Si un módulo se publicó después de flows que lo usan, se indica arriba del tablero, las celdas se marcan con ⚠ y 🔁 se vuelve amarillo.\n• **El manifiesto compartido** guarda el historial en la org, para que todos vean la misma verdad.',
+    help_pipeline:'Flows en filas, los entornos del grupo en columnas por orden de etapa.\n• Los números de versión **no** son comparables entre orgs — se cuentan por org. Use **⇄ Comprobar contenido**, lo único que decide si dos entornos son iguales.\n• **Verde**: publicado por el camino correcto. **Rojo**: publicado fuera del pipeline, o más versiones que la etapa anterior.\n• **Cada botón muestra primero qué ocurrirá** — flow, origen y destino, y avisos sobre prod o cambios que se perderían — y puede cancelar. **? Botones** los explica todos.\n• **⟶ Promover** avanza una etapa cada vez. Solo se puede promover una versión publicada. Prod exige su inicio de sesión de prod.\n• **⟵ Traer aquí** trae un flow de una etapa posterior, p. ej. cuando dev se acaba de crear.\n• **↩** revierte la última promoción y **📝** muestra las notas de versión.\n• Al promover o revertir un **common module**, se le ofrece volver a publicar los flows del entorno que lo usan. **🔁** hace lo mismo si el módulo se cambió directamente en Architect. Si un módulo se publicó después de flows que lo usan, se indica arriba del tablero, las celdas se marcan con ⚠ y 🔁 se vuelve amarillo.\n• **El manifiesto compartido** guarda el historial en la org, para que todos vean la misma verdad.',
     help_flows:'Obtener, buscar y filtrar los flows del entorno. Si varios entornos comparten una org, solo se muestran los propios.\n• Filtre por **tipo de flow** — la lista se llena con los tipos que el entorno tiene realmente.\n• **Publicar** pone en producción un borrador ya migrado. Si es un common module, se le ofrece después volver a publicar los flows que lo usan.\n• **Los common modules se comprueban** cada vez que se carga la lista: si un módulo se publicó **después** de un flow que lo usa, el flow sigue con la versión antigua. Se indica en un recuadro amarillo con un botón para volver a publicarlos, y las filas se marcan con ⚠.\n• **🔁 Usuarios** en un common module lista todos los flows que lo usan.\n• **⇄ Comparar** con otra org compara el **contenido**, no los números de versión.\n• **📌 Punto cero** registra lo que contiene la org ahora, para detectar después publicaciones directas.',
     help_cross:'Muestra los flows presentes en **varios clientes**, por ejemplo el mismo common module en diez clientes.\n• La vista se basa en una llamada por cliente, así que es rápida.\n• **⇄ Comparar contenido** exporta el flow de cada cliente y compara el hash. Lleva tiempo, así que solo se hace en la fila que pida.\n• Si una org no se pudo leer, se dice: **nunca** informa «idéntico» cuando falta una respuesta.',
     help_migrate:'Exportación desde una org e importación directa en otra, en dos fases.\n• **Comprobación** — se exporta el flow y se examina la org de destino por todo lo que referencia. Aún no se escribe nada.\n• **Importación** — solo tras su elección. Si falta algo, tablas, data actions y common modules pueden migrarse antes del flow.\n• Si el destino tiene un **prefijo** u otra **división**, el flow y sus referencias se renombran por el camino.\n• **Acción de importación** según el destino: todo salvo prod se publica por defecto. Prod queda como borrador que publica usted.\n• Escribir en **prod** exige su inicio de sesión de prod con el permiso — se le ofrece iniciar sesión si falta.\n• Si se migra un **common module**, se le ofrece volver a publicar los flows del destino que lo usan.\n• Colas, skills, códigos de wrap-up y scripts deben crearse manualmente.',
@@ -9336,7 +9602,7 @@ function renderPipeline() {
           ? `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm"
                style="font-size:10px;padding:2px 6px;border-color:var(--yellow);color:var(--yellow)"
                title="${t('pl_pull_here_title')}"
-               onclick="promoteFromBoard('${escapeHtml(kilde.name || row.flowName).replace(/'/g, "\\'")}','${row.flowType}','${kilde.envId}','${c.envId}')"
+               onclick="boardAction('pull_here', ${jsAttr(key)}, ${i})"
                >${t('pl_pull_here')}</button></div>`
           : '')
       : '';
@@ -9347,7 +9613,7 @@ function renderPipeline() {
     const pull = sig.differsNext
       ? `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 6px;border-color:var(--yellow);color:var(--yellow)"
            title="${t('pl_pull_back_title')}"
-           onclick="promoteFromBoard('${escapeHtml(nextCell.name || row.flowName).replace(/'/g, "\\'")}','${row.flowType}','${nextCell.envId}','${c.envId}')"
+           onclick="boardAction('pull_back', ${jsAttr(key)}, ${i})"
            >${t('pl_pull_back')}</button></div>`
       : '';
 
@@ -9366,7 +9632,7 @@ function renderPipeline() {
           ? `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm"
                style="font-size:10px;padding:2px 6px${overwrites ? ';border-color:var(--red);color:var(--red)' : ''}"
                ${overwrites ? `title="${t('pl_overwrites')}"` : ''}
-               onclick="promoteFromBoard('${escapeHtml(prev.name || row.flowName).replace(/'/g, "\\'")}','${row.flowType}','${prev.envId}','${c.envId}')"
+               onclick="boardAction('promote', ${jsAttr(key)}, ${i})"
                >⟶ ${t('pl_promote')}${overwrites ? ' ⚠' : ''}</button></div>`
           : `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm" disabled
                style="font-size:10px;padding:2px 6px;opacity:.4;cursor:not-allowed"
@@ -9378,7 +9644,7 @@ function renderPipeline() {
     const pub = (isDemoEnv && !c.missing && !c.unknown)
       ? `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 6px"
            title="${t('demo_publish_title')}"
-           onclick="demoPublish('${c.envId}','${escapeHtml(c.name).replace(/'/g, "\\'")}','${row.flowType}')"
+           onclick="boardAction('demo_publish', ${jsAttr(key)}, ${i})"
            >▲ ${t('demo_publish')}</button></div>`
       : '';
 
@@ -9450,6 +9716,7 @@ function renderPipeline() {
       ${problems}${pipelineStaleSummary(d)}
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
         <span style="font-size:12px;color:var(--muted)">${rows.length} ${t('pl_count')} · ${Object.keys(pipelineHashes).length} ${t('pl_checked_count')}</span>
+        <button class="btn btn-secondary btn-sm" style="font-size:11px" data-tip="tip_pl_buttons_help" onclick="showBoardButtonsHelp()">${t('pl_buttons_help')}</button>
         <button class="btn btn-secondary btn-sm" style="font-size:11px" data-tip="tip_pl_check" onclick="checkAllShown()">${t('pl_check_all')}</button>
         <button class="btn btn-secondary btn-sm" style="font-size:11px" title="${t('pl_csv_title')}" onclick="downloadPipelineCsv()">${t('pl_csv')}</button>
         <button class="btn btn-secondary btn-sm" style="font-size:11px" data-tip="tip_rel_title" onclick="openReleases({ tenant: ${jsAttr(d.tenant)}, group: ${jsAttr(d.group)} })">📝 ${t('rel_title')}</button>
@@ -9461,7 +9728,125 @@ function renderPipeline() {
 
 // Forfremmelse genbruger Migrer Flow-siden, så afhængighedstjek, divisionsvalg
 // og logning er præcis de samme som ved en almindelig migrering.
-async function promoteFromBoard(flowName, flowType, fromId, toId) {
+// ── Bekræftelse af handlinger på tavlen ─────────────────────────────────────
+// Hver knap på tavlen siger, før den gør noget, præcis hvad der sker — hvilket
+// flow, fra hvor til hvor, hvad der overskrives — og man kan sige nej. Før
+// gjorde knapperne det bare, og "Forfrem" på et prod der var løbet foran,
+// lignede en almindelig forfremmelse.
+
+// t() med {pladsholdere}, HTML-sikkert og med alle forekomster udskiftet.
+// Værdier sættes i fed, så navne og miljøer springer i øjnene.
+function fillT(key, vals) {
+  let out = escapeHtml(t(key));
+  for (const [k, v] of Object.entries(vals || {}))
+    out = out.split('{' + k + '}').join('<b>' + escapeHtml(v == null ? '' : String(v)) + '</b>');
+  return out;
+}
+
+let actResolver = null;
+function confirmAction({ title, steps = [], warnings = [], ok, extraHtml = '', danger = false, infoOnly = false }) {
+  document.getElementById('act-title').innerHTML = title;
+  const liste = (rows, farve) => rows.map(r =>
+    `<li style="margin:4px 0${farve ? ';color:' + farve : ''}">${r}</li>`).join('');
+  document.getElementById('act-body').innerHTML =
+    (steps.length ? `<div style="font-weight:700;margin-bottom:2px">${t('act_what')}</div><ol style="margin:0 0 10px 18px;padding:0">${liste(steps)}</ol>` : '') +
+    (warnings.length ? `<div style="font-weight:700;margin:6px 0 2px;color:var(--yellow)">⚠ ${t('act_watch')}</div><ul style="margin:0 0 6px 18px;padding:0">${liste(warnings, 'var(--yellow)')}</ul>` : '') +
+    extraHtml;
+  const okBtn = document.getElementById('act-ok');
+  okBtn.style.display = infoOnly ? 'none' : '';
+  okBtn.textContent = ok || '';
+  okBtn.className = 'btn btn-sm ' + (danger ? 'btn-danger' : 'btn-primary');
+  document.getElementById('act-cancel').textContent = t(infoOnly ? 'act_close' : 'act_cancel');
+  document.getElementById('act-overlay').style.display = 'flex';
+  (infoOnly ? document.getElementById('act-cancel') : okBtn).focus();
+  return new Promise(res => { actResolver = res; });
+}
+function actResolve(v) {
+  document.getElementById('act-overlay').style.display = 'none';
+  if (actResolver) { actResolver(v); actResolver = null; }
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('act-overlay')?.style.display === 'flex') actResolve(false);
+});
+
+// Én indgang for tavlens knapper. Ud fra rækken og kolonnen findes kilde og
+// mål, og dialogen sammensættes af det tavlen allerede ved om de to miljøer.
+async function boardAction(kind, key, i) {
+  const d = pipelineData;
+  const row = d && d.rows.find(r => r.flowName + '|' + r.flowType === key);
+  if (!row) return;
+  const envs = d.environments;
+  const c = row.cells[i];
+  const navn = j => envs[j]?.name || '?';
+  const isDemo = id => !!(customers.find(x => x.id === id) || {}).demo;
+  const isModule = row.flowType === 'COMMONMODULE';
+
+  if (kind === 'demo_publish') {
+    const ok = await confirmAction({
+      title: fillT('act_demo_pub_title', { flow: c.name, env: navn(i) }),
+      steps: [fillT('act_demo_pub_s1', {}), fillT('act_demo_pub_s2', {})],
+      extraHtml: `<label style="display:block;margin-top:8px">${t('act_demo_pub_count')}</label>
+        <input id="act-count" type="number" min="1" max="50" value="5" style="width:120px" />`,
+      ok: t('act_btn_demo_pub') });
+    if (!ok) return;
+    return demoPublish(c.envId, c.name, row.flowType, document.getElementById('act-count').value);
+  }
+
+  // Kilde og mål for de tre slags flytning.
+  let j;
+  if (kind === 'promote') j = i - 1;
+  else if (kind === 'pull_back') j = i + 1;
+  else if (kind === 'pull_here') j = row.cells.findIndex((x, k) => k > i && !x.missing && !x.unknown && x.published);
+  const src = row.cells[j];
+  if (!src) return;
+  const sig = cellSignals(c, i, row);
+  const from = navn(j), to = navn(i);
+  const steps = [], warnings = [];
+  const demo = isDemo(src.envId) && isDemo(c.envId);
+
+  if (kind === 'promote') {
+    steps.push(fillT('act_promote_s1', { v: src.published, name: src.name, from }));
+    steps.push(c.missing ? fillT('act_promote_s2_new', { to })
+                         : fillT('act_promote_s2_exists', { to, tv: c.published || '—', tname: c.name }));
+  } else if (kind === 'pull_here') {
+    steps.push(fillT('act_pull_s1', { from }));
+    const p = envs[i]?.prefix;
+    steps.push(fillT('act_pull_s2', { to }) + (p ? ' ' + fillT('act_pull_prefix', { p }) : ''));
+  } else {
+    steps.push(fillT('act_back_s1', { from, to }));
+    steps.push(fillT('act_back_s2', { from, to }));
+    warnings.push(fillT('act_warn_back', { to }));
+  }
+  steps.push(demo ? fillT('act_demo_route', {}) : fillT('act_real_route', { to }));
+  if (isModule) steps.push(fillT('act_module_after', { to }));
+
+  if (envs[i]?.stage === 'prod') warnings.unshift(fillT('act_warn_prod', {}));
+  if (kind === 'promote') {
+    if (sig.overwrites) warnings.push(escapeHtml(t('pl_overwrites')));
+    if (sig.pastManifest) warnings.push(fillT('act_warn_past', { to }));
+    else if (sig.aheadOfPrev > 0) warnings.push(fillT('act_warn_ahead', { to, from, n: sig.aheadOfPrev }));
+  }
+
+  const titel = { promote: 'act_promote_title', pull_here: 'act_pull_title', pull_back: 'act_back_title' }[kind];
+  const ok = await confirmAction({
+    title: fillT(titel, { flow: row.flowName, from, to }),
+    steps, warnings,
+    ok: t(kind === 'promote' ? 'act_btn_promote' : 'act_btn_pull'),
+    danger: envs[i]?.stage === 'prod' || warnings.length > (envs[i]?.stage === 'prod' ? 1 : 0) });
+  if (!ok) return;
+  return promoteFromBoard(src.name || row.flowName, row.flowType, src.envId, c.envId, true);
+}
+
+// Forklaring af alle knapper på tavlen — samme dialog, kun til læsning.
+function showBoardButtonsHelp() {
+  const linjer = ['promote', 'pull_here', 'pull_back', 'check', 'rollback', 'republish', 'notes', 'demo_publish']
+    .map(k => `<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span style="font-family:var(--mono);white-space:nowrap;min-width:120px">${escapeHtml(t('plb_' + k + '_btn'))}</span>
+      <span>${escapeHtml(t('plb_' + k))}</span></div>`).join('');
+  confirmAction({ title: escapeHtml(t('pl_buttons_help_title')), extraHtml: linjer, infoOnly: true });
+}
+
+async function promoteFromBoard(flowName, flowType, fromId, toId, confirmed = false) {
   // Demo-miljøer har hverken credentials eller flows i Genesys, så Migrer
   // Flow-siden har intet at arbejde med. Forfremmelsen sker i demofilen.
   const from = customers.find(c => c.id === fromId);
@@ -9469,7 +9854,7 @@ async function promoteFromBoard(flowName, flowType, fromId, toId) {
   if (from && to && from.demo && to.demo) {
     const body = { sourceId: fromId, targetId: toId, flowName, flowType };
     if (String(to.stage || '').toLowerCase() === 'prod') {
-      if (!confirm(t('pl_prod_warn') + '\n\n' + to.name)) return;
+      if (!confirmed && !confirm(t('pl_prod_warn') + '\n\n' + to.name)) return;
       body.confirmProd = true;
     }
     const r = await fetch('/api/demo/promote', {
@@ -9676,10 +10061,13 @@ async function downloadSelectedReleases() {
 async function rollbackRelease(ref, label, name) {
   if (typeof ref === 'string') ref = JSON.parse(ref);
   const envId = ref.envId;
-  let msg = t('rb_confirm').replace('{name}', name || '').replace('{label}', label || '') + '\n\n' + envNameOf(envId);
   const prod = isProdEnv(envId);
-  if (prod) msg = t('pl_prod_warn') + '\n\n' + msg;
-  if (!confirm(msg)) return;
+  const ok = await confirmAction({
+    title: fillT('act_rb_title', { flow: name, env: envNameOf(envId) }),
+    steps: [fillT('act_rb_s1', { label, env: envNameOf(envId) }), fillT('act_rb_s2', {})],
+    warnings: prod ? [fillT('act_warn_prod', {})] : [],
+    ok: t('act_btn_rb'), danger: prod });
+  if (!ok) return;
   showAlert('pipelineAlert', `<span class="spin"></span> ${t('rb_running')}`, 'info');
   const res = await fetch('/api/releases/rollback', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -9992,10 +10380,8 @@ async function renderDemoButtons() {
 // Kun i demoen: lad som om nogen har arbejdet videre og publiceret igen.
 // Navnet bliver stående — det er dét der viser at flowet er løbet foran det
 // der sidst blev forfremmet.
-async function demoPublish(envId, flowName, flowType) {
-  const svar = prompt(t('demo_publish_prompt'), '5');
-  if (svar === null) return;
-  const times = parseInt(svar, 10);
+async function demoPublish(envId, flowName, flowType, antal) {
+  const times = parseInt(antal, 10);
   if (!Number.isFinite(times) || times < 1) return;
   const r = await fetch('/api/demo/publish', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
