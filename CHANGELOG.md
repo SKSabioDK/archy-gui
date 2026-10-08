@@ -5,6 +5,23 @@
 
 ---
 
+### v1.47.0
+---
+**🇩🇰 Dansk**
+
+- **Egne trin.** Under **Kunder → Trin** kan trinlisten udvides med fx *staging* eller *preprod* og sorteres med pilene. Listen gælder for hele programmet — pipelinen, rullelisterne, sorteringen og farverne følger den — og gemmes i `settings.json`, som ikke kommer i git.
+
+- **Prod står altid sidst**, fordi login, deploy-ret og skrivevagten hænger på den. Et trin der bruges af et miljø, kan ikke fjernes — så ville miljøet falde ud af pipelinen uden at nogen sagde det. Serveren afviser begge dele, også hvis man kalder den direkte.
+
+- **Egne trin får farve efter placering:** gul, og orange hvis de står lige før prod — så rækken stadig går fra grøn mod rød.
+
+**🇬🇧 English**
+- **Custom stages** under **Customers → Stages** (e.g. staging, preprod), sortable, stored in `settings.json`.
+- **Prod is always last**, and a stage in use cannot be removed.
+- **Custom stages are coloured by position:** yellow, orange right before prod.
+
+---
+
 ### v1.46.10
 ---
 **🇩🇰 Dansk**

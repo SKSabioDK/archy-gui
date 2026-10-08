@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.46.10
+# Archy GUI — Flow Manager · v1.47.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -11,8 +11,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.46.10**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.46.10**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.47.0**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.47.0**.
 
 ---
 
@@ -81,6 +81,8 @@ Vattenfall            Kunde 2 A/S
 ```
 
 **Gruppen er pipelinen** — om den hedder et land eller et firma er kun en etiket. Hvert miljø får et trin fra `dev → test → uat → prod`. Har en kunde kun én gruppe, skjules valget.
+
+**Egne trin.** Under **Kunder → Trin** kan listen udvides med fx `staging` eller `preprod` og sorteres med pilene. Listen gælder for hele programmet og gemmes i `settings.json`. **Prod står altid sidst**, fordi login, deploy-ret og skrivevagten hænger på den, og et trin der bruges af et miljø, kan ikke fjernes. Egne trin får gul farve — orange hvis de står lige før prod.
 
 **Præfiks: flere miljøer i den samme org.** Nogle kunder har ikke én org pr. miljø, men **én org hvor miljøerne kendes på et præfiks**:
 
@@ -377,6 +379,7 @@ Archy-gui/
 ├── start.bat          # Start server skjult i baggrunden + åbn browser
 ├── stop.bat           # Stop serveren
 ├── customers.json     # Kunder (auto-genereret)
+├── settings.json      # Egen trinliste (oprettes når den gemmes)
 ├── server.log         # Server-output
 ├── flows/             # Lokale YAML-filer
 │   └── <kundenavn>/
@@ -397,7 +400,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-232 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+235 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -464,6 +467,8 @@ New environments are always created with **🌐 OAuth (PKCE)**: you log in to Ge
 **Many customers.** The search box above the cards matches name, customer, group, stage and org label, and *Only those requiring login* shows the ones still missing. Cards are sorted by customer and stage, and the form and demo customers are collapsed.
 
 **Customer → group → environment.** One record is one *environment*. Two levels above it decide what may be migrated between: the **group is the pipeline**, whether it is named after a country or a company. Each environment gets a stage from `dev → test → uat → prod`. With only one group, the picker is hidden.
+
+**Custom stages.** Under **Customers → Stages** the list can be extended with e.g. `staging` or `preprod` and sorted with the arrows. The list applies to the whole app and is stored in `settings.json`. **Prod is always last**, since login, deploy rights and the write guard depend on it, and a stage used by an environment cannot be removed. Custom stages are yellow — orange when right before prod.
 
 **Prefix: several environments in one org.** Some customers do not have one org per environment but **one org where environments are told apart by a prefix**:
 
@@ -760,6 +765,7 @@ Archy-gui/
 ├── start.bat          # Start the server hidden in the background + open browser
 ├── stop.bat           # Stop the server
 ├── customers.json     # Customer data (auto-generated)
+├── settings.json      # Custom stage list (created when saved)
 ├── server.log         # Server output
 ├── flows/             # Local YAML files per customer
 │   └── <customername>/
@@ -780,7 +786,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-232 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+235 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 

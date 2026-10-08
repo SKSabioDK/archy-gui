@@ -295,6 +295,54 @@ function saveCustomers(customers) {
 const STAGES = ['dev', 'test', 'uat', 'prod'];
 const stageOrder = s => { const i = STAGES.indexOf(String(s || '').toLowerCase()); return i === -1 ? 99 : i; };
 
+// Listen ovenfor er standarden. Kunder der har flere trin — fx staging eller
+// preprod — kan rette den under Kunder → Trin; den gemmes i settings.json og
+// lægges ind i STAGES ved opstart. Arrayet skiftes ud på stedet, så alle der
+// holder på det (også /konventioner.js), ser den nye liste.
+//
+// Prod er ikke bare et navn: login, deploy-ret og skrivevagten hænger på det.
+// Derfor skal "prod" altid findes og altid stå sidst.
+const SETTINGS_FILE = path.join(__dirname, 'settings.json');
+const STAGE_NAME = /^[a-z][a-z0-9-]{0,19}$/;
+const MAX_STAGES = 10;
+
+// Ren vurdering af en ny trinliste. Returnerer { stages } eller { error }.
+function stageListError(list, customers = []) {
+  if (!Array.isArray(list)) return { error: 'Trinlisten skal være en liste.' };
+  const stages = list.map(s => String(s || '').trim().toLowerCase()).filter(Boolean);
+  if (!stages.length) return { error: 'Der skal være mindst ét trin.' };
+  if (stages.length > MAX_STAGES) return { error: `Højst ${MAX_STAGES} trin.` };
+  const ugyldig = stages.find(s => !STAGE_NAME.test(s));
+  if (ugyldig) return { error: `"${ugyldig}" er ikke et gyldigt trin — brug små bogstaver, tal og bindestreg, højst 20 tegn, og start med et bogstav.` };
+  const dobbelt = stages.find((s, i) => stages.indexOf(s) !== i);
+  if (dobbelt) return { error: `"${dobbelt}" står to gange.` };
+  if (stages[stages.length - 1] !== 'prod')
+    return { error: 'Prod skal findes og stå sidst — login, deploy-ret og skrivevagten hænger på det.' };
+  // Et trin der er i brug, kan ikke forsvinde — så faldt miljøet ud af pipelinen.
+  const iBrug = customers.filter(c => c.stage && !stages.includes(String(c.stage).toLowerCase()));
+  if (iBrug.length)
+    return { error: `Trinnet "${iBrug[0].stage}" bruges af ${iBrug.map(c => c.name).join(', ')}. Flyt miljøerne til et andet trin først.` };
+  return { stages };
+}
+
+function applyStages(stages) { STAGES.splice(0, STAGES.length, ...stages); }
+
+function loadSettings() {
+  try { return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); } catch (_) { return {}; }
+}
+function saveSettings(patch) {
+  fs.writeFileSync(SETTINGS_FILE, JSON.stringify({ ...loadSettings(), ...patch }, null, 2));
+}
+
+// Ved opstart: en gemt liste bruges kun hvis den stadig er gyldig.
+{
+  const gemt = loadSettings().stages;
+  if (gemt) {
+    const r = stageListError(gemt);
+    if (r.stages) applyStages(r.stages);
+  }
+}
+
 // Endelsen et forfremmet flow bærer: "testtest" publiceret som udgave 10 bliver
 // til "testtest_v10". Reglen bruges tre steder — når navnet dannes, når
 // grundnavnet skal findes igen, og når tavlen skal se hvor mange udgaver der er
@@ -1103,6 +1151,23 @@ app.get('/api/customers/:id/oauth-client', async (req, res) => {
     if (/OAuth token (missing|expired)|another org/.test(e.message)) return res.json({ ok: false, code: 'login' });
     res.json({ ok: false, code: 'error', error: describeApiError(e) });
   }
+});
+
+app.get('/api/stages', (req, res) => {
+  const all = loadCustomers();
+  const used = {};
+  for (const c of all) if (c.stage) (used[String(c.stage).toLowerCase()] ||= []).push(c.name);
+  res.json({ ok: true, stages: STAGES, used });
+});
+
+app.put('/api/stages', (req, res) => {
+  const r = stageListError(req.body?.stages, loadCustomers());
+  if (r.error) return res.status(400).json({ error: r.error });
+  const foer = STAGES.join(' → ');
+  applyStages(r.stages);
+  saveSettings({ stages: r.stages });
+  addLog('INFO', `Stages changed: ${foer} ⇒ ${r.stages.join(' → ')}`, null, 'CUSTOMER');
+  res.json({ ok: true, stages: STAGES });
 });
 
 app.get('/api/hierarchy', (req, res) => {
@@ -6320,7 +6385,7 @@ if (require.main === module) {
 module.exports = {
   app, tokenStore, getToken,
   // konventioner
-  STAGES, VERSION_SUFFIX,
+  STAGES, VERSION_SUFFIX, stageListError,
   // navne og versioner
   compareVersions, baseFlowName, versionSuffixOf, promotionName, versionFromFileName,
   isPipelineOrigin, promotionNameFrom, carriesVersionSuffix, prefixClash, prefixChangeImpact,

@@ -270,3 +270,29 @@ test('et flow publiceret før modulet kører på den gamle udgave', () => {
   // Uden datoer ved vi det ikke — og så påstår vi intet.
   assert.equal(s.isBehindModule({}, pub('2026-09-02T10:00:00Z')), false);
 });
+
+// ── Egne trin ────────────────────────────────────────────────────────────────
+
+test('egne trin kan tilføjes, men prod skal stå sidst', () => {
+  assert.deepEqual(s.stageListError(['dev', 'test', 'staging', 'uat', 'preprod', 'prod']).stages,
+    ['dev', 'test', 'staging', 'uat', 'preprod', 'prod']);
+  // Store bogstaver og mellemrum rettes, ikke afvises.
+  assert.deepEqual(s.stageListError([' Dev ', 'PROD']).stages, ['dev', 'prod']);
+  assert.match(s.stageListError(['dev', 'prod', 'uat']).error, /Prod/);
+  assert.match(s.stageListError(['dev', 'test']).error, /Prod/);
+});
+
+test('ugyldige og dobbelte trin afvises', () => {
+  assert.match(s.stageListError(['pre prod', 'prod']).error, /gyldigt/);
+  assert.match(s.stageListError(['1st', 'prod']).error, /gyldigt/);
+  assert.match(s.stageListError(['dev', 'dev', 'prod']).error, /to gange/);
+  assert.match(s.stageListError([]).error, /mindst/);
+  assert.match(s.stageListError('dev,prod').error, /liste/);
+});
+
+test('et trin der bruges af et miljø, kan ikke fjernes', () => {
+  // Ellers faldt miljøet ud af pipelinen uden at nogen sagde det.
+  const kunder = [{ name: 'Kunde — UAT', stage: 'uat' }, { name: 'Kunde — PROD', stage: 'prod' }];
+  assert.match(s.stageListError(['dev', 'test', 'prod'], kunder).error, /Kunde — UAT/);
+  assert.ok(s.stageListError(['uat', 'prod'], kunder).stages);
+});

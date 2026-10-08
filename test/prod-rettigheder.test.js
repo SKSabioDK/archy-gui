@@ -99,7 +99,7 @@ const SERVER = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
 // Ruter der ikke skriver til en org — eller tjekker selv.
 const SKRIVER_IKKE_TIL_ORG = new Set([
   '/api/version/check', '/api/customers', '/api/customers/:id', '/api/customers/:id/test',
-  '/api/customers/:id/prefix-check',
+  '/api/customers/:id/prefix-check', '/api/stages',
   '/api/demo/promote', '/api/demo/publish', '/api/demo/create', '/api/demo/reset', '/api/demo',
   '/api/releases/diff', '/api/releases/notes', '/api/flows/dependents',
   '/api/flows/cross-hash', '/api/flows/compare',
