@@ -259,6 +259,17 @@
   label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 6px; letter-spacing: .5px; }
   .fh-i { display:inline-block; margin-left:6px; color:var(--blue); cursor:help; font-size:12px; line-height:1; user-select:none; }
   .fh-i:hover, .fh-i:focus-visible, .fh-i.open { color:var(--accent); outline:none; }
+  /* Opsætningsguiden: samme side, men kun guiden vises (?guide=<miljø>). */
+  #guide-root { display:none; }
+  body.guide-mode .layout { display:none; }
+  body.guide-mode #guide-root { display:block; max-width:780px; margin:0 auto; padding:24px 16px 48px; }
+  .gd-step { border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:10px; background:var(--card); }
+  .gd-step.done { border-color:var(--green); }
+  .gd-head { display:flex; align-items:center; gap:10px; }
+  .gd-head input { width:auto; transform:scale(1.2); }
+  .gd-title { font-weight:700; flex:1; }
+  .gd-body { font-size:12px; color:var(--muted); margin:6px 0 0 30px; line-height:1.55; }
+  .gd-res { font-size:12px; margin:6px 0 0 30px; font-family:var(--mono); }
   .fh-note { font-size:11px; line-height:1.4; color:var(--muted); margin:0 0 8px; }
   .fh-text { font-size:11px; line-height:1.45; color:var(--text); background:var(--hover); border-left:2px solid var(--blue);
              padding:6px 9px; border-radius:4px; margin:-2px 0 6px; }
@@ -437,6 +448,7 @@
     if (t === 'light' || t === 'sabio' || t === 'sabio-light') document.body.classList.add(t);
   } catch (e) {}
 </script>
+<div id="guide-root"></div>
 <div class="layout">
 
   <!-- Topbar -->
@@ -509,7 +521,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.47.3 · Archy GUI</div>
+    <div class="version" id="app-version">v1.47.4 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1980,6 +1992,56 @@ const LANGS = {
     pfx_done:'✓ {n} navn(e) ændret — præfikset er nu {new}.',
     pfx_failed:'✗ Omdøbningen fejlede og er rullet tilbage — præfikset er ikke ændret: {err}',
     pfx_unreadable:'Org\'en kunne ikke læses, så navnene kan ikke ændres med: {err}\n\nGem præfikset alligevel? Flows med det gamle præfiks bliver så stående som deres egne rækker på tavlen.',
+    gd_title:'Opsætningsguide — {env}',
+    gd_open_guide:'📋 Opsætningsguide',
+    tip_btn_guide:'Opsætningsguide: en tjekliste i et nyt vindue til at sætte org\'en og miljøet rigtigt op',
+    gd_intro:'Følg punkterne i rækkefølge. Punkter med Tjek kontrollerer programmet selv; de andre krydser du af. Vinduet kan stå åbent ved siden af Genesys mens du arbejder.',
+    gd_progress:'{n} af {m} klar',
+    gd_check_all:'▶ Tjek alt',
+    gd_check:'Tjek',
+    gd_pending:'Kontrollerer…',
+    gd_close:'Luk vinduet',
+    gd_popup_blocked:'Browseren blokerede vinduet. Tillad pop-op-vinduer for localhost, og prøv igen.',
+    gd_unknown_env:'Miljøet findes ikke længere.',
+    gd_done_all:'✓ Alle punkter er klar — miljøet er sat op.',
+    gd_need_login:'Log ind på miljøet først — se punktet "Log ind".',
+    gd_not_logged_in:'Ikke logget ind.',
+    gd_env_first:'Udfyld kunde og gruppe først.',
+    gd_client_title:'Opret en OAuth-klient i Genesys',
+    gd_client_body_oauth:'Admin → Integrations → OAuth → Add Client. Vælg grant type "Code Authorization" og slå PKCE til. Kopiér Client ID ind i miljøets indstillinger. Der skal ingen roller på klienten — med PKCE bruges din egen brugers rettigheder.',
+    gd_client_body_creds:'Admin → Integrations → OAuth → Add Client. Vælg grant type "Client Credentials", og giv klienten en rolle med rettighederne i næste punkt, i alle divisioner. Kopiér Client ID og secret ind i miljøets indstillinger. Client credentials bruges kun uden for prod.',
+    gd_client_found:'Fundet: {name} · {type}',
+    gd_client_wrong:'Klienten er af typen {type} — miljøet skal bruge {want}.',
+    gd_redirect_title:'Sæt redirect-URI på klienten',
+    gd_redirect_body:'Under Authorized redirect URIs på OAuth-klienten skal {uri} stå — ellers kan login ikke vende tilbage til programmet.',
+    gd_redirect_ok:'{uri} er sat.',
+    gd_redirect_missing:'{uri} mangler — klienten har: {list}',
+    gd_perms_title:'Giv de nødvendige rettigheder',
+    gd_perms_body_oauth:'Med PKCE er det din egen bruger der skal have rettighederne, via en rolle i Genesys. Programmet bruger disse:',
+    gd_perms_body_creds:'Klientens rolle skal have disse rettigheder:',
+    gd_perms_missing:'Mangler: {list}',
+    gd_env_title:'Udfyld miljøet her i programmet',
+    gd_env_body:'Under Kunder → ⚙ Indstillinger: kunde og gruppe (det er pipelinen), trin, og præfiks hvis flere miljøer deler org\'en. Region og Client ID skal passe til org\'en.',
+    gd_env_missing:'Mangler: {list}',
+    gd_login_title:'Log ind',
+    gd_login_btn:'Log ind',
+    gd_login_body:'Log ind på miljøet, og vælg den rigtige organisation på Genesys\' login-side. Et login i en forkert org afvises.',
+    gd_login_ok:'Logget ind i {org}',
+    gd_division_title:'Divisionen findes',
+    gd_division_body:'Flows og tabeller lægges i divisionen {div}. Den skal findes i org\'en.',
+    gd_division_ok:'{div} findes.',
+    gd_division_missing:'Divisionen {div} findes ikke i org\'en.',
+    gd_manifest_title:'Opret manifest-tabellen',
+    gd_manifest_body:'Tabellen {table} i org\'en holder historikken, så flere kan arbejde på samme kunde og se det samme.',
+    gd_manifest_create:'Opret tabellen',
+    gd_manifest_ok:'{table} findes ({n} rækker).',
+    gd_manifest_missing:'Tabellen findes ikke endnu.',
+    gd_deploy_title:'Deploy-ret til prod',
+    gd_deploy_body:'Ved login til prod tjekkes at din bruger har rettigheden {perm}.',
+    gd_deploy_group:'Og at du er med i gruppen {g}.',
+    gd_deploy_missing:'Mangler: {list}',
+    gd_flows_title:'Få flows ind i miljøet',
+    gd_flows_body:'Er miljøet tomt, så brug ⟵ Hent hertil på pipelinen, eller Migrer Flow. Flow Browser viser hvad der allerede ligger i org\'en.',
     env_color_label:'Farve', color_auto:'Trinnets farve', color_green:'Grøn', color_yellow:'Gul', color_orange:'Orange', color_red:'Rød', color_blue:'Blå', color_grey:'Grå',
     prod_deploy_perm:'Kræver rettighed: architect:flow:publish',
     prod_deploy_group:'Kræver gruppe (valgfri)',
@@ -2011,7 +2073,7 @@ const LANGS = {
     action_default_note:'publiceres som standard — flowet er i drift med det samme',
     action_prod_note:'prod: publiceres IKKE som standard — lægges som kladde du selv publicerer',
     tree_ungrouped:'Ikke grupperet',
-    help_customers:'Ét miljø er én Genesys-org set gennem én OAuth-klient.\n• Nye miljøer bruger altid **OAuth (PKCE)**: du logger ind i Genesys som dig selv, og der gemmes ingen secret. Ældre miljøer med client credentials er markeret med **gult**.\n• **⚙ Indstillinger** rummer navn, kunde, gruppe, trin, præfiks, org-navn, farve, division, godkendelse og krav til prod. Hvert felt har et **ⓘ** — hold musen over eller klik for at se hvad det bruges til. Ulovlige tegn og navne der ville give samme mappe, afvises når du gemmer.\n• **Kunde + gruppe** afgør hvad der må migreres indbyrdes — gruppen er pipelinen, og den kan hedde et land eller et firma.\n• **Trin** er dev, test, uat eller prod og bestemmer rækkefølgen på pipelinen. Under **Trin** nederst på siden kan du tilføje egne, fx staging eller preprod — prod står altid sidst.\n• **Farve**: hvert miljø vises i sit trins farve — dev grøn, test gul, uat orange, prod rød — på pipelinen, i sidebjælken og på kortene. Vælg en anden under ⚙ Indstillinger.\n• **Rigtig org ved login**: login\'et tjekker hvilken org du landede i. Vælger du en forkert på Genesys\' login-side (fx en kundes via trusted org), afvises det. Org\'en står ved miljøet når du er logget ind.\n• **Præfiks** bruges kun når flere miljøer deler den samme org og kendes på fx DEV_. Ændrer du præfikset, viser dialogen hvilke flows, datatabeller og manifest-tabel der omdøbes i org\'en med — de beholder deres id. Lad det stå tomt for prod.\n• **Prod kræver et prod-login**: ved login tjekkes at du har rettigheden (som standard architect:flow:publish) og evt. er med i en gruppe. Retten gælder 30 minutter. Trin, godkendelse og krav på et prod-miljø kan kun ændres med et gyldigt prod-login.\n• **Log ind hvor du står**: mangler et miljø login, kommer der en bjælke øverst med en Log ind-knap — på alle sider. 🔒 ved miljøet i sidebjælken logger også ind, og siden hentes igen bagefter.\n• **Søg** i miljøerne over kortene, eller vis kun dem der kræver login. Formularen og demo-kunderne kan foldes ud.\n• **Demo-kunderne** er helt lokale — intet login, ingen kald til Genesys.',
+    help_customers:'Ét miljø er én Genesys-org set gennem én OAuth-klient.\n• Nye miljøer bruger altid **OAuth (PKCE)**: du logger ind i Genesys som dig selv, og der gemmes ingen secret. Ældre miljøer med client credentials er markeret med **gult**.\n• **⚙ Indstillinger** rummer navn, kunde, gruppe, trin, præfiks, org-navn, farve, division, godkendelse og krav til prod. Hvert felt har et **ⓘ** — hold musen over eller klik for at se hvad det bruges til. Ulovlige tegn og navne der ville give samme mappe, afvises når du gemmer.\n• **Kunde + gruppe** afgør hvad der må migreres indbyrdes — gruppen er pipelinen, og den kan hedde et land eller et firma.\n• **Trin** er dev, test, uat eller prod og bestemmer rækkefølgen på pipelinen. Under **Trin** nederst på siden kan du tilføje egne, fx staging eller preprod — prod står altid sidst.\n• **Farve**: hvert miljø vises i sit trins farve — dev grøn, test gul, uat orange, prod rød — på pipelinen, i sidebjælken og på kortene. Vælg en anden under ⚙ Indstillinger.\n• **Rigtig org ved login**: login\'et tjekker hvilken org du landede i. Vælger du en forkert på Genesys\' login-side (fx en kundes via trusted org), afvises det. Org\'en står ved miljøet når du er logget ind.\n• **Præfiks** bruges kun når flere miljøer deler den samme org og kendes på fx DEV_. Ændrer du præfikset, viser dialogen hvilke flows, datatabeller og manifest-tabel der omdøbes i org\'en med — de beholder deres id. Lad det stå tomt for prod.\n• **Prod kræver et prod-login**: ved login tjekkes at du har rettigheden (som standard architect:flow:publish) og evt. er med i en gruppe. Retten gælder 30 minutter. Trin, godkendelse og krav på et prod-miljø kan kun ændres med et gyldigt prod-login.\n• **📋 Opsætningsguide**: knappen 📋 på et kort åbner en tjekliste i et nyt vindue til at sætte org\'en og miljøet rigtigt op. Tjek-knapperne kontrollerer selv.\n• **Log ind hvor du står**: mangler et miljø login, kommer der en bjælke øverst med en Log ind-knap — på alle sider. 🔒 ved miljøet i sidebjælken logger også ind, og siden hentes igen bagefter.\n• **Søg** i miljøerne over kortene, eller vis kun dem der kræver login. Formularen og demo-kunderne kan foldes ud.\n• **Demo-kunderne** er helt lokale — intet login, ingen kald til Genesys.',
     help_pipeline:'Flows som rækker, gruppens miljøer som kolonner i trin-rækkefølge.\n• Versionstallene kan **ikke** sammenlignes på tværs — de tælles pr. org. Brug **⇄ Tjek indhold**, som er det eneste der afgør om to miljøer er ens.\n• **Grøn** betyder publiceret ad den rigtige vej. **Rød** betyder enten publiceret uden om pipelinen, eller flere udgaver end trinnet før.\n• **Hver knap viser først hvad der sker** — flow, fra og til, og advarsler om prod eller ændringer der går tabt — og du kan annullere. **? Knapperne** forklarer dem alle.\n• **Udlign versionsnummer**: ved ⟶ Forfrem kan målet publiceres de ekstra gange der mangler, så det står på kildens nummer (fx dev v10 → test v10). Det kan ikke tælle ned.\n• **⟶ Forfrem** flytter ét trin ad gangen. Kun en publiceret udgave kan forfremmes — en kladde er ikke testet. Til prod kræves dit prod-login.\n• **⟵ Hent hertil** henter et flow ned fra et senere trin, fx når dev lige er sat op.\n• **↩** ruller seneste forfremmelse tilbage, og **📝** viser release notes.\n• Forfremmes eller rulles et **common module** tilbage, tilbydes du at genpublicere de flows i miljøet der bruger det. **🔁** gør det samme når modulet er rettet direkte i Architect. Er et modul publiceret efter flows der bruger det, står det øverst på tavlen, cellerne er mærket ⚠, og 🔁 er gul.\n• **Delt manifest** lægger historikken i org\'en, så flere kan arbejde på samme kunde uden at se hver sin sandhed.',
     help_flows:'Hent, søg og filtrér miljøets flows. Deler flere miljøer org\'en, vises kun dette miljøs egne.\n• Filtrér på **flowtype** — listen fyldes ud fra de typer miljøet faktisk har.\n• **Publicér** sætter en allerede migreret kladde i drift uden at hente noget fra kilden igen. Er det et common module, tilbydes du bagefter at genpublicere de flows der bruger det.\n• **Common modules tjekkes** hver gang listen hentes: er et modul publiceret **efter** et flow der bruger det, kører flowet stadig på den gamle udgave. Det står i et gult felt med en knap der genpublicerer dem, og rækkerne er mærket ⚠.\n• **🔁 Brugere** på et common module viser alle de flows der bruger det.\n• **⇄ Sammenlign** mod en anden org sammenligner **indholdet**, ikke versionsnumrene.\n• **📌 Sæt nulpunkt** noterer hvad org\'en indeholder nu, så værktøjet bagefter kan fange at nogen har publiceret direkte — også for flows det aldrig selv har migreret.',
     help_cross:'Viser de flows der findes hos **flere kunder** — fx det samme common module hos ti kunder.\n• Oversigten bygger på ét kald pr. kunde og er derfor hurtig.\n• **⇄ Sammenlign indhold** eksporterer flowet fra hver kunde og sammenligner hashen. Det tager tid, så det køres kun for den række du beder om.\n• Kunne en org ikke læses, siges det — der står **aldrig** "identisk" hvis vi mangler svar fra nogen.',
@@ -2703,6 +2765,56 @@ const LANGS = {
     pfx_done:'✓ {n} name(s) changed — the prefix is now {new}.',
     pfx_failed:'✗ The rename failed and was rolled back — the prefix is unchanged: {err}',
     pfx_unreadable:'The org could not be read, so the names cannot be changed along: {err}\n\nSave the prefix anyway? Flows with the old prefix then remain as their own rows on the board.',
+    gd_title:'Setup guide — {env}',
+    gd_open_guide:'📋 Setup guide',
+    tip_btn_guide:'Setup guide: a checklist in a new window for setting up the org and the environment correctly',
+    gd_intro:'Follow the items in order. Items with Check are verified by the app; tick the others yourself. The window can stay open beside Genesys while you work.',
+    gd_progress:'{n} of {m} done',
+    gd_check_all:'▶ Check all',
+    gd_check:'Check',
+    gd_pending:'Checking…',
+    gd_close:'Close window',
+    gd_popup_blocked:'The browser blocked the window. Allow pop-ups for localhost and try again.',
+    gd_unknown_env:'The environment no longer exists.',
+    gd_done_all:'✓ Every item is done — the environment is set up.',
+    gd_need_login:'Log in to the environment first — see the "Log in" item.',
+    gd_not_logged_in:'Not logged in.',
+    gd_env_first:'Fill in customer and group first.',
+    gd_client_title:'Create an OAuth client in Genesys',
+    gd_client_body_oauth:'Admin → Integrations → OAuth → Add Client. Choose grant type "Code Authorization" and enable PKCE. Copy the Client ID into the environment settings. The client needs no roles — with PKCE your own user\'s permissions are used.',
+    gd_client_body_creds:'Admin → Integrations → OAuth → Add Client. Choose grant type "Client Credentials", and give the client a role with the permissions in the next item, in all divisions. Copy the Client ID and secret into the environment settings. Client credentials are only used outside prod.',
+    gd_client_found:'Found: {name} · {type}',
+    gd_client_wrong:'The client is of type {type} — the environment needs {want}.',
+    gd_redirect_title:'Set the redirect URI on the client',
+    gd_redirect_body:'Authorized redirect URIs on the OAuth client must include {uri} — otherwise the login cannot return to the app.',
+    gd_redirect_ok:'{uri} is set.',
+    gd_redirect_missing:'{uri} is missing — the client has: {list}',
+    gd_perms_title:'Grant the required permissions',
+    gd_perms_body_oauth:'With PKCE it is your own user that needs the permissions, through a role in Genesys. The app uses these:',
+    gd_perms_body_creds:'The client\'s role needs these permissions:',
+    gd_perms_missing:'Missing: {list}',
+    gd_env_title:'Fill in the environment in the app',
+    gd_env_body:'Under Customers → ⚙ Settings: customer and group (that is the pipeline), stage, and a prefix if several environments share the org. Region and Client ID must match the org.',
+    gd_env_missing:'Missing: {list}',
+    gd_login_title:'Log in',
+    gd_login_btn:'Log in',
+    gd_login_body:'Log in to the environment and pick the right organisation on the Genesys login page. A login into the wrong org is refused.',
+    gd_login_ok:'Logged in to {org}',
+    gd_division_title:'The division exists',
+    gd_division_body:'Flows and tables are placed in the division {div}. It must exist in the org.',
+    gd_division_ok:'{div} exists.',
+    gd_division_missing:'The division {div} does not exist in the org.',
+    gd_manifest_title:'Create the manifest table',
+    gd_manifest_body:'The table {table} in the org keeps the history, so several people can work on one customer and see the same thing.',
+    gd_manifest_create:'Create the table',
+    gd_manifest_ok:'{table} exists ({n} rows).',
+    gd_manifest_missing:'The table does not exist yet.',
+    gd_deploy_title:'Deploy rights to prod',
+    gd_deploy_body:'At a prod login the tool checks that your user has the permission {perm}.',
+    gd_deploy_group:'And that you are in the group {g}.',
+    gd_deploy_missing:'Missing: {list}',
+    gd_flows_title:'Get flows into the environment',
+    gd_flows_body:'If the environment is empty, use ⟵ Pull here on the pipeline, or Migrate Flow. Flow Browser shows what is already in the org.',
     env_color_label:'Colour', color_auto:'Stage colour', color_green:'Green', color_yellow:'Yellow', color_orange:'Orange', color_red:'Red', color_blue:'Blue', color_grey:'Grey',
     prod_deploy_perm:'Requires permission: architect:flow:publish',
     prod_deploy_group:'Requires group (optional)',
@@ -2734,7 +2846,7 @@ const LANGS = {
     action_default_note:'published by default — the flow is live straight away',
     action_prod_note:'prod: NOT published by default — left as a draft for you to publish',
     tree_ungrouped:'Not grouped',
-    help_customers:'One environment is one Genesys org seen through one OAuth client.\n• New environments always use **OAuth (PKCE)**: you log in to Genesys as yourself and no secret is stored. Older environments using client credentials are marked in **yellow**.\n• **⚙ Settings** holds name, customer, group, stage, prefix, org label, colour, division, authentication and prod requirements. Every field has an **ⓘ** — hover or click it to see what it is for. Invalid characters, and names that would share a folder, are rejected on save.\n• **Customer + group** decide what may be migrated between — the group is the pipeline, named after a country or a company.\n• **Stage** is dev, test, uat or prod and sets the order on the pipeline. Under **Stages** at the bottom of the page you can add your own, e.g. staging or preprod — prod is always last.\n• **Colour**: each environment shows in its stage colour — dev green, test yellow, uat orange, prod red — on the pipeline, in the sidebar and on the cards. Pick another under ⚙ Settings.\n• **Right org at login**: the login checks which org you landed in. Picking the wrong one on Genesys\' login page (e.g. a customer\'s via trusted org) is refused. The org is shown next to the environment once logged in.\n• **Prefix** is only used when several environments share one org, recognised by e.g. DEV_. Change it, and a dialog shows which flows, data tables and manifest table are renamed in the org along with it — they keep their id. Leave it empty for prod.\n• **Prod requires a prod login**: at login you are checked for the permission (architect:flow:publish by default) and optionally a group. The right lasts 30 minutes. Stage, authentication and requirements of a prod environment can only be changed with a valid prod login.\n• **Log in where you are**: when an environment needs a login, a bar with a Log in button appears at the top — on every page. 🔒 next to the environment in the sidebar logs in too, and the page reloads afterwards.\n• **Search** the environments above the cards, or show only those requiring login. The form and the demo customers can be expanded.\n• **Demo customers** are fully local — no login, no calls to Genesys.',
+    help_customers:'One environment is one Genesys org seen through one OAuth client.\n• New environments always use **OAuth (PKCE)**: you log in to Genesys as yourself and no secret is stored. Older environments using client credentials are marked in **yellow**.\n• **⚙ Settings** holds name, customer, group, stage, prefix, org label, colour, division, authentication and prod requirements. Every field has an **ⓘ** — hover or click it to see what it is for. Invalid characters, and names that would share a folder, are rejected on save.\n• **Customer + group** decide what may be migrated between — the group is the pipeline, named after a country or a company.\n• **Stage** is dev, test, uat or prod and sets the order on the pipeline. Under **Stages** at the bottom of the page you can add your own, e.g. staging or preprod — prod is always last.\n• **Colour**: each environment shows in its stage colour — dev green, test yellow, uat orange, prod red — on the pipeline, in the sidebar and on the cards. Pick another under ⚙ Settings.\n• **Right org at login**: the login checks which org you landed in. Picking the wrong one on Genesys\' login page (e.g. a customer\'s via trusted org) is refused. The org is shown next to the environment once logged in.\n• **Prefix** is only used when several environments share one org, recognised by e.g. DEV_. Change it, and a dialog shows which flows, data tables and manifest table are renamed in the org along with it — they keep their id. Leave it empty for prod.\n• **Prod requires a prod login**: at login you are checked for the permission (architect:flow:publish by default) and optionally a group. The right lasts 30 minutes. Stage, authentication and requirements of a prod environment can only be changed with a valid prod login.\n• **📋 Setup guide**: the 📋 button on a card opens a checklist in a new window for setting up the org and environment. The Check buttons verify for you.\n• **Log in where you are**: when an environment needs a login, a bar with a Log in button appears at the top — on every page. 🔒 next to the environment in the sidebar logs in too, and the page reloads afterwards.\n• **Search** the environments above the cards, or show only those requiring login. The form and the demo customers can be expanded.\n• **Demo customers** are fully local — no login, no calls to Genesys.',
     help_pipeline:'Flows as rows, the group\'s environments as columns in stage order.\n• Version numbers **cannot** be compared across orgs — they are counted per org. Use **⇄ Check content**, the only thing that decides whether two environments match.\n• **Green** means published the right way. **Red** means published outside the pipeline, or more versions than the stage before.\n• **Every button first shows what will happen** — flow, from and to, and warnings about prod or changes that would be lost — and you can cancel. **? Buttons** explains them all.\n• **Align version number**: on ⟶ Promote the target can be published the missing extra times so it matches the source number (e.g. dev v10 → test v10). It cannot count down.\n• **⟶ Promote** moves one stage at a time. Only a published version can be promoted — a draft is untested. Prod requires your prod login.\n• **⟵ Pull here** fetches a flow from a later stage, e.g. when dev has just been set up.\n• **↩** rolls back the latest promotion, and **📝** shows release notes.\n• When a **common module** is promoted or rolled back, you are offered to republish the flows in that environment that use it. **🔁** does the same when the module was changed directly in Architect. If a module was published after flows that use it, this is listed at the top of the board, the cells are marked ⚠ and 🔁 turns yellow.\n• **Shared manifest** keeps history in the org, so several people can work on one customer and see the same truth.',
     help_flows:'Fetch, search and filter the environment\'s flows. When several environments share an org, only this environment\'s own are shown.\n• Filter by **flow type** — the list is populated from the types the environment actually has.\n• **Publish** puts an already-migrated draft live without fetching anything from the source again. For a common module, you are then offered to republish the flows that use it.\n• **Common modules are checked** every time the list is fetched: if a module was published **after** a flow that uses it, the flow still runs the old version. This is shown in a yellow box with a button to republish them, and the rows are marked ⚠.\n• **🔁 Users** on a common module lists every flow that uses it.\n• **⇄ Compare** against another org compares **content**, not version numbers.\n• **📌 Set baseline** records what the org holds now, so the tool can later catch someone publishing directly — even for flows it never migrated itself.',
     help_cross:'Shows the flows that exist at **more than one customer** — the same common module at ten customers, say.\n• The overview rests on one call per customer and is therefore quick.\n• **⇄ Compare content** exports the flow from each customer and compares the hash. That takes time, so it runs only for the row you ask for.\n• If an org could not be read, it says so — it **never** reports "identical" when an answer is missing.',
@@ -3426,6 +3538,56 @@ const LANGS = {
     pfx_done:'✓ {n} nom(s) changé(s) — le préfixe est maintenant {new}.',
     pfx_failed:'✗ Le renommage a échoué et a été annulé — le préfixe est inchangé : {err}',
     pfx_unreadable:'L\'org n\'a pas pu être lue, les noms ne peuvent donc pas suivre : {err}\n\nEnregistrer le préfixe quand même ? Les flows avec l\'ancien préfixe resteront alors comme lignes à part sur le tableau.',
+    gd_title:'Guide de configuration — {env}',
+    gd_open_guide:'📋 Guide de configuration',
+    tip_btn_guide:'Guide de configuration : une liste dans une nouvelle fenêtre pour bien configurer l\'org et l\'environnement',
+    gd_intro:'Suivez les points dans l\'ordre. Les points avec Vérifier sont contrôlés par l\'outil ; cochez les autres vous-même. La fenêtre peut rester ouverte à côté de Genesys.',
+    gd_progress:'{n} sur {m} prêts',
+    gd_check_all:'▶ Tout vérifier',
+    gd_check:'Vérifier',
+    gd_pending:'Vérification…',
+    gd_close:'Fermer la fenêtre',
+    gd_popup_blocked:'Le navigateur a bloqué la fenêtre. Autorisez les pop-ups pour localhost et réessayez.',
+    gd_unknown_env:'L\'environnement n\'existe plus.',
+    gd_done_all:'✓ Tous les points sont prêts — l\'environnement est configuré.',
+    gd_need_login:'Connectez-vous d\'abord à l\'environnement — voir le point « Se connecter ».',
+    gd_not_logged_in:'Non connecté.',
+    gd_env_first:'Renseignez d\'abord client et groupe.',
+    gd_client_title:'Créer un client OAuth dans Genesys',
+    gd_client_body_oauth:'Admin → Integrations → OAuth → Add Client. Choisissez le grant type « Code Authorization » et activez PKCE. Copiez le Client ID dans les paramètres de l\'environnement. Aucun rôle n\'est nécessaire sur le client — avec PKCE, ce sont les droits de votre utilisateur.',
+    gd_client_body_creds:'Admin → Integrations → OAuth → Add Client. Choisissez « Client Credentials » et donnez au client un rôle avec les permissions du point suivant, dans toutes les divisions. Copiez le Client ID et le secret dans les paramètres. Client credentials ne sert qu\'hors prod.',
+    gd_client_found:'Trouvé : {name} · {type}',
+    gd_client_wrong:'Le client est de type {type} — l\'environnement doit utiliser {want}.',
+    gd_redirect_title:'Définir l\'URI de redirection du client',
+    gd_redirect_body:'Les Authorized redirect URIs du client OAuth doivent contenir {uri} — sinon la connexion ne peut pas revenir à l\'outil.',
+    gd_redirect_ok:'{uri} est défini.',
+    gd_redirect_missing:'{uri} manque — le client a : {list}',
+    gd_perms_title:'Accorder les permissions nécessaires',
+    gd_perms_body_oauth:'Avec PKCE, c\'est votre propre utilisateur qui doit avoir les permissions, via un rôle dans Genesys. L\'outil utilise :',
+    gd_perms_body_creds:'Le rôle du client doit avoir ces permissions :',
+    gd_perms_missing:'Manquant : {list}',
+    gd_env_title:'Renseigner l\'environnement ici',
+    gd_env_body:'Sous Clients → ⚙ Paramètres : client et groupe (le pipeline), étape, et préfixe si plusieurs environnements partagent l\'org. Région et Client ID doivent correspondre à l\'org.',
+    gd_env_missing:'Manquant : {list}',
+    gd_login_title:'Se connecter',
+    gd_login_btn:'Se connecter',
+    gd_login_body:'Connectez-vous à l\'environnement et choisissez la bonne organisation sur la page de connexion Genesys. Une connexion dans la mauvaise org est refusée.',
+    gd_login_ok:'Connecté à {org}',
+    gd_division_title:'La division existe',
+    gd_division_body:'Flows et tables sont placés dans la division {div}. Elle doit exister dans l\'org.',
+    gd_division_ok:'{div} existe.',
+    gd_division_missing:'La division {div} n\'existe pas dans l\'org.',
+    gd_manifest_title:'Créer la table du manifeste',
+    gd_manifest_body:'La table {table} de l\'org garde l\'historique, pour que plusieurs personnes voient la même chose.',
+    gd_manifest_create:'Créer la table',
+    gd_manifest_ok:'{table} existe ({n} lignes).',
+    gd_manifest_missing:'La table n\'existe pas encore.',
+    gd_deploy_title:'Droit de déploiement en prod',
+    gd_deploy_body:'À la connexion prod, l\'outil vérifie que votre utilisateur a la permission {perm}.',
+    gd_deploy_group:'Et que vous êtes dans le groupe {g}.',
+    gd_deploy_missing:'Manquant : {list}',
+    gd_flows_title:'Faire entrer des flows dans l\'environnement',
+    gd_flows_body:'Si l\'environnement est vide, utilisez ⟵ Ramener ici sur le pipeline, ou Migrer un flow. Flow Browser montre ce qui est déjà dans l\'org.',
     env_color_label:'Couleur', color_auto:'Couleur de l\'étape', color_green:'Vert', color_yellow:'Jaune', color_orange:'Orange', color_red:'Rouge', color_blue:'Bleu', color_grey:'Gris',
     prod_deploy_perm:'Permission requise : architect:flow:publish',
     prod_deploy_group:'Groupe requis (facultatif)',
@@ -3457,7 +3619,7 @@ const LANGS = {
     action_default_note:'publié par défaut — le flow est actif immédiatement',
     action_prod_note:'prod : NON publié par défaut — laissé en brouillon à publier vous-même',
     tree_ungrouped:'Non regroupé',
-    help_customers:'Un environnement est une org Genesys vue à travers un client OAuth.\n• Les nouveaux environnements utilisent toujours **OAuth (PKCE)** : vous vous connectez à Genesys en votre nom et aucun secret n\'est stocké. Les anciens environnements en client credentials sont en **jaune**.\n• **⚙ Paramètres** contient nom, client, groupe, étape, préfixe, nom de l\'org, couleur, division, authentification et exigences prod. Chaque champ a un **ⓘ** — survolez-le ou cliquez pour voir à quoi il sert. Les caractères interdits et les noms qui partageraient un dossier sont refusés à l\'enregistrement.\n• **Client + groupe** déterminent ce qui peut être migré entre eux — le groupe est le pipeline.\n• **Étape** vaut dev, test, uat ou prod et fixe l\'ordre du pipeline. Sous **Étapes** en bas de page, vous pouvez en ajouter, par ex. staging ou preprod — prod reste en dernier.\n• **Couleur** : chaque environnement a la couleur de son étape — dev vert, test jaune, uat orange, prod rouge — sur le pipeline, dans la barre latérale et sur les cartes. Choisissez-en une autre dans ⚙ Paramètres.\n• **Bonne org à la connexion** : la connexion vérifie dans quelle org vous êtes arrivé. Une mauvaise org choisie sur la page de connexion Genesys (par ex. celle d\'un client via trusted org) est refusée. L\'org s\'affiche près de l\'environnement une fois connecté.\n• **Préfixe** ne sert que si plusieurs environnements partagent une org, reconnus par ex. DEV_. Si vous le changez, une boîte de dialogue montre les flows, tables de données et table du manifeste renommés dans l\'org — ils gardent leur id. Laissez-le vide pour prod.\n• **Prod exige une connexion prod** : à la connexion, on vérifie la permission (architect:flow:publish par défaut) et éventuellement un groupe. Le droit dure 30 minutes. Étape, authentification et exigences d\'un environnement prod ne changent qu\'avec une connexion prod valide.\n• **Connectez-vous où vous êtes** : si un environnement demande une connexion, une barre avec un bouton apparaît en haut — sur toutes les pages. 🔒 dans la barre latérale connecte aussi, puis la page se recharge.\n• **Cherchez** parmi les environnements, ou affichez seulement ceux à connecter. Le formulaire et les démos se déplient.\n• **Les clients démo** sont entièrement locaux — pas de connexion, aucun appel à Genesys.',
+    help_customers:'Un environnement est une org Genesys vue à travers un client OAuth.\n• Les nouveaux environnements utilisent toujours **OAuth (PKCE)** : vous vous connectez à Genesys en votre nom et aucun secret n\'est stocké. Les anciens environnements en client credentials sont en **jaune**.\n• **⚙ Paramètres** contient nom, client, groupe, étape, préfixe, nom de l\'org, couleur, division, authentification et exigences prod. Chaque champ a un **ⓘ** — survolez-le ou cliquez pour voir à quoi il sert. Les caractères interdits et les noms qui partageraient un dossier sont refusés à l\'enregistrement.\n• **Client + groupe** déterminent ce qui peut être migré entre eux — le groupe est le pipeline.\n• **Étape** vaut dev, test, uat ou prod et fixe l\'ordre du pipeline. Sous **Étapes** en bas de page, vous pouvez en ajouter, par ex. staging ou preprod — prod reste en dernier.\n• **Couleur** : chaque environnement a la couleur de son étape — dev vert, test jaune, uat orange, prod rouge — sur le pipeline, dans la barre latérale et sur les cartes. Choisissez-en une autre dans ⚙ Paramètres.\n• **Bonne org à la connexion** : la connexion vérifie dans quelle org vous êtes arrivé. Une mauvaise org choisie sur la page de connexion Genesys (par ex. celle d\'un client via trusted org) est refusée. L\'org s\'affiche près de l\'environnement une fois connecté.\n• **Préfixe** ne sert que si plusieurs environnements partagent une org, reconnus par ex. DEV_. Si vous le changez, une boîte de dialogue montre les flows, tables de données et table du manifeste renommés dans l\'org — ils gardent leur id. Laissez-le vide pour prod.\n• **Prod exige une connexion prod** : à la connexion, on vérifie la permission (architect:flow:publish par défaut) et éventuellement un groupe. Le droit dure 30 minutes. Étape, authentification et exigences d\'un environnement prod ne changent qu\'avec une connexion prod valide.\n• **📋 Guide de configuration** : le bouton 📋 d\'une carte ouvre une liste dans une nouvelle fenêtre pour configurer l\'org et l\'environnement. Les boutons Vérifier contrôlent pour vous.\n• **Connectez-vous où vous êtes** : si un environnement demande une connexion, une barre avec un bouton apparaît en haut — sur toutes les pages. 🔒 dans la barre latérale connecte aussi, puis la page se recharge.\n• **Cherchez** parmi les environnements, ou affichez seulement ceux à connecter. Le formulaire et les démos se déplient.\n• **Les clients démo** sont entièrement locaux — pas de connexion, aucun appel à Genesys.',
     help_pipeline:'Les flows en lignes, les environnements du groupe en colonnes, par étape.\n• Les numéros de version ne sont **pas** comparables entre orgs — ils sont comptés par org. Utilisez **⇄ Vérifier le contenu**, seul juge de l\'égalité de deux environnements.\n• **Vert** : publié par le bon chemin. **Rouge** : publié hors du pipeline, ou plus de versions que l\'étape précédente.\n• **Chaque bouton montre d\'abord ce qui va se passer** — flow, source et cible, et avertissements sur prod ou des changements perdus — et vous pouvez annuler. **? Boutons** les explique tous.\n• **Aligner le numéro de version** : avec ⟶ Promouvoir, la cible peut être publiée les fois manquantes pour atteindre le numéro de la source (par ex. dev v10 → test v10). Impossible de décompter.\n• **⟶ Promouvoir** avance d\'une étape à la fois. Seule une version publiée peut être promue. Prod exige votre connexion prod.\n• **⟵ Ramener ici** récupère un flow d\'une étape ultérieure, par ex. quand dev vient d\'être créé.\n• **↩** annule la dernière promotion, **📝** affiche les notes de version.\n• Quand un **common module** est promu ou annulé, on vous propose de republier les flows de l\'environnement qui l\'utilisent. **🔁** fait de même si le module a été modifié directement dans Architect. Si un module a été publié après des flows qui l\'utilisent, c\'est indiqué en haut du tableau, les cellules sont marquées ⚠ et 🔁 devient jaune.\n• **Le manifeste partagé** garde l\'historique dans l\'org, pour que chacun voie la même vérité.',
     help_flows:'Récupérer, chercher et filtrer les flows de l\'environnement. Si plusieurs environnements partagent une org, seuls les siens sont affichés.\n• Filtrez par **type de flow** — la liste reprend les types réellement présents.\n• **Publier** met en service un brouillon déjà migré. Pour un common module, on vous propose ensuite de republier les flows qui l\'utilisent.\n• **Les common modules sont vérifiés** à chaque chargement : un module publié **après** un flow qui l\'utilise signifie que le flow tourne encore sur l\'ancienne version. C\'est signalé dans un encadré jaune avec un bouton pour les republier, et les lignes sont marquées ⚠.\n• **🔁 Utilisateurs** sur un common module liste tous les flows qui l\'utilisent.\n• **⇄ Comparer** avec une autre org compare le **contenu**, pas les numéros de version.\n• **📌 Point zéro** enregistre l\'état actuel de l\'org, pour repérer ensuite les publications directes.',
     help_cross:'Montre les flows présents chez **plusieurs clients** — par exemple le même common module chez dix clients.\n• La vue repose sur un appel par client et est donc rapide.\n• **⇄ Comparer le contenu** exporte le flow chez chaque client et compare l\'empreinte. C\'est long, donc réservé à la ligne demandée.\n• Si une org n\'a pas pu être lue, c\'est dit — il n\'affiche **jamais** « identique » quand une réponse manque.',
@@ -4149,6 +4311,56 @@ const LANGS = {
     pfx_done:'✓ {n} naam/namen gewijzigd — het voorvoegsel is nu {new}.',
     pfx_failed:'✗ Hernoemen mislukte en is teruggedraaid — het voorvoegsel is niet gewijzigd: {err}',
     pfx_unreadable:'De org kon niet worden gelezen, dus de namen kunnen niet mee veranderen: {err}\n\nHet voorvoegsel toch opslaan? Flows met het oude voorvoegsel blijven dan als eigen rijen op het bord staan.',
+    gd_title:'Installatiegids — {env}',
+    gd_open_guide:'📋 Installatiegids',
+    tip_btn_guide:'Installatiegids: een checklist in een nieuw venster om de org en de omgeving goed in te richten',
+    gd_intro:'Volg de punten op volgorde. Punten met Controleren checkt de tool zelf; de andere vink je zelf af. Het venster kan naast Genesys open blijven.',
+    gd_progress:'{n} van {m} klaar',
+    gd_check_all:'▶ Alles controleren',
+    gd_check:'Controleren',
+    gd_pending:'Controleren…',
+    gd_close:'Venster sluiten',
+    gd_popup_blocked:'De browser blokkeerde het venster. Sta pop-ups toe voor localhost en probeer opnieuw.',
+    gd_unknown_env:'De omgeving bestaat niet meer.',
+    gd_done_all:'✓ Alle punten zijn klaar — de omgeving is ingericht.',
+    gd_need_login:'Log eerst in op de omgeving — zie het punt "Inloggen".',
+    gd_not_logged_in:'Niet ingelogd.',
+    gd_env_first:'Vul eerst klant en groep in.',
+    gd_client_title:'Maak een OAuth-client in Genesys',
+    gd_client_body_oauth:'Admin → Integrations → OAuth → Add Client. Kies grant type "Code Authorization" en zet PKCE aan. Kopieer het Client ID naar de instellingen van de omgeving. De client heeft geen rollen nodig — met PKCE worden de rechten van je eigen gebruiker gebruikt.',
+    gd_client_body_creds:'Admin → Integrations → OAuth → Add Client. Kies "Client Credentials" en geef de client een rol met de permissies van het volgende punt, in alle divisies. Kopieer Client ID en secret naar de instellingen. Client credentials alleen buiten prod.',
+    gd_client_found:'Gevonden: {name} · {type}',
+    gd_client_wrong:'De client is van type {type} — de omgeving moet {want} gebruiken.',
+    gd_redirect_title:'Stel de redirect-URI in op de client',
+    gd_redirect_body:'Authorized redirect URIs van de OAuth-client moeten {uri} bevatten — anders kan de login niet terugkeren naar de tool.',
+    gd_redirect_ok:'{uri} is ingesteld.',
+    gd_redirect_missing:'{uri} ontbreekt — de client heeft: {list}',
+    gd_perms_title:'Geef de benodigde permissies',
+    gd_perms_body_oauth:'Met PKCE moet je eigen gebruiker de permissies hebben, via een rol in Genesys. De tool gebruikt:',
+    gd_perms_body_creds:'De rol van de client heeft deze permissies nodig:',
+    gd_perms_missing:'Ontbreekt: {list}',
+    gd_env_title:'Vul de omgeving hier in',
+    gd_env_body:'Onder Klanten → ⚙ Instellingen: klant en groep (de pipeline), fase, en voorvoegsel als meerdere omgevingen de org delen. Regio en Client ID moeten bij de org passen.',
+    gd_env_missing:'Ontbreekt: {list}',
+    gd_login_title:'Inloggen',
+    gd_login_btn:'Inloggen',
+    gd_login_body:'Log in op de omgeving en kies de juiste organisatie op de Genesys-loginpagina. Een login in de verkeerde org wordt geweigerd.',
+    gd_login_ok:'Ingelogd in {org}',
+    gd_division_title:'De divisie bestaat',
+    gd_division_body:'Flows en tabellen komen in de divisie {div}. Die moet in de org bestaan.',
+    gd_division_ok:'{div} bestaat.',
+    gd_division_missing:'De divisie {div} bestaat niet in de org.',
+    gd_manifest_title:'Maak de manifesttabel',
+    gd_manifest_body:'De tabel {table} in de org bewaart de geschiedenis, zodat meerdere mensen hetzelfde zien.',
+    gd_manifest_create:'Tabel maken',
+    gd_manifest_ok:'{table} bestaat ({n} rijen).',
+    gd_manifest_missing:'De tabel bestaat nog niet.',
+    gd_deploy_title:'Deploy-recht naar prod',
+    gd_deploy_body:'Bij een prod-login controleert de tool of je gebruiker de permissie {perm} heeft.',
+    gd_deploy_group:'En of je in de groep {g} zit.',
+    gd_deploy_missing:'Ontbreekt: {list}',
+    gd_flows_title:'Flows in de omgeving krijgen',
+    gd_flows_body:'Is de omgeving leeg, gebruik dan ⟵ Hierheen halen op de pipeline, of Flow migreren. Flow Browser toont wat er al in de org staat.',
     env_color_label:'Kleur', color_auto:'Kleur van de fase', color_green:'Groen', color_yellow:'Geel', color_orange:'Oranje', color_red:'Rood', color_blue:'Blauw', color_grey:'Grijs',
     prod_deploy_perm:'Vereiste permissie: architect:flow:publish',
     prod_deploy_group:'Vereiste groep (optioneel)',
@@ -4180,7 +4392,7 @@ const LANGS = {
     action_default_note:'standaard gepubliceerd — de flow is meteen live',
     action_prod_note:'prod: standaard NIET gepubliceerd — blijft een concept dat je zelf publiceert',
     tree_ungrouped:'Niet gegroepeerd',
-    help_customers:'Eén omgeving is één Genesys-org gezien via één OAuth-client.\n• Nieuwe omgevingen gebruiken altijd **OAuth (PKCE)**: je logt in bij Genesys als jezelf en er wordt geen secret opgeslagen. Oudere omgevingen met client credentials zijn **geel** gemarkeerd.\n• **⚙ Instellingen** bevat naam, klant, groep, fase, voorvoegsel, org-naam, kleur, divisie, authenticatie en prod-eisen. Elk veld heeft een **ⓘ** — beweeg erover of klik om te zien waarvoor het dient. Ongeldige tekens en namen die een map zouden delen, worden bij opslaan geweigerd.\n• **Klant + groep** bepalen wat onderling gemigreerd mag worden — de groep is de pipeline.\n• **Fase** is dev, test, uat of prod en bepaalt de volgorde op de pipeline. Onder **Fasen** onderaan de pagina voeg je eigen fasen toe, bv. staging of preprod — prod blijft laatste.\n• **Kleur**: elke omgeving krijgt de kleur van haar fase — dev groen, test geel, uat oranje, prod rood — op de pipeline, in de zijbalk en op de kaarten. Kies een andere onder ⚙ Instellingen.\n• **Juiste org bij inloggen**: de login controleert in welke org je bent beland. Een verkeerde org op de Genesys-loginpagina (bv. die van een klant via trusted org) wordt geweigerd. De org staat bij de omgeving zodra je bent ingelogd.\n• **Voorvoegsel** wordt alleen gebruikt als meerdere omgevingen één org delen, herkenbaar aan bv. DEV_. Wijzig je het, dan toont een dialoog welke flows, datatabellen en manifesttabel in de org mee worden hernoemd — ze behouden hun id. Laat het leeg voor prod.\n• **Prod vereist een prod-login**: bij inloggen wordt gecontroleerd of je de permissie hebt (standaard architect:flow:publish) en eventueel in een groep zit. Het recht geldt 30 minuten. Fase, authenticatie en eisen van een prod-omgeving kunnen alleen met een geldige prod-login worden gewijzigd.\n• **Log in waar je bent**: heeft een omgeving een login nodig, dan verschijnt bovenaan een balk met een inlogknop — op elke pagina. 🔒 in de zijbalk logt ook in, en daarna wordt de pagina opnieuw geladen.\n• **Zoek** in de omgevingen, of toon alleen die login vereisen. Het formulier en de demo-klanten klap je open.\n• **Demo-klanten** zijn volledig lokaal — geen login, geen aanroepen naar Genesys.',
+    help_customers:'Eén omgeving is één Genesys-org gezien via één OAuth-client.\n• Nieuwe omgevingen gebruiken altijd **OAuth (PKCE)**: je logt in bij Genesys als jezelf en er wordt geen secret opgeslagen. Oudere omgevingen met client credentials zijn **geel** gemarkeerd.\n• **⚙ Instellingen** bevat naam, klant, groep, fase, voorvoegsel, org-naam, kleur, divisie, authenticatie en prod-eisen. Elk veld heeft een **ⓘ** — beweeg erover of klik om te zien waarvoor het dient. Ongeldige tekens en namen die een map zouden delen, worden bij opslaan geweigerd.\n• **Klant + groep** bepalen wat onderling gemigreerd mag worden — de groep is de pipeline.\n• **Fase** is dev, test, uat of prod en bepaalt de volgorde op de pipeline. Onder **Fasen** onderaan de pagina voeg je eigen fasen toe, bv. staging of preprod — prod blijft laatste.\n• **Kleur**: elke omgeving krijgt de kleur van haar fase — dev groen, test geel, uat oranje, prod rood — op de pipeline, in de zijbalk en op de kaarten. Kies een andere onder ⚙ Instellingen.\n• **Juiste org bij inloggen**: de login controleert in welke org je bent beland. Een verkeerde org op de Genesys-loginpagina (bv. die van een klant via trusted org) wordt geweigerd. De org staat bij de omgeving zodra je bent ingelogd.\n• **Voorvoegsel** wordt alleen gebruikt als meerdere omgevingen één org delen, herkenbaar aan bv. DEV_. Wijzig je het, dan toont een dialoog welke flows, datatabellen en manifesttabel in de org mee worden hernoemd — ze behouden hun id. Laat het leeg voor prod.\n• **Prod vereist een prod-login**: bij inloggen wordt gecontroleerd of je de permissie hebt (standaard architect:flow:publish) en eventueel in een groep zit. Het recht geldt 30 minuten. Fase, authenticatie en eisen van een prod-omgeving kunnen alleen met een geldige prod-login worden gewijzigd.\n• **📋 Installatiegids**: de knop 📋 op een kaart opent een checklist in een nieuw venster om de org en de omgeving in te richten. De knoppen Controleren checken voor je.\n• **Log in waar je bent**: heeft een omgeving een login nodig, dan verschijnt bovenaan een balk met een inlogknop — op elke pagina. 🔒 in de zijbalk logt ook in, en daarna wordt de pagina opnieuw geladen.\n• **Zoek** in de omgevingen, of toon alleen die login vereisen. Het formulier en de demo-klanten klap je open.\n• **Demo-klanten** zijn volledig lokaal — geen login, geen aanroepen naar Genesys.',
     help_pipeline:'Flows als rijen, de omgevingen van de groep als kolommen op fase-volgorde.\n• Versienummers zijn **niet** vergelijkbaar tussen orgs — ze worden per org geteld. Gebruik **⇄ Inhoud checken**, het enige dat bepaalt of twee omgevingen gelijk zijn.\n• **Groen** betekent langs de juiste weg gepubliceerd. **Rood** betekent buiten de pipeline om, of meer versies dan de vorige fase.\n• **Elke knop toont eerst wat er gebeurt** — flow, van en naar, en waarschuwingen over prod of wijzigingen die verloren gaan — en je kunt annuleren. **? Knoppen** legt ze allemaal uit.\n• **Versienummer gelijktrekken**: bij ⟶ Promoveren kan het doel de ontbrekende keren extra worden gepubliceerd, zodat het het nummer van de bron krijgt (bv. dev v10 → test v10). Terugtellen kan niet.\n• **⟶ Promoveren** gaat één fase tegelijk. Alleen een gepubliceerde versie kan worden gepromoveerd. Prod vereist je prod-login.\n• **⟵ Hierheen halen** haalt een flow op uit een latere fase, bv. als dev net is opgezet.\n• **↩** draait de laatste promotie terug, **📝** toont release notes.\n• Wordt een **common module** gepromoveerd of teruggedraaid, dan krijg je aangeboden de flows in die omgeving die hem gebruiken opnieuw te publiceren. **🔁** doet hetzelfde als de module direct in Architect is aangepast. Is een module gepubliceerd na flows die hem gebruiken, dan staat dat bovenaan het bord, zijn de cellen gemarkeerd met ⚠ en wordt 🔁 geel.\n• **Gedeeld manifest** bewaart de geschiedenis in de org, zodat iedereen dezelfde waarheid ziet.',
     help_flows:'Flows van de omgeving ophalen, zoeken en filteren. Delen meerdere omgevingen een org, dan worden alleen de eigen getoond.\n• Filter op **flowtype** — de lijst wordt gevuld met de types die de omgeving echt heeft.\n• **Publiceren** zet een al gemigreerd concept live. Bij een common module krijg je daarna aangeboden de flows die hem gebruiken opnieuw te publiceren.\n• **Common modules worden gecontroleerd** bij elke keer ophalen: is een module **na** een flow die hem gebruikt gepubliceerd, dan draait die flow nog op de oude versie. Dat staat in een geel vak met een knap om ze opnieuw te publiceren, en de rijen zijn gemarkeerd met ⚠.\n• **🔁 Gebruikers** op een common module toont alle flows die hem gebruiken.\n• **⇄ Vergelijken** met een andere org vergelijkt de **inhoud**, niet de versienummers.\n• **📌 Nulpunt** legt vast wat de org nu bevat, zodat directe publicaties later opvallen.',
     help_cross:'Toont de flows die bij **meerdere klanten** bestaan — bijvoorbeeld dezelfde common module bij tien klanten.\n• Het overzicht steunt op één aanroep per klant en is dus snel.\n• **⇄ Inhoud vergelijken** exporteert de flow bij elke klant en vergelijkt de hash. Dat kost tijd, dus alleen voor de rij die je vraagt.\n• Kon een org niet gelezen worden, dan wordt dat gezegd — er staat **nooit** "identiek" als een antwoord ontbreekt.',
@@ -4872,6 +5084,56 @@ const LANGS = {
     pfx_done:'✓ {n} nombre(s) cambiado(s) — el prefijo es ahora {new}.',
     pfx_failed:'✗ El cambio de nombre falló y se revirtió — el prefijo no ha cambiado: {err}',
     pfx_unreadable:'No se pudo leer la org, así que los nombres no pueden cambiar con él: {err}\n\n¿Guardar el prefijo de todos modos? Los flows con el prefijo antiguo quedarán como filas propias en el tablero.',
+    gd_title:'Guía de configuración — {env}',
+    gd_open_guide:'📋 Guía de configuración',
+    tip_btn_guide:'Guía de configuración: una lista en una ventana nueva para configurar bien la org y el entorno',
+    gd_intro:'Siga los puntos en orden. Los puntos con Comprobar los verifica la herramienta; marque los demás usted. La ventana puede quedar abierta junto a Genesys.',
+    gd_progress:'{n} de {m} listos',
+    gd_check_all:'▶ Comprobar todo',
+    gd_check:'Comprobar',
+    gd_pending:'Comprobando…',
+    gd_close:'Cerrar ventana',
+    gd_popup_blocked:'El navegador bloqueó la ventana. Permita ventanas emergentes para localhost e inténtelo de nuevo.',
+    gd_unknown_env:'El entorno ya no existe.',
+    gd_done_all:'✓ Todos los puntos están listos — el entorno está configurado.',
+    gd_need_login:'Inicie sesión en el entorno primero — vea el punto "Iniciar sesión".',
+    gd_not_logged_in:'Sin sesión.',
+    gd_env_first:'Rellene cliente y grupo primero.',
+    gd_client_title:'Cree un cliente OAuth en Genesys',
+    gd_client_body_oauth:'Admin → Integrations → OAuth → Add Client. Elija el grant type "Code Authorization" y active PKCE. Copie el Client ID en la configuración del entorno. El cliente no necesita roles — con PKCE se usan los permisos de su propio usuario.',
+    gd_client_body_creds:'Admin → Integrations → OAuth → Add Client. Elija "Client Credentials" y dé al cliente un rol con los permisos del punto siguiente, en todas las divisiones. Copie Client ID y secret en la configuración. Client credentials solo fuera de prod.',
+    gd_client_found:'Encontrado: {name} · {type}',
+    gd_client_wrong:'El cliente es de tipo {type} — el entorno necesita {want}.',
+    gd_redirect_title:'Defina la URI de redirección en el cliente',
+    gd_redirect_body:'Las Authorized redirect URIs del cliente OAuth deben incluir {uri} — si no, el inicio de sesión no puede volver a la herramienta.',
+    gd_redirect_ok:'{uri} está definida.',
+    gd_redirect_missing:'Falta {uri} — el cliente tiene: {list}',
+    gd_perms_title:'Conceda los permisos necesarios',
+    gd_perms_body_oauth:'Con PKCE es su propio usuario quien necesita los permisos, mediante un rol en Genesys. La herramienta usa:',
+    gd_perms_body_creds:'El rol del cliente necesita estos permisos:',
+    gd_perms_missing:'Falta: {list}',
+    gd_env_title:'Rellene el entorno aquí',
+    gd_env_body:'En Clientes → ⚙ Configuración: cliente y grupo (el pipeline), etapa, y prefijo si varios entornos comparten la org. Región y Client ID deben coincidir con la org.',
+    gd_env_missing:'Falta: {list}',
+    gd_login_title:'Iniciar sesión',
+    gd_login_btn:'Iniciar sesión',
+    gd_login_body:'Inicie sesión en el entorno y elija la organización correcta en la página de Genesys. Un inicio de sesión en la org equivocada se rechaza.',
+    gd_login_ok:'Sesión iniciada en {org}',
+    gd_division_title:'La división existe',
+    gd_division_body:'Flows y tablas se colocan en la división {div}. Debe existir en la org.',
+    gd_division_ok:'{div} existe.',
+    gd_division_missing:'La división {div} no existe en la org.',
+    gd_manifest_title:'Cree la tabla del manifiesto',
+    gd_manifest_body:'La tabla {table} de la org guarda el historial, para que varias personas vean lo mismo.',
+    gd_manifest_create:'Crear la tabla',
+    gd_manifest_ok:'{table} existe ({n} filas).',
+    gd_manifest_missing:'La tabla aún no existe.',
+    gd_deploy_title:'Derecho de despliegue a prod',
+    gd_deploy_body:'Al iniciar sesión en prod se comprueba que su usuario tiene el permiso {perm}.',
+    gd_deploy_group:'Y que está en el grupo {g}.',
+    gd_deploy_missing:'Falta: {list}',
+    gd_flows_title:'Lleve flows al entorno',
+    gd_flows_body:'Si el entorno está vacío, use ⟵ Traer aquí en el pipeline, o Migrar flow. Flow Browser muestra lo que ya hay en la org.',
     env_color_label:'Color', color_auto:'Color de la etapa', color_green:'Verde', color_yellow:'Amarillo', color_orange:'Naranja', color_red:'Rojo', color_blue:'Azul', color_grey:'Gris',
     prod_deploy_perm:'Permiso requerido: architect:flow:publish',
     prod_deploy_group:'Grupo requerido (opcional)',
@@ -4903,7 +5165,7 @@ const LANGS = {
     action_default_note:'publicado por defecto: el flow está activo de inmediato',
     action_prod_note:'prod: NO se publica por defecto: queda como borrador para que lo publique usted',
     tree_ungrouped:'Sin agrupar',
-    help_customers:'Un entorno es una org de Genesys vista a través de un cliente OAuth.\n• Los entornos nuevos usan siempre **OAuth (PKCE)**: inicia sesión en Genesys como usted mismo y no se guarda ningún secret. Los entornos antiguos con client credentials aparecen en **amarillo**.\n• **⚙ Configuración** contiene nombre, cliente, grupo, etapa, prefijo, nombre de la org, color, división, autenticación y requisitos de prod. Cada campo tiene un **ⓘ** — pase el ratón o haga clic para ver para qué sirve. Los caracteres no válidos y los nombres que compartirían carpeta se rechazan al guardar.\n• **Cliente + grupo** deciden qué se puede migrar entre sí — el grupo es el pipeline.\n• **Etapa** es dev, test, uat o prod y fija el orden del pipeline. En **Etapas**, al final de la página, puede añadir otras, p. ej. staging o preprod — prod siempre va al final.\n• **Color**: cada entorno se muestra con el color de su etapa — dev verde, test amarillo, uat naranja, prod rojo — en el pipeline, la barra lateral y las tarjetas. Elija otro en ⚙ Configuración.\n• **Org correcta al iniciar sesión**: el inicio de sesión comprueba en qué org ha entrado. Una org equivocada en la página de Genesys (p. ej. la de un cliente vía trusted org) se rechaza. La org aparece junto al entorno una vez dentro.\n• **Prefijo** solo se usa cuando varios entornos comparten una org, reconocidos por p. ej. DEV_. Si lo cambia, un diálogo muestra qué flows, tablas de datos y tabla del manifiesto se renombran en la org — conservan su id. Déjelo vacío para prod.\n• **Prod exige un inicio de sesión de prod**: al entrar se comprueba el permiso (architect:flow:publish por defecto) y opcionalmente un grupo. El derecho dura 30 minutos. Etapa, autenticación y requisitos de un entorno de prod solo se cambian con un inicio de sesión de prod válido.\n• **Inicie sesión donde esté**: si un entorno necesita inicio de sesión, aparece arriba una barra con un botón — en todas las páginas. 🔒 en la barra lateral también inicia sesión, y la página se recarga después.\n• **Busque** entre los entornos, o muestre solo los que requieren inicio de sesión. El formulario y los clientes demo se despliegan.\n• **Los clientes demo** son totalmente locales — sin inicio de sesión ni llamadas a Genesys.',
+    help_customers:'Un entorno es una org de Genesys vista a través de un cliente OAuth.\n• Los entornos nuevos usan siempre **OAuth (PKCE)**: inicia sesión en Genesys como usted mismo y no se guarda ningún secret. Los entornos antiguos con client credentials aparecen en **amarillo**.\n• **⚙ Configuración** contiene nombre, cliente, grupo, etapa, prefijo, nombre de la org, color, división, autenticación y requisitos de prod. Cada campo tiene un **ⓘ** — pase el ratón o haga clic para ver para qué sirve. Los caracteres no válidos y los nombres que compartirían carpeta se rechazan al guardar.\n• **Cliente + grupo** deciden qué se puede migrar entre sí — el grupo es el pipeline.\n• **Etapa** es dev, test, uat o prod y fija el orden del pipeline. En **Etapas**, al final de la página, puede añadir otras, p. ej. staging o preprod — prod siempre va al final.\n• **Color**: cada entorno se muestra con el color de su etapa — dev verde, test amarillo, uat naranja, prod rojo — en el pipeline, la barra lateral y las tarjetas. Elija otro en ⚙ Configuración.\n• **Org correcta al iniciar sesión**: el inicio de sesión comprueba en qué org ha entrado. Una org equivocada en la página de Genesys (p. ej. la de un cliente vía trusted org) se rechaza. La org aparece junto al entorno una vez dentro.\n• **Prefijo** solo se usa cuando varios entornos comparten una org, reconocidos por p. ej. DEV_. Si lo cambia, un diálogo muestra qué flows, tablas de datos y tabla del manifiesto se renombran en la org — conservan su id. Déjelo vacío para prod.\n• **Prod exige un inicio de sesión de prod**: al entrar se comprueba el permiso (architect:flow:publish por defecto) y opcionalmente un grupo. El derecho dura 30 minutos. Etapa, autenticación y requisitos de un entorno de prod solo se cambian con un inicio de sesión de prod válido.\n• **📋 Guía de configuración**: el botón 📋 de una tarjeta abre una lista en una ventana nueva para configurar la org y el entorno. Los botones Comprobar verifican por usted.\n• **Inicie sesión donde esté**: si un entorno necesita inicio de sesión, aparece arriba una barra con un botón — en todas las páginas. 🔒 en la barra lateral también inicia sesión, y la página se recarga después.\n• **Busque** entre los entornos, o muestre solo los que requieren inicio de sesión. El formulario y los clientes demo se despliegan.\n• **Los clientes demo** son totalmente locales — sin inicio de sesión ni llamadas a Genesys.',
     help_pipeline:'Flows en filas, los entornos del grupo en columnas por orden de etapa.\n• Los números de versión **no** son comparables entre orgs — se cuentan por org. Use **⇄ Comprobar contenido**, lo único que decide si dos entornos son iguales.\n• **Verde**: publicado por el camino correcto. **Rojo**: publicado fuera del pipeline, o más versiones que la etapa anterior.\n• **Cada botón muestra primero qué ocurrirá** — flow, origen y destino, y avisos sobre prod o cambios que se perderían — y puede cancelar. **? Botones** los explica todos.\n• **Igualar número de versión**: al ⟶ Promover, el destino puede publicarse las veces que faltan para alcanzar el número del origen (p. ej. dev v10 → test v10). No puede bajar.\n• **⟶ Promover** avanza una etapa cada vez. Solo se puede promover una versión publicada. Prod exige su inicio de sesión de prod.\n• **⟵ Traer aquí** trae un flow de una etapa posterior, p. ej. cuando dev se acaba de crear.\n• **↩** revierte la última promoción y **📝** muestra las notas de versión.\n• Al promover o revertir un **common module**, se le ofrece volver a publicar los flows del entorno que lo usan. **🔁** hace lo mismo si el módulo se cambió directamente en Architect. Si un módulo se publicó después de flows que lo usan, se indica arriba del tablero, las celdas se marcan con ⚠ y 🔁 se vuelve amarillo.\n• **El manifiesto compartido** guarda el historial en la org, para que todos vean la misma verdad.',
     help_flows:'Obtener, buscar y filtrar los flows del entorno. Si varios entornos comparten una org, solo se muestran los propios.\n• Filtre por **tipo de flow** — la lista se llena con los tipos que el entorno tiene realmente.\n• **Publicar** pone en producción un borrador ya migrado. Si es un common module, se le ofrece después volver a publicar los flows que lo usan.\n• **Los common modules se comprueban** cada vez que se carga la lista: si un módulo se publicó **después** de un flow que lo usa, el flow sigue con la versión antigua. Se indica en un recuadro amarillo con un botón para volver a publicarlos, y las filas se marcan con ⚠.\n• **🔁 Usuarios** en un common module lista todos los flows que lo usan.\n• **⇄ Comparar** con otra org compara el **contenido**, no los números de versión.\n• **📌 Punto cero** registra lo que contiene la org ahora, para detectar después publicaciones directas.',
     help_cross:'Muestra los flows presentes en **varios clientes**, por ejemplo el mismo common module en diez clientes.\n• La vista se basa en una llamada por cliente, así que es rápida.\n• **⇄ Comparar contenido** exporta el flow de cada cliente y compara el hash. Lleva tiempo, así que solo se hace en la fila que pida.\n• Si una org no se pudo leer, se dice: **nunca** informa «idéntico» cuando falta una respuesta.',
@@ -5253,6 +5515,8 @@ window.onload = async () => {
   applyStoredLang();
   fillStages();
   await refreshCustomers();
+  const guideId = new URLSearchParams(location.search).get('guide');
+  if (guideId) { document.body.classList.add('guide-mode'); renderGuide(guideId); return; }
   // Er der sat grupper op, er pipelinen det man arbejder i — så starter vi dér,
   // med den kunde man sidst arbejdede med valgt. Tavlen hentes ikke af sig
   // selv: det kalder alle gruppens orgs, og et OAuth-miljø ville bede om login.
@@ -5484,6 +5748,7 @@ function renderCustomerGrid() {
         <button class="btn btn-secondary btn-sm" data-tip="tip_btn_test" onclick="testCustomer('${c.id}')">${t('btn_test')}</button>
         <button class="btn btn-secondary btn-sm" data-tip="tip_btn_edit_grouping" onclick="toggleGrouping('${c.id}')">${t('btn_edit_grouping')}</button>
         <button class="btn btn-blue btn-sm" data-tip="tip_btn_flows_card" onclick="quickViewFlows('${c.id}')">${t('btn_flows_card')}</button>
+        ${c.demo ? '' : `<button class="btn btn-secondary btn-sm" data-tip="tip_btn_guide" onclick="openSetupGuide('${c.id}')">📋</button>`}
         <button class="btn btn-danger btn-sm" data-tip="tip_delete_env" onclick="deleteCustomer('${c.id}')">✕</button>
       </div>
     </div>`;
@@ -5511,12 +5776,15 @@ async function addCustomer() {
   });
   const data = await res.json();
   if (data.error) return showAlert('customerAlert', data.error, 'err');
-  showAlert('customerAlert', `${t('msg_customer_added')} "${name}"`, 'ok');
+  showAlert('customerAlert', `${t('msg_customer_added')} "${escapeHtml(name)}"` +
+    (data.id ? ` · <a href="#" onclick="openSetupGuide(${jsAttr(data.id)}); return false">${t('gd_open_guide')}</a>` : ''), 'ok');
+  if (data.id) openSetupGuide(data.id);
   ['c-name','c-clientId'].forEach(id => document.getElementById(id).value = '');
   await refreshCustomers();
 }
 
 async function oauthLogin(id) {
+  if (document.body.classList.contains('guide-mode')) setTimeout(() => guideWatchLogin(id), 0);
   const btn = document.getElementById('oauth-btn-' + id);
   const badge = document.getElementById('oauth-badge-' + id);
   if (btn) { btn.disabled = true; btn.textContent = '…'; }
@@ -9508,6 +9776,201 @@ async function changePrefixGuided(id, gammel, nyt) {
   }
   pfxSummary = `${escapeHtml(t('pfx_done').replace('{n}', (r.results || []).length).replace('{new}', vis(nyt)))}${liste}`;
   return 'renamed';
+}
+
+// ── Opsætningsguide ───────────────────────────────────────────────────────────
+// En tjekliste i sit eget vindue til at sætte en ny org og et nyt miljø rigtigt
+// op. Punkter programmet selv kan kontrollere, har en Tjek-knap; resten krydser
+// man af. Afkrydsningerne huskes pr. miljø i denne browser.
+function openSetupGuide(id) {
+  const w = window.open('/?guide=' + encodeURIComponent(id), 'archy-guide-' + id, 'width=800,height=940,scrollbars=yes,resizable=yes');
+  if (!w) alert(t('gd_popup_blocked')); else w.focus();
+}
+
+const guideKey = id => 'guide:' + id;
+function guideState(id) { try { return JSON.parse(localStorage.getItem(guideKey(id)) || '{}'); } catch (_) { return {}; } }
+function guideSave(id, st) { try { localStorage.setItem(guideKey(id), JSON.stringify(st)); } catch (_) {} }
+
+function guideSteps(env) {
+  const oauth = env.authType === 'oauth';
+  const prod = String(env.stage || '').toLowerCase() === 'prod';
+  return [
+    // Rækkefølgen er den man arbejder i: klienten i Genesys, miljøet her,
+    // login — og først derefter det der kræver et login at kontrollere.
+    { k: 'client', auto: true },
+    oauth && { k: 'redirect', auto: true },
+    { k: 'env', auto: true },
+    oauth && { k: 'login', auto: true },
+    { k: 'perms', auto: true },
+    env.division && { k: 'division', auto: true },
+    { k: 'manifest', auto: true },
+    prod && { k: 'deploy', auto: true },
+    { k: 'flows', auto: false },
+  ].filter(Boolean);
+}
+
+let guideEnvId = null, guideResults = {};
+function renderGuide(id) {
+  guideEnvId = id;
+  const env = customers.find(c => c.id === id);
+  const root = document.getElementById('guide-root');
+  if (!env) { root.innerHTML = `<div class="card">${escapeHtml(t('gd_unknown_env'))}</div>`; return; }
+  document.title = t('gd_title').replace('{env}', env.name);
+  const st = guideState(id);
+  const steps = guideSteps(env);
+  const doneCount = steps.filter(x => st[x.k]).length;
+  const oauth = env.authType === 'oauth';
+  const permHtml = (K?.permissionChecks || []).filter(c => !(c.credsOnly && oauth))
+    .map(c => `<div>• ${escapeHtml(t('perm_area_' + c.area))}: <span style="font-family:var(--mono)">${c.perms.map(escapeHtml).join(', ')}</span></div>`).join('');
+  const body = k => {
+    const v = { uri: K?.redirectUri || '', div: env.division || '', table: (env.prefix || '') + 'ArchyGUI_Manifest',
+                perm: env.deployPermission || 'architect:flow:publish' };
+    if (k === 'client') return fillT(oauth ? 'gd_client_body_oauth' : 'gd_client_body_creds', {});
+    if (k === 'perms') return fillT(oauth ? 'gd_perms_body_oauth' : 'gd_perms_body_creds', {}) + `<div style="margin-top:4px">${permHtml}</div>`;
+    if (k === 'deploy') return fillT('gd_deploy_body', { perm: v.perm }) + (env.deployGroup ? ' ' + fillT('gd_deploy_group', { g: env.deployGroup }) : '');
+    return fillT('gd_' + k + '_body', v);
+  };
+  const buttonsFor = x => {
+    const b = [];
+    if (x.auto) b.push(`<button class="btn btn-secondary btn-sm" onclick="guideCheck('${x.k}')">${t('gd_check')}</button>`);
+    if (x.k === 'login') b.push(`<button class="btn btn-secondary btn-sm" onclick="oauthLogin(${jsAttr(id)})">${t('gd_login_btn')}</button>`);
+    if (x.k === 'manifest') b.push(`<button class="btn btn-secondary btn-sm" onclick="guideCreateManifest()">${t('gd_manifest_create')}</button>`);
+    return b.join(' ');
+  };
+  const res = k => {
+    const r = guideResults[k];
+    if (!r) return '';
+    const color = r.ok === true ? 'var(--green)' : r.ok === false ? 'var(--red)' : 'var(--muted)';
+    return `<div class="gd-res" style="color:${color}">${r.ok === true ? '✓' : r.ok === false ? '✗' : '…'} ${r.msg}</div>`;
+  };
+  root.innerHTML = `
+    <div style="font-size:20px;font-weight:800;margin-bottom:4px">📋 ${escapeHtml(t('gd_title').replace('{env}', env.name))}</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">${escapeHtml([env.tenant, env.group, env.stage, env.region].filter(Boolean).join(' · '))}
+      · ${oauth ? '🌐 OAuth (PKCE)' : '🔑 Client Credentials'}</div>
+    <div style="font-size:13px;margin-bottom:14px">${escapeHtml(t('gd_intro'))}</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <button class="btn btn-primary btn-sm" onclick="guideCheckAll()">${t('gd_check_all')}</button>
+      <span style="font-size:12px;color:${doneCount === steps.length ? 'var(--green)' : 'var(--muted)'}">${escapeHtml(t('gd_progress').replace('{n}', doneCount).replace('{m}', steps.length))}</span>
+    </div>
+    ${steps.map((x, i) => `<div class="gd-step${st[x.k] ? ' done' : ''}">
+      <div class="gd-head">
+        <input type="checkbox" ${st[x.k] ? 'checked' : ''} onchange="guideToggle('${x.k}', this.checked)" />
+        <span class="gd-title">${i + 1}. ${escapeHtml(t('gd_' + x.k + '_title'))}</span>
+        ${buttonsFor(x)}
+      </div>
+      <div class="gd-body">${body(x.k)}</div>${res(x.k)}</div>
+      `).join('')}
+    ${doneCount === steps.length ? `<div style="margin-top:14px;font-weight:700;color:var(--green)">${escapeHtml(t('gd_done_all'))}</div>
+    ` : ''}
+    <div style="margin-top:18px"><button class="btn btn-secondary btn-sm" onclick="window.close()">${t('gd_close')}</button></div>`;
+}
+
+function guideToggle(k, on) {
+  const st = guideState(guideEnvId);
+  if (on) st[k] = true; else delete st[k];
+  guideSave(guideEnvId, st);
+  renderGuide(guideEnvId);
+}
+
+async function guideCheckAll() {
+  const env = customers.find(c => c.id === guideEnvId);
+  for (const x of guideSteps(env).filter(x => x.auto)) await guideCheck(x.k);
+}
+
+// Én kontrol. Lykkes den, krydses punktet af; fejler den, fjernes krydset, så
+// listen ikke påstår noget der ikke holder.
+async function guideCheck(k) {
+  const id = guideEnvId;
+  const env = customers.find(c => c.id === id);
+  guideResults[k] = { ok: null, msg: escapeHtml(t('gd_pending')) };
+  renderGuide(id);
+  let r;
+  try { r = await guideRun(k, env); } catch (e) { r = { ok: false, msg: escapeHtml(e.message) }; }
+  // Mangler der bare et login, er punktet ikke forkert — det kan bare ikke
+  // kontrolleres endnu.
+  if (r.ok === false && /OAuth token (missing|expired)|log in again|Login button/i.test(r.msg))
+    r = { ok: null, msg: fillT('gd_need_login', {}) };
+  guideResults[k] = r;
+  const st = guideState(id);
+  if (r.ok === true) st[k] = true; else if (r.ok === false) delete st[k];
+  guideSave(id, st);
+  renderGuide(id);
+}
+
+async function guideRun(k, env) {
+  const id = env.id;
+  const json = (url, opt) => fetch(url, opt).then(x => x.json());
+  const oauth = env.authType === 'oauth';
+  if (k === 'client' || k === 'redirect') {
+    const r = await json('/api/customers/' + encodeURIComponent(id) + '/oauth-client');
+    if (r.code === 'login') return { ok: null, msg: fillT('gd_need_login', {}) };
+    if (r.code === 'forbidden') return { ok: null, msg: escapeHtml(t('oauth_client_forbidden')) };
+    if (!r.name) return { ok: false, msg: escapeHtml(r.error || t('err_label')) };
+    if (k === 'client') {
+      const want = oauth ? 'CODE' : 'CLIENT-CREDENTIALS';
+      return r.grantCode === want
+        ? { ok: true, msg: fillT('gd_client_found', { name: r.name, type: r.grantType }) }
+        : { ok: false, msg: fillT('gd_client_wrong', { type: r.grantType, want: oauth ? 'Code Authorization (PKCE)' : 'Client Credentials' }) };
+    }
+    const uri = K?.redirectUri || '';
+    return (r.redirectUris || []).includes(uri)
+      ? { ok: true, msg: fillT('gd_redirect_ok', { uri }) }
+      : { ok: false, msg: fillT('gd_redirect_missing', { uri, list: (r.redirectUris || []).join(', ') || '—' }) };
+  }
+  if (k === 'perms') {
+    const r = await json('/api/customers/' + encodeURIComponent(id) + '/test', { method: 'POST' });
+    if (!r.ok) return { ok: false, msg: escapeHtml(r.error || t('err_label')) };
+    const missingList = (r.checks || []).filter(c => !c.ok && !c.unknown).flatMap(c => c.missing);
+    const unknownCount = (r.checks || []).filter(c => c.unknown).length;
+    return missingList.length ? { ok: false, msg: fillT('gd_perms_missing', { list: [...new Set(missingList)].join(', ') }) }
+      : { ok: true, msg: escapeHtml(t(unknownCount ? 'perm_ok_partial' : 'perm_all_ok').replace(/^✓s*/, '')) };
+  }
+  if (k === 'env') {
+    const missingList = [['tenant', 'label_tenant'], ['group', 'label_group'], ['stage', 'label_stage'], ['clientId', 'label_clientid']]
+      .filter(([f]) => !env[f]).map(([, l]) => t(l).replace(/\s*\*$/, ''));
+    return missingList.length ? { ok: false, msg: fillT('gd_env_missing', { list: missingList.join(', ') }) }
+                          : { ok: true, msg: escapeHtml([env.tenant, env.group, env.stage].join(' · ')) };
+  }
+  if (k === 'login' || k === 'deploy') {
+    const r = await json('/api/auth/status/' + encodeURIComponent(id));
+    if (!r.authenticated) return { ok: false, msg: escapeHtml(t('gd_not_logged_in')) };
+    if (k === 'login') return { ok: true, msg: fillT('gd_login_ok', { org: r.orgName || '?' }) };
+    if (!r.deploy) return { ok: false, msg: escapeHtml(t('gd_not_logged_in')) };
+    return r.deploy.ok ? { ok: true, msg: escapeHtml(t('prod_lock_ok').replace('{who}', r.deploy.who).replace('{min}', Math.ceil((r.deploy.expiresIn || 0) / 60))) }
+                       : { ok: false, msg: fillT('gd_deploy_missing', { list: prodMissingText(r.deploy.missing) }) };
+  }
+  if (k === 'division') {
+    const r = await json('/api/customers/' + encodeURIComponent(id) + '/divisions');
+    if (r.error) return { ok: false, msg: escapeHtml(r.error) };
+    return (r.divisions || []).includes(env.division) ? { ok: true, msg: fillT('gd_division_ok', { div: env.division }) }
+                                                      : { ok: false, msg: fillT('gd_division_missing', { div: env.division }) };
+  }
+  if (k === 'manifest') {
+    const r = await json('/api/manifest/status?tenant=' + encodeURIComponent(env.tenant || '') + '&group=' + encodeURIComponent(env.group || ''));
+    const me = (r.environments || []).find(e => e.id === id);
+    if (!me) return { ok: false, msg: escapeHtml(r.error || t('gd_env_first')) };
+    if (me.error) return { ok: false, msg: escapeHtml(me.error) };
+    return me.hasTable ? { ok: true, msg: fillT('gd_manifest_ok', { table: me.table, n: me.rows }) }
+                       : { ok: false, msg: escapeHtml(t('gd_manifest_missing')) };
+  }
+  return { ok: null, msg: '' };
+}
+
+async function guideCreateManifest() {
+  guideResults.manifest = { ok: null, msg: escapeHtml(t('gd_pending')) };
+  renderGuide(guideEnvId);
+  const r = await fetch('/api/manifest/create', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ envId: guideEnvId }) }).then(x => x.json()).catch(e => ({ error: e.message }));
+  if (r.error) { guideResults.manifest = { ok: false, msg: escapeHtml(r.error) }; renderGuide(guideEnvId); return; }
+  await guideCheck('manifest');
+}
+
+async function guideWatchLogin(id) {
+  for (let i = 0; i < 90; i++) {
+    await new Promise(r => setTimeout(r, 2000));
+    const s = await fetch('/api/auth/status/' + encodeURIComponent(id)).then(x => x.json()).catch(() => ({}));
+    if (s.authenticated) { await guideCheck('login'); return; }
+  }
 }
 
 // ── Pipeline ──────────────────────────────────────────────────────────────────

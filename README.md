@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.47.3
+# Archy GUI — Flow Manager · v1.47.4
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -11,8 +11,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.47.3**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.47.3**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.47.4**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.47.4**.
 
 ---
 
@@ -67,6 +67,8 @@ Nye miljøer oprettes altid med **🌐 OAuth (PKCE)**: du logger ind i Genesys s
 **Godkendelse og Client ID.** *Godkendelse* viser miljøets nuværende valg — nye miljøer får altid OAuth (PKCE), og står et ældre miljø på client credentials, siger en note at PKCE anbefales. Client ID står udfyldt, og under feltet vises **navnet på OAuth-klienten i Genesys** og dens type, så man kan finde den igen blandt kundens klienter (kræver login og `oauth:client:view`). Feltet til secret vises kun ved client credentials, og deploy-kravene kun på prod.
 
 **🔌 Test** kontrollerer forbindelsen og **rettighederne**. Programmet slår miljøets faktiske rettigheder op — for en person (PKCE) direkte, for client credentials via klientens roller — og holder dem op mod hver funktion: læse, importere og publicere flows, Archy, datatabeller og manifest, Data Actions, prompts, divisioner, køer, brugere og afhængigheder. Kortet viser en liste med ✓ og ✗ og de rettigheder der mangler. Kan klientens roller ikke læses (kræver `oauth:client:view` og `authorization:role:view`), prøves læseadgangen af i stedet, og det der ikke kan prøves uden at skrive, står som *kunne ikke afgøres*. Fejler forbindelsen, står fejlen på kortet.
+
+**📋 Opsætningsguide.** Knappen 📋 på et miljøkort — og et link når et nyt miljø er oprettet — åbner en tjekliste i sit eget vindue, som man kan have stående ved siden af Genesys: opret OAuth-klienten (grant type, PKCE), redirect-URI, miljøets felter her, log ind, rettighederne (listen over hvad programmet bruger), divisionen, manifest-tabellen og — på prod — deploy-retten. Punkter med **Tjek** kontrollerer programmet selv mod org'en; **▶ Tjek alt** kører dem alle. Resten krydser man af, og afkrydsningerne huskes pr. miljø i browseren.
 
 **Log ind hvor du står.** Mangler et miljø login, kommer der en bjælke øverst med en **Log ind**-knap — på alle sider, ikke kun Kunder — og siden hentes igen bagefter. 🔒 ved miljøet i sidebjælken logger også ind; 🟢 når man er logget ind. Hold musen over 🟢 — eller se login-mærket på kortet — for at se hvilken org man er logget ind i.
 
@@ -465,6 +467,8 @@ New environments are always created with **🌐 OAuth (PKCE)**: you log in to Ge
 **Authentication and Client ID.** *Authentication* shows the environment's current choice — new environments always get OAuth (PKCE), and when an older one uses client credentials, a note says PKCE is recommended. The Client ID is filled in, and below it the **name of the OAuth client in Genesys** and its type are shown, so you can find it again among the customer's clients (requires a login and `oauth:client:view`). The secret field only appears for client credentials, and the deploy requirements only on prod.
 
 **🔌 Test** checks the connection and the **permissions**. The app looks up the environment's actual permissions — directly for a person (PKCE), via the client's roles for client credentials — and holds them against each feature: reading, importing and publishing flows, Archy, data tables and manifest, Data Actions, prompts, divisions, queues, users and dependencies. The card shows a ✓/✗ list with the missing permissions. If the client's roles cannot be read (needs `oauth:client:view` and `authorization:role:view`), read access is tried instead, and what cannot be tried without writing is shown as *could not be verified*. If the connection fails, the error is shown on the card.
+
+**📋 Setup guide.** The 📋 button on an environment card — and a link after a new environment is created — opens a checklist in its own window, to keep beside Genesys: create the OAuth client (grant type, PKCE), redirect URI, the environment's fields here, log in, permissions (the list of what the app uses), division, manifest table and — on prod — deploy rights. Items with **Check** are verified by the app against the org; **▶ Check all** runs them all. The rest you tick off, and the ticks are remembered per environment in the browser.
 
 **Log in where you are.** When an environment needs a login, a bar with a **Log in** button appears at the top — on every page, not only Customers — and the page reloads afterwards. 🔒 next to the environment in the sidebar logs in too; 🟢 once logged in. Hover 🟢 — or look at the login badge on the card — to see which org you are logged into.
 

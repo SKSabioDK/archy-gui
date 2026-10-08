@@ -293,6 +293,9 @@ function saveCustomers(customers) {
 // de er sat før nogen anden kode kører, og der er intet sted at glemme.
 
 const STAGES = ['dev', 'test', 'uat', 'prod'];
+
+// Hvor Genesys sender et PKCE-login tilbage hen. Skal stå på OAuth-klienten.
+const OAUTH_REDIRECT_URI = 'http://localhost:3737/auth/callback';
 const stageOrder = s => { const i = STAGES.indexOf(String(s || '').toLowerCase()); return i === -1 ? 99 : i; };
 
 // Listen ovenfor er standarden. Kunder der har flere trin — fx staging eller
@@ -360,6 +363,8 @@ app.get('/konventioner.js', (req, res) => {
       stages: STAGES,
       envColors: ENV_COLORS,
       maxAlignPublishes: MAX_ALIGN_PUBLISHES,
+      redirectUri: OAUTH_REDIRECT_URI,
+      permissionChecks: PERMISSION_CHECKS,
       versionSuffix: VERSION_SUFFIX.source,
       versionSuffixFlags: VERSION_SUFFIX.flags
     }) + ';\n'
@@ -1159,7 +1164,8 @@ app.get('/api/customers/:id/oauth-client', async (req, res) => {
     const r = await axios.get(`${apiBase}/api/v2/oauth/clients/${encodeURIComponent(c.clientId)}`,
       { headers: { Authorization: `Bearer ${token}` } });
     const g = r.data.authorizedGrantType;
-    res.json({ ok: true, name: r.data.name || c.clientId, grantType: GRANT_NAMES[g] || g || '' });
+    res.json({ ok: true, name: r.data.name || c.clientId, grantType: GRANT_NAMES[g] || g || '',
+               grantCode: g || '', redirectUris: r.data.registeredRedirectUri || [] });
   } catch (e) {
     const st = e.response?.status;
     if (st === 403) return res.json({ ok: false, code: 'forbidden' });
@@ -1853,7 +1859,7 @@ app.get('/api/auth/login/:id', (req, res) => {
 
   const apiBase    = REGION_MAP[customer.region] || `https://api.${customer.region}`;
   const loginBase  = apiBase.replace('api.', 'login.');
-  const redirectUri = 'http://localhost:3737/auth/callback';
+  const redirectUri = OAUTH_REDIRECT_URI;
   const url = `${loginBase}/oauth/authorize?response_type=code` +
     `&client_id=${encodeURIComponent(customer.clientId)}` +
     `&redirect_uri=${encodeURIComponent(redirectUri)}` +
@@ -1907,7 +1913,7 @@ app.get('/auth/callback', async (req, res) => {
 
   const apiBase    = REGION_MAP[customer.region] || `https://api.${customer.region}`;
   const loginBase  = apiBase.replace('api.', 'login.');
-  const redirectUri = 'http://localhost:3737/auth/callback';
+  const redirectUri = OAUTH_REDIRECT_URI;
 
   try {
     const resp = await axios.post(

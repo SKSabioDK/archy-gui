@@ -5,6 +5,25 @@
 
 ---
 
+### v1.47.4
+---
+**🇩🇰 Dansk**
+
+- **📋 Opsætningsguide til en ny org.** Knappen 📋 på et miljøkort åbner en tjekliste i sit eget vindue, som man kan have stående ved siden af Genesys mens man sætter op. Den åbner også af sig selv, når et nyt miljø er oprettet. Punkterne følger den rækkefølge man arbejder i: OAuth-klienten i Genesys (grant type og PKCE), redirect-URI, miljøets felter her, login, rettighederne, divisionen, manifest-tabellen og — på prod — deploy-retten.
+
+- **Tjek-knapper kontrollerer selv:** klientens type og redirect-URI'er slås op i Genesys, rettighederne holdes op mod hver funktion (som 🔌 Test), divisionen og manifest-tabellen findes i org'en, og login og deploy-ret ses. **▶ Tjek alt** kører dem alle; et punkt der kræver login, siger det i stedet for at melde fejl. Manifest-tabellen kan oprettes direkte fra guiden.
+
+- **Afkrydsningerne huskes** pr. miljø i browseren, og listen viser hvor mange punkter der er klar.
+
+- **Redirect-URI'en og rettighedslisten står ét sted** i serveren og hentes derfra af både login og guide.
+
+**🇬🇧 English**
+- **📋 Setup guide for a new org:** a checklist in its own window (📋 on a card, and automatically after creating an environment) covering the OAuth client, redirect URI, environment fields, login, permissions, division, manifest table and prod deploy rights.
+- **Check buttons verify against the org;** ▶ Check all runs them; items needing a login say so.
+- **Ticks are remembered** per environment in the browser.
+
+---
+
 ### v1.47.3
 ---
 **🇩🇰 Dansk**
