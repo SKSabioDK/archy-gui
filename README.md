@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.47.4
+# Archy GUI — Flow Manager · v1.47.5
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -11,8 +11,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.47.4**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.47.4**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.47.5**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.47.5**.
 
 ---
 
@@ -69,6 +69,8 @@ Nye miljøer oprettes altid med **🌐 OAuth (PKCE)**: du logger ind i Genesys s
 **🔌 Test** kontrollerer forbindelsen og **rettighederne**. Programmet slår miljøets faktiske rettigheder op — for en person (PKCE) direkte, for client credentials via klientens roller — og holder dem op mod hver funktion: læse, importere og publicere flows, Archy, datatabeller og manifest, Data Actions, prompts, divisioner, køer, brugere og afhængigheder. Kortet viser en liste med ✓ og ✗ og de rettigheder der mangler. Kan klientens roller ikke læses (kræver `oauth:client:view` og `authorization:role:view`), prøves læseadgangen af i stedet, og det der ikke kan prøves uden at skrive, står som *kunne ikke afgøres*. Fejler forbindelsen, står fejlen på kortet.
 
 **📋 Opsætningsguide.** Knappen 📋 på et miljøkort — og et link når et nyt miljø er oprettet — åbner en tjekliste i sit eget vindue, som man kan have stående ved siden af Genesys: opret OAuth-klienten (grant type, PKCE), redirect-URI, miljøets felter her, log ind, rettighederne (listen over hvad programmet bruger), divisionen, manifest-tabellen og — på prod — deploy-retten. Punkter med **Tjek** kontrollerer programmet selv mod org'en; **▶ Tjek alt** kører dem alle. Resten krydser man af, og afkrydsningerne huskes pr. miljø i browseren.
+
+<img src="docs/setup-guide.png" alt="Opsætningsguiden for Sabio APS" width="560">
 
 **Log ind hvor du står.** Mangler et miljø login, kommer der en bjælke øverst med en **Log ind**-knap — på alle sider, ikke kun Kunder — og siden hentes igen bagefter. 🔒 ved miljøet i sidebjælken logger også ind; 🟢 når man er logget ind. Hold musen over 🟢 — eller se login-mærket på kortet — for at se hvilken org man er logget ind i.
 
@@ -154,6 +156,10 @@ Hver celle viser flowets **navn i netop det miljø**, dets publicerede udgave og
 **Forfremmelse** går ét trin ad gangen og lander på *Migrer Flow* med kilde, mål og flow sat, så afhængighedstjek og divisionsvalg er som ellers. Kun en **publiceret** udgave kan forfremmes — en kladde er ikke testet. Til prod kræves dit prod-login (se Sikkerhed).
 
 **Hver knap siger hvad den gør, før den gør det.** ⟶ Forfrem, ⟵ Hent hertil, ⟵ Hent tilbage, ↩ og ▲ Publicér (demo) åbner en dialog med flowet, fra- og til-miljøet, hvad der sker trin for trin, og hvad man skal passe på: at målet er prod, at målet er publiceret uden om pipelinen eller er flere udgaver foran — så de ændringer går tabt — eller at ⇄ Tjek indhold har fundet en forskel. Man vælger **Udfør** eller **Annullér**. **? Knapperne** i tavlens værktøjslinje forklarer alle knapper.
+
+![Bekræftelse før en forfremmelse](docs/pipeline-confirm.png)
+
+*⟶ Forfrem til et prod der er 9 udgaver foran: dialogen siger hvad der sker, advarer om at rettelser i prod går tabt, og at versionen ikke kan udlignes.*
 
 **Versionsudligning.** Hver publicering giver én ny udgave, og tælleren er pr. org — så efter en forfremmelse står målet typisk lavere end kilden (dev v10 → test v3). Dialogen for ⟶ Forfrem regner ud hvad målet ender på, og tilbyder at **udligne**: målet publiceres det antal ekstra gange der mangler, med samme indhold, så det står på kildens nummer. Samme valg findes på *Migrer Flow* som *Udlign versionsnummer med kilden*, når handlingen er publish. Står målet allerede højere — som et prod der er løbet foran — kan det ikke tælles ned, og det siges. Højst 25 ekstra publiceringer pr. flow.
 
@@ -394,7 +400,7 @@ Archy-gui/
 │   └── index.html     # Frontend SPA
 ├── test/              # Enhedstests (npm test)
 │   └── *.test.js
-├── docs/              # Skærmbillede og infografik til README
+├── docs/              # Skærmbilleder og infografik til README
 └── package.json
 ```
 
@@ -469,6 +475,8 @@ New environments are always created with **🌐 OAuth (PKCE)**: you log in to Ge
 **🔌 Test** checks the connection and the **permissions**. The app looks up the environment's actual permissions — directly for a person (PKCE), via the client's roles for client credentials — and holds them against each feature: reading, importing and publishing flows, Archy, data tables and manifest, Data Actions, prompts, divisions, queues, users and dependencies. The card shows a ✓/✗ list with the missing permissions. If the client's roles cannot be read (needs `oauth:client:view` and `authorization:role:view`), read access is tried instead, and what cannot be tried without writing is shown as *could not be verified*. If the connection fails, the error is shown on the card.
 
 **📋 Setup guide.** The 📋 button on an environment card — and a link after a new environment is created — opens a checklist in its own window, to keep beside Genesys: create the OAuth client (grant type, PKCE), redirect URI, the environment's fields here, log in, permissions (the list of what the app uses), division, manifest table and — on prod — deploy rights. Items with **Check** are verified by the app against the org; **▶ Check all** runs them all. The rest you tick off, and the ticks are remembered per environment in the browser.
+
+<img src="docs/setup-guide.png" alt="The setup guide for Sabio APS" width="560">
 
 **Log in where you are.** When an environment needs a login, a bar with a **Log in** button appears at the top — on every page, not only Customers — and the page reloads afterwards. 🔒 next to the environment in the sidebar logs in too; 🟢 once logged in. Hover 🟢 — or look at the login badge on the card — to see which org you are logged into.
 
@@ -546,6 +554,10 @@ Each cell shows the flow's **name in that environment**, its published version a
 **Promotion** moves one stage at a time and lands on *Migrate Flow* with source, target and flow filled in, so dependency checks and division choices work as usual. Only a **published** version can be promoted — a draft has not been tested. Prod requires your prod login (see Security).
 
 **Every button says what it does before it does it.** ⟶ Promote, ⟵ Pull here, ⟵ Pull back, ↩ and ▲ Publish (demo) open a dialog with the flow, source and target, what happens step by step, and what to watch out for: the target is prod, the target was published outside the pipeline or is versions ahead — so those changes are lost — or ⇄ Check content found a difference. You choose to go ahead or **Cancel**. **? Buttons** in the board toolbar explains every button.
+
+![Confirmation before a promotion](docs/pipeline-confirm.png)
+
+*⟶ Promote to a prod that is 9 versions ahead: the dialog says what happens, warns that edits in prod are lost, and that the version cannot be aligned.*
 
 **Version alignment.** Each publish creates one new version, and the counter is per org — so after a promotion the target is usually lower than the source (dev v10 → test v3). The ⟶ Promote dialog works out where the target will end up and offers to **align**: the target is published the missing number of extra times, with the same content, so it matches the source number. The same choice is on *Migrate Flow* as *Align version number with the source* when the action is publish. If the target is already higher — like a prod that ran ahead — it cannot count down, and the dialog says so. At most 25 extra publishes per flow.
 
@@ -786,7 +798,7 @@ Archy-gui/
 │   └── index.html     # Frontend SPA
 ├── test/              # Unit tests (npm test)
 │   └── *.test.js
-├── docs/              # Screenshot and infographic for the README
+├── docs/              # Screenshots and infographic for the README
 └── package.json
 ```
 

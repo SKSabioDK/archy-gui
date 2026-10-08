@@ -5,6 +5,23 @@
 
 ---
 
+### v1.47.5
+---
+**🇩🇰 Dansk**
+
+- **Nye skærmbilleder i README'en.** Pipeline, Data Actions og Systemlog er taget igen af den aktuelle version — med trinfarverne, *? Knapperne* og det nye versionsnummer. De gamle var fra v1.46.5.
+
+- **To nye billeder:** bekræftelsesdialogen før en forfremmelse til et prod der er løbet foran, og opsætningsguiden for Sabio APS efter *▶ Tjek alt*.
+
+- Billederne viser kun Sabio's egen org og demo-kunderne.
+
+**🇬🇧 English**
+- **New README screenshots** of Pipeline, Data Actions and System Log, taken from the current version.
+- **Two new images:** the confirmation dialog before a promotion, and the setup guide.
+- Only Sabio's own org and the demo customers are shown.
+
+---
+
 ### v1.47.4
 ---
 **🇩🇰 Dansk**
