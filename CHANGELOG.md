@@ -5,6 +5,28 @@
 
 ---
 
+### v1.47.3
+---
+**🇩🇰 Dansk**
+
+- **Guidet præfiks-omdøbning.** Ændrer man præfikset på et miljø — fx fjerner `UAT_` — viser en dialog nu hvilke flows, datatabeller og hvilken manifest-tabel der skal have nyt navn i org'en, med flueben ved hver. *Omdøb og gem* ændrer navnene og gemmer præfikset. Før blev intet omdøbt: `UAT_Betaling` lå tilbage som sin egen række på tavlen, og manifestet pegede på en tabel der ikke længere hørte til miljøet.
+
+- **Navnene ændres via Genesys' API, ikke Archy.** Archy finder flows på navnet og ville lave et nyt flow ved siden af. Med API'et beholder flowet sit id, alle udgaver får det nye navn, og numre, køer og andre flows der peger på det, virker videre.
+
+- **Sikkert:** planen regnes ud på serveren (klienten vælger kun hvad der skal med); et navn der allerede findes, springes over; fejler én omdøbning, rulles de andre tilbage, og præfikset ændres ikke; prod kræver prod-login. Common modules og bots er markeret, fordi de kaldes ved navn i eksporteret YAML.
+
+- **Kan org'en ikke læses**, spørges der om præfikset skal gemmes alligevel — som før, uden omdøbning.
+
+- **Afprøvet mod Sabio DEV.** Genesys kræver at et flow er tjekket ud for at kunne omdøbes. Hver omdøbning sker derfor som *tjek ud → nyt navn → revert*: revert beholder det nye navn, kasserer den kladde udtjekningen laver, og frigiver låsen. Havde flowet en gemt kladde i forvejen, bruges *unlock* i stedet, så den kladde ikke går tabt. Et flow der er tjekket ud af en anden, springes over.
+
+**🇬🇧 English**
+- **Guided prefix rename:** changing a prefix shows which flows, data tables and manifest table will be renamed in the org, with checkboxes; *Rename and save* applies it.
+- **Renamed through the Genesys API, not Archy,** so flows keep their id and everything pointing to them keeps working.
+- **Safe:** plan computed on the server, existing names skipped, rollback on failure, prod requires a prod login.
+- **Tested against Sabio DEV:** each rename is checkout → rename → revert (unlock if the flow already had a saved draft), leaving no draft or lock behind.
+
+---
+
 ### v1.47.2
 ---
 **🇩🇰 Dansk**

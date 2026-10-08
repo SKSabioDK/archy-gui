@@ -315,3 +315,39 @@ test('udligning tæller aldrig ned og har et loft', () => {
   assert.equal(s.alignmentPlan(2 + max, 1).reason, 'too_many');
   assert.equal(s.alignmentPlan(null, '3.0').reason, 'unknown');
 });
+
+// ── Guidet præfiks-omdøbning ─────────────────────────────────────────────────
+
+test('præfiks-skift: planen omdøber miljøets flows, tabeller og manifest', () => {
+  // UAT_ fjernes i en org hvor dev og test også bor med hvert sit præfiks.
+  const dev = { id: 'd', prefix: 'DEV_', orgId: 'o1' }, tst = { id: 't', prefix: 'TEST_', orgId: 'o1' };
+  const uat = { id: 'u', prefix: 'UAT_', orgId: 'o1' };
+  const flows = [
+    { id: 'f1', name: 'DEV_Betaling', type: 'INBOUNDCALL' },
+    { id: 'f2', name: 'UAT_Betaling_v5', type: 'INBOUNDCALL' },
+    { id: 'f3', name: 'UAT_Hilsen', type: 'COMMONMODULE' },
+    { id: 'f4', name: 'TEST_Betaling', type: 'INBOUNDCALL' } ];
+  const tables = [
+    { id: 't1', name: 'UAT_Kunder' }, { id: 't2', name: 'DEV_Kunder' },
+    { id: 't3', name: 'UAT_ArchyGUI_Manifest' }, { id: 't4', name: 'DEV_ArchyGUI_Manifest' } ];
+  const p = s.prefixRenamePlan(uat, '', flows, tables, [dev, tst, uat]);
+  assert.deepEqual(p.flows.map(x => [x.from, x.to]), [['UAT_Betaling_v5', 'Betaling_v5'], ['UAT_Hilsen', 'Hilsen']]);
+  assert.equal(p.flows.find(x => x.id === 'f3').calledByName, true);
+  assert.deepEqual(p.tables.map(x => [x.from, x.to]), [['UAT_Kunder', 'Kunder']]);
+  assert.deepEqual([p.manifest.from, p.manifest.to], ['UAT_ArchyGUI_Manifest', 'ArchyGUI_Manifest']);
+  // Søskendenes flows og tabeller røres ikke.
+  assert.ok(!p.flows.some(x => x.from.startsWith('DEV_') || x.from.startsWith('TEST_')));
+});
+
+test('præfiks-skift: et navn der allerede findes, er en kollision', () => {
+  const uat = { id: 'u', prefix: 'UAT_', orgId: 'o1' };
+  const flows = [
+    { id: 'f1', name: 'UAT_Betaling', type: 'INBOUNDCALL' },
+    { id: 'f2', name: 'STG_Betaling', type: 'INBOUNDCALL' } ];
+  const p = s.prefixRenamePlan(uat, 'STG_', flows, [{ id: 't1', name: 'UAT_ArchyGUI_Manifest' }, { id: 't2', name: 'STG_ArchyGUI_Manifest' }], [uat]);
+  assert.equal(p.flows.find(x => x.id === 'f1').conflict, true);
+  assert.equal(p.manifest.conflict, true);
+  // Samme navn med en anden type er ikke en kollision.
+  const p2 = s.prefixRenamePlan(uat, 'STG_', [flows[0], { id: 'f3', name: 'STG_Betaling', type: 'WORKFLOW' }], [], [uat]);
+  assert.equal(p2.flows[0].conflict, false);
+});

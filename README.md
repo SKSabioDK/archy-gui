@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.47.2
+# Archy GUI — Flow Manager · v1.47.3
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -11,8 +11,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.47.2**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.47.2**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.47.3**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.47.3**.
 
 ---
 
@@ -163,7 +163,7 @@ Tallet sættes kun når flowet forlader **gruppens første trin**. Videre fra te
 
 **UAT uden præfiks.** Et miljø kan godt stå uden præfiks i en org det deler med præfiksede søskende — fx `DEV_` og `TEST_` i den ene org, UAT uden præfiks ved siden af, og prod i en anden org. Så hedder flowet det samme i UAT og prod. UAT tager da alt i org'en der ikke bærer et søskendepræfiks. Kun **ét** miljø pr. org kan være uden præfiks; serveren afviser et andet.
 
-**Ændrer man præfikset** på et miljø, bliver flowene i org'en *ikke* omdøbt — i en rigtig org ville Archy lave et nyt flow ved siden af. Står der flows med den gamle navngivning, advarer værktøjet før det gemmer, med antal og eksempler: fjerner man `UAT_`, ville `UAT_Betaling` ellers stå som sin egen række på tavlen.
+**Ændrer man præfikset** på et miljø, viser værktøjet en plan før det gemmer: hvilke **flows**, **datatabeller** og hvilken **manifest-tabel** der skal have nyt navn, fx `UAT_Betaling` → `Betaling`. Man fjerner flueben ved det der ikke skal med, og trykker *Omdøb og gem*. Navnene ændres via Genesys' API — ikke via Archy, som finder flows på navnet og ville lave et nyt ved siden af — så flowene beholder deres id, alle udgaver får det nye navn, og det der peger på dem, virker videre. Et navn der allerede findes, springes over. Fejler én omdøbning, rulles de andre tilbage, og præfikset ændres ikke. Common modules og bots er markeret: de kaldes ved navn i eksporteret YAML, så gemte filer og andre værktøjer skal rettes i hånden.
 
 **Vejen tilbage.** Findes flowet kun senere i kæden — fx alt hvad der ligger i prod, når dev lige er sat op — får cellen en **⟵ Hent hertil**-knap der henter det fra det nærmeste senere trin. Har miljøet et præfiks, får flowet det på undervejs: `Bank bot` fra prod bliver til `DEV_Bank bot`. Datatabeller behandles på samme måde.
 
@@ -404,7 +404,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-237 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+239 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -553,7 +553,7 @@ The number is only set when the flow leaves **the group's first stage**. Onward 
 
 **UAT without a prefix.** An environment may have no prefix in an org it shares with prefixed siblings — e.g. `DEV_` and `TEST_` in one org, UAT unprefixed beside them, and prod in another org. The flow then has the same name in UAT and prod. UAT takes everything in the org that does not carry a sibling's prefix. Only **one** environment per org can be unprefixed; the server rejects a second.
 
-**Changing an environment's prefix** does *not* rename the flows in the org — in a real org Archy would create a new flow beside the old one. If flows with the old naming exist, the tool warns before saving, with a count and examples: remove `UAT_`, and `UAT_Betaling` would otherwise show as its own row on the board.
+**Changing an environment's prefix** shows a plan before saving: which **flows**, **data tables** and which **manifest table** get a new name, e.g. `UAT_Betaling` → `Betaling`. Untick what should stay, and press *Rename and save*. Names are changed through the Genesys API — not through Archy, which finds flows by name and would create a new one beside it — so flows keep their id, every version gets the new name, and whatever points to them keeps working. A name that already exists is skipped. If one rename fails, the others are rolled back and the prefix is not changed. Common modules and bots are marked: they are called by name in exported YAML, so saved files and other tools must be fixed by hand.
 
 **The way back.** If the flow exists only later in the chain — everything sitting in prod, say, when dev has just been set up — the cell gets a **⟵ Bring here** button that fetches it from the nearest later stage. If the environment has a prefix, the flow gets it on the way: `Bank bot` from prod becomes `DEV_Bank bot`. Datatables are handled the same way.
 
@@ -794,7 +794,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-237 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+239 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 
