@@ -296,3 +296,22 @@ test('et trin der bruges af et miljø, kan ikke fjernes', () => {
   assert.match(s.stageListError(['dev', 'test', 'prod'], kunder).error, /Kunde — UAT/);
   assert.ok(s.stageListError(['uat', 'prod'], kunder).stages);
 });
+
+// ── Versionsudligning ────────────────────────────────────────────────────────
+
+test('udligning regner antallet af ekstra publiceringer ud', () => {
+  // dev v10 forfremmet til test, der efter importen står på v3: 7 ekstra.
+  assert.deepEqual(s.alignmentPlan('10.0', '3.0'), { extra: 7, reason: 'ok', source: 10, target: 3 });
+  assert.equal(s.alignmentPlan(10, 1).extra, 9);
+});
+
+test('udligning tæller aldrig ned og har et loft', () => {
+  // Prod v11 efter en forfremmelse fra uat v2: kan ikke rettes ved at publicere.
+  assert.equal(s.alignmentPlan('2.0', '11.0').reason, 'target_ahead');
+  assert.equal(s.alignmentPlan('2.0', '11.0').extra, 0);
+  assert.equal(s.alignmentPlan('5.0', '5.0').reason, 'equal');
+  const max = s.MAX_ALIGN_PUBLISHES;
+  assert.equal(s.alignmentPlan(1 + max, 1).extra, max);
+  assert.equal(s.alignmentPlan(2 + max, 1).reason, 'too_many');
+  assert.equal(s.alignmentPlan(null, '3.0').reason, 'unknown');
+});

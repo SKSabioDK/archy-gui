@@ -359,6 +359,7 @@ app.get('/konventioner.js', (req, res) => {
     'window.KONVENTIONER = ' + JSON.stringify({
       stages: STAGES,
       envColors: ENV_COLORS,
+      maxAlignPublishes: MAX_ALIGN_PUBLISHES,
       versionSuffix: VERSION_SUFFIX.source,
       versionSuffixFlags: VERSION_SUFFIX.flags
     }) + ';\n'
@@ -924,8 +925,22 @@ app.post('/api/demo/promote', async (req, res) => {
   src.content = renameFlowInYaml(src.content, srcNewName);
   demoRemember(src);
 
+  // Versionsudligning, som ved en rigtig forfremmelse: målet springer frem til
+  // kildens nummer, hvis det står lavere og man har bedt om det.
+  let aligned = null;
+  const tgtFlow = existing || d.flows[tgtKey].find(x => x.name === newName && x.type === flowType);
+  if (req.body.alignVersion && tgtFlow) {
+    const plan = alignmentPlan(src.published, tgtFlow.published);
+    aligned = { ...plan, done: plan.extra };
+    if (plan.extra > 0) {
+      tgtFlow.published = `${plan.source}.0`;
+      demoRemember(tgtFlow);
+    }
+    aligned.version = tgtFlow.published;
+  }
+
   saveDemo(d);
-  const targetVersion = existing ? existing.published : '1.0';
+  const targetVersion = existing ? existing.published : (tgtFlow ? tgtFlow.published : '1.0');
 
   recordManifest({
     ts: new Date().toISOString(), kind: 'migration',
@@ -979,7 +994,7 @@ app.post('/api/demo/promote', async (req, res) => {
              renamed, renamedSource, renamedTarget, action,
              releaseRef: releaseRef(release),
              diff: { added: release.diff.added, removed: release.diff.removed, noPrevious: release.diff.noPrevious },
-             dependents });
+             dependents, aligned });
 });
 
 // De flows i et demo-miljø der bruger et common module. Demoen har ingen
@@ -2575,6 +2590,21 @@ function flowContentHash(yaml, env) {
 }
 
 // Archy lægger versionen i filnavnet: "Mit Flow_v16-0.yaml" → 16
+// Versionsudligning: hver publicering i Genesys giver én ny udgave, og tælleren
+// er pr. org. Efter en forfremmelse står målet derfor typisk lavere end kilden
+// (dev v10 → test v3). Vil man have samme nummer begge steder, publiceres målet
+// det antal ekstra gange der mangler. Ét antal pr. forfremmelse, og aldrig ned:
+// står målet højere, kan det ikke rettes ved at publicere.
+const MAX_ALIGN_PUBLISHES = 25;
+function alignmentPlan(sourceVersion, targetVersion) {
+  const major = v => parseInt(String(v ?? '').split('.')[0], 10);
+  const s = major(sourceVersion), t = major(targetVersion);
+  if (!Number.isFinite(s) || !Number.isFinite(t)) return { extra: 0, reason: 'unknown' };
+  if (t >= s) return { extra: 0, reason: t > s ? 'target_ahead' : 'equal', source: s, target: t };
+  if (s - t > MAX_ALIGN_PUBLISHES) return { extra: 0, reason: 'too_many', needed: s - t, source: s, target: t };
+  return { extra: s - t, reason: 'ok', source: s, target: t };
+}
+
 function versionFromFileName(fileName) {
   const m = String(fileName).match(/_v(\d+)-\d+\.yaml$/i);
   return m ? parseInt(m[1], 10) : null;
@@ -6083,7 +6113,37 @@ app.post('/api/migrate/commit', async (req, res) => {
     const yamlType = (importedYaml.match(/^(\w+):/m) || [])[1] || null;
     const [sourceOrgId, targetOrgId] = await Promise.all([getOrgId(source), getOrgId(target)]);
     // Slå målet op under DETS navn — ellers finder vi intet og noterer null.
-    const pub = await getFlowPublishInfo(target, nyName, yamlType).catch(() => null);
+    let pub = await getFlowPublishInfo(target, nyName, yamlType).catch(() => null);
+
+    // Versionsudligning: publicér det importerede flow igen, til målets nummer
+    // matcher kildens. Samme indhold hver gang — kun tælleren flytter sig.
+    let aligned = null;
+    if (req.body.alignVersion && cmd === 'publish') {
+      const plan = alignmentPlan(versionFromFileName(path.basename(resolved)), pub?.version);
+      aligned = { ...plan, done: 0 };
+      if (plan.extra > 0) {
+        const alignFile = path.join(path.dirname(resolved), `.align-${sanitizeName(target.name)}-${path.basename(resolved)}`);
+        fs.writeFileSync(alignFile, importYaml, 'utf8');
+        try {
+          for (let k = 1; k <= plan.extra; k++) {
+            await runArchy(`publish --file ${archyArg(alignFile, 'File path')}`, target);
+            aligned.done = k;
+          }
+        } catch (e) {
+          addLog('ERROR', `Version alignment of "${nyName}" stopped after ${aligned.done} of ${plan.extra} publishes: ${e.message}`, target.name, 'MIGRATE');
+          aligned.error = e.message;
+        } finally {
+          try { fs.unlinkSync(alignFile); } catch (_) {}
+        }
+        pub = await getFlowPublishInfo(target, nyName, yamlType).catch(() => pub);
+        addLog(aligned.error ? 'WARN' : 'SUCCESS',
+          `Version aligned: "${nyName}" in ${target.name} published ${aligned.done} extra time(s) → v${pub?.version || '?'} (source v${plan.source})`,
+          target.name, 'MIGRATE');
+      } else if (plan.reason !== 'equal') {
+        addLog('INFO', `Version not aligned for "${nyName}" (${plan.reason}${plan.needed ? ', ' + plan.needed + ' needed' : ''})`, target.name, 'MIGRATE');
+      }
+      aligned.version = pub?.version || null;
+    }
 
     recordManifest({
       ts: new Date().toISOString(), kind: 'migration',
@@ -6144,7 +6204,7 @@ app.post('/api/migrate/commit', async (req, res) => {
     res.json({ ok: true, fileName: path.basename(resolved), output: out, yaml: fs.readFileSync(resolved, 'utf8'),
       targetName: nyName, releaseRef: release ? releaseRef(release) : null,
       diff: release ? { added: release.diff.added, removed: release.diff.removed, noPrevious: release.diff.noPrevious } : null,
-      dependents });
+      dependents, aligned });
   } catch (e) {
     let msg = e.message || '';
     // "create" fejler når flowet allerede findes i mål-org'en. Archy foreslår
@@ -6385,7 +6445,7 @@ if (require.main === module) {
 module.exports = {
   app, tokenStore, getToken,
   // konventioner
-  STAGES, VERSION_SUFFIX, stageListError,
+  STAGES, VERSION_SUFFIX, stageListError, alignmentPlan, MAX_ALIGN_PUBLISHES,
   // navne og versioner
   compareVersions, baseFlowName, versionSuffixOf, promotionName, versionFromFileName,
   isPipelineOrigin, promotionNameFrom, carriesVersionSuffix, prefixClash, prefixChangeImpact,

@@ -5,6 +5,25 @@
 
 ---
 
+### v1.47.2
+---
+**🇩🇰 Dansk**
+
+- **Versionsudligning ved forfremmelse.** Hver publicering i Genesys giver én ny udgave, og tælleren er pr. org — så efter en forfremmelse stod målet typisk lavere end kilden (dev v10 → test v3). Dialogen for ⟶ Forfrem regner nu ud hvad målet ender på, og tilbyder at publicere det de ekstra gange der mangler, med samme indhold, så det står på kildens nummer: *"TEST bliver v5 i stedet for v3. Det kræver 2 ekstra publiceringer."*
+
+- **Samme valg på Migrer Flow** — *Udlign versionsnummer med kilden* — vises når handlingen er publish, og sættes af sig selv når man har valgt det på tavlen. Loggen siger hvor mange ekstra publiceringer der blev lavet, og hvad målet nu står på.
+
+- **Det tæller aldrig ned.** Står målet allerede højere — som et prod der er løbet foran — siger dialogen at det ikke kan udlignes. Højst 25 ekstra publiceringer pr. flow; stopper en publicering undervejs, siges det hvor langt den nåede.
+
+- **Demoen udligner også**, så det kan prøves uden en org.
+
+**🇬🇧 English**
+- **Version alignment on promotion:** the target can be published the missing extra times (same content) so its number matches the source; offered in the ⟶ Promote dialog with the exact count, and on Migrate Flow when the action is publish.
+- **Never counts down;** at most 25 extra publishes per flow; a partial run is reported.
+- **The demo aligns too.**
+
+---
+
 ### v1.47.1
 ---
 **🇩🇰 Dansk**
