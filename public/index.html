@@ -259,6 +259,17 @@
   label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 6px; letter-spacing: .5px; }
   .fh-i { display:inline-block; margin-left:6px; color:var(--blue); cursor:help; font-size:12px; line-height:1; user-select:none; }
   .fh-i:hover, .fh-i:focus-visible, .fh-i.open { color:var(--accent); outline:none; }
+  /* Opsætningsguiden: samme side, men kun guiden vises (?guide=<miljø>). */
+  #guide-root { display:none; }
+  body.guide-mode .layout { display:none; }
+  body.guide-mode #guide-root { display:block; max-width:780px; margin:0 auto; padding:24px 16px 48px; }
+  .gd-step { border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:10px; background:var(--card); }
+  .gd-step.done { border-color:var(--green); }
+  .gd-head { display:flex; align-items:center; gap:10px; }
+  .gd-head input { width:auto; transform:scale(1.2); }
+  .gd-title { font-weight:700; flex:1; }
+  .gd-body { font-size:12px; color:var(--muted); margin:6px 0 0 30px; line-height:1.55; }
+  .gd-res { font-size:12px; margin:6px 0 0 30px; font-family:var(--mono); }
   .fh-note { font-size:11px; line-height:1.4; color:var(--muted); margin:0 0 8px; }
   .fh-text { font-size:11px; line-height:1.45; color:var(--text); background:var(--hover); border-left:2px solid var(--blue);
              padding:6px 9px; border-radius:4px; margin:-2px 0 6px; }
@@ -437,6 +448,7 @@
     if (t === 'light' || t === 'sabio' || t === 'sabio-light') document.body.classList.add(t);
   } catch (e) {}
 </script>
+<div id="guide-root"></div>
 <div class="layout">
 
   <!-- Topbar -->
@@ -509,7 +521,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.46.10 · Archy GUI</div>
+    <div class="version" id="app-version">v1.47.5 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -613,6 +625,13 @@
         <div style="height:12px"></div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:12px" data-i18n="demo_hint">Fire miljøer og tre flows der kun findes lokalt.</div>
         <div id="demoButtons"></div>
+      </details>
+
+      <details class="card" id="stagesCard">
+        <summary class="card-title" style="cursor:pointer;margin-bottom:0" data-i18n="stages_title">TRIN</summary>
+        <div style="height:12px"></div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px" data-i18n="stages_hint">Rækkefølgen på pipelinen.</div>
+        <div id="stagesEditor"></div>
       </details>
 
       <div id="customerAlert"></div>
@@ -793,12 +812,17 @@
         <div id="m-flowList"></div>
         <div style="margin-top:12px;display:flex;align-items:center;gap:12px">
           <label style="margin:0" data-i18n="label_import_action">Import handling:</label>
-          <select id="m-action" style="width:160px">
+          <select id="m-action" style="width:160px" onchange="syncAlignBox()">
             <option value="create" data-i18n="migrate_action_create">create (ny)</option>
             <option value="update" data-i18n="migrate_action_update">update (opdater)</option>
             <option value="publish" data-i18n="migrate_action_publish">publish (opret+publish)</option>
           </select>
           <span id="m-action-note" style="font-size:11px;color:var(--muted)"></span>
+          <label id="m-align-box" style="margin:0;display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+            <input type="checkbox" id="m-align" style="width:auto" />
+            <span data-i18n="align_label">Udlign versionsnummer med kilden</span>
+            <span class="fh-i" data-fh="fh_align" role="button" tabindex="0" onclick="toggleFieldHelp(this)">ⓘ</span>
+          </label>
           <button class="btn btn-primary" id="m-runBtn" onclick="runMigration()" disabled data-i18n="btn_run_migration">🚀 Kør Migration</button>
         </div>
       </div>
@@ -1248,6 +1272,17 @@
   </div>
 </div>
 <!-- Genpublicering af de flows der bruger et common module -->
+<!-- Bekræftelse af en handling på tavlen: hvad sker der, og hvad skal man passe på -->
+<div class="wiz-overlay" id="act-overlay">
+  <div class="wiz-modal" style="width:620px;max-width:calc(100vw - 32px)">
+    <div style="padding:20px 24px 0"><div id="act-title" style="font-size:16px;font-weight:700;line-height:1.35"></div></div>
+    <div id="act-body" style="padding:14px 24px;overflow-y:auto;flex:1;font-size:13px;line-height:1.55"></div>
+    <div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-secondary btn-sm" id="act-cancel" onclick="actResolve(false)" data-i18n="act_cancel">Annullér</button>
+      <button class="btn btn-primary btn-sm" id="act-ok" onclick="actResolve(true)"></button>
+    </div>
+  </div>
+</div>
 <div class="wiz-overlay" id="rep-overlay">
   <div class="wiz-modal" style="width:640px;max-width:calc(100vw - 32px)">
     <div style="padding:20px 24px 0">
@@ -1311,8 +1346,17 @@ const ENV_COLORS = (K && K.envColors) || [''];
 // Hvert miljø har en farve, så man altid kan se hvor man er: trinnets egen
 // (dev grøn, test gul, uat orange, prod rød) eller en valgt under ⚙ Indstillinger.
 const STAGE_COLORS = { dev: 'green', test: 'yellow', uat: 'orange', prod: 'red' };
+// Et eget trin (fx staging, preprod) har ingen fast farve. Det får gul, og
+// orange hvis det står lige før prod — så rækken stadig går fra grøn mod rød.
+function stageColor(stage) {
+  const st = String(stage || '').toLowerCase();
+  if (STAGE_COLORS[st]) return STAGE_COLORS[st];
+  const i = STAGES.indexOf(st);
+  if (i < 0) return '';
+  return i === STAGES.length - 2 ? 'orange' : i === 0 ? 'green' : 'yellow';
+}
 function envColor(e) {
-  const navn = (e && ENV_COLORS.includes(e.color) && e.color) || STAGE_COLORS[e && e.stage] || '';
+  const navn = (e && ENV_COLORS.includes(e.color) && e.color) || stageColor(e && e.stage);
   return navn === 'grey' || !navn ? 'var(--muted)' : `var(--${navn})`;
 }
 // (?!) matcher aldrig noget: uden serverens regel er der ingen versionsendelse
@@ -1780,7 +1824,6 @@ const LANGS = {
     demo_badge:'DEMO — rører ingen rigtig org',
     demo_publish:'Publicér',
     demo_publish_title:'Kun demo: lad som om nogen har arbejdet videre og publiceret igen. Navnet bliver stående.',
-    demo_publish_prompt:'Hvor mange gange skal der publiceres?',
     pl_unpromoted:'{n} udgave(r) ikke forfremmet',
     pl_published_title:'Miljøets egen publicerede udgave — ikke det samme som versionsendelsen i navnet',
     pl_changed_since_title:'Vi efterlod miljøet på v{v} ({when}). Det står højere nu, så nogen har publiceret her siden.',
@@ -1810,7 +1853,6 @@ const LANGS = {
     csv_missing:'mangler',
     pl_envs_in_org:'miljøer',
     label_prefix:'Præfiks',
-    pfx_warn:'Præfikset ændres fra {old} til {new}. {n} flow(s) i org\'en har stadig den gamle navngivning — de bliver IKKE omdøbt, og vil stå som egne rækker på tavlen (eller ikke høre til miljøet længere). Gem alligevel?',
     pfx_none:'intet præfiks',
     hint_prefix:'Kun hvis flere miljøer deler den samme org og kendes på et præfiks — fx DEV_. Lad feltet stå tomt for prod og for miljøer der har en org for sig selv. Datatabellerne følger samme konvention.',
     label_orglabel:'Org-navn',
@@ -1857,6 +1899,149 @@ const LANGS = {
     perm_unknown:'kunne ikke afgøres',
     perm_source_probe:'Klientens roller kunne ikke læses (kræver oauth:client:view og authorization:role:view), så kun læseadgang er prøvet af.',
     perm_close:'Luk',
+    stages_title:'TRIN',
+    stages_hint:'Rækkefølgen på pipelinen. Tilføj fx staging eller preprod, og sorter med pilene. Prod står altid sidst, fordi login og deploy-ret hænger på den. Et trin der bruges af et miljø, kan ikke fjernes.',
+    stages_prod_fixed:'altid sidst — login og deploy-ret',
+    stages_in_use:'bruges af {n} miljø(er)',
+    stages_unused:'ikke i brug',
+    stages_add_ph:'nyt trin, fx staging',
+    btn_stages_add:'+ Tilføj',
+    btn_stages_save:'Gem trin',
+    stages_saved:'✓ Trinnene er gemt.',
+    stages_bad_name:'Brug små bogstaver, tal og bindestreg — højst 20 tegn, og start med et bogstav.',
+    stages_exists:'Trinnet findes allerede.',
+    tip_stage_up:'Flyt trinnet tidligere i pipelinen',
+    tip_stage_down:'Flyt trinnet senere i pipelinen',
+    tip_stage_remove:'Fjern trinnet — kun muligt når intet miljø bruger det',
+    act_cancel:'Annullér',
+    act_close:'Luk',
+    act_what:'Det sker der:',
+    act_watch:'Vær opmærksom på:',
+    act_promote_title:'⟶ Forfrem {flow} fra {from} til {to}',
+    act_promote_s1:'Den publicerede udgave v{v} af {name} eksporteres fra {from}.',
+    act_promote_s2_exists:'Den importeres i {to} og publiceres som en ny udgave. {to} står i dag på v{tv} som {tname}.',
+    act_promote_s2_new:'Flowet findes ikke i {to} endnu — det oprettes og publiceres.',
+    act_real_route:'Du kommer til Migrer Flow med kilde, mål og flow valgt. Afhængigheder og division tjekkes dér, før noget skrives til {to}.',
+    act_demo_route:'Demo: det sker kun i demofilen på denne maskine — intet sendes til Genesys.',
+    act_module_after:'Det er et common module: bagefter kan du genpublicere de flows i {to}, der bruger det.',
+    act_warn_prod:'Målet er prod: det kræver dit prod-login, og ændringen rammer den kørende drift.',
+    act_warn_past:'{to} er publiceret uden om pipelinen siden sidste forfremmelse. De ændringer bliver overskrevet.',
+    act_warn_ahead:'{to} er {n} udgave(r) foran {from}. Er det fordi nogen har rettet direkte i {to}, går rettelserne tabt — brug ⇄ Tjek indhold og ⟵ Hent tilbage først, hvis du vil se dem.',
+    act_btn_promote:'⟶ Forfrem',
+    act_pull_title:'⟵ Hent {flow} fra {from} til {to}',
+    act_pull_s1:'Flowet findes kun i et senere trin. Den publicerede udgave hentes fra {from}.',
+    act_pull_s2:'Det oprettes i {to} og publiceres, så kæden kan begynde herfra.',
+    act_pull_prefix:'Navnet får præfikset {p}.',
+    act_back_title:'⟵ Hent {flow} tilbage fra {from} til {to}',
+    act_back_s1:'Indholdet i {to} og {from} er forskelligt (fundet med ⇄ Tjek indhold).',
+    act_back_s2:'Udgaven i {from} importeres i {to} og publiceres, så du kan se og arbejde videre med det der faktisk kører i {from}.',
+    act_warn_back:'Det der står i {to} nu, bliver erstattet. Det kan rulles tilbage med ↩ bagefter.',
+    act_btn_pull:'⟵ Hent',
+    act_rb_title:'↩ Rul {flow} tilbage i {env}',
+    act_rb_s1:'Udgaven fra før seneste forfremmelse ({label}) importeres og publiceres igen i {env}.',
+    act_rb_s2:'Det bliver en ny udgave i Genesys — historikken og release notes bevares.',
+    act_btn_rb:'↩ Rul tilbage',
+    act_demo_pub_title:'▲ Publicér {flow} i {env} (demo)',
+    act_demo_pub_s1:'Lader som om nogen har arbejdet videre og publiceret flowet — kun i demoen, intet sendes til Genesys.',
+    act_demo_pub_s2:'Udgaven stiger, men navnet bliver stående. Så kan du se hvordan tavlen reagerer, når et miljø løber foran.',
+    act_demo_pub_count:'Antal publiceringer',
+    act_btn_demo_pub:'▲ Publicér',
+    pl_buttons_help:'? Knapperne',
+    tip_pl_buttons_help:'Hvad hver knap på tavlen gør',
+    pl_buttons_help_title:'Knapperne på tavlen',
+    plb_promote_btn:'⟶ Forfrem',
+    plb_promote:'Flytter den publicerede udgave ét trin frem — fra kolonnen til venstre hertil. Kun en publiceret udgave kan forfremmes. Du ser altid hvad der sker, før det sker.',
+    plb_pull_here_btn:'⟵ Hent hertil',
+    plb_pull_here:'Flowet findes kun i et senere trin. Henter det ned hertil, fx når dev lige er sat op.',
+    plb_pull_back_btn:'⟵ Hent tilbage',
+    plb_pull_back:'Vises når ⇄ Tjek indhold har fundet en forskel. Henter det næste trins udgave tilbage hertil, så du kan se hvad der er ændret.',
+    plb_check_btn:'⇄ Tjek indhold',
+    plb_check:'Eksporterer flowet fra hvert miljø og sammenligner indholdet. Skriver intet. Versionsnumre kan ikke sammenlignes på tværs af orgs.',
+    plb_rollback_btn:'↩',
+    plb_rollback:'Ruller seneste forfremmelse til dette miljø tilbage til udgaven før.',
+    plb_republish_btn:'🔁 Brugere',
+    plb_republish:'Kun common modules: genpublicerer de flows i miljøet, der bruger modulet, så de kører den nye udgave.',
+    plb_notes_btn:'📝',
+    plb_notes:'Release notes: hvad hver forfremmelse ændrede, hvem og hvornår.',
+    plb_demo_publish_btn:'▲ Publicér',
+    plb_demo_publish:'Kun i demo-miljøer: lader som om nogen har publiceret flowet N gange, så du kan se hvordan tavlen reagerer.',
+    align_label:'Udlign versionsnummer med kilden',
+    fh_align:'Efter importen publiceres flowet i målet det antal ekstra gange, der skal til, for at versionsnummeret matcher kildens — fx dev v10 → test v10 i stedet for v3. Hver publicering er en rigtig udgave i Genesys med samme indhold. Kan ikke tælle ned, og højst 25 ekstra pr. flow. Kun ved handlingen publish.',
+    act_align_offer:'Udlign versionsnummeret: {to} bliver {s} i stedet for {t}. Det kræver {n} ekstra publicering(er) med samme indhold.',
+    act_align_ahead:'{to} ender på {t}, som allerede er højere end kildens {s} — versionsnumre kan ikke tælles ned, så de kan ikke udlignes.',
+    act_align_too_many:'Udligning ville kræve {n} ekstra publiceringer — mere end loftet på {max}, så den tilbydes ikke.',
+    align_done:'Versionen er udlignet: {n} ekstra publicering(er), målet står nu på v{v}.',
+    align_partial:'Udligningen stoppede efter {done} af {n} publiceringer: {err}',
+    align_ahead:'Ikke udlignet: målet står på v{t}, højere end kildens v{s}.',
+    align_too_many:'Ikke udlignet: det ville kræve {n} publiceringer, loftet er {max}.',
+    align_equal:'Versionen var allerede den samme som kildens.',
+    align_unknown:'Ikke udlignet: versionsnummeret kunne ikke aflæses.',
+    pfx_title:'Skift præfiks for {env}: {old} → {new}',
+    pfx_s1:'Navnene ændres i org\'en via Genesys\' API. Flowene beholder deres id, alle udgaver får det nye navn, og det der peger på dem — numre, køer, andre flows — virker videre.',
+    pfx_s2:'Fejler én omdøbning, rulles de andre tilbage, og præfikset ændres ikke.',
+    pfx_s3:'Fjerner du alle flueben, gemmes kun præfikset — navnene i org\'en bliver stående.',
+    pfx_sec_flows:'Flows ({n})',
+    pfx_sec_tables:'Datatabeller ({n})',
+    pfx_sec_manifest:'Manifest-tabel',
+    pfx_conflict:'navnet findes allerede — springes over',
+    pfx_called_by_name:'kaldes ved navn',
+    pfx_warn_by_name:'Common modules og bots kaldes ved navn i eksporteret YAML. Programmet retter selv navnene ved næste forfremmelse, men gemte YAML-filer og andre værktøjer skal rettes i hånden.',
+    pfx_warn_conflict:'Nogle nye navne findes allerede i org\'en. De springes over — omdøb eller slet dubletten i Genesys først.',
+    pfx_btn:'Omdøb og gem',
+    pfx_running:'Omdøber i org\'en…',
+    pfx_done:'✓ {n} navn(e) ændret — præfikset er nu {new}.',
+    pfx_failed:'✗ Omdøbningen fejlede og er rullet tilbage — præfikset er ikke ændret: {err}',
+    pfx_unreadable:'Org\'en kunne ikke læses, så navnene kan ikke ændres med: {err}\n\nGem præfikset alligevel? Flows med det gamle præfiks bliver så stående som deres egne rækker på tavlen.',
+    gd_title:'Opsætningsguide — {env}',
+    gd_open_guide:'📋 Opsætningsguide',
+    tip_btn_guide:'Opsætningsguide: en tjekliste i et nyt vindue til at sætte org\'en og miljøet rigtigt op',
+    gd_intro:'Følg punkterne i rækkefølge. Punkter med Tjek kontrollerer programmet selv; de andre krydser du af. Vinduet kan stå åbent ved siden af Genesys mens du arbejder.',
+    gd_progress:'{n} af {m} klar',
+    gd_check_all:'▶ Tjek alt',
+    gd_check:'Tjek',
+    gd_pending:'Kontrollerer…',
+    gd_close:'Luk vinduet',
+    gd_popup_blocked:'Browseren blokerede vinduet. Tillad pop-op-vinduer for localhost, og prøv igen.',
+    gd_unknown_env:'Miljøet findes ikke længere.',
+    gd_done_all:'✓ Alle punkter er klar — miljøet er sat op.',
+    gd_need_login:'Log ind på miljøet først — se punktet "Log ind".',
+    gd_not_logged_in:'Ikke logget ind.',
+    gd_env_first:'Udfyld kunde og gruppe først.',
+    gd_client_title:'Opret en OAuth-klient i Genesys',
+    gd_client_body_oauth:'Admin → Integrations → OAuth → Add Client. Vælg grant type "Code Authorization" og slå PKCE til. Kopiér Client ID ind i miljøets indstillinger. Der skal ingen roller på klienten — med PKCE bruges din egen brugers rettigheder.',
+    gd_client_body_creds:'Admin → Integrations → OAuth → Add Client. Vælg grant type "Client Credentials", og giv klienten en rolle med rettighederne i næste punkt, i alle divisioner. Kopiér Client ID og secret ind i miljøets indstillinger. Client credentials bruges kun uden for prod.',
+    gd_client_found:'Fundet: {name} · {type}',
+    gd_client_wrong:'Klienten er af typen {type} — miljøet skal bruge {want}.',
+    gd_redirect_title:'Sæt redirect-URI på klienten',
+    gd_redirect_body:'Under Authorized redirect URIs på OAuth-klienten skal {uri} stå — ellers kan login ikke vende tilbage til programmet.',
+    gd_redirect_ok:'{uri} er sat.',
+    gd_redirect_missing:'{uri} mangler — klienten har: {list}',
+    gd_perms_title:'Giv de nødvendige rettigheder',
+    gd_perms_body_oauth:'Med PKCE er det din egen bruger der skal have rettighederne, via en rolle i Genesys. Programmet bruger disse:',
+    gd_perms_body_creds:'Klientens rolle skal have disse rettigheder:',
+    gd_perms_missing:'Mangler: {list}',
+    gd_env_title:'Udfyld miljøet her i programmet',
+    gd_env_body:'Under Kunder → ⚙ Indstillinger: kunde og gruppe (det er pipelinen), trin, og præfiks hvis flere miljøer deler org\'en. Region og Client ID skal passe til org\'en.',
+    gd_env_missing:'Mangler: {list}',
+    gd_login_title:'Log ind',
+    gd_login_btn:'Log ind',
+    gd_login_body:'Log ind på miljøet, og vælg den rigtige organisation på Genesys\' login-side. Et login i en forkert org afvises.',
+    gd_login_ok:'Logget ind i {org}',
+    gd_division_title:'Divisionen findes',
+    gd_division_body:'Flows og tabeller lægges i divisionen {div}. Den skal findes i org\'en.',
+    gd_division_ok:'{div} findes.',
+    gd_division_missing:'Divisionen {div} findes ikke i org\'en.',
+    gd_manifest_title:'Opret manifest-tabellen',
+    gd_manifest_body:'Tabellen {table} i org\'en holder historikken, så flere kan arbejde på samme kunde og se det samme.',
+    gd_manifest_create:'Opret tabellen',
+    gd_manifest_ok:'{table} findes ({n} rækker).',
+    gd_manifest_missing:'Tabellen findes ikke endnu.',
+    gd_deploy_title:'Deploy-ret til prod',
+    gd_deploy_body:'Ved login til prod tjekkes at din bruger har rettigheden {perm}.',
+    gd_deploy_group:'Og at du er med i gruppen {g}.',
+    gd_deploy_missing:'Mangler: {list}',
+    gd_flows_title:'Få flows ind i miljøet',
+    gd_flows_body:'Er miljøet tomt, så brug ⟵ Hent hertil på pipelinen, eller Migrer Flow. Flow Browser viser hvad der allerede ligger i org\'en.',
     env_color_label:'Farve', color_auto:'Trinnets farve', color_green:'Grøn', color_yellow:'Gul', color_orange:'Orange', color_red:'Rød', color_blue:'Blå', color_grey:'Grå',
     prod_deploy_perm:'Kræver rettighed: architect:flow:publish',
     prod_deploy_group:'Kræver gruppe (valgfri)',
@@ -1888,8 +2073,8 @@ const LANGS = {
     action_default_note:'publiceres som standard — flowet er i drift med det samme',
     action_prod_note:'prod: publiceres IKKE som standard — lægges som kladde du selv publicerer',
     tree_ungrouped:'Ikke grupperet',
-    help_customers:'Ét miljø er én Genesys-org set gennem én OAuth-klient.\n• Nye miljøer bruger altid **OAuth (PKCE)**: du logger ind i Genesys som dig selv, og der gemmes ingen secret. Ældre miljøer med client credentials er markeret med **gult**.\n• **⚙ Indstillinger** rummer navn, kunde, gruppe, trin, præfiks, org-navn, farve, division, godkendelse og krav til prod. Hvert felt har et **ⓘ** — hold musen over eller klik for at se hvad det bruges til. Ulovlige tegn og navne der ville give samme mappe, afvises når du gemmer.\n• **Kunde + gruppe** afgør hvad der må migreres indbyrdes — gruppen er pipelinen, og den kan hedde et land eller et firma.\n• **Trin** er dev, test, uat eller prod og bestemmer rækkefølgen på pipelinen.\n• **Farve**: hvert miljø vises i sit trins farve — dev grøn, test gul, uat orange, prod rød — på pipelinen, i sidebjælken og på kortene. Vælg en anden under ⚙ Indstillinger.\n• **Rigtig org ved login**: login\'et tjekker hvilken org du landede i. Vælger du en forkert på Genesys\' login-side (fx en kundes via trusted org), afvises det. Org\'en står ved miljøet når du er logget ind.\n• **Præfiks** bruges kun når flere miljøer deler den samme org og kendes på fx DEV_. Lad det stå tomt for prod.\n• **Prod kræver et prod-login**: ved login tjekkes at du har rettigheden (som standard architect:flow:publish) og evt. er med i en gruppe. Retten gælder 30 minutter. Trin, godkendelse og krav på et prod-miljø kan kun ændres med et gyldigt prod-login.\n• **Log ind hvor du står**: mangler et miljø login, kommer der en bjælke øverst med en Log ind-knap — på alle sider. 🔒 ved miljøet i sidebjælken logger også ind, og siden hentes igen bagefter.\n• **Søg** i miljøerne over kortene, eller vis kun dem der kræver login. Formularen og demo-kunderne kan foldes ud.\n• **Demo-kunderne** er helt lokale — intet login, ingen kald til Genesys.',
-    help_pipeline:'Flows som rækker, gruppens miljøer som kolonner i trin-rækkefølge.\n• Versionstallene kan **ikke** sammenlignes på tværs — de tælles pr. org. Brug **⇄ Tjek indhold**, som er det eneste der afgør om to miljøer er ens.\n• **Grøn** betyder publiceret ad den rigtige vej. **Rød** betyder enten publiceret uden om pipelinen, eller flere udgaver end trinnet før.\n• **⟶ Forfrem** flytter ét trin ad gangen. Kun en publiceret udgave kan forfremmes — en kladde er ikke testet. Til prod kræves dit prod-login.\n• **⟵ Hent hertil** henter et flow ned fra et senere trin, fx når dev lige er sat op.\n• **↩** ruller seneste forfremmelse tilbage, og **📝** viser release notes.\n• Forfremmes eller rulles et **common module** tilbage, tilbydes du at genpublicere de flows i miljøet der bruger det. **🔁** gør det samme når modulet er rettet direkte i Architect. Er et modul publiceret efter flows der bruger det, står det øverst på tavlen, cellerne er mærket ⚠, og 🔁 er gul.\n• **Delt manifest** lægger historikken i org\'en, så flere kan arbejde på samme kunde uden at se hver sin sandhed.',
+    help_customers:'Ét miljø er én Genesys-org set gennem én OAuth-klient.\n• Nye miljøer bruger altid **OAuth (PKCE)**: du logger ind i Genesys som dig selv, og der gemmes ingen secret. Ældre miljøer med client credentials er markeret med **gult**.\n• **⚙ Indstillinger** rummer navn, kunde, gruppe, trin, præfiks, org-navn, farve, division, godkendelse og krav til prod. Hvert felt har et **ⓘ** — hold musen over eller klik for at se hvad det bruges til. Ulovlige tegn og navne der ville give samme mappe, afvises når du gemmer.\n• **Kunde + gruppe** afgør hvad der må migreres indbyrdes — gruppen er pipelinen, og den kan hedde et land eller et firma.\n• **Trin** er dev, test, uat eller prod og bestemmer rækkefølgen på pipelinen. Under **Trin** nederst på siden kan du tilføje egne, fx staging eller preprod — prod står altid sidst.\n• **Farve**: hvert miljø vises i sit trins farve — dev grøn, test gul, uat orange, prod rød — på pipelinen, i sidebjælken og på kortene. Vælg en anden under ⚙ Indstillinger.\n• **Rigtig org ved login**: login\'et tjekker hvilken org du landede i. Vælger du en forkert på Genesys\' login-side (fx en kundes via trusted org), afvises det. Org\'en står ved miljøet når du er logget ind.\n• **Præfiks** bruges kun når flere miljøer deler den samme org og kendes på fx DEV_. Ændrer du præfikset, viser dialogen hvilke flows, datatabeller og manifest-tabel der omdøbes i org\'en med — de beholder deres id. Lad det stå tomt for prod.\n• **Prod kræver et prod-login**: ved login tjekkes at du har rettigheden (som standard architect:flow:publish) og evt. er med i en gruppe. Retten gælder 30 minutter. Trin, godkendelse og krav på et prod-miljø kan kun ændres med et gyldigt prod-login.\n• **📋 Opsætningsguide**: knappen 📋 på et kort åbner en tjekliste i et nyt vindue til at sætte org\'en og miljøet rigtigt op. Tjek-knapperne kontrollerer selv.\n• **Log ind hvor du står**: mangler et miljø login, kommer der en bjælke øverst med en Log ind-knap — på alle sider. 🔒 ved miljøet i sidebjælken logger også ind, og siden hentes igen bagefter.\n• **Søg** i miljøerne over kortene, eller vis kun dem der kræver login. Formularen og demo-kunderne kan foldes ud.\n• **Demo-kunderne** er helt lokale — intet login, ingen kald til Genesys.',
+    help_pipeline:'Flows som rækker, gruppens miljøer som kolonner i trin-rækkefølge.\n• Versionstallene kan **ikke** sammenlignes på tværs — de tælles pr. org. Brug **⇄ Tjek indhold**, som er det eneste der afgør om to miljøer er ens.\n• **Grøn** betyder publiceret ad den rigtige vej. **Rød** betyder enten publiceret uden om pipelinen, eller flere udgaver end trinnet før.\n• **Hver knap viser først hvad der sker** — flow, fra og til, og advarsler om prod eller ændringer der går tabt — og du kan annullere. **? Knapperne** forklarer dem alle.\n• **Udlign versionsnummer**: ved ⟶ Forfrem kan målet publiceres de ekstra gange der mangler, så det står på kildens nummer (fx dev v10 → test v10). Det kan ikke tælle ned.\n• **⟶ Forfrem** flytter ét trin ad gangen. Kun en publiceret udgave kan forfremmes — en kladde er ikke testet. Til prod kræves dit prod-login.\n• **⟵ Hent hertil** henter et flow ned fra et senere trin, fx når dev lige er sat op.\n• **↩** ruller seneste forfremmelse tilbage, og **📝** viser release notes.\n• Forfremmes eller rulles et **common module** tilbage, tilbydes du at genpublicere de flows i miljøet der bruger det. **🔁** gør det samme når modulet er rettet direkte i Architect. Er et modul publiceret efter flows der bruger det, står det øverst på tavlen, cellerne er mærket ⚠, og 🔁 er gul.\n• **Delt manifest** lægger historikken i org\'en, så flere kan arbejde på samme kunde uden at se hver sin sandhed.',
     help_flows:'Hent, søg og filtrér miljøets flows. Deler flere miljøer org\'en, vises kun dette miljøs egne.\n• Filtrér på **flowtype** — listen fyldes ud fra de typer miljøet faktisk har.\n• **Publicér** sætter en allerede migreret kladde i drift uden at hente noget fra kilden igen. Er det et common module, tilbydes du bagefter at genpublicere de flows der bruger det.\n• **Common modules tjekkes** hver gang listen hentes: er et modul publiceret **efter** et flow der bruger det, kører flowet stadig på den gamle udgave. Det står i et gult felt med en knap der genpublicerer dem, og rækkerne er mærket ⚠.\n• **🔁 Brugere** på et common module viser alle de flows der bruger det.\n• **⇄ Sammenlign** mod en anden org sammenligner **indholdet**, ikke versionsnumrene.\n• **📌 Sæt nulpunkt** noterer hvad org\'en indeholder nu, så værktøjet bagefter kan fange at nogen har publiceret direkte — også for flows det aldrig selv har migreret.',
     help_cross:'Viser de flows der findes hos **flere kunder** — fx det samme common module hos ti kunder.\n• Oversigten bygger på ét kald pr. kunde og er derfor hurtig.\n• **⇄ Sammenlign indhold** eksporterer flowet fra hver kunde og sammenligner hashen. Det tager tid, så det køres kun for den række du beder om.\n• Kunne en org ikke læses, siges det — der står **aldrig** "identisk" hvis vi mangler svar fra nogen.',
     help_migrate:'Eksport fra én org og import direkte til en anden. Kører i to faser.\n• **Tjek** — flowet eksporteres, og mål-org\'en undersøges for alt det refererer til. Der skrives intet endnu.\n• **Import** — først efter dit valg. Mangler noget, kan tabeller, data actions og common modules migreres med inden flowet.\n• Har målet et **præfiks** eller en anden **division**, omdøbes flowet og dets referencer undervejs.\n• **Import handling** vælges efter målet: alt andet end prod publiceres som standard, så det er i drift med det samme. Prod lægges som kladde du selv publicerer.\n• Skrivning til **prod** kræver dit prod-login med rettigheden — du bliver tilbudt at logge ind hvis det mangler.\n• Migreres et **common module**, tilbydes du at genpublicere de flows i målet der bruger det.\n• Køer, skills, wrap-up-koder og scripts skal oprettes manuelt — de kan ikke migreres.',
@@ -2412,7 +2597,6 @@ const LANGS = {
     demo_badge:'DEMO — touches no real org',
     demo_publish:'Publish',
     demo_publish_title:'Demo only: pretend someone kept working and published again. The name stays put.',
-    demo_publish_prompt:'How many times should it be published?',
     pl_unpromoted:'{n} version(s) not promoted',
     pl_published_title:'The environment\'s own published version — not the same as the version suffix in the name',
     pl_changed_since_title:'We left this environment at v{v} ({when}). It is higher now, so someone has published here since.',
@@ -2442,7 +2626,6 @@ const LANGS = {
     csv_missing:'missing',
     pl_envs_in_org:'environments',
     label_prefix:'Prefix',
-    pfx_warn:'The prefix changes from {old} to {new}. {n} flow(s) in the org still use the old naming — they are NOT renamed and will show as separate rows on the board (or no longer belong to the environment). Save anyway?',
     pfx_none:'no prefix',
     hint_prefix:'Only if several environments share one org and are told apart by a prefix — e.g. DEV_. Leave it empty for prod and for environments that have an org to themselves. Datatables follow the same convention.',
     label_orglabel:'Org label',
@@ -2489,6 +2672,149 @@ const LANGS = {
     perm_unknown:'could not be verified',
     perm_source_probe:'The client\'s roles could not be read (needs oauth:client:view and authorization:role:view), so only read access was tried.',
     perm_close:'Close',
+    stages_title:'STAGES',
+    stages_hint:'The order on the pipeline. Add e.g. staging or preprod, and sort with the arrows. Prod is always last, since login and deploy rights depend on it. A stage used by an environment cannot be removed.',
+    stages_prod_fixed:'always last — login and deploy rights',
+    stages_in_use:'used by {n} environment(s)',
+    stages_unused:'not in use',
+    stages_add_ph:'new stage, e.g. staging',
+    btn_stages_add:'+ Add',
+    btn_stages_save:'Save stages',
+    stages_saved:'✓ Stages saved.',
+    stages_bad_name:'Use lowercase letters, digits and hyphens — at most 20 characters, starting with a letter.',
+    stages_exists:'The stage already exists.',
+    tip_stage_up:'Move the stage earlier in the pipeline',
+    tip_stage_down:'Move the stage later in the pipeline',
+    tip_stage_remove:'Remove the stage — only possible when no environment uses it',
+    act_cancel:'Cancel',
+    act_close:'Close',
+    act_what:'What happens:',
+    act_watch:'Watch out:',
+    act_promote_title:'⟶ Promote {flow} from {from} to {to}',
+    act_promote_s1:'The published version v{v} of {name} is exported from {from}.',
+    act_promote_s2_exists:'It is imported into {to} and published as a new version. {to} is currently at v{tv} as {tname}.',
+    act_promote_s2_new:'The flow does not exist in {to} yet — it is created and published.',
+    act_real_route:'You go to Migrate Flow with source, target and flow selected. Dependencies and division are checked there before anything is written to {to}.',
+    act_demo_route:'Demo: this happens only in the demo file on this machine — nothing is sent to Genesys.',
+    act_module_after:'It is a common module: afterwards you can republish the flows in {to} that use it.',
+    act_warn_prod:'The target is prod: it requires your prod login, and the change hits live operations.',
+    act_warn_past:'{to} has been published outside the pipeline since the last promotion. Those changes will be overwritten.',
+    act_warn_ahead:'{to} is {n} version(s) ahead of {from}. If someone has edited {to} directly, those edits are lost — use ⇄ Check content and ⟵ Pull back first if you want to see them.',
+    act_btn_promote:'⟶ Promote',
+    act_pull_title:'⟵ Pull {flow} from {from} to {to}',
+    act_pull_s1:'The flow only exists in a later stage. The published version is fetched from {from}.',
+    act_pull_s2:'It is created in {to} and published, so the chain can start from here.',
+    act_pull_prefix:'The name gets the prefix {p}.',
+    act_back_title:'⟵ Pull {flow} back from {from} to {to}',
+    act_back_s1:'The content in {to} and {from} differs (found by ⇄ Check content).',
+    act_back_s2:'The version in {from} is imported into {to} and published, so you can see and work with what actually runs in {from}.',
+    act_warn_back:'What is in {to} now will be replaced. It can be rolled back with ↩ afterwards.',
+    act_btn_pull:'⟵ Pull',
+    act_rb_title:'↩ Roll back {flow} in {env}',
+    act_rb_s1:'The version from before the latest promotion ({label}) is imported and published again in {env}.',
+    act_rb_s2:'It becomes a new version in Genesys — history and release notes are kept.',
+    act_btn_rb:'↩ Roll back',
+    act_demo_pub_title:'▲ Publish {flow} in {env} (demo)',
+    act_demo_pub_s1:'Pretends someone kept working and published the flow — demo only, nothing is sent to Genesys.',
+    act_demo_pub_s2:'The version rises but the name stays, so you can see how the board reacts when an environment runs ahead.',
+    act_demo_pub_count:'Number of publishes',
+    act_btn_demo_pub:'▲ Publish',
+    pl_buttons_help:'? Buttons',
+    tip_pl_buttons_help:'What each button on the board does',
+    pl_buttons_help_title:'The buttons on the board',
+    plb_promote_btn:'⟶ Promote',
+    plb_promote:'Moves the published version one stage forward — from the column on the left to here. Only a published version can be promoted. You always see what happens before it happens.',
+    plb_pull_here_btn:'⟵ Pull here',
+    plb_pull_here:'The flow only exists in a later stage. Fetches it down here, e.g. when dev has just been set up.',
+    plb_pull_back_btn:'⟵ Pull back',
+    plb_pull_back:'Shown when ⇄ Check content found a difference. Fetches the next stage\'s version back here so you can see what changed.',
+    plb_check_btn:'⇄ Check content',
+    plb_check:'Exports the flow from each environment and compares the content. Writes nothing. Version numbers cannot be compared across orgs.',
+    plb_rollback_btn:'↩',
+    plb_rollback:'Rolls the latest promotion into this environment back to the version before.',
+    plb_republish_btn:'🔁 Users',
+    plb_republish:'Common modules only: republishes the flows in the environment that use the module, so they run the new version.',
+    plb_notes_btn:'📝',
+    plb_notes:'Release notes: what each promotion changed, who and when.',
+    plb_demo_publish_btn:'▲ Publish',
+    plb_demo_publish:'Demo environments only: pretends someone published the flow N times, so you can see how the board reacts.',
+    align_label:'Align version number with the source',
+    fh_align:'After the import, the flow in the target is published the number of extra times needed for its version number to match the source — e.g. dev v10 → test v10 instead of v3. Each publish is a real version in Genesys with the same content. Cannot count down, and at most 25 extra per flow. Only with the publish action.',
+    act_align_offer:'Align the version number: {to} becomes {s} instead of {t}. This takes {n} extra publish(es) with the same content.',
+    act_align_ahead:'{to} ends at {t}, already higher than the source\'s {s} — version numbers cannot count down, so they cannot be aligned.',
+    act_align_too_many:'Aligning would take {n} extra publishes — more than the limit of {max}, so it is not offered.',
+    align_done:'Version aligned: {n} extra publish(es), the target is now at v{v}.',
+    align_partial:'Alignment stopped after {done} of {n} publishes: {err}',
+    align_ahead:'Not aligned: the target is at v{t}, higher than the source\'s v{s}.',
+    align_too_many:'Not aligned: it would take {n} publishes, the limit is {max}.',
+    align_equal:'The version already matched the source.',
+    align_unknown:'Not aligned: the version number could not be read.',
+    pfx_title:'Change prefix for {env}: {old} → {new}',
+    pfx_s1:'The names are changed in the org through the Genesys API. Flows keep their id, every version gets the new name, and whatever points to them — numbers, queues, other flows — keeps working.',
+    pfx_s2:'If one rename fails, the others are rolled back, and the prefix is not changed.',
+    pfx_s3:'Untick everything to save only the prefix — the names in the org stay as they are.',
+    pfx_sec_flows:'Flows ({n})',
+    pfx_sec_tables:'Data tables ({n})',
+    pfx_sec_manifest:'Manifest table',
+    pfx_conflict:'name already exists — skipped',
+    pfx_called_by_name:'called by name',
+    pfx_warn_by_name:'Common modules and bots are called by name in exported YAML. The app fixes the names itself on the next promotion, but saved YAML files and other tools must be fixed by hand.',
+    pfx_warn_conflict:'Some new names already exist in the org. They are skipped — rename or delete the duplicate in Genesys first.',
+    pfx_btn:'Rename and save',
+    pfx_running:'Renaming in the org…',
+    pfx_done:'✓ {n} name(s) changed — the prefix is now {new}.',
+    pfx_failed:'✗ The rename failed and was rolled back — the prefix is unchanged: {err}',
+    pfx_unreadable:'The org could not be read, so the names cannot be changed along: {err}\n\nSave the prefix anyway? Flows with the old prefix then remain as their own rows on the board.',
+    gd_title:'Setup guide — {env}',
+    gd_open_guide:'📋 Setup guide',
+    tip_btn_guide:'Setup guide: a checklist in a new window for setting up the org and the environment correctly',
+    gd_intro:'Follow the items in order. Items with Check are verified by the app; tick the others yourself. The window can stay open beside Genesys while you work.',
+    gd_progress:'{n} of {m} done',
+    gd_check_all:'▶ Check all',
+    gd_check:'Check',
+    gd_pending:'Checking…',
+    gd_close:'Close window',
+    gd_popup_blocked:'The browser blocked the window. Allow pop-ups for localhost and try again.',
+    gd_unknown_env:'The environment no longer exists.',
+    gd_done_all:'✓ Every item is done — the environment is set up.',
+    gd_need_login:'Log in to the environment first — see the "Log in" item.',
+    gd_not_logged_in:'Not logged in.',
+    gd_env_first:'Fill in customer and group first.',
+    gd_client_title:'Create an OAuth client in Genesys',
+    gd_client_body_oauth:'Admin → Integrations → OAuth → Add Client. Choose grant type "Code Authorization" and enable PKCE. Copy the Client ID into the environment settings. The client needs no roles — with PKCE your own user\'s permissions are used.',
+    gd_client_body_creds:'Admin → Integrations → OAuth → Add Client. Choose grant type "Client Credentials", and give the client a role with the permissions in the next item, in all divisions. Copy the Client ID and secret into the environment settings. Client credentials are only used outside prod.',
+    gd_client_found:'Found: {name} · {type}',
+    gd_client_wrong:'The client is of type {type} — the environment needs {want}.',
+    gd_redirect_title:'Set the redirect URI on the client',
+    gd_redirect_body:'Authorized redirect URIs on the OAuth client must include {uri} — otherwise the login cannot return to the app.',
+    gd_redirect_ok:'{uri} is set.',
+    gd_redirect_missing:'{uri} is missing — the client has: {list}',
+    gd_perms_title:'Grant the required permissions',
+    gd_perms_body_oauth:'With PKCE it is your own user that needs the permissions, through a role in Genesys. The app uses these:',
+    gd_perms_body_creds:'The client\'s role needs these permissions:',
+    gd_perms_missing:'Missing: {list}',
+    gd_env_title:'Fill in the environment in the app',
+    gd_env_body:'Under Customers → ⚙ Settings: customer and group (that is the pipeline), stage, and a prefix if several environments share the org. Region and Client ID must match the org.',
+    gd_env_missing:'Missing: {list}',
+    gd_login_title:'Log in',
+    gd_login_btn:'Log in',
+    gd_login_body:'Log in to the environment and pick the right organisation on the Genesys login page. A login into the wrong org is refused.',
+    gd_login_ok:'Logged in to {org}',
+    gd_division_title:'The division exists',
+    gd_division_body:'Flows and tables are placed in the division {div}. It must exist in the org.',
+    gd_division_ok:'{div} exists.',
+    gd_division_missing:'The division {div} does not exist in the org.',
+    gd_manifest_title:'Create the manifest table',
+    gd_manifest_body:'The table {table} in the org keeps the history, so several people can work on one customer and see the same thing.',
+    gd_manifest_create:'Create the table',
+    gd_manifest_ok:'{table} exists ({n} rows).',
+    gd_manifest_missing:'The table does not exist yet.',
+    gd_deploy_title:'Deploy rights to prod',
+    gd_deploy_body:'At a prod login the tool checks that your user has the permission {perm}.',
+    gd_deploy_group:'And that you are in the group {g}.',
+    gd_deploy_missing:'Missing: {list}',
+    gd_flows_title:'Get flows into the environment',
+    gd_flows_body:'If the environment is empty, use ⟵ Pull here on the pipeline, or Migrate Flow. Flow Browser shows what is already in the org.',
     env_color_label:'Colour', color_auto:'Stage colour', color_green:'Green', color_yellow:'Yellow', color_orange:'Orange', color_red:'Red', color_blue:'Blue', color_grey:'Grey',
     prod_deploy_perm:'Requires permission: architect:flow:publish',
     prod_deploy_group:'Requires group (optional)',
@@ -2520,8 +2846,8 @@ const LANGS = {
     action_default_note:'published by default — the flow is live straight away',
     action_prod_note:'prod: NOT published by default — left as a draft for you to publish',
     tree_ungrouped:'Not grouped',
-    help_customers:'One environment is one Genesys org seen through one OAuth client.\n• New environments always use **OAuth (PKCE)**: you log in to Genesys as yourself and no secret is stored. Older environments using client credentials are marked in **yellow**.\n• **⚙ Settings** holds name, customer, group, stage, prefix, org label, colour, division, authentication and prod requirements. Every field has an **ⓘ** — hover or click it to see what it is for. Invalid characters, and names that would share a folder, are rejected on save.\n• **Customer + group** decide what may be migrated between — the group is the pipeline, named after a country or a company.\n• **Stage** is dev, test, uat or prod and sets the order on the pipeline.\n• **Colour**: each environment shows in its stage colour — dev green, test yellow, uat orange, prod red — on the pipeline, in the sidebar and on the cards. Pick another under ⚙ Settings.\n• **Right org at login**: the login checks which org you landed in. Picking the wrong one on Genesys\' login page (e.g. a customer\'s via trusted org) is refused. The org is shown next to the environment once logged in.\n• **Prefix** is only used when several environments share one org, recognised by e.g. DEV_. Leave it empty for prod.\n• **Prod requires a prod login**: at login you are checked for the permission (architect:flow:publish by default) and optionally a group. The right lasts 30 minutes. Stage, authentication and requirements of a prod environment can only be changed with a valid prod login.\n• **Log in where you are**: when an environment needs a login, a bar with a Log in button appears at the top — on every page. 🔒 next to the environment in the sidebar logs in too, and the page reloads afterwards.\n• **Search** the environments above the cards, or show only those requiring login. The form and the demo customers can be expanded.\n• **Demo customers** are fully local — no login, no calls to Genesys.',
-    help_pipeline:'Flows as rows, the group\'s environments as columns in stage order.\n• Version numbers **cannot** be compared across orgs — they are counted per org. Use **⇄ Check content**, the only thing that decides whether two environments match.\n• **Green** means published the right way. **Red** means published outside the pipeline, or more versions than the stage before.\n• **⟶ Promote** moves one stage at a time. Only a published version can be promoted — a draft is untested. Prod requires your prod login.\n• **⟵ Pull here** fetches a flow from a later stage, e.g. when dev has just been set up.\n• **↩** rolls back the latest promotion, and **📝** shows release notes.\n• When a **common module** is promoted or rolled back, you are offered to republish the flows in that environment that use it. **🔁** does the same when the module was changed directly in Architect. If a module was published after flows that use it, this is listed at the top of the board, the cells are marked ⚠ and 🔁 turns yellow.\n• **Shared manifest** keeps history in the org, so several people can work on one customer and see the same truth.',
+    help_customers:'One environment is one Genesys org seen through one OAuth client.\n• New environments always use **OAuth (PKCE)**: you log in to Genesys as yourself and no secret is stored. Older environments using client credentials are marked in **yellow**.\n• **⚙ Settings** holds name, customer, group, stage, prefix, org label, colour, division, authentication and prod requirements. Every field has an **ⓘ** — hover or click it to see what it is for. Invalid characters, and names that would share a folder, are rejected on save.\n• **Customer + group** decide what may be migrated between — the group is the pipeline, named after a country or a company.\n• **Stage** is dev, test, uat or prod and sets the order on the pipeline. Under **Stages** at the bottom of the page you can add your own, e.g. staging or preprod — prod is always last.\n• **Colour**: each environment shows in its stage colour — dev green, test yellow, uat orange, prod red — on the pipeline, in the sidebar and on the cards. Pick another under ⚙ Settings.\n• **Right org at login**: the login checks which org you landed in. Picking the wrong one on Genesys\' login page (e.g. a customer\'s via trusted org) is refused. The org is shown next to the environment once logged in.\n• **Prefix** is only used when several environments share one org, recognised by e.g. DEV_. Change it, and a dialog shows which flows, data tables and manifest table are renamed in the org along with it — they keep their id. Leave it empty for prod.\n• **Prod requires a prod login**: at login you are checked for the permission (architect:flow:publish by default) and optionally a group. The right lasts 30 minutes. Stage, authentication and requirements of a prod environment can only be changed with a valid prod login.\n• **📋 Setup guide**: the 📋 button on a card opens a checklist in a new window for setting up the org and environment. The Check buttons verify for you.\n• **Log in where you are**: when an environment needs a login, a bar with a Log in button appears at the top — on every page. 🔒 next to the environment in the sidebar logs in too, and the page reloads afterwards.\n• **Search** the environments above the cards, or show only those requiring login. The form and the demo customers can be expanded.\n• **Demo customers** are fully local — no login, no calls to Genesys.',
+    help_pipeline:'Flows as rows, the group\'s environments as columns in stage order.\n• Version numbers **cannot** be compared across orgs — they are counted per org. Use **⇄ Check content**, the only thing that decides whether two environments match.\n• **Green** means published the right way. **Red** means published outside the pipeline, or more versions than the stage before.\n• **Every button first shows what will happen** — flow, from and to, and warnings about prod or changes that would be lost — and you can cancel. **? Buttons** explains them all.\n• **Align version number**: on ⟶ Promote the target can be published the missing extra times so it matches the source number (e.g. dev v10 → test v10). It cannot count down.\n• **⟶ Promote** moves one stage at a time. Only a published version can be promoted — a draft is untested. Prod requires your prod login.\n• **⟵ Pull here** fetches a flow from a later stage, e.g. when dev has just been set up.\n• **↩** rolls back the latest promotion, and **📝** shows release notes.\n• When a **common module** is promoted or rolled back, you are offered to republish the flows in that environment that use it. **🔁** does the same when the module was changed directly in Architect. If a module was published after flows that use it, this is listed at the top of the board, the cells are marked ⚠ and 🔁 turns yellow.\n• **Shared manifest** keeps history in the org, so several people can work on one customer and see the same truth.',
     help_flows:'Fetch, search and filter the environment\'s flows. When several environments share an org, only this environment\'s own are shown.\n• Filter by **flow type** — the list is populated from the types the environment actually has.\n• **Publish** puts an already-migrated draft live without fetching anything from the source again. For a common module, you are then offered to republish the flows that use it.\n• **Common modules are checked** every time the list is fetched: if a module was published **after** a flow that uses it, the flow still runs the old version. This is shown in a yellow box with a button to republish them, and the rows are marked ⚠.\n• **🔁 Users** on a common module lists every flow that uses it.\n• **⇄ Compare** against another org compares **content**, not version numbers.\n• **📌 Set baseline** records what the org holds now, so the tool can later catch someone publishing directly — even for flows it never migrated itself.',
     help_cross:'Shows the flows that exist at **more than one customer** — the same common module at ten customers, say.\n• The overview rests on one call per customer and is therefore quick.\n• **⇄ Compare content** exports the flow from each customer and compares the hash. That takes time, so it runs only for the row you ask for.\n• If an org could not be read, it says so — it **never** reports "identical" when an answer is missing.',
     help_migrate:'Export from one org and import straight into another, in two phases.\n• **Check** — the flow is exported and the target org is examined for everything it references. Nothing is written yet.\n• **Import** — only after your choice. If something is missing, tables, data actions and common modules can be migrated before the flow.\n• If the target has a **prefix** or a different **division**, the flow and its references are renamed on the way.\n• **Import action** follows the target: anything but prod is published by default so it is live at once. Prod is left as a draft for you to publish.\n• Writing to **prod** requires your prod login with the permission — you are offered to log in if it is missing.\n• When a **common module** is migrated, you are offered to republish the flows in the target that use it.\n• Queues, skills, wrap-up codes and scripts must be created manually — they cannot be migrated.',
@@ -3044,7 +3370,6 @@ const LANGS = {
     demo_badge:'DÉMO — ne touche aucune org réelle',
     demo_publish:'Publier',
     demo_publish_title:'Démo uniquement : simuler que quelqu\'un a continué et republié. Le nom ne change pas.',
-    demo_publish_prompt:'Combien de fois faut-il publier ?',
     pl_unpromoted:'{n} version(s) non promue(s)',
     pl_published_title:'La version publiée propre à l\'environnement — à ne pas confondre avec le suffixe du nom',
     pl_changed_since_title:'Nous avons laissé cet environnement en v{v} ({when}). Il est plus élevé maintenant : quelqu\'un a publié depuis.',
@@ -3074,7 +3399,6 @@ const LANGS = {
     csv_missing:'absent',
     pl_envs_in_org:'environnements',
     label_prefix:'Préfixe',
-    pfx_warn:'Le préfixe passe de {old} à {new}. {n} flow(s) de l’org utilisent encore l’ancien nommage — ils ne sont PAS renommés et apparaîtront comme lignes séparées (ou n’appartiendront plus à l’environnement). Enregistrer quand même ?',
     pfx_none:'aucun préfixe',
     hint_prefix:'Uniquement si plusieurs environnements partagent une org et se distinguent par un préfixe — par ex. DEV_. Laissez vide pour la prod et pour les environnements ayant leur propre org. Les tables de données suivent la même convention.',
     label_orglabel:'Nom de l\'org',
@@ -3121,6 +3445,149 @@ const LANGS = {
     perm_unknown:'impossible à vérifier',
     perm_source_probe:'Les rôles du client sont illisibles (il faut oauth:client:view et authorization:role:view) ; seule la lecture a été testée.',
     perm_close:'Fermer',
+    stages_title:'ÉTAPES',
+    stages_hint:'L\'ordre du pipeline. Ajoutez par ex. staging ou preprod, et triez avec les flèches. Prod est toujours en dernier, car la connexion et le droit de déploiement en dépendent. Une étape utilisée par un environnement ne peut pas être supprimée.',
+    stages_prod_fixed:'toujours en dernier — connexion et droit de déploiement',
+    stages_in_use:'utilisée par {n} environnement(s)',
+    stages_unused:'non utilisée',
+    stages_add_ph:'nouvelle étape, par ex. staging',
+    btn_stages_add:'+ Ajouter',
+    btn_stages_save:'Enregistrer les étapes',
+    stages_saved:'✓ Étapes enregistrées.',
+    stages_bad_name:'Lettres minuscules, chiffres et tirets — 20 caractères au plus, en commençant par une lettre.',
+    stages_exists:'L\'étape existe déjà.',
+    tip_stage_up:'Avancer l\'étape dans le pipeline',
+    tip_stage_down:'Reculer l\'étape dans le pipeline',
+    tip_stage_remove:'Supprimer l\'étape — possible seulement si aucun environnement ne l\'utilise',
+    act_cancel:'Annuler',
+    act_close:'Fermer',
+    act_what:'Ce qui se passe :',
+    act_watch:'Attention :',
+    act_promote_title:'⟶ Promouvoir {flow} de {from} vers {to}',
+    act_promote_s1:'La version publiée v{v} de {name} est exportée de {from}.',
+    act_promote_s2_exists:'Elle est importée dans {to} et publiée comme nouvelle version. {to} est actuellement en v{tv} sous le nom {tname}.',
+    act_promote_s2_new:'Le flow n\'existe pas encore dans {to} — il est créé et publié.',
+    act_real_route:'Vous arrivez sur Migrer un flow avec source, cible et flow sélectionnés. Dépendances et division y sont vérifiées avant toute écriture dans {to}.',
+    act_demo_route:'Démo : cela se passe uniquement dans le fichier démo de cette machine — rien n\'est envoyé à Genesys.',
+    act_module_after:'C\'est un common module : vous pourrez ensuite republier les flows de {to} qui l\'utilisent.',
+    act_warn_prod:'La cible est prod : votre connexion prod est requise, et le changement touche l\'exploitation.',
+    act_warn_past:'{to} a été publié hors du pipeline depuis la dernière promotion. Ces changements seront écrasés.',
+    act_warn_ahead:'{to} a {n} version(s) d\'avance sur {from}. Si quelqu\'un a modifié {to} directement, ces modifications seront perdues — utilisez d\'abord ⇄ Vérifier le contenu et ⟵ Rapatrier pour les voir.',
+    act_btn_promote:'⟶ Promouvoir',
+    act_pull_title:'⟵ Ramener {flow} de {from} vers {to}',
+    act_pull_s1:'Le flow n\'existe que dans une étape ultérieure. La version publiée est récupérée de {from}.',
+    act_pull_s2:'Il est créé dans {to} et publié, pour que la chaîne puisse partir d\'ici.',
+    act_pull_prefix:'Le nom reçoit le préfixe {p}.',
+    act_back_title:'⟵ Rapatrier {flow} de {from} vers {to}',
+    act_back_s1:'Le contenu de {to} et de {from} diffère (trouvé par ⇄ Vérifier le contenu).',
+    act_back_s2:'La version de {from} est importée dans {to} et publiée, pour voir et reprendre ce qui tourne vraiment dans {from}.',
+    act_warn_back:'Ce qui se trouve dans {to} sera remplacé. Cela peut être annulé avec ↩ ensuite.',
+    act_btn_pull:'⟵ Ramener',
+    act_rb_title:'↩ Annuler {flow} dans {env}',
+    act_rb_s1:'La version d\'avant la dernière promotion ({label}) est importée et republiée dans {env}.',
+    act_rb_s2:'Cela crée une nouvelle version dans Genesys — l\'historique et les notes sont conservés.',
+    act_btn_rb:'↩ Annuler la promotion',
+    act_demo_pub_title:'▲ Publier {flow} dans {env} (démo)',
+    act_demo_pub_s1:'Simule que quelqu\'un a continué et publié le flow — démo seulement, rien n\'est envoyé à Genesys.',
+    act_demo_pub_s2:'La version augmente mais le nom reste, pour voir comment le tableau réagit quand un environnement prend de l\'avance.',
+    act_demo_pub_count:'Nombre de publications',
+    act_btn_demo_pub:'▲ Publier',
+    pl_buttons_help:'? Boutons',
+    tip_pl_buttons_help:'Ce que fait chaque bouton du tableau',
+    pl_buttons_help_title:'Les boutons du tableau',
+    plb_promote_btn:'⟶ Promouvoir',
+    plb_promote:'Avance la version publiée d\'une étape — de la colonne de gauche vers ici. Seule une version publiée peut être promue. Vous voyez toujours ce qui va se passer avant.',
+    plb_pull_here_btn:'⟵ Ramener ici',
+    plb_pull_here:'Le flow n\'existe que dans une étape ultérieure. Le ramène ici, par ex. quand dev vient d\'être créé.',
+    plb_pull_back_btn:'⟵ Rapatrier',
+    plb_pull_back:'Affiché quand ⇄ Vérifier le contenu a trouvé une différence. Ramène la version de l\'étape suivante ici pour voir ce qui a changé.',
+    plb_check_btn:'⇄ Vérifier le contenu',
+    plb_check:'Exporte le flow de chaque environnement et compare le contenu. N\'écrit rien. Les numéros de version ne sont pas comparables entre orgs.',
+    plb_rollback_btn:'↩',
+    plb_rollback:'Annule la dernière promotion vers cet environnement et revient à la version précédente.',
+    plb_republish_btn:'🔁 Utilisateurs',
+    plb_republish:'Common modules uniquement : republie les flows de l\'environnement qui utilisent le module, pour qu\'ils exécutent la nouvelle version.',
+    plb_notes_btn:'📝',
+    plb_notes:'Notes de version : ce que chaque promotion a changé, qui et quand.',
+    plb_demo_publish_btn:'▲ Publier',
+    plb_demo_publish:'Environnements démo uniquement : simule N publications du flow pour voir la réaction du tableau.',
+    align_label:'Aligner le numéro de version sur la source',
+    fh_align:'Après l\'import, le flow cible est publié autant de fois que nécessaire pour que son numéro de version corresponde à la source — par ex. dev v10 → test v10 au lieu de v3. Chaque publication est une vraie version dans Genesys au contenu identique. Impossible de décompter, et 25 au plus par flow. Uniquement avec l\'action publish.',
+    act_align_offer:'Aligner le numéro de version : {to} devient {s} au lieu de {t}. Cela demande {n} publication(s) supplémentaire(s) au contenu identique.',
+    act_align_ahead:'{to} arrive à {t}, déjà plus haut que {s} de la source — les numéros ne peuvent pas décroître, donc pas d\'alignement.',
+    act_align_too_many:'L\'alignement demanderait {n} publications supplémentaires — plus que la limite de {max}, il n\'est donc pas proposé.',
+    align_done:'Version alignée : {n} publication(s) supplémentaire(s), la cible est maintenant en v{v}.',
+    align_partial:'L\'alignement s\'est arrêté après {done} publications sur {n} : {err}',
+    align_ahead:'Non aligné : la cible est en v{t}, plus haut que la source en v{s}.',
+    align_too_many:'Non aligné : il faudrait {n} publications, la limite est {max}.',
+    align_equal:'La version correspondait déjà à la source.',
+    align_unknown:'Non aligné : le numéro de version n\'a pas pu être lu.',
+    pfx_title:'Changer le préfixe de {env} : {old} → {new}',
+    pfx_s1:'Les noms sont changés dans l\'org via l\'API Genesys. Les flows gardent leur id, toutes les versions prennent le nouveau nom, et ce qui pointe vers eux — numéros, files, autres flows — continue de fonctionner.',
+    pfx_s2:'Si un renommage échoue, les autres sont annulés, et le préfixe n\'est pas changé.',
+    pfx_s3:'Décochez tout pour n\'enregistrer que le préfixe — les noms dans l\'org restent tels quels.',
+    pfx_sec_flows:'Flows ({n})',
+    pfx_sec_tables:'Tables de données ({n})',
+    pfx_sec_manifest:'Table du manifeste',
+    pfx_conflict:'le nom existe déjà — ignoré',
+    pfx_called_by_name:'appelé par son nom',
+    pfx_warn_by_name:'Les common modules et les bots sont appelés par leur nom dans le YAML exporté. L\'outil corrige les noms à la prochaine promotion, mais les fichiers YAML enregistrés et les autres outils doivent être corrigés à la main.',
+    pfx_warn_conflict:'Certains nouveaux noms existent déjà dans l\'org. Ils sont ignorés — renommez ou supprimez d\'abord le doublon dans Genesys.',
+    pfx_btn:'Renommer et enregistrer',
+    pfx_running:'Renommage dans l\'org…',
+    pfx_done:'✓ {n} nom(s) changé(s) — le préfixe est maintenant {new}.',
+    pfx_failed:'✗ Le renommage a échoué et a été annulé — le préfixe est inchangé : {err}',
+    pfx_unreadable:'L\'org n\'a pas pu être lue, les noms ne peuvent donc pas suivre : {err}\n\nEnregistrer le préfixe quand même ? Les flows avec l\'ancien préfixe resteront alors comme lignes à part sur le tableau.',
+    gd_title:'Guide de configuration — {env}',
+    gd_open_guide:'📋 Guide de configuration',
+    tip_btn_guide:'Guide de configuration : une liste dans une nouvelle fenêtre pour bien configurer l\'org et l\'environnement',
+    gd_intro:'Suivez les points dans l\'ordre. Les points avec Vérifier sont contrôlés par l\'outil ; cochez les autres vous-même. La fenêtre peut rester ouverte à côté de Genesys.',
+    gd_progress:'{n} sur {m} prêts',
+    gd_check_all:'▶ Tout vérifier',
+    gd_check:'Vérifier',
+    gd_pending:'Vérification…',
+    gd_close:'Fermer la fenêtre',
+    gd_popup_blocked:'Le navigateur a bloqué la fenêtre. Autorisez les pop-ups pour localhost et réessayez.',
+    gd_unknown_env:'L\'environnement n\'existe plus.',
+    gd_done_all:'✓ Tous les points sont prêts — l\'environnement est configuré.',
+    gd_need_login:'Connectez-vous d\'abord à l\'environnement — voir le point « Se connecter ».',
+    gd_not_logged_in:'Non connecté.',
+    gd_env_first:'Renseignez d\'abord client et groupe.',
+    gd_client_title:'Créer un client OAuth dans Genesys',
+    gd_client_body_oauth:'Admin → Integrations → OAuth → Add Client. Choisissez le grant type « Code Authorization » et activez PKCE. Copiez le Client ID dans les paramètres de l\'environnement. Aucun rôle n\'est nécessaire sur le client — avec PKCE, ce sont les droits de votre utilisateur.',
+    gd_client_body_creds:'Admin → Integrations → OAuth → Add Client. Choisissez « Client Credentials » et donnez au client un rôle avec les permissions du point suivant, dans toutes les divisions. Copiez le Client ID et le secret dans les paramètres. Client credentials ne sert qu\'hors prod.',
+    gd_client_found:'Trouvé : {name} · {type}',
+    gd_client_wrong:'Le client est de type {type} — l\'environnement doit utiliser {want}.',
+    gd_redirect_title:'Définir l\'URI de redirection du client',
+    gd_redirect_body:'Les Authorized redirect URIs du client OAuth doivent contenir {uri} — sinon la connexion ne peut pas revenir à l\'outil.',
+    gd_redirect_ok:'{uri} est défini.',
+    gd_redirect_missing:'{uri} manque — le client a : {list}',
+    gd_perms_title:'Accorder les permissions nécessaires',
+    gd_perms_body_oauth:'Avec PKCE, c\'est votre propre utilisateur qui doit avoir les permissions, via un rôle dans Genesys. L\'outil utilise :',
+    gd_perms_body_creds:'Le rôle du client doit avoir ces permissions :',
+    gd_perms_missing:'Manquant : {list}',
+    gd_env_title:'Renseigner l\'environnement ici',
+    gd_env_body:'Sous Clients → ⚙ Paramètres : client et groupe (le pipeline), étape, et préfixe si plusieurs environnements partagent l\'org. Région et Client ID doivent correspondre à l\'org.',
+    gd_env_missing:'Manquant : {list}',
+    gd_login_title:'Se connecter',
+    gd_login_btn:'Se connecter',
+    gd_login_body:'Connectez-vous à l\'environnement et choisissez la bonne organisation sur la page de connexion Genesys. Une connexion dans la mauvaise org est refusée.',
+    gd_login_ok:'Connecté à {org}',
+    gd_division_title:'La division existe',
+    gd_division_body:'Flows et tables sont placés dans la division {div}. Elle doit exister dans l\'org.',
+    gd_division_ok:'{div} existe.',
+    gd_division_missing:'La division {div} n\'existe pas dans l\'org.',
+    gd_manifest_title:'Créer la table du manifeste',
+    gd_manifest_body:'La table {table} de l\'org garde l\'historique, pour que plusieurs personnes voient la même chose.',
+    gd_manifest_create:'Créer la table',
+    gd_manifest_ok:'{table} existe ({n} lignes).',
+    gd_manifest_missing:'La table n\'existe pas encore.',
+    gd_deploy_title:'Droit de déploiement en prod',
+    gd_deploy_body:'À la connexion prod, l\'outil vérifie que votre utilisateur a la permission {perm}.',
+    gd_deploy_group:'Et que vous êtes dans le groupe {g}.',
+    gd_deploy_missing:'Manquant : {list}',
+    gd_flows_title:'Faire entrer des flows dans l\'environnement',
+    gd_flows_body:'Si l\'environnement est vide, utilisez ⟵ Ramener ici sur le pipeline, ou Migrer un flow. Flow Browser montre ce qui est déjà dans l\'org.',
     env_color_label:'Couleur', color_auto:'Couleur de l\'étape', color_green:'Vert', color_yellow:'Jaune', color_orange:'Orange', color_red:'Rouge', color_blue:'Bleu', color_grey:'Gris',
     prod_deploy_perm:'Permission requise : architect:flow:publish',
     prod_deploy_group:'Groupe requis (facultatif)',
@@ -3152,8 +3619,8 @@ const LANGS = {
     action_default_note:'publié par défaut — le flow est actif immédiatement',
     action_prod_note:'prod : NON publié par défaut — laissé en brouillon à publier vous-même',
     tree_ungrouped:'Non regroupé',
-    help_customers:'Un environnement est une org Genesys vue à travers un client OAuth.\n• Les nouveaux environnements utilisent toujours **OAuth (PKCE)** : vous vous connectez à Genesys en votre nom et aucun secret n\'est stocké. Les anciens environnements en client credentials sont en **jaune**.\n• **⚙ Paramètres** contient nom, client, groupe, étape, préfixe, nom de l\'org, couleur, division, authentification et exigences prod. Chaque champ a un **ⓘ** — survolez-le ou cliquez pour voir à quoi il sert. Les caractères interdits et les noms qui partageraient un dossier sont refusés à l\'enregistrement.\n• **Client + groupe** déterminent ce qui peut être migré entre eux — le groupe est le pipeline.\n• **Étape** vaut dev, test, uat ou prod et fixe l\'ordre du pipeline.\n• **Couleur** : chaque environnement a la couleur de son étape — dev vert, test jaune, uat orange, prod rouge — sur le pipeline, dans la barre latérale et sur les cartes. Choisissez-en une autre dans ⚙ Paramètres.\n• **Bonne org à la connexion** : la connexion vérifie dans quelle org vous êtes arrivé. Une mauvaise org choisie sur la page de connexion Genesys (par ex. celle d\'un client via trusted org) est refusée. L\'org s\'affiche près de l\'environnement une fois connecté.\n• **Préfixe** ne sert que si plusieurs environnements partagent une org, reconnus par ex. DEV_. Laissez-le vide pour prod.\n• **Prod exige une connexion prod** : à la connexion, on vérifie la permission (architect:flow:publish par défaut) et éventuellement un groupe. Le droit dure 30 minutes. Étape, authentification et exigences d\'un environnement prod ne changent qu\'avec une connexion prod valide.\n• **Connectez-vous où vous êtes** : si un environnement demande une connexion, une barre avec un bouton apparaît en haut — sur toutes les pages. 🔒 dans la barre latérale connecte aussi, puis la page se recharge.\n• **Cherchez** parmi les environnements, ou affichez seulement ceux à connecter. Le formulaire et les démos se déplient.\n• **Les clients démo** sont entièrement locaux — pas de connexion, aucun appel à Genesys.',
-    help_pipeline:'Les flows en lignes, les environnements du groupe en colonnes, par étape.\n• Les numéros de version ne sont **pas** comparables entre orgs — ils sont comptés par org. Utilisez **⇄ Vérifier le contenu**, seul juge de l\'égalité de deux environnements.\n• **Vert** : publié par le bon chemin. **Rouge** : publié hors du pipeline, ou plus de versions que l\'étape précédente.\n• **⟶ Promouvoir** avance d\'une étape à la fois. Seule une version publiée peut être promue. Prod exige votre connexion prod.\n• **⟵ Ramener ici** récupère un flow d\'une étape ultérieure, par ex. quand dev vient d\'être créé.\n• **↩** annule la dernière promotion, **📝** affiche les notes de version.\n• Quand un **common module** est promu ou annulé, on vous propose de republier les flows de l\'environnement qui l\'utilisent. **🔁** fait de même si le module a été modifié directement dans Architect. Si un module a été publié après des flows qui l\'utilisent, c\'est indiqué en haut du tableau, les cellules sont marquées ⚠ et 🔁 devient jaune.\n• **Le manifeste partagé** garde l\'historique dans l\'org, pour que chacun voie la même vérité.',
+    help_customers:'Un environnement est une org Genesys vue à travers un client OAuth.\n• Les nouveaux environnements utilisent toujours **OAuth (PKCE)** : vous vous connectez à Genesys en votre nom et aucun secret n\'est stocké. Les anciens environnements en client credentials sont en **jaune**.\n• **⚙ Paramètres** contient nom, client, groupe, étape, préfixe, nom de l\'org, couleur, division, authentification et exigences prod. Chaque champ a un **ⓘ** — survolez-le ou cliquez pour voir à quoi il sert. Les caractères interdits et les noms qui partageraient un dossier sont refusés à l\'enregistrement.\n• **Client + groupe** déterminent ce qui peut être migré entre eux — le groupe est le pipeline.\n• **Étape** vaut dev, test, uat ou prod et fixe l\'ordre du pipeline. Sous **Étapes** en bas de page, vous pouvez en ajouter, par ex. staging ou preprod — prod reste en dernier.\n• **Couleur** : chaque environnement a la couleur de son étape — dev vert, test jaune, uat orange, prod rouge — sur le pipeline, dans la barre latérale et sur les cartes. Choisissez-en une autre dans ⚙ Paramètres.\n• **Bonne org à la connexion** : la connexion vérifie dans quelle org vous êtes arrivé. Une mauvaise org choisie sur la page de connexion Genesys (par ex. celle d\'un client via trusted org) est refusée. L\'org s\'affiche près de l\'environnement une fois connecté.\n• **Préfixe** ne sert que si plusieurs environnements partagent une org, reconnus par ex. DEV_. Si vous le changez, une boîte de dialogue montre les flows, tables de données et table du manifeste renommés dans l\'org — ils gardent leur id. Laissez-le vide pour prod.\n• **Prod exige une connexion prod** : à la connexion, on vérifie la permission (architect:flow:publish par défaut) et éventuellement un groupe. Le droit dure 30 minutes. Étape, authentification et exigences d\'un environnement prod ne changent qu\'avec une connexion prod valide.\n• **📋 Guide de configuration** : le bouton 📋 d\'une carte ouvre une liste dans une nouvelle fenêtre pour configurer l\'org et l\'environnement. Les boutons Vérifier contrôlent pour vous.\n• **Connectez-vous où vous êtes** : si un environnement demande une connexion, une barre avec un bouton apparaît en haut — sur toutes les pages. 🔒 dans la barre latérale connecte aussi, puis la page se recharge.\n• **Cherchez** parmi les environnements, ou affichez seulement ceux à connecter. Le formulaire et les démos se déplient.\n• **Les clients démo** sont entièrement locaux — pas de connexion, aucun appel à Genesys.',
+    help_pipeline:'Les flows en lignes, les environnements du groupe en colonnes, par étape.\n• Les numéros de version ne sont **pas** comparables entre orgs — ils sont comptés par org. Utilisez **⇄ Vérifier le contenu**, seul juge de l\'égalité de deux environnements.\n• **Vert** : publié par le bon chemin. **Rouge** : publié hors du pipeline, ou plus de versions que l\'étape précédente.\n• **Chaque bouton montre d\'abord ce qui va se passer** — flow, source et cible, et avertissements sur prod ou des changements perdus — et vous pouvez annuler. **? Boutons** les explique tous.\n• **Aligner le numéro de version** : avec ⟶ Promouvoir, la cible peut être publiée les fois manquantes pour atteindre le numéro de la source (par ex. dev v10 → test v10). Impossible de décompter.\n• **⟶ Promouvoir** avance d\'une étape à la fois. Seule une version publiée peut être promue. Prod exige votre connexion prod.\n• **⟵ Ramener ici** récupère un flow d\'une étape ultérieure, par ex. quand dev vient d\'être créé.\n• **↩** annule la dernière promotion, **📝** affiche les notes de version.\n• Quand un **common module** est promu ou annulé, on vous propose de republier les flows de l\'environnement qui l\'utilisent. **🔁** fait de même si le module a été modifié directement dans Architect. Si un module a été publié après des flows qui l\'utilisent, c\'est indiqué en haut du tableau, les cellules sont marquées ⚠ et 🔁 devient jaune.\n• **Le manifeste partagé** garde l\'historique dans l\'org, pour que chacun voie la même vérité.',
     help_flows:'Récupérer, chercher et filtrer les flows de l\'environnement. Si plusieurs environnements partagent une org, seuls les siens sont affichés.\n• Filtrez par **type de flow** — la liste reprend les types réellement présents.\n• **Publier** met en service un brouillon déjà migré. Pour un common module, on vous propose ensuite de republier les flows qui l\'utilisent.\n• **Les common modules sont vérifiés** à chaque chargement : un module publié **après** un flow qui l\'utilise signifie que le flow tourne encore sur l\'ancienne version. C\'est signalé dans un encadré jaune avec un bouton pour les republier, et les lignes sont marquées ⚠.\n• **🔁 Utilisateurs** sur un common module liste tous les flows qui l\'utilisent.\n• **⇄ Comparer** avec une autre org compare le **contenu**, pas les numéros de version.\n• **📌 Point zéro** enregistre l\'état actuel de l\'org, pour repérer ensuite les publications directes.',
     help_cross:'Montre les flows présents chez **plusieurs clients** — par exemple le même common module chez dix clients.\n• La vue repose sur un appel par client et est donc rapide.\n• **⇄ Comparer le contenu** exporte le flow chez chaque client et compare l\'empreinte. C\'est long, donc réservé à la ligne demandée.\n• Si une org n\'a pas pu être lue, c\'est dit — il n\'affiche **jamais** « identique » quand une réponse manque.',
     help_migrate:'Export depuis une org et import direct dans une autre, en deux phases.\n• **Vérification** — le flow est exporté et l\'org cible examinée pour tout ce qu\'il référence. Rien n\'est encore écrit.\n• **Import** — seulement après votre choix. S\'il manque quelque chose, tables, data actions et common modules peuvent être migrés avant le flow.\n• Si la cible a un **préfixe** ou une autre **division**, le flow et ses références sont renommés au passage.\n• **Action d\'import** selon la cible : tout sauf prod est publié par défaut. Prod reste en brouillon, à publier vous-même.\n• Écrire en **prod** exige votre connexion prod avec la permission — on vous propose de vous connecter si elle manque.\n• Si un **common module** est migré, on vous propose de republier les flows de la cible qui l\'utilisent.\n• Files, skills, codes de wrap-up et scripts doivent être créés manuellement.',
@@ -3676,7 +4143,6 @@ const LANGS = {
     demo_badge:'DEMO — raakt geen echte org aan',
     demo_publish:'Publiceren',
     demo_publish_title:'Alleen demo: doe alsof iemand is doorgegaan en opnieuw heeft gepubliceerd. De naam blijft staan.',
-    demo_publish_prompt:'Hoe vaak moet er gepubliceerd worden?',
     pl_unpromoted:'{n} versie(s) niet gepromoveerd',
     pl_published_title:'De eigen gepubliceerde versie van de omgeving — niet hetzelfde als het versiesuffix in de naam',
     pl_changed_since_title:'We lieten deze omgeving achter op v{v} ({when}). Die staat nu hoger, dus iemand heeft hier sindsdien gepubliceerd.',
@@ -3706,7 +4172,6 @@ const LANGS = {
     csv_missing:'ontbreekt',
     pl_envs_in_org:'omgevingen',
     label_prefix:'Prefix',
-    pfx_warn:'Het voorvoegsel verandert van {old} naar {new}. {n} flow(s) in de org gebruiken nog de oude naamgeving — ze worden NIET hernoemd en verschijnen als aparte rijen (of horen niet meer bij de omgeving). Toch opslaan?',
     pfx_none:'geen voorvoegsel',
     hint_prefix:'Alleen als meerdere omgevingen één org delen en herkenbaar zijn aan een prefix — bv. DEV_. Laat leeg voor prod en voor omgevingen met een eigen org. Datatables volgen dezelfde conventie.',
     label_orglabel:'Org-naam',
@@ -3753,6 +4218,149 @@ const LANGS = {
     perm_unknown:'niet te controleren',
     perm_source_probe:'De rollen van de client konden niet worden gelezen (vereist oauth:client:view en authorization:role:view), dus alleen leestoegang is getest.',
     perm_close:'Sluiten',
+    stages_title:'FASEN',
+    stages_hint:'De volgorde op de pipeline. Voeg bv. staging of preprod toe en sorteer met de pijlen. Prod staat altijd als laatste, want login en deploy-recht hangen ervan af. Een fase die door een omgeving wordt gebruikt, kan niet worden verwijderd.',
+    stages_prod_fixed:'altijd laatste — login en deploy-recht',
+    stages_in_use:'gebruikt door {n} omgeving(en)',
+    stages_unused:'niet in gebruik',
+    stages_add_ph:'nieuwe fase, bv. staging',
+    btn_stages_add:'+ Toevoegen',
+    btn_stages_save:'Fasen opslaan',
+    stages_saved:'✓ Fasen opgeslagen.',
+    stages_bad_name:'Gebruik kleine letters, cijfers en koppeltekens — hoogstens 20 tekens, beginnend met een letter.',
+    stages_exists:'De fase bestaat al.',
+    tip_stage_up:'Fase eerder in de pipeline zetten',
+    tip_stage_down:'Fase later in de pipeline zetten',
+    tip_stage_remove:'Fase verwijderen — alleen als geen omgeving hem gebruikt',
+    act_cancel:'Annuleren',
+    act_close:'Sluiten',
+    act_what:'Dit gebeurt er:',
+    act_watch:'Let op:',
+    act_promote_title:'⟶ Promoveer {flow} van {from} naar {to}',
+    act_promote_s1:'De gepubliceerde versie v{v} van {name} wordt geëxporteerd uit {from}.',
+    act_promote_s2_exists:'Ze wordt geïmporteerd in {to} en gepubliceerd als nieuwe versie. {to} staat nu op v{tv} als {tname}.',
+    act_promote_s2_new:'De flow bestaat nog niet in {to} — hij wordt aangemaakt en gepubliceerd.',
+    act_real_route:'Je gaat naar Flow migreren met bron, doel en flow geselecteerd. Afhankelijkheden en divisie worden daar gecontroleerd voordat er iets naar {to} wordt geschreven.',
+    act_demo_route:'Demo: dit gebeurt alleen in het demobestand op deze machine — er gaat niets naar Genesys.',
+    act_module_after:'Het is een common module: daarna kun je de flows in {to} die hem gebruiken opnieuw publiceren.',
+    act_warn_prod:'Het doel is prod: je prod-login is vereist, en de wijziging raakt de lopende productie.',
+    act_warn_past:'{to} is buiten de pipeline om gepubliceerd sinds de laatste promotie. Die wijzigingen worden overschreven.',
+    act_warn_ahead:'{to} loopt {n} versie(s) voor op {from}. Heeft iemand {to} rechtstreeks aangepast, dan gaan die aanpassingen verloren — gebruik eerst ⇄ Inhoud checken en ⟵ Terughalen als je ze wilt zien.',
+    act_btn_promote:'⟶ Promoveren',
+    act_pull_title:'⟵ Haal {flow} van {from} naar {to}',
+    act_pull_s1:'De flow bestaat alleen in een latere fase. De gepubliceerde versie wordt opgehaald uit {from}.',
+    act_pull_s2:'Hij wordt aangemaakt in {to} en gepubliceerd, zodat de keten hier kan beginnen.',
+    act_pull_prefix:'De naam krijgt het voorvoegsel {p}.',
+    act_back_title:'⟵ Haal {flow} terug van {from} naar {to}',
+    act_back_s1:'De inhoud in {to} en {from} verschilt (gevonden met ⇄ Inhoud checken).',
+    act_back_s2:'De versie uit {from} wordt geïmporteerd in {to} en gepubliceerd, zodat je kunt zien en verder werken met wat echt in {from} draait.',
+    act_warn_back:'Wat nu in {to} staat, wordt vervangen. Het kan daarna met ↩ worden teruggedraaid.',
+    act_btn_pull:'⟵ Ophalen',
+    act_rb_title:'↩ Draai {flow} terug in {env}',
+    act_rb_s1:'De versie van vóór de laatste promotie ({label}) wordt opnieuw geïmporteerd en gepubliceerd in {env}.',
+    act_rb_s2:'Het wordt een nieuwe versie in Genesys — geschiedenis en release notes blijven bewaard.',
+    act_btn_rb:'↩ Terugdraaien',
+    act_demo_pub_title:'▲ Publiceer {flow} in {env} (demo)',
+    act_demo_pub_s1:'Doet alsof iemand verder heeft gewerkt en de flow heeft gepubliceerd — alleen in de demo, er gaat niets naar Genesys.',
+    act_demo_pub_s2:'De versie stijgt maar de naam blijft, zodat je ziet hoe het bord reageert als een omgeving voorloopt.',
+    act_demo_pub_count:'Aantal publicaties',
+    act_btn_demo_pub:'▲ Publiceren',
+    pl_buttons_help:'? Knoppen',
+    tip_pl_buttons_help:'Wat elke knop op het bord doet',
+    pl_buttons_help_title:'De knoppen op het bord',
+    plb_promote_btn:'⟶ Promoveren',
+    plb_promote:'Zet de gepubliceerde versie één fase verder — van de kolom links naar hier. Alleen een gepubliceerde versie kan worden gepromoveerd. Je ziet altijd vooraf wat er gebeurt.',
+    plb_pull_here_btn:'⟵ Hierheen halen',
+    plb_pull_here:'De flow bestaat alleen in een latere fase. Haalt hem hierheen, bv. als dev net is opgezet.',
+    plb_pull_back_btn:'⟵ Terughalen',
+    plb_pull_back:'Verschijnt als ⇄ Inhoud checken een verschil vond. Haalt de versie van de volgende fase hierheen zodat je ziet wat er veranderd is.',
+    plb_check_btn:'⇄ Inhoud checken',
+    plb_check:'Exporteert de flow uit elke omgeving en vergelijkt de inhoud. Schrijft niets. Versienummers zijn niet vergelijkbaar tussen orgs.',
+    plb_rollback_btn:'↩',
+    plb_rollback:'Draait de laatste promotie naar deze omgeving terug naar de vorige versie.',
+    plb_republish_btn:'🔁 Gebruikers',
+    plb_republish:'Alleen common modules: publiceert de flows in de omgeving die de module gebruiken opnieuw, zodat ze de nieuwe versie draaien.',
+    plb_notes_btn:'📝',
+    plb_notes:'Release notes: wat elke promotie veranderde, wie en wanneer.',
+    plb_demo_publish_btn:'▲ Publiceren',
+    plb_demo_publish:'Alleen demo-omgevingen: doet alsof de flow N keer is gepubliceerd, zodat je ziet hoe het bord reageert.',
+    align_label:'Versienummer gelijktrekken met de bron',
+    fh_align:'Na de import wordt de flow in het doel zo vaak extra gepubliceerd als nodig is om het versienummer gelijk te maken aan de bron — bv. dev v10 → test v10 in plaats van v3. Elke publicatie is een echte versie in Genesys met dezelfde inhoud. Kan niet terugtellen, en hoogstens 25 extra per flow. Alleen bij de actie publish.',
+    act_align_offer:'Versienummer gelijktrekken: {to} wordt {s} in plaats van {t}. Daarvoor zijn {n} extra publicatie(s) met dezelfde inhoud nodig.',
+    act_align_ahead:'{to} komt uit op {t}, al hoger dan {s} van de bron — versienummers kunnen niet terugtellen, dus gelijktrekken kan niet.',
+    act_align_too_many:'Gelijktrekken zou {n} extra publicaties vergen — meer dan de grens van {max}, dus het wordt niet aangeboden.',
+    align_done:'Versie gelijkgetrokken: {n} extra publicatie(s), het doel staat nu op v{v}.',
+    align_partial:'Gelijktrekken stopte na {done} van {n} publicaties: {err}',
+    align_ahead:'Niet gelijkgetrokken: het doel staat op v{t}, hoger dan de bron op v{s}.',
+    align_too_many:'Niet gelijkgetrokken: dat zou {n} publicaties vergen, de grens is {max}.',
+    align_equal:'De versie was al gelijk aan de bron.',
+    align_unknown:'Niet gelijkgetrokken: het versienummer kon niet worden gelezen.',
+    pfx_title:'Voorvoegsel wijzigen voor {env}: {old} → {new}',
+    pfx_s1:'De namen worden in de org gewijzigd via de Genesys-API. Flows behouden hun id, alle versies krijgen de nieuwe naam, en wat ernaar verwijst — nummers, wachtrijen, andere flows — blijft werken.',
+    pfx_s2:'Mislukt één hernoeming, dan worden de andere teruggedraaid en wordt het voorvoegsel niet gewijzigd.',
+    pfx_s3:'Vink alles uit om alleen het voorvoegsel op te slaan — de namen in de org blijven zoals ze zijn.',
+    pfx_sec_flows:'Flows ({n})',
+    pfx_sec_tables:'Datatabellen ({n})',
+    pfx_sec_manifest:'Manifesttabel',
+    pfx_conflict:'naam bestaat al — overgeslagen',
+    pfx_called_by_name:'wordt bij naam aangeroepen',
+    pfx_warn_by_name:'Common modules en bots worden bij naam aangeroepen in geëxporteerde YAML. De tool corrigeert de namen zelf bij de volgende promotie, maar opgeslagen YAML-bestanden en andere tools moeten met de hand worden aangepast.',
+    pfx_warn_conflict:'Sommige nieuwe namen bestaan al in de org. Ze worden overgeslagen — hernoem of verwijder eerst het duplicaat in Genesys.',
+    pfx_btn:'Hernoemen en opslaan',
+    pfx_running:'Hernoemen in de org…',
+    pfx_done:'✓ {n} naam/namen gewijzigd — het voorvoegsel is nu {new}.',
+    pfx_failed:'✗ Hernoemen mislukte en is teruggedraaid — het voorvoegsel is niet gewijzigd: {err}',
+    pfx_unreadable:'De org kon niet worden gelezen, dus de namen kunnen niet mee veranderen: {err}\n\nHet voorvoegsel toch opslaan? Flows met het oude voorvoegsel blijven dan als eigen rijen op het bord staan.',
+    gd_title:'Installatiegids — {env}',
+    gd_open_guide:'📋 Installatiegids',
+    tip_btn_guide:'Installatiegids: een checklist in een nieuw venster om de org en de omgeving goed in te richten',
+    gd_intro:'Volg de punten op volgorde. Punten met Controleren checkt de tool zelf; de andere vink je zelf af. Het venster kan naast Genesys open blijven.',
+    gd_progress:'{n} van {m} klaar',
+    gd_check_all:'▶ Alles controleren',
+    gd_check:'Controleren',
+    gd_pending:'Controleren…',
+    gd_close:'Venster sluiten',
+    gd_popup_blocked:'De browser blokkeerde het venster. Sta pop-ups toe voor localhost en probeer opnieuw.',
+    gd_unknown_env:'De omgeving bestaat niet meer.',
+    gd_done_all:'✓ Alle punten zijn klaar — de omgeving is ingericht.',
+    gd_need_login:'Log eerst in op de omgeving — zie het punt "Inloggen".',
+    gd_not_logged_in:'Niet ingelogd.',
+    gd_env_first:'Vul eerst klant en groep in.',
+    gd_client_title:'Maak een OAuth-client in Genesys',
+    gd_client_body_oauth:'Admin → Integrations → OAuth → Add Client. Kies grant type "Code Authorization" en zet PKCE aan. Kopieer het Client ID naar de instellingen van de omgeving. De client heeft geen rollen nodig — met PKCE worden de rechten van je eigen gebruiker gebruikt.',
+    gd_client_body_creds:'Admin → Integrations → OAuth → Add Client. Kies "Client Credentials" en geef de client een rol met de permissies van het volgende punt, in alle divisies. Kopieer Client ID en secret naar de instellingen. Client credentials alleen buiten prod.',
+    gd_client_found:'Gevonden: {name} · {type}',
+    gd_client_wrong:'De client is van type {type} — de omgeving moet {want} gebruiken.',
+    gd_redirect_title:'Stel de redirect-URI in op de client',
+    gd_redirect_body:'Authorized redirect URIs van de OAuth-client moeten {uri} bevatten — anders kan de login niet terugkeren naar de tool.',
+    gd_redirect_ok:'{uri} is ingesteld.',
+    gd_redirect_missing:'{uri} ontbreekt — de client heeft: {list}',
+    gd_perms_title:'Geef de benodigde permissies',
+    gd_perms_body_oauth:'Met PKCE moet je eigen gebruiker de permissies hebben, via een rol in Genesys. De tool gebruikt:',
+    gd_perms_body_creds:'De rol van de client heeft deze permissies nodig:',
+    gd_perms_missing:'Ontbreekt: {list}',
+    gd_env_title:'Vul de omgeving hier in',
+    gd_env_body:'Onder Klanten → ⚙ Instellingen: klant en groep (de pipeline), fase, en voorvoegsel als meerdere omgevingen de org delen. Regio en Client ID moeten bij de org passen.',
+    gd_env_missing:'Ontbreekt: {list}',
+    gd_login_title:'Inloggen',
+    gd_login_btn:'Inloggen',
+    gd_login_body:'Log in op de omgeving en kies de juiste organisatie op de Genesys-loginpagina. Een login in de verkeerde org wordt geweigerd.',
+    gd_login_ok:'Ingelogd in {org}',
+    gd_division_title:'De divisie bestaat',
+    gd_division_body:'Flows en tabellen komen in de divisie {div}. Die moet in de org bestaan.',
+    gd_division_ok:'{div} bestaat.',
+    gd_division_missing:'De divisie {div} bestaat niet in de org.',
+    gd_manifest_title:'Maak de manifesttabel',
+    gd_manifest_body:'De tabel {table} in de org bewaart de geschiedenis, zodat meerdere mensen hetzelfde zien.',
+    gd_manifest_create:'Tabel maken',
+    gd_manifest_ok:'{table} bestaat ({n} rijen).',
+    gd_manifest_missing:'De tabel bestaat nog niet.',
+    gd_deploy_title:'Deploy-recht naar prod',
+    gd_deploy_body:'Bij een prod-login controleert de tool of je gebruiker de permissie {perm} heeft.',
+    gd_deploy_group:'En of je in de groep {g} zit.',
+    gd_deploy_missing:'Ontbreekt: {list}',
+    gd_flows_title:'Flows in de omgeving krijgen',
+    gd_flows_body:'Is de omgeving leeg, gebruik dan ⟵ Hierheen halen op de pipeline, of Flow migreren. Flow Browser toont wat er al in de org staat.',
     env_color_label:'Kleur', color_auto:'Kleur van de fase', color_green:'Groen', color_yellow:'Geel', color_orange:'Oranje', color_red:'Rood', color_blue:'Blauw', color_grey:'Grijs',
     prod_deploy_perm:'Vereiste permissie: architect:flow:publish',
     prod_deploy_group:'Vereiste groep (optioneel)',
@@ -3784,8 +4392,8 @@ const LANGS = {
     action_default_note:'standaard gepubliceerd — de flow is meteen live',
     action_prod_note:'prod: standaard NIET gepubliceerd — blijft een concept dat je zelf publiceert',
     tree_ungrouped:'Niet gegroepeerd',
-    help_customers:'Eén omgeving is één Genesys-org gezien via één OAuth-client.\n• Nieuwe omgevingen gebruiken altijd **OAuth (PKCE)**: je logt in bij Genesys als jezelf en er wordt geen secret opgeslagen. Oudere omgevingen met client credentials zijn **geel** gemarkeerd.\n• **⚙ Instellingen** bevat naam, klant, groep, fase, voorvoegsel, org-naam, kleur, divisie, authenticatie en prod-eisen. Elk veld heeft een **ⓘ** — beweeg erover of klik om te zien waarvoor het dient. Ongeldige tekens en namen die een map zouden delen, worden bij opslaan geweigerd.\n• **Klant + groep** bepalen wat onderling gemigreerd mag worden — de groep is de pipeline.\n• **Fase** is dev, test, uat of prod en bepaalt de volgorde op de pipeline.\n• **Kleur**: elke omgeving krijgt de kleur van haar fase — dev groen, test geel, uat oranje, prod rood — op de pipeline, in de zijbalk en op de kaarten. Kies een andere onder ⚙ Instellingen.\n• **Juiste org bij inloggen**: de login controleert in welke org je bent beland. Een verkeerde org op de Genesys-loginpagina (bv. die van een klant via trusted org) wordt geweigerd. De org staat bij de omgeving zodra je bent ingelogd.\n• **Voorvoegsel** wordt alleen gebruikt als meerdere omgevingen één org delen, herkenbaar aan bv. DEV_. Laat het leeg voor prod.\n• **Prod vereist een prod-login**: bij inloggen wordt gecontroleerd of je de permissie hebt (standaard architect:flow:publish) en eventueel in een groep zit. Het recht geldt 30 minuten. Fase, authenticatie en eisen van een prod-omgeving kunnen alleen met een geldige prod-login worden gewijzigd.\n• **Log in waar je bent**: heeft een omgeving een login nodig, dan verschijnt bovenaan een balk met een inlogknop — op elke pagina. 🔒 in de zijbalk logt ook in, en daarna wordt de pagina opnieuw geladen.\n• **Zoek** in de omgevingen, of toon alleen die login vereisen. Het formulier en de demo-klanten klap je open.\n• **Demo-klanten** zijn volledig lokaal — geen login, geen aanroepen naar Genesys.',
-    help_pipeline:'Flows als rijen, de omgevingen van de groep als kolommen op fase-volgorde.\n• Versienummers zijn **niet** vergelijkbaar tussen orgs — ze worden per org geteld. Gebruik **⇄ Inhoud checken**, het enige dat bepaalt of twee omgevingen gelijk zijn.\n• **Groen** betekent langs de juiste weg gepubliceerd. **Rood** betekent buiten de pipeline om, of meer versies dan de vorige fase.\n• **⟶ Promoveren** gaat één fase tegelijk. Alleen een gepubliceerde versie kan worden gepromoveerd. Prod vereist je prod-login.\n• **⟵ Hierheen halen** haalt een flow op uit een latere fase, bv. als dev net is opgezet.\n• **↩** draait de laatste promotie terug, **📝** toont release notes.\n• Wordt een **common module** gepromoveerd of teruggedraaid, dan krijg je aangeboden de flows in die omgeving die hem gebruiken opnieuw te publiceren. **🔁** doet hetzelfde als de module direct in Architect is aangepast. Is een module gepubliceerd na flows die hem gebruiken, dan staat dat bovenaan het bord, zijn de cellen gemarkeerd met ⚠ en wordt 🔁 geel.\n• **Gedeeld manifest** bewaart de geschiedenis in de org, zodat iedereen dezelfde waarheid ziet.',
+    help_customers:'Eén omgeving is één Genesys-org gezien via één OAuth-client.\n• Nieuwe omgevingen gebruiken altijd **OAuth (PKCE)**: je logt in bij Genesys als jezelf en er wordt geen secret opgeslagen. Oudere omgevingen met client credentials zijn **geel** gemarkeerd.\n• **⚙ Instellingen** bevat naam, klant, groep, fase, voorvoegsel, org-naam, kleur, divisie, authenticatie en prod-eisen. Elk veld heeft een **ⓘ** — beweeg erover of klik om te zien waarvoor het dient. Ongeldige tekens en namen die een map zouden delen, worden bij opslaan geweigerd.\n• **Klant + groep** bepalen wat onderling gemigreerd mag worden — de groep is de pipeline.\n• **Fase** is dev, test, uat of prod en bepaalt de volgorde op de pipeline. Onder **Fasen** onderaan de pagina voeg je eigen fasen toe, bv. staging of preprod — prod blijft laatste.\n• **Kleur**: elke omgeving krijgt de kleur van haar fase — dev groen, test geel, uat oranje, prod rood — op de pipeline, in de zijbalk en op de kaarten. Kies een andere onder ⚙ Instellingen.\n• **Juiste org bij inloggen**: de login controleert in welke org je bent beland. Een verkeerde org op de Genesys-loginpagina (bv. die van een klant via trusted org) wordt geweigerd. De org staat bij de omgeving zodra je bent ingelogd.\n• **Voorvoegsel** wordt alleen gebruikt als meerdere omgevingen één org delen, herkenbaar aan bv. DEV_. Wijzig je het, dan toont een dialoog welke flows, datatabellen en manifesttabel in de org mee worden hernoemd — ze behouden hun id. Laat het leeg voor prod.\n• **Prod vereist een prod-login**: bij inloggen wordt gecontroleerd of je de permissie hebt (standaard architect:flow:publish) en eventueel in een groep zit. Het recht geldt 30 minuten. Fase, authenticatie en eisen van een prod-omgeving kunnen alleen met een geldige prod-login worden gewijzigd.\n• **📋 Installatiegids**: de knop 📋 op een kaart opent een checklist in een nieuw venster om de org en de omgeving in te richten. De knoppen Controleren checken voor je.\n• **Log in waar je bent**: heeft een omgeving een login nodig, dan verschijnt bovenaan een balk met een inlogknop — op elke pagina. 🔒 in de zijbalk logt ook in, en daarna wordt de pagina opnieuw geladen.\n• **Zoek** in de omgevingen, of toon alleen die login vereisen. Het formulier en de demo-klanten klap je open.\n• **Demo-klanten** zijn volledig lokaal — geen login, geen aanroepen naar Genesys.',
+    help_pipeline:'Flows als rijen, de omgevingen van de groep als kolommen op fase-volgorde.\n• Versienummers zijn **niet** vergelijkbaar tussen orgs — ze worden per org geteld. Gebruik **⇄ Inhoud checken**, het enige dat bepaalt of twee omgevingen gelijk zijn.\n• **Groen** betekent langs de juiste weg gepubliceerd. **Rood** betekent buiten de pipeline om, of meer versies dan de vorige fase.\n• **Elke knop toont eerst wat er gebeurt** — flow, van en naar, en waarschuwingen over prod of wijzigingen die verloren gaan — en je kunt annuleren. **? Knoppen** legt ze allemaal uit.\n• **Versienummer gelijktrekken**: bij ⟶ Promoveren kan het doel de ontbrekende keren extra worden gepubliceerd, zodat het het nummer van de bron krijgt (bv. dev v10 → test v10). Terugtellen kan niet.\n• **⟶ Promoveren** gaat één fase tegelijk. Alleen een gepubliceerde versie kan worden gepromoveerd. Prod vereist je prod-login.\n• **⟵ Hierheen halen** haalt een flow op uit een latere fase, bv. als dev net is opgezet.\n• **↩** draait de laatste promotie terug, **📝** toont release notes.\n• Wordt een **common module** gepromoveerd of teruggedraaid, dan krijg je aangeboden de flows in die omgeving die hem gebruiken opnieuw te publiceren. **🔁** doet hetzelfde als de module direct in Architect is aangepast. Is een module gepubliceerd na flows die hem gebruiken, dan staat dat bovenaan het bord, zijn de cellen gemarkeerd met ⚠ en wordt 🔁 geel.\n• **Gedeeld manifest** bewaart de geschiedenis in de org, zodat iedereen dezelfde waarheid ziet.',
     help_flows:'Flows van de omgeving ophalen, zoeken en filteren. Delen meerdere omgevingen een org, dan worden alleen de eigen getoond.\n• Filter op **flowtype** — de lijst wordt gevuld met de types die de omgeving echt heeft.\n• **Publiceren** zet een al gemigreerd concept live. Bij een common module krijg je daarna aangeboden de flows die hem gebruiken opnieuw te publiceren.\n• **Common modules worden gecontroleerd** bij elke keer ophalen: is een module **na** een flow die hem gebruikt gepubliceerd, dan draait die flow nog op de oude versie. Dat staat in een geel vak met een knap om ze opnieuw te publiceren, en de rijen zijn gemarkeerd met ⚠.\n• **🔁 Gebruikers** op een common module toont alle flows die hem gebruiken.\n• **⇄ Vergelijken** met een andere org vergelijkt de **inhoud**, niet de versienummers.\n• **📌 Nulpunt** legt vast wat de org nu bevat, zodat directe publicaties later opvallen.',
     help_cross:'Toont de flows die bij **meerdere klanten** bestaan — bijvoorbeeld dezelfde common module bij tien klanten.\n• Het overzicht steunt op één aanroep per klant en is dus snel.\n• **⇄ Inhoud vergelijken** exporteert de flow bij elke klant en vergelijkt de hash. Dat kost tijd, dus alleen voor de rij die je vraagt.\n• Kon een org niet gelezen worden, dan wordt dat gezegd — er staat **nooit** "identiek" als een antwoord ontbreekt.',
     help_migrate:'Export uit één org en import direct in een andere, in twee fasen.\n• **Controle** — de flow wordt geëxporteerd en de doel-org onderzocht op alles waarnaar hij verwijst. Er wordt nog niets geschreven.\n• **Import** — pas na jouw keuze. Ontbreekt er iets, dan kunnen tabellen, data actions en common modules eerst mee.\n• Heeft het doel een **voorvoegsel** of een andere **divisie**, dan worden de flow en zijn verwijzingen onderweg hernoemd.\n• **Importactie** volgt het doel: alles behalve prod wordt standaard gepubliceerd. Prod blijft een concept dat je zelf publiceert.\n• Schrijven naar **prod** vereist je prod-login met de permissie — je krijgt aangeboden in te loggen als die ontbreekt.\n• Wordt een **common module** gemigreerd, dan krijg je aangeboden de flows in het doel die hem gebruiken opnieuw te publiceren.\n• Wachtrijen, skills, wrap-up-codes en scripts moeten handmatig worden aangemaakt.',
@@ -4308,7 +4916,6 @@ const LANGS = {
     demo_badge:'DEMO: no toca ninguna org real',
     demo_publish:'Publicar',
     demo_publish_title:'Solo demo: simula que alguien siguió trabajando y volvió a publicar. El nombre se mantiene.',
-    demo_publish_prompt:'¿Cuántas veces se debe publicar?',
     pl_unpromoted:'{n} versión(es) sin promover',
     pl_published_title:'La versión publicada propia del entorno: no es lo mismo que el sufijo de versión del nombre',
     pl_changed_since_title:'Dejamos este entorno en v{v} ({when}). Ahora está más alto, así que alguien ha publicado aquí desde entonces.',
@@ -4338,7 +4945,6 @@ const LANGS = {
     csv_missing:'falta',
     pl_envs_in_org:'entornos',
     label_prefix:'Prefijo',
-    pfx_warn:'El prefijo cambia de {old} a {new}. {n} flow(s) de la org aún usan el nombre antiguo — NO se renombran y aparecerán como filas separadas (o dejarán de pertenecer al entorno). ¿Guardar de todos modos?',
     pfx_none:'sin prefijo',
     hint_prefix:'Solo si varios entornos comparten una org y se distinguen por un prefijo, p. ej. DEV_. Déjelo vacío para prod y para entornos con org propia. Las tablas de datos siguen la misma convención.',
     label_orglabel:'Nombre de la org',
@@ -4385,6 +4991,149 @@ const LANGS = {
     perm_unknown:'no se pudo verificar',
     perm_source_probe:'No se pudieron leer los roles del cliente (requiere oauth:client:view y authorization:role:view), así que solo se probó la lectura.',
     perm_close:'Cerrar',
+    stages_title:'ETAPAS',
+    stages_hint:'El orden del pipeline. Añada p. ej. staging o preprod y ordene con las flechas. Prod va siempre al final, porque el inicio de sesión y el derecho de despliegue dependen de ella. Una etapa usada por un entorno no se puede eliminar.',
+    stages_prod_fixed:'siempre al final — inicio de sesión y despliegue',
+    stages_in_use:'usada por {n} entorno(s)',
+    stages_unused:'sin uso',
+    stages_add_ph:'nueva etapa, p. ej. staging',
+    btn_stages_add:'+ Añadir',
+    btn_stages_save:'Guardar etapas',
+    stages_saved:'✓ Etapas guardadas.',
+    stages_bad_name:'Use minúsculas, dígitos y guiones — 20 caracteres como máximo, empezando por una letra.',
+    stages_exists:'La etapa ya existe.',
+    tip_stage_up:'Mover la etapa antes en el pipeline',
+    tip_stage_down:'Mover la etapa después en el pipeline',
+    tip_stage_remove:'Eliminar la etapa — solo si ningún entorno la usa',
+    act_cancel:'Cancelar',
+    act_close:'Cerrar',
+    act_what:'Qué ocurre:',
+    act_watch:'Atención:',
+    act_promote_title:'⟶ Promover {flow} de {from} a {to}',
+    act_promote_s1:'Se exporta la versión publicada v{v} de {name} desde {from}.',
+    act_promote_s2_exists:'Se importa en {to} y se publica como nueva versión. {to} está ahora en v{tv} como {tname}.',
+    act_promote_s2_new:'El flow aún no existe en {to}: se crea y se publica.',
+    act_real_route:'Irá a Migrar flow con origen, destino y flow seleccionados. Allí se comprueban dependencias y división antes de escribir nada en {to}.',
+    act_demo_route:'Demo: ocurre solo en el archivo demo de esta máquina; no se envía nada a Genesys.',
+    act_module_after:'Es un common module: después podrá volver a publicar los flows de {to} que lo usan.',
+    act_warn_prod:'El destino es prod: requiere su inicio de sesión de prod, y el cambio afecta a la operación en vivo.',
+    act_warn_past:'{to} se ha publicado fuera del pipeline desde la última promoción. Esos cambios se sobrescribirán.',
+    act_warn_ahead:'{to} va {n} versión(es) por delante de {from}. Si alguien ha editado {to} directamente, esos cambios se pierden: use primero ⇄ Comprobar contenido y ⟵ Traer de vuelta si quiere verlos.',
+    act_btn_promote:'⟶ Promover',
+    act_pull_title:'⟵ Traer {flow} de {from} a {to}',
+    act_pull_s1:'El flow solo existe en una etapa posterior. Se obtiene la versión publicada de {from}.',
+    act_pull_s2:'Se crea en {to} y se publica, para que la cadena pueda empezar aquí.',
+    act_pull_prefix:'El nombre recibe el prefijo {p}.',
+    act_back_title:'⟵ Traer {flow} de vuelta de {from} a {to}',
+    act_back_s1:'El contenido de {to} y {from} difiere (detectado con ⇄ Comprobar contenido).',
+    act_back_s2:'La versión de {from} se importa en {to} y se publica, para ver y seguir trabajando con lo que realmente se ejecuta en {from}.',
+    act_warn_back:'Lo que hay ahora en {to} se reemplaza. Puede revertirse con ↩ después.',
+    act_btn_pull:'⟵ Traer',
+    act_rb_title:'↩ Revertir {flow} en {env}',
+    act_rb_s1:'La versión de antes de la última promoción ({label}) se importa y se vuelve a publicar en {env}.',
+    act_rb_s2:'Será una nueva versión en Genesys; el historial y las notas se conservan.',
+    act_btn_rb:'↩ Revertir',
+    act_demo_pub_title:'▲ Publicar {flow} en {env} (demo)',
+    act_demo_pub_s1:'Simula que alguien siguió trabajando y publicó el flow; solo en la demo, no se envía nada a Genesys.',
+    act_demo_pub_s2:'La versión sube pero el nombre se mantiene, para ver cómo reacciona el tablero cuando un entorno se adelanta.',
+    act_demo_pub_count:'Número de publicaciones',
+    act_btn_demo_pub:'▲ Publicar',
+    pl_buttons_help:'? Botones',
+    tip_pl_buttons_help:'Qué hace cada botón del tablero',
+    pl_buttons_help_title:'Los botones del tablero',
+    plb_promote_btn:'⟶ Promover',
+    plb_promote:'Avanza la versión publicada una etapa, de la columna de la izquierda a esta. Solo se puede promover una versión publicada. Siempre verá qué ocurrirá antes.',
+    plb_pull_here_btn:'⟵ Traer aquí',
+    plb_pull_here:'El flow solo existe en una etapa posterior. Lo trae aquí, p. ej. cuando dev se acaba de crear.',
+    plb_pull_back_btn:'⟵ Traer de vuelta',
+    plb_pull_back:'Aparece cuando ⇄ Comprobar contenido encontró una diferencia. Trae aquí la versión de la etapa siguiente para ver qué cambió.',
+    plb_check_btn:'⇄ Comprobar contenido',
+    plb_check:'Exporta el flow de cada entorno y compara el contenido. No escribe nada. Los números de versión no son comparables entre orgs.',
+    plb_rollback_btn:'↩',
+    plb_rollback:'Revierte la última promoción a este entorno a la versión anterior.',
+    plb_republish_btn:'🔁 Usuarios',
+    plb_republish:'Solo common modules: vuelve a publicar los flows del entorno que usan el módulo, para que ejecuten la nueva versión.',
+    plb_notes_btn:'📝',
+    plb_notes:'Notas de versión: qué cambió cada promoción, quién y cuándo.',
+    plb_demo_publish_btn:'▲ Publicar',
+    plb_demo_publish:'Solo entornos demo: simula que el flow se publicó N veces, para ver cómo reacciona el tablero.',
+    align_label:'Igualar el número de versión con el origen',
+    fh_align:'Tras la importación, el flow de destino se publica las veces adicionales necesarias para que su número de versión coincida con el origen — p. ej. dev v10 → test v10 en lugar de v3. Cada publicación es una versión real en Genesys con el mismo contenido. No puede bajar, y como máximo 25 adicionales por flow. Solo con la acción publish.',
+    act_align_offer:'Igualar el número de versión: {to} pasa a {s} en lugar de {t}. Requiere {n} publicación(es) adicional(es) con el mismo contenido.',
+    act_align_ahead:'{to} queda en {t}, ya por encima de {s} del origen — los números de versión no pueden bajar, así que no se pueden igualar.',
+    act_align_too_many:'Igualar requeriría {n} publicaciones adicionales — más que el límite de {max}, así que no se ofrece.',
+    align_done:'Versión igualada: {n} publicación(es) adicional(es), el destino está ahora en v{v}.',
+    align_partial:'La igualación se detuvo tras {done} de {n} publicaciones: {err}',
+    align_ahead:'No igualada: el destino está en v{t}, por encima del origen en v{s}.',
+    align_too_many:'No igualada: requeriría {n} publicaciones, el límite es {max}.',
+    align_equal:'La versión ya coincidía con el origen.',
+    align_unknown:'No igualada: no se pudo leer el número de versión.',
+    pfx_title:'Cambiar el prefijo de {env}: {old} → {new}',
+    pfx_s1:'Los nombres se cambian en la org mediante la API de Genesys. Los flows conservan su id, todas las versiones reciben el nuevo nombre, y lo que apunta a ellos — números, colas, otros flows — sigue funcionando.',
+    pfx_s2:'Si falla un cambio de nombre, los demás se revierten y el prefijo no cambia.',
+    pfx_s3:'Desmarque todo para guardar solo el prefijo — los nombres en la org se quedan como están.',
+    pfx_sec_flows:'Flows ({n})',
+    pfx_sec_tables:'Tablas de datos ({n})',
+    pfx_sec_manifest:'Tabla del manifiesto',
+    pfx_conflict:'el nombre ya existe — se omite',
+    pfx_called_by_name:'se llama por nombre',
+    pfx_warn_by_name:'Los common modules y los bots se llaman por nombre en el YAML exportado. La herramienta corrige los nombres en la próxima promoción, pero los archivos YAML guardados y otras herramientas deben corregirse a mano.',
+    pfx_warn_conflict:'Algunos nombres nuevos ya existen en la org. Se omiten — cambie el nombre o elimine el duplicado en Genesys primero.',
+    pfx_btn:'Renombrar y guardar',
+    pfx_running:'Renombrando en la org…',
+    pfx_done:'✓ {n} nombre(s) cambiado(s) — el prefijo es ahora {new}.',
+    pfx_failed:'✗ El cambio de nombre falló y se revirtió — el prefijo no ha cambiado: {err}',
+    pfx_unreadable:'No se pudo leer la org, así que los nombres no pueden cambiar con él: {err}\n\n¿Guardar el prefijo de todos modos? Los flows con el prefijo antiguo quedarán como filas propias en el tablero.',
+    gd_title:'Guía de configuración — {env}',
+    gd_open_guide:'📋 Guía de configuración',
+    tip_btn_guide:'Guía de configuración: una lista en una ventana nueva para configurar bien la org y el entorno',
+    gd_intro:'Siga los puntos en orden. Los puntos con Comprobar los verifica la herramienta; marque los demás usted. La ventana puede quedar abierta junto a Genesys.',
+    gd_progress:'{n} de {m} listos',
+    gd_check_all:'▶ Comprobar todo',
+    gd_check:'Comprobar',
+    gd_pending:'Comprobando…',
+    gd_close:'Cerrar ventana',
+    gd_popup_blocked:'El navegador bloqueó la ventana. Permita ventanas emergentes para localhost e inténtelo de nuevo.',
+    gd_unknown_env:'El entorno ya no existe.',
+    gd_done_all:'✓ Todos los puntos están listos — el entorno está configurado.',
+    gd_need_login:'Inicie sesión en el entorno primero — vea el punto "Iniciar sesión".',
+    gd_not_logged_in:'Sin sesión.',
+    gd_env_first:'Rellene cliente y grupo primero.',
+    gd_client_title:'Cree un cliente OAuth en Genesys',
+    gd_client_body_oauth:'Admin → Integrations → OAuth → Add Client. Elija el grant type "Code Authorization" y active PKCE. Copie el Client ID en la configuración del entorno. El cliente no necesita roles — con PKCE se usan los permisos de su propio usuario.',
+    gd_client_body_creds:'Admin → Integrations → OAuth → Add Client. Elija "Client Credentials" y dé al cliente un rol con los permisos del punto siguiente, en todas las divisiones. Copie Client ID y secret en la configuración. Client credentials solo fuera de prod.',
+    gd_client_found:'Encontrado: {name} · {type}',
+    gd_client_wrong:'El cliente es de tipo {type} — el entorno necesita {want}.',
+    gd_redirect_title:'Defina la URI de redirección en el cliente',
+    gd_redirect_body:'Las Authorized redirect URIs del cliente OAuth deben incluir {uri} — si no, el inicio de sesión no puede volver a la herramienta.',
+    gd_redirect_ok:'{uri} está definida.',
+    gd_redirect_missing:'Falta {uri} — el cliente tiene: {list}',
+    gd_perms_title:'Conceda los permisos necesarios',
+    gd_perms_body_oauth:'Con PKCE es su propio usuario quien necesita los permisos, mediante un rol en Genesys. La herramienta usa:',
+    gd_perms_body_creds:'El rol del cliente necesita estos permisos:',
+    gd_perms_missing:'Falta: {list}',
+    gd_env_title:'Rellene el entorno aquí',
+    gd_env_body:'En Clientes → ⚙ Configuración: cliente y grupo (el pipeline), etapa, y prefijo si varios entornos comparten la org. Región y Client ID deben coincidir con la org.',
+    gd_env_missing:'Falta: {list}',
+    gd_login_title:'Iniciar sesión',
+    gd_login_btn:'Iniciar sesión',
+    gd_login_body:'Inicie sesión en el entorno y elija la organización correcta en la página de Genesys. Un inicio de sesión en la org equivocada se rechaza.',
+    gd_login_ok:'Sesión iniciada en {org}',
+    gd_division_title:'La división existe',
+    gd_division_body:'Flows y tablas se colocan en la división {div}. Debe existir en la org.',
+    gd_division_ok:'{div} existe.',
+    gd_division_missing:'La división {div} no existe en la org.',
+    gd_manifest_title:'Cree la tabla del manifiesto',
+    gd_manifest_body:'La tabla {table} de la org guarda el historial, para que varias personas vean lo mismo.',
+    gd_manifest_create:'Crear la tabla',
+    gd_manifest_ok:'{table} existe ({n} filas).',
+    gd_manifest_missing:'La tabla aún no existe.',
+    gd_deploy_title:'Derecho de despliegue a prod',
+    gd_deploy_body:'Al iniciar sesión en prod se comprueba que su usuario tiene el permiso {perm}.',
+    gd_deploy_group:'Y que está en el grupo {g}.',
+    gd_deploy_missing:'Falta: {list}',
+    gd_flows_title:'Lleve flows al entorno',
+    gd_flows_body:'Si el entorno está vacío, use ⟵ Traer aquí en el pipeline, o Migrar flow. Flow Browser muestra lo que ya hay en la org.',
     env_color_label:'Color', color_auto:'Color de la etapa', color_green:'Verde', color_yellow:'Amarillo', color_orange:'Naranja', color_red:'Rojo', color_blue:'Azul', color_grey:'Gris',
     prod_deploy_perm:'Permiso requerido: architect:flow:publish',
     prod_deploy_group:'Grupo requerido (opcional)',
@@ -4416,8 +5165,8 @@ const LANGS = {
     action_default_note:'publicado por defecto: el flow está activo de inmediato',
     action_prod_note:'prod: NO se publica por defecto: queda como borrador para que lo publique usted',
     tree_ungrouped:'Sin agrupar',
-    help_customers:'Un entorno es una org de Genesys vista a través de un cliente OAuth.\n• Los entornos nuevos usan siempre **OAuth (PKCE)**: inicia sesión en Genesys como usted mismo y no se guarda ningún secret. Los entornos antiguos con client credentials aparecen en **amarillo**.\n• **⚙ Configuración** contiene nombre, cliente, grupo, etapa, prefijo, nombre de la org, color, división, autenticación y requisitos de prod. Cada campo tiene un **ⓘ** — pase el ratón o haga clic para ver para qué sirve. Los caracteres no válidos y los nombres que compartirían carpeta se rechazan al guardar.\n• **Cliente + grupo** deciden qué se puede migrar entre sí — el grupo es el pipeline.\n• **Etapa** es dev, test, uat o prod y fija el orden del pipeline.\n• **Color**: cada entorno se muestra con el color de su etapa — dev verde, test amarillo, uat naranja, prod rojo — en el pipeline, la barra lateral y las tarjetas. Elija otro en ⚙ Configuración.\n• **Org correcta al iniciar sesión**: el inicio de sesión comprueba en qué org ha entrado. Una org equivocada en la página de Genesys (p. ej. la de un cliente vía trusted org) se rechaza. La org aparece junto al entorno una vez dentro.\n• **Prefijo** solo se usa cuando varios entornos comparten una org, reconocidos por p. ej. DEV_. Déjelo vacío para prod.\n• **Prod exige un inicio de sesión de prod**: al entrar se comprueba el permiso (architect:flow:publish por defecto) y opcionalmente un grupo. El derecho dura 30 minutos. Etapa, autenticación y requisitos de un entorno de prod solo se cambian con un inicio de sesión de prod válido.\n• **Inicie sesión donde esté**: si un entorno necesita inicio de sesión, aparece arriba una barra con un botón — en todas las páginas. 🔒 en la barra lateral también inicia sesión, y la página se recarga después.\n• **Busque** entre los entornos, o muestre solo los que requieren inicio de sesión. El formulario y los clientes demo se despliegan.\n• **Los clientes demo** son totalmente locales — sin inicio de sesión ni llamadas a Genesys.',
-    help_pipeline:'Flows en filas, los entornos del grupo en columnas por orden de etapa.\n• Los números de versión **no** son comparables entre orgs — se cuentan por org. Use **⇄ Comprobar contenido**, lo único que decide si dos entornos son iguales.\n• **Verde**: publicado por el camino correcto. **Rojo**: publicado fuera del pipeline, o más versiones que la etapa anterior.\n• **⟶ Promover** avanza una etapa cada vez. Solo se puede promover una versión publicada. Prod exige su inicio de sesión de prod.\n• **⟵ Traer aquí** trae un flow de una etapa posterior, p. ej. cuando dev se acaba de crear.\n• **↩** revierte la última promoción y **📝** muestra las notas de versión.\n• Al promover o revertir un **common module**, se le ofrece volver a publicar los flows del entorno que lo usan. **🔁** hace lo mismo si el módulo se cambió directamente en Architect. Si un módulo se publicó después de flows que lo usan, se indica arriba del tablero, las celdas se marcan con ⚠ y 🔁 se vuelve amarillo.\n• **El manifiesto compartido** guarda el historial en la org, para que todos vean la misma verdad.',
+    help_customers:'Un entorno es una org de Genesys vista a través de un cliente OAuth.\n• Los entornos nuevos usan siempre **OAuth (PKCE)**: inicia sesión en Genesys como usted mismo y no se guarda ningún secret. Los entornos antiguos con client credentials aparecen en **amarillo**.\n• **⚙ Configuración** contiene nombre, cliente, grupo, etapa, prefijo, nombre de la org, color, división, autenticación y requisitos de prod. Cada campo tiene un **ⓘ** — pase el ratón o haga clic para ver para qué sirve. Los caracteres no válidos y los nombres que compartirían carpeta se rechazan al guardar.\n• **Cliente + grupo** deciden qué se puede migrar entre sí — el grupo es el pipeline.\n• **Etapa** es dev, test, uat o prod y fija el orden del pipeline. En **Etapas**, al final de la página, puede añadir otras, p. ej. staging o preprod — prod siempre va al final.\n• **Color**: cada entorno se muestra con el color de su etapa — dev verde, test amarillo, uat naranja, prod rojo — en el pipeline, la barra lateral y las tarjetas. Elija otro en ⚙ Configuración.\n• **Org correcta al iniciar sesión**: el inicio de sesión comprueba en qué org ha entrado. Una org equivocada en la página de Genesys (p. ej. la de un cliente vía trusted org) se rechaza. La org aparece junto al entorno una vez dentro.\n• **Prefijo** solo se usa cuando varios entornos comparten una org, reconocidos por p. ej. DEV_. Si lo cambia, un diálogo muestra qué flows, tablas de datos y tabla del manifiesto se renombran en la org — conservan su id. Déjelo vacío para prod.\n• **Prod exige un inicio de sesión de prod**: al entrar se comprueba el permiso (architect:flow:publish por defecto) y opcionalmente un grupo. El derecho dura 30 minutos. Etapa, autenticación y requisitos de un entorno de prod solo se cambian con un inicio de sesión de prod válido.\n• **📋 Guía de configuración**: el botón 📋 de una tarjeta abre una lista en una ventana nueva para configurar la org y el entorno. Los botones Comprobar verifican por usted.\n• **Inicie sesión donde esté**: si un entorno necesita inicio de sesión, aparece arriba una barra con un botón — en todas las páginas. 🔒 en la barra lateral también inicia sesión, y la página se recarga después.\n• **Busque** entre los entornos, o muestre solo los que requieren inicio de sesión. El formulario y los clientes demo se despliegan.\n• **Los clientes demo** son totalmente locales — sin inicio de sesión ni llamadas a Genesys.',
+    help_pipeline:'Flows en filas, los entornos del grupo en columnas por orden de etapa.\n• Los números de versión **no** son comparables entre orgs — se cuentan por org. Use **⇄ Comprobar contenido**, lo único que decide si dos entornos son iguales.\n• **Verde**: publicado por el camino correcto. **Rojo**: publicado fuera del pipeline, o más versiones que la etapa anterior.\n• **Cada botón muestra primero qué ocurrirá** — flow, origen y destino, y avisos sobre prod o cambios que se perderían — y puede cancelar. **? Botones** los explica todos.\n• **Igualar número de versión**: al ⟶ Promover, el destino puede publicarse las veces que faltan para alcanzar el número del origen (p. ej. dev v10 → test v10). No puede bajar.\n• **⟶ Promover** avanza una etapa cada vez. Solo se puede promover una versión publicada. Prod exige su inicio de sesión de prod.\n• **⟵ Traer aquí** trae un flow de una etapa posterior, p. ej. cuando dev se acaba de crear.\n• **↩** revierte la última promoción y **📝** muestra las notas de versión.\n• Al promover o revertir un **common module**, se le ofrece volver a publicar los flows del entorno que lo usan. **🔁** hace lo mismo si el módulo se cambió directamente en Architect. Si un módulo se publicó después de flows que lo usan, se indica arriba del tablero, las celdas se marcan con ⚠ y 🔁 se vuelve amarillo.\n• **El manifiesto compartido** guarda el historial en la org, para que todos vean la misma verdad.',
     help_flows:'Obtener, buscar y filtrar los flows del entorno. Si varios entornos comparten una org, solo se muestran los propios.\n• Filtre por **tipo de flow** — la lista se llena con los tipos que el entorno tiene realmente.\n• **Publicar** pone en producción un borrador ya migrado. Si es un common module, se le ofrece después volver a publicar los flows que lo usan.\n• **Los common modules se comprueban** cada vez que se carga la lista: si un módulo se publicó **después** de un flow que lo usa, el flow sigue con la versión antigua. Se indica en un recuadro amarillo con un botón para volver a publicarlos, y las filas se marcan con ⚠.\n• **🔁 Usuarios** en un common module lista todos los flows que lo usan.\n• **⇄ Comparar** con otra org compara el **contenido**, no los números de versión.\n• **📌 Punto cero** registra lo que contiene la org ahora, para detectar después publicaciones directas.',
     help_cross:'Muestra los flows presentes en **varios clientes**, por ejemplo el mismo common module en diez clientes.\n• La vista se basa en una llamada por cliente, así que es rápida.\n• **⇄ Comparar contenido** exporta el flow de cada cliente y compara el hash. Lleva tiempo, así que solo se hace en la fila que pida.\n• Si una org no se pudo leer, se dice: **nunca** informa «idéntico» cuando falta una respuesta.',
     help_migrate:'Exportación desde una org e importación directa en otra, en dos fases.\n• **Comprobación** — se exporta el flow y se examina la org de destino por todo lo que referencia. Aún no se escribe nada.\n• **Importación** — solo tras su elección. Si falta algo, tablas, data actions y common modules pueden migrarse antes del flow.\n• Si el destino tiene un **prefijo** u otra **división**, el flow y sus referencias se renombran por el camino.\n• **Acción de importación** según el destino: todo salvo prod se publica por defecto. Prod queda como borrador que publica usted.\n• Escribir en **prod** exige su inicio de sesión de prod con el permiso — se le ofrece iniciar sesión si falta.\n• Si se migra un **common module**, se le ofrece volver a publicar los flows del destino que lo usan.\n• Colas, skills, códigos de wrap-up y scripts deben crearse manualmente.',
@@ -4766,6 +5515,8 @@ window.onload = async () => {
   applyStoredLang();
   fillStages();
   await refreshCustomers();
+  const guideId = new URLSearchParams(location.search).get('guide');
+  if (guideId) { document.body.classList.add('guide-mode'); renderGuide(guideId); return; }
   // Er der sat grupper op, er pipelinen det man arbejder i — så starter vi dér,
   // med den kunde man sidst arbejdede med valgt. Tavlen hentes ikke af sig
   // selv: det kalder alle gruppens orgs, og et OAuth-miljø ville bede om login.
@@ -4858,6 +5609,7 @@ async function refreshCustomers() {
   customers = await res.json();
   await loadHierarchy();
   renderDemoButtons();
+  renderStagesEditor();
   renderCustomerGrid();
   renderSidebarCustomers();
   populateCustomerSelects();
@@ -4996,6 +5748,7 @@ function renderCustomerGrid() {
         <button class="btn btn-secondary btn-sm" data-tip="tip_btn_test" onclick="testCustomer('${c.id}')">${t('btn_test')}</button>
         <button class="btn btn-secondary btn-sm" data-tip="tip_btn_edit_grouping" onclick="toggleGrouping('${c.id}')">${t('btn_edit_grouping')}</button>
         <button class="btn btn-blue btn-sm" data-tip="tip_btn_flows_card" onclick="quickViewFlows('${c.id}')">${t('btn_flows_card')}</button>
+        ${c.demo ? '' : `<button class="btn btn-secondary btn-sm" data-tip="tip_btn_guide" onclick="openSetupGuide('${c.id}')">📋</button>`}
         <button class="btn btn-danger btn-sm" data-tip="tip_delete_env" onclick="deleteCustomer('${c.id}')">✕</button>
       </div>
     </div>`;
@@ -5023,12 +5776,15 @@ async function addCustomer() {
   });
   const data = await res.json();
   if (data.error) return showAlert('customerAlert', data.error, 'err');
-  showAlert('customerAlert', `${t('msg_customer_added')} "${name}"`, 'ok');
+  showAlert('customerAlert', `${t('msg_customer_added')} "${escapeHtml(name)}"` +
+    (data.id ? ` · <a href="#" onclick="openSetupGuide(${jsAttr(data.id)}); return false">${t('gd_open_guide')}</a>` : ''), 'ok');
+  if (data.id) openSetupGuide(data.id);
   ['c-name','c-clientId'].forEach(id => document.getElementById(id).value = '');
   await refreshCustomers();
 }
 
 async function oauthLogin(id) {
+  if (document.body.classList.contains('guide-mode')) setTimeout(() => guideWatchLogin(id), 0);
   const btn = document.getElementById('oauth-btn-' + id);
   const badge = document.getElementById('oauth-badge-' + id);
   if (btn) { btn.disabled = true; btn.textContent = '…'; }
@@ -5495,11 +6251,20 @@ function defaultActionForTarget() {
   if (!sel || !tgt) return;
   const erProd = String(tgt.stage || '').toLowerCase() === 'prod';
   sel.value = erProd ? 'create' : 'publish';
+  syncAlignBox();
   const note = document.getElementById('m-action-note');
   if (note) {
     note.textContent = erProd ? t('action_prod_note') : t('action_default_note');
     note.style.color = erProd ? 'var(--yellow)' : 'var(--muted)';
   }
+}
+
+// Udligning giver kun mening når målet publiceres — en kladde har intet nummer.
+function syncAlignBox() {
+  const box = document.getElementById('m-align-box');
+  const pub = document.getElementById('m-action')?.value === 'publish';
+  if (box) box.style.display = pub ? 'flex' : 'none';
+  if (!pub && document.getElementById('m-align')) document.getElementById('m-align').checked = false;
 }
 
 function updateMigrateAuthStatus() {
@@ -5511,6 +6276,7 @@ async function runMigration() {
   const sourceId = document.getElementById('m-source').value;
   const targetId = document.getElementById('m-target').value;
   const action = document.getElementById('m-action').value;
+  const alignVersion = action === 'publish' && !!document.getElementById('m-align')?.checked;
   if (!sourceId || !targetId) return alert(t('err_select_source_target'));
   if (sourceId === targetId) return alert(t('err_same_org'));
 
@@ -5578,11 +6344,12 @@ async function runMigration() {
       // Fase 2: importér flowet
       const data = await fetch('/api/migrate/commit', {
         method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ sourceId, targetId, flowName: name, filePath: prep.filePath, action, divisionMap, confirmProd })
+        body: JSON.stringify({ sourceId, targetId, flowName: name, filePath: prep.filePath, action, divisionMap, confirmProd, alignVersion })
       }).then(r => r.json());
       if (data.error) { log(logBox, `  ✗ ${data.error}`, 'err'); failed++; }
       else {
         log(logBox, `  ✓ ${data.fileName} → ${action} OK`, 'ok'); ok++;
+        if (data.aligned) log(logBox, '  ' + alignText(data.aligned), data.aligned.error ? 'err' : 'info');
         if (data.diff) log(logBox, data.diff.noPrevious
           ? `  📝 ${t('rel_title')}: ${t('rel_new')}`
           : `  📝 ${t('rel_title')}: +${data.diff.added} / −${data.diff.removed} ${t('rel_lines')}`, 'info');
@@ -8925,23 +9692,15 @@ async function saveGrouping(id) {
     if (felt('clientid').value.trim()) body.clientId        = felt('clientid').value.trim();
     if (felt('secret').value.trim())   body.newClientSecret = felt('secret').value.trim();
   }
-  // Skifter præfikset, bliver flowene i org'en ikke omdøbt med. Står der flows
-  // med den gamle navngivning, skal man vide det før man gemmer — ellers dukker
-  // de op som egne rækker på tavlen. Kan org'en ikke læses, gemmes der alligevel.
+  // Skifter præfikset, skal flows, datatabeller og manifest-tabellen i org'en
+  // have nye navne med — ellers ligger de tilbage under det gamle præfiks og
+  // bliver deres egne rækker på tavlen. Dialogen viser planen, og omdøbningen
+  // sker før resten gemmes.
   const gammel = (customers.find(c => c.id === id) || {}).prefix || '';
   if (body.prefix !== gammel) {
-    const chk = await fetch(`/api/customers/${encodeURIComponent(id)}/prefix-check`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prefix: body.prefix })
-    }).then(x => x.json()).catch(() => ({}));
-    if (chk.count) {
-      const eks = (chk.affected || []).map(f => '  • ' + f.name).join('\n');
-      const msg = t('pfx_warn')
-        .replace('{n}', chk.count)
-        .replace('{old}', gammel || t('pfx_none'))
-        .replace('{new}', body.prefix || t('pfx_none'));
-      if (!confirm(msg + '\n\n' + eks + (chk.count > (chk.affected || []).length ? '\n  …' : ''))) return;
-    }
+    const udfald = await changePrefixGuided(id, gammel, body.prefix);
+    if (!udfald) return;                      // annulleret eller fejlet
+    if (udfald === 'renamed') delete body.prefix;   // allerede gemt af serveren
   }
   const r = await fetch('/api/customers/' + id, {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -8953,8 +9712,265 @@ async function saveGrouping(id) {
     return showAlert('customerAlert', r.error, 'err');
   }
   if (fejlEl) fejlEl.style.display = 'none';
-  showAlert('customerAlert', t('grouping_saved'), 'ok');
+  // Er der omdøbt, står oversigten under — ellers forsvandt den bag "gemt".
+  showAlert('customerAlert', escapeHtml(t('grouping_saved')) + (pfxSummary ? '<br>' + pfxSummary : ''), 'ok');
+  pfxSummary = '';
   await refreshCustomers();
+}
+
+// Præfiks-skift med omdøbning i org'en. Returnerer 'renamed' når serveren har
+// omdøbt og gemt præfikset, 'save' når præfikset bare skal gemmes sammen med
+// resten, og null når brugeren annullerede eller det fejlede.
+let pfxSummary = '';
+async function changePrefixGuided(id, gammel, nyt) {
+  pfxSummary = '';
+  const env = customers.find(c => c.id === id) || {};
+  const vis = p => p || t('pfx_none');
+  const plan = await fetch('/api/prefix/plan', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ envId: id, prefix: nyt }) }).then(x => x.json()).catch(e => ({ error: e.message }));
+  if (plan.error) {
+    // Ugyldigt præfiks afvises; kan org'en ikke læses, må man vælge selv.
+    if (/præfiks|prefix|Præfikset/i.test(plan.error) && !/token|login|OAuth/i.test(plan.error)) {
+      showAlert('customerAlert', escapeHtml(plan.error), 'err'); return null;
+    }
+    return confirm(t('pfx_unreadable').replace('{err}', plan.error)) ? 'save' : null;
+  }
+  const antal = plan.flows.length + plan.tables.length + (plan.manifest ? 1 : 0);
+  if (!antal) return 'save';
+
+  const linje = (kind, x, ekstra = '') => `<label style="display:flex;gap:8px;align-items:baseline;padding:3px 0;${x.conflict ? 'opacity:.55' : 'cursor:pointer'}">
+      <input type="checkbox" style="width:auto" data-pfx-kind="${kind}" data-pfx-id="${escapeHtml(x.id)}" ${x.conflict ? 'disabled' : 'checked'} />
+      <span style="font-family:var(--mono);font-size:12px">${escapeHtml(x.from)} → <b>${escapeHtml(x.to)}</b></span>
+      ${x.conflict ? `<span style="font-size:11px;color:var(--red)">${t('pfx_conflict')}</span>` : ''}${ekstra}</label>`;
+  const afsnit = (titel, html) => html ? `<div style="font-weight:700;margin:10px 0 4px">${titel}</div>${html}` : '';
+  const html =
+    afsnit(t('pfx_sec_flows').replace('{n}', plan.flows.length), plan.flows.map(x => linje('flow', x,
+      x.calledByName ? `<span style="font-size:11px;color:var(--yellow)">${t('pfx_called_by_name')}</span>` : '')).join('')) +
+    afsnit(t('pfx_sec_tables').replace('{n}', plan.tables.length), plan.tables.map(x => linje('table', x)).join('')) +
+    afsnit(t('pfx_sec_manifest'), plan.manifest ? linje('manifest', plan.manifest) : '');
+
+  const warnings = [];
+  if (String(env.stage || '').toLowerCase() === 'prod') warnings.push(fillT('act_warn_prod', {}));
+  if (plan.flows.some(x => x.calledByName)) warnings.push(fillT('pfx_warn_by_name', {}));
+  if ([...plan.flows, ...plan.tables, plan.manifest].some(x => x && x.conflict)) warnings.push(fillT('pfx_warn_conflict', {}));
+
+  const ok = await confirmAction({
+    title: fillT('pfx_title', { env: env.name, old: vis(gammel), new: vis(nyt) }),
+    steps: [fillT('pfx_s1', {}), fillT('pfx_s2', {}), fillT('pfx_s3', {})],
+    warnings, extraHtml: html, ok: t('pfx_btn'), danger: warnings.length > 0 });
+  if (!ok) return null;
+
+  const valgt = kind => [...document.querySelectorAll(`#act-body input[data-pfx-kind="${kind}"]:checked`)].map(cb => cb.dataset.pfxId);
+  const flowIds = valgt('flow'), tableIds = valgt('table'), manifest = valgt('manifest').length > 0;
+  if (!flowIds.length && !tableIds.length && !manifest) return 'save';   // kun præfikset, som før
+
+  showAlert('customerAlert', `<span class="spin"></span> ${t('pfx_running')}`, 'info');
+  const r = await fetch('/api/prefix/apply', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ envId: id, prefix: nyt, flowIds, tableIds, manifest }) })
+    .then(x => x.json()).catch(e => ({ error: e.message }));
+  const liste = (r.results || []).map(x =>
+    `<div style="font-family:var(--mono);font-size:11px">${x.ok ? '✓' : '✗'} ${escapeHtml(x.from)} → ${escapeHtml(x.to)}${x.error ? ' — ' + escapeHtml(x.error) : ''}</div>`).join('');
+  if (!r.ok) {
+    showAlert('customerAlert', `${escapeHtml(t('pfx_failed').replace('{err}', r.error || '?'))}${liste}`, 'err');
+    return null;
+  }
+  pfxSummary = `${escapeHtml(t('pfx_done').replace('{n}', (r.results || []).length).replace('{new}', vis(nyt)))}${liste}`;
+  return 'renamed';
+}
+
+// ── Opsætningsguide ───────────────────────────────────────────────────────────
+// En tjekliste i sit eget vindue til at sætte en ny org og et nyt miljø rigtigt
+// op. Punkter programmet selv kan kontrollere, har en Tjek-knap; resten krydser
+// man af. Afkrydsningerne huskes pr. miljø i denne browser.
+function openSetupGuide(id) {
+  const w = window.open('/?guide=' + encodeURIComponent(id), 'archy-guide-' + id, 'width=800,height=940,scrollbars=yes,resizable=yes');
+  if (!w) alert(t('gd_popup_blocked')); else w.focus();
+}
+
+const guideKey = id => 'guide:' + id;
+function guideState(id) { try { return JSON.parse(localStorage.getItem(guideKey(id)) || '{}'); } catch (_) { return {}; } }
+function guideSave(id, st) { try { localStorage.setItem(guideKey(id), JSON.stringify(st)); } catch (_) {} }
+
+function guideSteps(env) {
+  const oauth = env.authType === 'oauth';
+  const prod = String(env.stage || '').toLowerCase() === 'prod';
+  return [
+    // Rækkefølgen er den man arbejder i: klienten i Genesys, miljøet her,
+    // login — og først derefter det der kræver et login at kontrollere.
+    { k: 'client', auto: true },
+    oauth && { k: 'redirect', auto: true },
+    { k: 'env', auto: true },
+    oauth && { k: 'login', auto: true },
+    { k: 'perms', auto: true },
+    env.division && { k: 'division', auto: true },
+    { k: 'manifest', auto: true },
+    prod && { k: 'deploy', auto: true },
+    { k: 'flows', auto: false },
+  ].filter(Boolean);
+}
+
+let guideEnvId = null, guideResults = {};
+function renderGuide(id) {
+  guideEnvId = id;
+  const env = customers.find(c => c.id === id);
+  const root = document.getElementById('guide-root');
+  if (!env) { root.innerHTML = `<div class="card">${escapeHtml(t('gd_unknown_env'))}</div>`; return; }
+  document.title = t('gd_title').replace('{env}', env.name);
+  const st = guideState(id);
+  const steps = guideSteps(env);
+  const doneCount = steps.filter(x => st[x.k]).length;
+  const oauth = env.authType === 'oauth';
+  const permHtml = (K?.permissionChecks || []).filter(c => !(c.credsOnly && oauth))
+    .map(c => `<div>• ${escapeHtml(t('perm_area_' + c.area))}: <span style="font-family:var(--mono)">${c.perms.map(escapeHtml).join(', ')}</span></div>`).join('');
+  const body = k => {
+    const v = { uri: K?.redirectUri || '', div: env.division || '', table: (env.prefix || '') + 'ArchyGUI_Manifest',
+                perm: env.deployPermission || 'architect:flow:publish' };
+    if (k === 'client') return fillT(oauth ? 'gd_client_body_oauth' : 'gd_client_body_creds', {});
+    if (k === 'perms') return fillT(oauth ? 'gd_perms_body_oauth' : 'gd_perms_body_creds', {}) + `<div style="margin-top:4px">${permHtml}</div>`;
+    if (k === 'deploy') return fillT('gd_deploy_body', { perm: v.perm }) + (env.deployGroup ? ' ' + fillT('gd_deploy_group', { g: env.deployGroup }) : '');
+    return fillT('gd_' + k + '_body', v);
+  };
+  const buttonsFor = x => {
+    const b = [];
+    if (x.auto) b.push(`<button class="btn btn-secondary btn-sm" onclick="guideCheck('${x.k}')">${t('gd_check')}</button>`);
+    if (x.k === 'login') b.push(`<button class="btn btn-secondary btn-sm" onclick="oauthLogin(${jsAttr(id)})">${t('gd_login_btn')}</button>`);
+    if (x.k === 'manifest') b.push(`<button class="btn btn-secondary btn-sm" onclick="guideCreateManifest()">${t('gd_manifest_create')}</button>`);
+    return b.join(' ');
+  };
+  const res = k => {
+    const r = guideResults[k];
+    if (!r) return '';
+    const color = r.ok === true ? 'var(--green)' : r.ok === false ? 'var(--red)' : 'var(--muted)';
+    return `<div class="gd-res" style="color:${color}">${r.ok === true ? '✓' : r.ok === false ? '✗' : '…'} ${r.msg}</div>`;
+  };
+  root.innerHTML = `
+    <div style="font-size:20px;font-weight:800;margin-bottom:4px">📋 ${escapeHtml(t('gd_title').replace('{env}', env.name))}</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">${escapeHtml([env.tenant, env.group, env.stage, env.region].filter(Boolean).join(' · '))}
+      · ${oauth ? '🌐 OAuth (PKCE)' : '🔑 Client Credentials'}</div>
+    <div style="font-size:13px;margin-bottom:14px">${escapeHtml(t('gd_intro'))}</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <button class="btn btn-primary btn-sm" onclick="guideCheckAll()">${t('gd_check_all')}</button>
+      <span style="font-size:12px;color:${doneCount === steps.length ? 'var(--green)' : 'var(--muted)'}">${escapeHtml(t('gd_progress').replace('{n}', doneCount).replace('{m}', steps.length))}</span>
+    </div>
+    ${steps.map((x, i) => `<div class="gd-step${st[x.k] ? ' done' : ''}">
+      <div class="gd-head">
+        <input type="checkbox" ${st[x.k] ? 'checked' : ''} onchange="guideToggle('${x.k}', this.checked)" />
+        <span class="gd-title">${i + 1}. ${escapeHtml(t('gd_' + x.k + '_title'))}</span>
+        ${buttonsFor(x)}
+      </div>
+      <div class="gd-body">${body(x.k)}</div>${res(x.k)}</div>
+      `).join('')}
+    ${doneCount === steps.length ? `<div style="margin-top:14px;font-weight:700;color:var(--green)">${escapeHtml(t('gd_done_all'))}</div>
+    ` : ''}
+    <div style="margin-top:18px"><button class="btn btn-secondary btn-sm" onclick="window.close()">${t('gd_close')}</button></div>`;
+}
+
+function guideToggle(k, on) {
+  const st = guideState(guideEnvId);
+  if (on) st[k] = true; else delete st[k];
+  guideSave(guideEnvId, st);
+  renderGuide(guideEnvId);
+}
+
+async function guideCheckAll() {
+  const env = customers.find(c => c.id === guideEnvId);
+  for (const x of guideSteps(env).filter(x => x.auto)) await guideCheck(x.k);
+}
+
+// Én kontrol. Lykkes den, krydses punktet af; fejler den, fjernes krydset, så
+// listen ikke påstår noget der ikke holder.
+async function guideCheck(k) {
+  const id = guideEnvId;
+  const env = customers.find(c => c.id === id);
+  guideResults[k] = { ok: null, msg: escapeHtml(t('gd_pending')) };
+  renderGuide(id);
+  let r;
+  try { r = await guideRun(k, env); } catch (e) { r = { ok: false, msg: escapeHtml(e.message) }; }
+  // Mangler der bare et login, er punktet ikke forkert — det kan bare ikke
+  // kontrolleres endnu.
+  if (r.ok === false && /OAuth token (missing|expired)|log in again|Login button/i.test(r.msg))
+    r = { ok: null, msg: fillT('gd_need_login', {}) };
+  guideResults[k] = r;
+  const st = guideState(id);
+  if (r.ok === true) st[k] = true; else if (r.ok === false) delete st[k];
+  guideSave(id, st);
+  renderGuide(id);
+}
+
+async function guideRun(k, env) {
+  const id = env.id;
+  const json = (url, opt) => fetch(url, opt).then(x => x.json());
+  const oauth = env.authType === 'oauth';
+  if (k === 'client' || k === 'redirect') {
+    const r = await json('/api/customers/' + encodeURIComponent(id) + '/oauth-client');
+    if (r.code === 'login') return { ok: null, msg: fillT('gd_need_login', {}) };
+    if (r.code === 'forbidden') return { ok: null, msg: escapeHtml(t('oauth_client_forbidden')) };
+    if (!r.name) return { ok: false, msg: escapeHtml(r.error || t('err_label')) };
+    if (k === 'client') {
+      const want = oauth ? 'CODE' : 'CLIENT-CREDENTIALS';
+      return r.grantCode === want
+        ? { ok: true, msg: fillT('gd_client_found', { name: r.name, type: r.grantType }) }
+        : { ok: false, msg: fillT('gd_client_wrong', { type: r.grantType, want: oauth ? 'Code Authorization (PKCE)' : 'Client Credentials' }) };
+    }
+    const uri = K?.redirectUri || '';
+    return (r.redirectUris || []).includes(uri)
+      ? { ok: true, msg: fillT('gd_redirect_ok', { uri }) }
+      : { ok: false, msg: fillT('gd_redirect_missing', { uri, list: (r.redirectUris || []).join(', ') || '—' }) };
+  }
+  if (k === 'perms') {
+    const r = await json('/api/customers/' + encodeURIComponent(id) + '/test', { method: 'POST' });
+    if (!r.ok) return { ok: false, msg: escapeHtml(r.error || t('err_label')) };
+    const missingList = (r.checks || []).filter(c => !c.ok && !c.unknown).flatMap(c => c.missing);
+    const unknownCount = (r.checks || []).filter(c => c.unknown).length;
+    return missingList.length ? { ok: false, msg: fillT('gd_perms_missing', { list: [...new Set(missingList)].join(', ') }) }
+      : { ok: true, msg: escapeHtml(t(unknownCount ? 'perm_ok_partial' : 'perm_all_ok').replace(/^✓s*/, '')) };
+  }
+  if (k === 'env') {
+    const missingList = [['tenant', 'label_tenant'], ['group', 'label_group'], ['stage', 'label_stage'], ['clientId', 'label_clientid']]
+      .filter(([f]) => !env[f]).map(([, l]) => t(l).replace(/\s*\*$/, ''));
+    return missingList.length ? { ok: false, msg: fillT('gd_env_missing', { list: missingList.join(', ') }) }
+                          : { ok: true, msg: escapeHtml([env.tenant, env.group, env.stage].join(' · ')) };
+  }
+  if (k === 'login' || k === 'deploy') {
+    const r = await json('/api/auth/status/' + encodeURIComponent(id));
+    if (!r.authenticated) return { ok: false, msg: escapeHtml(t('gd_not_logged_in')) };
+    if (k === 'login') return { ok: true, msg: fillT('gd_login_ok', { org: r.orgName || '?' }) };
+    if (!r.deploy) return { ok: false, msg: escapeHtml(t('gd_not_logged_in')) };
+    return r.deploy.ok ? { ok: true, msg: escapeHtml(t('prod_lock_ok').replace('{who}', r.deploy.who).replace('{min}', Math.ceil((r.deploy.expiresIn || 0) / 60))) }
+                       : { ok: false, msg: fillT('gd_deploy_missing', { list: prodMissingText(r.deploy.missing) }) };
+  }
+  if (k === 'division') {
+    const r = await json('/api/customers/' + encodeURIComponent(id) + '/divisions');
+    if (r.error) return { ok: false, msg: escapeHtml(r.error) };
+    return (r.divisions || []).includes(env.division) ? { ok: true, msg: fillT('gd_division_ok', { div: env.division }) }
+                                                      : { ok: false, msg: fillT('gd_division_missing', { div: env.division }) };
+  }
+  if (k === 'manifest') {
+    const r = await json('/api/manifest/status?tenant=' + encodeURIComponent(env.tenant || '') + '&group=' + encodeURIComponent(env.group || ''));
+    const me = (r.environments || []).find(e => e.id === id);
+    if (!me) return { ok: false, msg: escapeHtml(r.error || t('gd_env_first')) };
+    if (me.error) return { ok: false, msg: escapeHtml(me.error) };
+    return me.hasTable ? { ok: true, msg: fillT('gd_manifest_ok', { table: me.table, n: me.rows }) }
+                       : { ok: false, msg: escapeHtml(t('gd_manifest_missing')) };
+  }
+  return { ok: null, msg: '' };
+}
+
+async function guideCreateManifest() {
+  guideResults.manifest = { ok: null, msg: escapeHtml(t('gd_pending')) };
+  renderGuide(guideEnvId);
+  const r = await fetch('/api/manifest/create', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ envId: guideEnvId }) }).then(x => x.json()).catch(e => ({ error: e.message }));
+  if (r.error) { guideResults.manifest = { ok: false, msg: escapeHtml(r.error) }; renderGuide(guideEnvId); return; }
+  await guideCheck('manifest');
+}
+
+async function guideWatchLogin(id) {
+  for (let i = 0; i < 90; i++) {
+    await new Promise(r => setTimeout(r, 2000));
+    const s = await fetch('/api/auth/status/' + encodeURIComponent(id)).then(x => x.json()).catch(() => ({}));
+    if (s.authenticated) { await guideCheck('login'); return; }
+  }
 }
 
 // ── Pipeline ──────────────────────────────────────────────────────────────────
@@ -9249,7 +10265,7 @@ function renderPipeline() {
           ? `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm"
                style="font-size:10px;padding:2px 6px;border-color:var(--yellow);color:var(--yellow)"
                title="${t('pl_pull_here_title')}"
-               onclick="promoteFromBoard('${escapeHtml(kilde.name || row.flowName).replace(/'/g, "\\'")}','${row.flowType}','${kilde.envId}','${c.envId}')"
+               onclick="boardAction('pull_here', ${jsAttr(key)}, ${i})"
                >${t('pl_pull_here')}</button></div>`
           : '')
       : '';
@@ -9260,7 +10276,7 @@ function renderPipeline() {
     const pull = sig.differsNext
       ? `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 6px;border-color:var(--yellow);color:var(--yellow)"
            title="${t('pl_pull_back_title')}"
-           onclick="promoteFromBoard('${escapeHtml(nextCell.name || row.flowName).replace(/'/g, "\\'")}','${row.flowType}','${nextCell.envId}','${c.envId}')"
+           onclick="boardAction('pull_back', ${jsAttr(key)}, ${i})"
            >${t('pl_pull_back')}</button></div>`
       : '';
 
@@ -9279,7 +10295,7 @@ function renderPipeline() {
           ? `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm"
                style="font-size:10px;padding:2px 6px${overwrites ? ';border-color:var(--red);color:var(--red)' : ''}"
                ${overwrites ? `title="${t('pl_overwrites')}"` : ''}
-               onclick="promoteFromBoard('${escapeHtml(prev.name || row.flowName).replace(/'/g, "\\'")}','${row.flowType}','${prev.envId}','${c.envId}')"
+               onclick="boardAction('promote', ${jsAttr(key)}, ${i})"
                >⟶ ${t('pl_promote')}${overwrites ? ' ⚠' : ''}</button></div>`
           : `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm" disabled
                style="font-size:10px;padding:2px 6px;opacity:.4;cursor:not-allowed"
@@ -9291,7 +10307,7 @@ function renderPipeline() {
     const pub = (isDemoEnv && !c.missing && !c.unknown)
       ? `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 6px"
            title="${t('demo_publish_title')}"
-           onclick="demoPublish('${c.envId}','${escapeHtml(c.name).replace(/'/g, "\\'")}','${row.flowType}')"
+           onclick="boardAction('demo_publish', ${jsAttr(key)}, ${i})"
            >▲ ${t('demo_publish')}</button></div>`
       : '';
 
@@ -9363,6 +10379,7 @@ function renderPipeline() {
       ${problems}${pipelineStaleSummary(d)}
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
         <span style="font-size:12px;color:var(--muted)">${rows.length} ${t('pl_count')} · ${Object.keys(pipelineHashes).length} ${t('pl_checked_count')}</span>
+        <button class="btn btn-secondary btn-sm" style="font-size:11px" data-tip="tip_pl_buttons_help" onclick="showBoardButtonsHelp()">${t('pl_buttons_help')}</button>
         <button class="btn btn-secondary btn-sm" style="font-size:11px" data-tip="tip_pl_check" onclick="checkAllShown()">${t('pl_check_all')}</button>
         <button class="btn btn-secondary btn-sm" style="font-size:11px" title="${t('pl_csv_title')}" onclick="downloadPipelineCsv()">${t('pl_csv')}</button>
         <button class="btn btn-secondary btn-sm" style="font-size:11px" data-tip="tip_rel_title" onclick="openReleases({ tenant: ${jsAttr(d.tenant)}, group: ${jsAttr(d.group)} })">📝 ${t('rel_title')}</button>
@@ -9374,15 +10391,163 @@ function renderPipeline() {
 
 // Forfremmelse genbruger Migrer Flow-siden, så afhængighedstjek, divisionsvalg
 // og logning er præcis de samme som ved en almindelig migrering.
-async function promoteFromBoard(flowName, flowType, fromId, toId) {
+// Udfaldet af en versionsudligning i én linje.
+function alignText(a) {
+  if (a.error) return '⚠ ' + t('align_partial').replace('{done}', a.done).replace('{n}', a.extra).replace('{err}', a.error);
+  if (a.extra > 0) return '🔢 ' + t('align_done').replace('{n}', a.done).replace('{v}', a.version || '?');
+  if (a.reason === 'target_ahead') return '🔢 ' + t('align_ahead').replace('{t}', a.target).replace('{s}', a.source);
+  if (a.reason === 'too_many') return '🔢 ' + t('align_too_many').replace('{n}', a.needed).replace('{max}', K?.maxAlignPublishes || 25);
+  if (a.reason === 'equal') return '🔢 ' + t('align_equal');
+  return '🔢 ' + t('align_unknown');
+}
+
+// ── Bekræftelse af handlinger på tavlen ─────────────────────────────────────
+// Hver knap på tavlen siger, før den gør noget, præcis hvad der sker — hvilket
+// flow, fra hvor til hvor, hvad der overskrives — og man kan sige nej. Før
+// gjorde knapperne det bare, og "Forfrem" på et prod der var løbet foran,
+// lignede en almindelig forfremmelse.
+
+// t() med {pladsholdere}, HTML-sikkert og med alle forekomster udskiftet.
+// Værdier sættes i fed, så navne og miljøer springer i øjnene.
+function fillT(key, vals) {
+  let out = escapeHtml(t(key));
+  for (const [k, v] of Object.entries(vals || {}))
+    out = out.split('{' + k + '}').join('<b>' + escapeHtml(v == null ? '' : String(v)) + '</b>');
+  return out;
+}
+
+let actResolver = null;
+function confirmAction({ title, steps = [], warnings = [], ok, extraHtml = '', danger = false, infoOnly = false }) {
+  document.getElementById('act-title').innerHTML = title;
+  const liste = (rows, farve) => rows.map(r =>
+    `<li style="margin:4px 0${farve ? ';color:' + farve : ''}">${r}</li>`).join('');
+  document.getElementById('act-body').innerHTML =
+    (steps.length ? `<div style="font-weight:700;margin-bottom:2px">${t('act_what')}</div><ol style="margin:0 0 10px 18px;padding:0">${liste(steps)}</ol>` : '') +
+    (warnings.length ? `<div style="font-weight:700;margin:6px 0 2px;color:var(--yellow)">⚠ ${t('act_watch')}</div><ul style="margin:0 0 6px 18px;padding:0">${liste(warnings, 'var(--yellow)')}</ul>` : '') +
+    extraHtml;
+  const okBtn = document.getElementById('act-ok');
+  okBtn.style.display = infoOnly ? 'none' : '';
+  okBtn.textContent = ok || '';
+  okBtn.className = 'btn btn-sm ' + (danger ? 'btn-danger' : 'btn-primary');
+  document.getElementById('act-cancel').textContent = t(infoOnly ? 'act_close' : 'act_cancel');
+  document.getElementById('act-overlay').style.display = 'flex';
+  (infoOnly ? document.getElementById('act-cancel') : okBtn).focus();
+  return new Promise(res => { actResolver = res; });
+}
+function actResolve(v) {
+  document.getElementById('act-overlay').style.display = 'none';
+  if (actResolver) { actResolver(v); actResolver = null; }
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('act-overlay')?.style.display === 'flex') actResolve(false);
+});
+
+// Én indgang for tavlens knapper. Ud fra rækken og kolonnen findes kilde og
+// mål, og dialogen sammensættes af det tavlen allerede ved om de to miljøer.
+async function boardAction(kind, key, i) {
+  const d = pipelineData;
+  const row = d && d.rows.find(r => r.flowName + '|' + r.flowType === key);
+  if (!row) return;
+  const envs = d.environments;
+  const c = row.cells[i];
+  const navn = j => envs[j]?.name || '?';
+  const isDemo = id => !!(customers.find(x => x.id === id) || {}).demo;
+  const isModule = row.flowType === 'COMMONMODULE';
+
+  if (kind === 'demo_publish') {
+    const ok = await confirmAction({
+      title: fillT('act_demo_pub_title', { flow: c.name, env: navn(i) }),
+      steps: [fillT('act_demo_pub_s1', {}), fillT('act_demo_pub_s2', {})],
+      extraHtml: `<label style="display:block;margin-top:8px">${t('act_demo_pub_count')}</label>
+        <input id="act-count" type="number" min="1" max="50" value="5" style="width:120px" />`,
+      ok: t('act_btn_demo_pub') });
+    if (!ok) return;
+    return demoPublish(c.envId, c.name, row.flowType, document.getElementById('act-count').value);
+  }
+
+  // Kilde og mål for de tre slags flytning.
+  let j;
+  if (kind === 'promote') j = i - 1;
+  else if (kind === 'pull_back') j = i + 1;
+  else if (kind === 'pull_here') j = row.cells.findIndex((x, k) => k > i && !x.missing && !x.unknown && x.published);
+  const src = row.cells[j];
+  if (!src) return;
+  const sig = cellSignals(c, i, row);
+  const from = navn(j), to = navn(i);
+  const steps = [], warnings = [];
+  const demo = isDemo(src.envId) && isDemo(c.envId);
+
+  if (kind === 'promote') {
+    steps.push(fillT('act_promote_s1', { v: src.published, name: src.name, from }));
+    steps.push(c.missing ? fillT('act_promote_s2_new', { to })
+                         : fillT('act_promote_s2_exists', { to, tv: c.published || '—', tname: c.name }));
+  } else if (kind === 'pull_here') {
+    steps.push(fillT('act_pull_s1', { from }));
+    const p = envs[i]?.prefix;
+    steps.push(fillT('act_pull_s2', { to }) + (p ? ' ' + fillT('act_pull_prefix', { p }) : ''));
+  } else {
+    steps.push(fillT('act_back_s1', { from, to }));
+    steps.push(fillT('act_back_s2', { from, to }));
+    warnings.push(fillT('act_warn_back', { to }));
+  }
+  steps.push(demo ? fillT('act_demo_route', {}) : fillT('act_real_route', { to }));
+  if (isModule) steps.push(fillT('act_module_after', { to }));
+
+  if (envs[i]?.stage === 'prod') warnings.unshift(fillT('act_warn_prod', {}));
+  if (kind === 'promote') {
+    if (sig.overwrites) warnings.push(escapeHtml(t('pl_overwrites')));
+    if (sig.pastManifest) warnings.push(fillT('act_warn_past', { to }));
+    else if (sig.aheadOfPrev > 0) warnings.push(fillT('act_warn_ahead', { to, from, n: sig.aheadOfPrev }));
+  }
+
+  // Versionsudligning: hvad målet ender på efter forfremmelsen, og hvor mange
+  // ekstra publiceringer der skal til for at nå kildens nummer.
+  let alignHtml = '';
+  if (kind === 'promote') {
+    const maj = v => parseInt(String(v ?? '').split('.')[0], 10);
+    const sV = maj(src.published), tV = c.missing ? 1 : maj(c.published) + 1;
+    const max = K?.maxAlignPublishes || 25;
+    if (Number.isFinite(sV) && Number.isFinite(tV)) {
+      const n = sV - tV;
+      alignHtml = n > 0 && n <= max
+        ? `<label style="display:flex;gap:8px;align-items:flex-start;margin-top:10px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer">
+             <input type="checkbox" id="act-align" style="width:auto;margin-top:3px" />
+             <span>${fillT('act_align_offer', { to, s: 'v' + sV, t: 'v' + tV, n })}</span></label>`
+        : n > max ? `<div style="margin-top:10px;font-size:12px;color:var(--muted)">🔢 ${fillT('act_align_too_many', { n, max })}</div>`
+        : n < 0 ? `<div style="margin-top:10px;font-size:12px;color:var(--muted)">🔢 ${fillT('act_align_ahead', { to, t: 'v' + tV, s: 'v' + sV })}</div>`
+        : '';
+    }
+  }
+
+  const titel = { promote: 'act_promote_title', pull_here: 'act_pull_title', pull_back: 'act_back_title' }[kind];
+  const ok = await confirmAction({
+    title: fillT(titel, { flow: row.flowName, from, to }),
+    steps, warnings, extraHtml: alignHtml,
+    ok: t(kind === 'promote' ? 'act_btn_promote' : 'act_btn_pull'),
+    danger: envs[i]?.stage === 'prod' || warnings.length > (envs[i]?.stage === 'prod' ? 1 : 0) });
+  if (!ok) return;
+  const align = !!document.getElementById('act-align')?.checked;
+  return promoteFromBoard(src.name || row.flowName, row.flowType, src.envId, c.envId, true, align);
+}
+
+// Forklaring af alle knapper på tavlen — samme dialog, kun til læsning.
+function showBoardButtonsHelp() {
+  const linjer = ['promote', 'pull_here', 'pull_back', 'check', 'rollback', 'republish', 'notes', 'demo_publish']
+    .map(k => `<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span style="font-family:var(--mono);white-space:nowrap;min-width:120px">${escapeHtml(t('plb_' + k + '_btn'))}</span>
+      <span>${escapeHtml(t('plb_' + k))}</span></div>`).join('');
+  confirmAction({ title: escapeHtml(t('pl_buttons_help_title')), extraHtml: linjer, infoOnly: true });
+}
+
+async function promoteFromBoard(flowName, flowType, fromId, toId, confirmed = false, align = false) {
   // Demo-miljøer har hverken credentials eller flows i Genesys, så Migrer
   // Flow-siden har intet at arbejde med. Forfremmelsen sker i demofilen.
   const from = customers.find(c => c.id === fromId);
   const to   = customers.find(c => c.id === toId);
   if (from && to && from.demo && to.demo) {
-    const body = { sourceId: fromId, targetId: toId, flowName, flowType };
+    const body = { sourceId: fromId, targetId: toId, flowName, flowType, alignVersion: align };
     if (String(to.stage || '').toLowerCase() === 'prod') {
-      if (!confirm(t('pl_prod_warn') + '\n\n' + to.name)) return;
+      if (!confirmed && !confirm(t('pl_prod_warn') + '\n\n' + to.name)) return;
       body.confirmProd = true;
     }
     const r = await fetch('/api/demo/promote', {
@@ -9395,7 +10560,8 @@ async function promoteFromBoard(flowName, flowType, fromId, toId) {
       : '';
     showAlert('pipelineAlert', (r.renamed
       ? `"${escapeHtml(r.fromName)}" → ${escapeHtml(to.name)}: ${t('demo_renamed_to')} "${escapeHtml(r.toName)}"`
-      : `"${escapeHtml(r.fromName)}" → ${escapeHtml(to.name)}: ${t('demo_name_kept')}`) + diff, 'ok');
+      : `"${escapeHtml(r.fromName)}" → ${escapeHtml(to.name)}: ${t('demo_name_kept')}`) + diff +
+      (r.aligned ? ' · ' + escapeHtml(alignText(r.aligned)) : ''), 'ok');
     if ((r.dependents || []).length) await showRepublishModal(toId, r.toName, r.dependents, r.releaseRef);
     pipelineHashes = {};
     await loadPipeline();
@@ -9418,6 +10584,12 @@ async function promoteFromBoard(flowName, flowType, fromId, toId) {
     selectedMigrateFlows.add(migrateKey(f));
     applyMigrateFilter();
     updateMigrateBtn();
+  }
+  // Valgt i dialogen på tavlen: udligning kræver at målet publiceres.
+  if (align) {
+    document.getElementById('m-action').value = 'publish';
+    syncAlignBox();
+    document.getElementById('m-align').checked = true;
   }
   updateMigrateAuthStatus();
 }
@@ -9589,10 +10761,13 @@ async function downloadSelectedReleases() {
 async function rollbackRelease(ref, label, name) {
   if (typeof ref === 'string') ref = JSON.parse(ref);
   const envId = ref.envId;
-  let msg = t('rb_confirm').replace('{name}', name || '').replace('{label}', label || '') + '\n\n' + envNameOf(envId);
   const prod = isProdEnv(envId);
-  if (prod) msg = t('pl_prod_warn') + '\n\n' + msg;
-  if (!confirm(msg)) return;
+  const ok = await confirmAction({
+    title: fillT('act_rb_title', { flow: name, env: envNameOf(envId) }),
+    steps: [fillT('act_rb_s1', { label, env: envNameOf(envId) }), fillT('act_rb_s2', {})],
+    warnings: prod ? [fillT('act_warn_prod', {})] : [],
+    ok: t('act_btn_rb'), danger: prod });
+  if (!ok) return;
   showAlert('pipelineAlert', `<span class="spin"></span> ${t('rb_running')}`, 'info');
   const res = await fetch('/api/releases/rollback', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -9813,6 +10988,78 @@ async function checkAllShown() {
 }
 
 // ── Demo-kunde ────────────────────────────────────────────────────────────────
+// ── Trin ──────────────────────────────────────────────────────────────────────
+// Listen redigeres lokalt og gemmes samlet. Prod står fast sidst; et trin der
+// bruges af et miljø, kan ikke fjernes (serveren afviser det også).
+let stagesDraft = null, stagesUsed = {};
+async function renderStagesEditor(reload = true) {
+  const box = document.getElementById('stagesEditor');
+  if (!box) return;
+  if (reload || !stagesDraft) {
+    try {
+      const r = await fetch('/api/stages').then(x => x.json());
+      stagesDraft = [...(r.stages || STAGES)];
+      stagesUsed = r.used || {};
+    } catch (_) { stagesDraft = [...STAGES]; }
+  }
+  const sidst = stagesDraft.length - 1;
+  const raekker = stagesDraft.map((st, i) => {
+    const brug = stagesUsed[st] || [];
+    const prod = st === 'prod';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)">
+      <span style="width:10px;height:10px;border-radius:50%;background:var(--${stageColor(st) || 'muted'})"></span>
+      <span style="font-family:var(--mono);font-weight:700;min-width:90px;color:var(--${stageColor(st) || 'muted'})">${escapeHtml(st.toUpperCase())}</span>
+      <span style="flex:1;font-size:11px;color:var(--muted)" title="${escapeHtml(brug.join(', '))}">${
+        prod ? t('stages_prod_fixed') : brug.length ? t('stages_in_use').replace('{n}', brug.length) : t('stages_unused')}</span>
+      <button class="btn btn-secondary btn-sm" data-tip="tip_stage_up" ${prod || i === 0 ? 'disabled' : ''} onclick="moveStage(${i}, -1)">↑</button>
+      <button class="btn btn-secondary btn-sm" data-tip="tip_stage_down" ${prod || i >= sidst - 1 ? 'disabled' : ''} onclick="moveStage(${i}, 1)">↓</button>
+      <button class="btn btn-danger btn-sm" data-tip="tip_stage_remove" ${prod || brug.length ? 'disabled' : ''} onclick="removeStage(${i})">✕</button>
+    </div>`;
+  }).join('');
+  const aendret = stagesDraft.join() !== STAGES.join();
+  box.innerHTML = raekker + `
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <input id="stage-new" placeholder="${t('stages_add_ph')}" maxlength="20" style="flex:1;min-width:140px"
+             onkeydown="if (event.key === 'Enter') addStage()" />
+      <button class="btn btn-secondary btn-sm" onclick="addStage()">${t('btn_stages_add')}</button>
+      <button class="btn btn-primary btn-sm" ${aendret ? '' : 'disabled'} onclick="saveStages()">${t('btn_stages_save')}</button>
+    </div>
+    <div id="stages-msg" style="margin-top:8px;font-size:11px"></div>`;
+}
+function moveStage(i, d) {
+  const j = i + d;
+  if (j < 0 || j >= stagesDraft.length - 1) return;
+  [stagesDraft[i], stagesDraft[j]] = [stagesDraft[j], stagesDraft[i]];
+  renderStagesEditor(false);
+}
+function removeStage(i) { stagesDraft.splice(i, 1); renderStagesEditor(false); }
+function addStage() {
+  const el = document.getElementById('stage-new');
+  const navn = el.value.trim().toLowerCase();
+  const msg = document.getElementById('stages-msg');
+  if (!navn) return;
+  if (!/^[a-z][a-z0-9-]{0,19}$/.test(navn)) { msg.style.color = 'var(--red)'; msg.textContent = t('stages_bad_name'); return; }
+  if (stagesDraft.includes(navn)) { msg.style.color = 'var(--red)'; msg.textContent = t('stages_exists'); return; }
+  stagesDraft.splice(stagesDraft.length - 1, 0, navn);   // lige før prod
+  renderStagesEditor(false);
+}
+async function saveStages() {
+  const r = await fetch('/api/stages', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ stages: stagesDraft }) }).then(x => x.json()).catch(e => ({ error: e.message }));
+  if (r.error) {
+    const msg = document.getElementById('stages-msg');
+    msg.style.color = 'var(--red)'; msg.textContent = r.error; return;
+  }
+  // Samme array som resten af klienten holder på — så sortering, farver og
+  // rullelister følger med uden genindlæsning.
+  STAGES.splice(0, STAGES.length, ...r.stages);
+  fillStages();
+  await refreshCustomers();
+  await renderStagesEditor();
+  const msg = document.getElementById('stages-msg');
+  msg.style.color = 'var(--green)'; msg.textContent = t('stages_saved');
+}
+
 async function renderDemoButtons() {
   const box = document.getElementById('demoButtons');
   if (!box) return;
@@ -9833,10 +11080,8 @@ async function renderDemoButtons() {
 // Kun i demoen: lad som om nogen har arbejdet videre og publiceret igen.
 // Navnet bliver stående — det er dét der viser at flowet er løbet foran det
 // der sidst blev forfremmet.
-async function demoPublish(envId, flowName, flowType) {
-  const svar = prompt(t('demo_publish_prompt'), '5');
-  if (svar === null) return;
-  const times = parseInt(svar, 10);
+async function demoPublish(envId, flowName, flowType, antal) {
+  const times = parseInt(antal, 10);
   if (!Number.isFinite(times) || times < 1) return;
   const r = await fetch('/api/demo/publish', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },

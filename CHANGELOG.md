@@ -5,6 +5,120 @@
 
 ---
 
+### v1.47.5
+---
+**🇩🇰 Dansk**
+
+- **Nye skærmbilleder i README'en.** Pipeline, Data Actions og Systemlog er taget igen af den aktuelle version — med trinfarverne, *? Knapperne* og det nye versionsnummer. De gamle var fra v1.46.5.
+
+- **To nye billeder:** bekræftelsesdialogen før en forfremmelse til et prod der er løbet foran, og opsætningsguiden for Sabio APS efter *▶ Tjek alt*.
+
+- Billederne viser kun Sabio's egen org og demo-kunderne.
+
+**🇬🇧 English**
+- **New README screenshots** of Pipeline, Data Actions and System Log, taken from the current version.
+- **Two new images:** the confirmation dialog before a promotion, and the setup guide.
+- Only Sabio's own org and the demo customers are shown.
+
+---
+
+### v1.47.4
+---
+**🇩🇰 Dansk**
+
+- **📋 Opsætningsguide til en ny org.** Knappen 📋 på et miljøkort åbner en tjekliste i sit eget vindue, som man kan have stående ved siden af Genesys mens man sætter op. Den åbner også af sig selv, når et nyt miljø er oprettet. Punkterne følger den rækkefølge man arbejder i: OAuth-klienten i Genesys (grant type og PKCE), redirect-URI, miljøets felter her, login, rettighederne, divisionen, manifest-tabellen og — på prod — deploy-retten.
+
+- **Tjek-knapper kontrollerer selv:** klientens type og redirect-URI'er slås op i Genesys, rettighederne holdes op mod hver funktion (som 🔌 Test), divisionen og manifest-tabellen findes i org'en, og login og deploy-ret ses. **▶ Tjek alt** kører dem alle; et punkt der kræver login, siger det i stedet for at melde fejl. Manifest-tabellen kan oprettes direkte fra guiden.
+
+- **Afkrydsningerne huskes** pr. miljø i browseren, og listen viser hvor mange punkter der er klar.
+
+- **Redirect-URI'en og rettighedslisten står ét sted** i serveren og hentes derfra af både login og guide.
+
+**🇬🇧 English**
+- **📋 Setup guide for a new org:** a checklist in its own window (📋 on a card, and automatically after creating an environment) covering the OAuth client, redirect URI, environment fields, login, permissions, division, manifest table and prod deploy rights.
+- **Check buttons verify against the org;** ▶ Check all runs them; items needing a login say so.
+- **Ticks are remembered** per environment in the browser.
+
+---
+
+### v1.47.3
+---
+**🇩🇰 Dansk**
+
+- **Guidet præfiks-omdøbning.** Ændrer man præfikset på et miljø — fx fjerner `UAT_` — viser en dialog nu hvilke flows, datatabeller og hvilken manifest-tabel der skal have nyt navn i org'en, med flueben ved hver. *Omdøb og gem* ændrer navnene og gemmer præfikset. Før blev intet omdøbt: `UAT_Betaling` lå tilbage som sin egen række på tavlen, og manifestet pegede på en tabel der ikke længere hørte til miljøet.
+
+- **Navnene ændres via Genesys' API, ikke Archy.** Archy finder flows på navnet og ville lave et nyt flow ved siden af. Med API'et beholder flowet sit id, alle udgaver får det nye navn, og numre, køer og andre flows der peger på det, virker videre.
+
+- **Sikkert:** planen regnes ud på serveren (klienten vælger kun hvad der skal med); et navn der allerede findes, springes over; fejler én omdøbning, rulles de andre tilbage, og præfikset ændres ikke; prod kræver prod-login. Common modules og bots er markeret, fordi de kaldes ved navn i eksporteret YAML.
+
+- **Kan org'en ikke læses**, spørges der om præfikset skal gemmes alligevel — som før, uden omdøbning.
+
+- **Afprøvet mod Sabio DEV.** Genesys kræver at et flow er tjekket ud for at kunne omdøbes. Hver omdøbning sker derfor som *tjek ud → nyt navn → revert*: revert beholder det nye navn, kasserer den kladde udtjekningen laver, og frigiver låsen. Havde flowet en gemt kladde i forvejen, bruges *unlock* i stedet, så den kladde ikke går tabt. Et flow der er tjekket ud af en anden, springes over.
+
+**🇬🇧 English**
+- **Guided prefix rename:** changing a prefix shows which flows, data tables and manifest table will be renamed in the org, with checkboxes; *Rename and save* applies it.
+- **Renamed through the Genesys API, not Archy,** so flows keep their id and everything pointing to them keeps working.
+- **Safe:** plan computed on the server, existing names skipped, rollback on failure, prod requires a prod login.
+- **Tested against Sabio DEV:** each rename is checkout → rename → revert (unlock if the flow already had a saved draft), leaving no draft or lock behind.
+
+---
+
+### v1.47.2
+---
+**🇩🇰 Dansk**
+
+- **Versionsudligning ved forfremmelse.** Hver publicering i Genesys giver én ny udgave, og tælleren er pr. org — så efter en forfremmelse stod målet typisk lavere end kilden (dev v10 → test v3). Dialogen for ⟶ Forfrem regner nu ud hvad målet ender på, og tilbyder at publicere det de ekstra gange der mangler, med samme indhold, så det står på kildens nummer: *"TEST bliver v5 i stedet for v3. Det kræver 2 ekstra publiceringer."*
+
+- **Samme valg på Migrer Flow** — *Udlign versionsnummer med kilden* — vises når handlingen er publish, og sættes af sig selv når man har valgt det på tavlen. Loggen siger hvor mange ekstra publiceringer der blev lavet, og hvad målet nu står på.
+
+- **Det tæller aldrig ned.** Står målet allerede højere — som et prod der er løbet foran — siger dialogen at det ikke kan udlignes. Højst 25 ekstra publiceringer pr. flow; stopper en publicering undervejs, siges det hvor langt den nåede.
+
+- **Demoen udligner også**, så det kan prøves uden en org.
+
+**🇬🇧 English**
+- **Version alignment on promotion:** the target can be published the missing extra times (same content) so its number matches the source; offered in the ⟶ Promote dialog with the exact count, and on Migrate Flow when the action is publish.
+- **Never counts down;** at most 25 extra publishes per flow; a partial run is reported.
+- **The demo aligns too.**
+
+---
+
+### v1.47.1
+---
+**🇩🇰 Dansk**
+
+- **Knapperne på tavlen siger hvad de gør, før de gør det.** ⟶ Forfrem, ⟵ Hent hertil, ⟵ Hent tilbage, ↩ og ▲ Publicér (demo) åbner nu en dialog med flowet, fra- og til-miljøet, hvad der sker trin for trin, og hvad man skal passe på — og man vælger at udføre eller annullere. Før gjorde knapperne det bare, og *Forfrem* til et prod der var løbet foran, så ud som enhver anden forfremmelse.
+
+- **Advarslerne bygger på det tavlen allerede ved:** målet er prod; målet er publiceret uden om pipelinen siden sidste forfremmelse; målet er N udgaver foran trinnet før, så rettelser direkte i målet går tabt; eller ⇄ Tjek indhold har fundet en forskel. Er der en advarsel, er udfør-knappen rød.
+
+- **? Knapperne** i tavlens værktøjslinje forklarer alle knapper på tavlen.
+
+- **▲ Publicér i demoen** siger nu tydeligt at det er en simulering, og antallet vælges i dialogen.
+
+**🇬🇧 English**
+- **Board buttons say what they do before they do it** — a dialog with flow, source, target, steps and warnings, with go-ahead or cancel.
+- **Warnings** cover prod, changes outside the pipeline, a target that is ahead, and content differences.
+- **? Buttons** in the board toolbar explains every button.
+- **▲ Publish in the demo** is clearly marked as a simulation.
+
+---
+
+### v1.47.0
+---
+**🇩🇰 Dansk**
+
+- **Egne trin.** Under **Kunder → Trin** kan trinlisten udvides med fx *staging* eller *preprod* og sorteres med pilene. Listen gælder for hele programmet — pipelinen, rullelisterne, sorteringen og farverne følger den — og gemmes i `settings.json`, som ikke kommer i git.
+
+- **Prod står altid sidst**, fordi login, deploy-ret og skrivevagten hænger på den. Et trin der bruges af et miljø, kan ikke fjernes — så ville miljøet falde ud af pipelinen uden at nogen sagde det. Serveren afviser begge dele, også hvis man kalder den direkte.
+
+- **Egne trin får farve efter placering:** gul, og orange hvis de står lige før prod — så rækken stadig går fra grøn mod rød.
+
+**🇬🇧 English**
+- **Custom stages** under **Customers → Stages** (e.g. staging, preprod), sortable, stored in `settings.json`.
+- **Prod is always last**, and a stage in use cannot be removed.
+- **Custom stages are coloured by position:** yellow, orange right before prod.
+
+---
+
 ### v1.46.10
 ---
 **🇩🇰 Dansk**

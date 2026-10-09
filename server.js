@@ -293,7 +293,58 @@ function saveCustomers(customers) {
 // de er sat før nogen anden kode kører, og der er intet sted at glemme.
 
 const STAGES = ['dev', 'test', 'uat', 'prod'];
+
+// Hvor Genesys sender et PKCE-login tilbage hen. Skal stå på OAuth-klienten.
+const OAUTH_REDIRECT_URI = 'http://localhost:3737/auth/callback';
 const stageOrder = s => { const i = STAGES.indexOf(String(s || '').toLowerCase()); return i === -1 ? 99 : i; };
+
+// Listen ovenfor er standarden. Kunder der har flere trin — fx staging eller
+// preprod — kan rette den under Kunder → Trin; den gemmes i settings.json og
+// lægges ind i STAGES ved opstart. Arrayet skiftes ud på stedet, så alle der
+// holder på det (også /konventioner.js), ser den nye liste.
+//
+// Prod er ikke bare et navn: login, deploy-ret og skrivevagten hænger på det.
+// Derfor skal "prod" altid findes og altid stå sidst.
+const SETTINGS_FILE = path.join(__dirname, 'settings.json');
+const STAGE_NAME = /^[a-z][a-z0-9-]{0,19}$/;
+const MAX_STAGES = 10;
+
+// Ren vurdering af en ny trinliste. Returnerer { stages } eller { error }.
+function stageListError(list, customers = []) {
+  if (!Array.isArray(list)) return { error: 'Trinlisten skal være en liste.' };
+  const stages = list.map(s => String(s || '').trim().toLowerCase()).filter(Boolean);
+  if (!stages.length) return { error: 'Der skal være mindst ét trin.' };
+  if (stages.length > MAX_STAGES) return { error: `Højst ${MAX_STAGES} trin.` };
+  const ugyldig = stages.find(s => !STAGE_NAME.test(s));
+  if (ugyldig) return { error: `"${ugyldig}" er ikke et gyldigt trin — brug små bogstaver, tal og bindestreg, højst 20 tegn, og start med et bogstav.` };
+  const dobbelt = stages.find((s, i) => stages.indexOf(s) !== i);
+  if (dobbelt) return { error: `"${dobbelt}" står to gange.` };
+  if (stages[stages.length - 1] !== 'prod')
+    return { error: 'Prod skal findes og stå sidst — login, deploy-ret og skrivevagten hænger på det.' };
+  // Et trin der er i brug, kan ikke forsvinde — så faldt miljøet ud af pipelinen.
+  const iBrug = customers.filter(c => c.stage && !stages.includes(String(c.stage).toLowerCase()));
+  if (iBrug.length)
+    return { error: `Trinnet "${iBrug[0].stage}" bruges af ${iBrug.map(c => c.name).join(', ')}. Flyt miljøerne til et andet trin først.` };
+  return { stages };
+}
+
+function applyStages(stages) { STAGES.splice(0, STAGES.length, ...stages); }
+
+function loadSettings() {
+  try { return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); } catch (_) { return {}; }
+}
+function saveSettings(patch) {
+  fs.writeFileSync(SETTINGS_FILE, JSON.stringify({ ...loadSettings(), ...patch }, null, 2));
+}
+
+// Ved opstart: en gemt liste bruges kun hvis den stadig er gyldig.
+{
+  const gemt = loadSettings().stages;
+  if (gemt) {
+    const r = stageListError(gemt);
+    if (r.stages) applyStages(r.stages);
+  }
+}
 
 // Endelsen et forfremmet flow bærer: "testtest" publiceret som udgave 10 bliver
 // til "testtest_v10". Reglen bruges tre steder — når navnet dannes, når
@@ -311,6 +362,9 @@ app.get('/konventioner.js', (req, res) => {
     'window.KONVENTIONER = ' + JSON.stringify({
       stages: STAGES,
       envColors: ENV_COLORS,
+      maxAlignPublishes: MAX_ALIGN_PUBLISHES,
+      redirectUri: OAUTH_REDIRECT_URI,
+      permissionChecks: PERMISSION_CHECKS,
       versionSuffix: VERSION_SUFFIX.source,
       versionSuffixFlags: VERSION_SUFFIX.flags
     }) + ';\n'
@@ -876,8 +930,22 @@ app.post('/api/demo/promote', async (req, res) => {
   src.content = renameFlowInYaml(src.content, srcNewName);
   demoRemember(src);
 
+  // Versionsudligning, som ved en rigtig forfremmelse: målet springer frem til
+  // kildens nummer, hvis det står lavere og man har bedt om det.
+  let aligned = null;
+  const tgtFlow = existing || d.flows[tgtKey].find(x => x.name === newName && x.type === flowType);
+  if (req.body.alignVersion && tgtFlow) {
+    const plan = alignmentPlan(src.published, tgtFlow.published);
+    aligned = { ...plan, done: plan.extra };
+    if (plan.extra > 0) {
+      tgtFlow.published = `${plan.source}.0`;
+      demoRemember(tgtFlow);
+    }
+    aligned.version = tgtFlow.published;
+  }
+
   saveDemo(d);
-  const targetVersion = existing ? existing.published : '1.0';
+  const targetVersion = existing ? existing.published : (tgtFlow ? tgtFlow.published : '1.0');
 
   recordManifest({
     ts: new Date().toISOString(), kind: 'migration',
@@ -931,7 +999,7 @@ app.post('/api/demo/promote', async (req, res) => {
              renamed, renamedSource, renamedTarget, action,
              releaseRef: releaseRef(release),
              diff: { added: release.diff.added, removed: release.diff.removed, noPrevious: release.diff.noPrevious },
-             dependents });
+             dependents, aligned });
 });
 
 // De flows i et demo-miljø der bruger et common module. Demoen har ingen
@@ -1096,13 +1164,31 @@ app.get('/api/customers/:id/oauth-client', async (req, res) => {
     const r = await axios.get(`${apiBase}/api/v2/oauth/clients/${encodeURIComponent(c.clientId)}`,
       { headers: { Authorization: `Bearer ${token}` } });
     const g = r.data.authorizedGrantType;
-    res.json({ ok: true, name: r.data.name || c.clientId, grantType: GRANT_NAMES[g] || g || '' });
+    res.json({ ok: true, name: r.data.name || c.clientId, grantType: GRANT_NAMES[g] || g || '',
+               grantCode: g || '', redirectUris: r.data.registeredRedirectUri || [] });
   } catch (e) {
     const st = e.response?.status;
     if (st === 403) return res.json({ ok: false, code: 'forbidden' });
     if (/OAuth token (missing|expired)|another org/.test(e.message)) return res.json({ ok: false, code: 'login' });
     res.json({ ok: false, code: 'error', error: describeApiError(e) });
   }
+});
+
+app.get('/api/stages', (req, res) => {
+  const all = loadCustomers();
+  const used = {};
+  for (const c of all) if (c.stage) (used[String(c.stage).toLowerCase()] ||= []).push(c.name);
+  res.json({ ok: true, stages: STAGES, used });
+});
+
+app.put('/api/stages', (req, res) => {
+  const r = stageListError(req.body?.stages, loadCustomers());
+  if (r.error) return res.status(400).json({ error: r.error });
+  const foer = STAGES.join(' → ');
+  applyStages(r.stages);
+  saveSettings({ stages: r.stages });
+  addLog('INFO', `Stages changed: ${foer} ⇒ ${r.stages.join(' → ')}`, null, 'CUSTOMER');
+  res.json({ ok: true, stages: STAGES });
 });
 
 app.get('/api/hierarchy', (req, res) => {
@@ -1183,6 +1269,197 @@ function prefixChangeImpact(env, newPrefix, flows, all) {
   }
   return ramt;
 }
+
+// ── Guidet præfiks-omdøbning ─────────────────────────────────────────────────
+// Ændres præfikset, skal flows, datatabeller og manifest-tabellen i org'en have
+// nye navne — ellers ligger "UAT_Betaling" tilbage og bliver sit eget flow på
+// tavlen, og manifestet peger på en tabel der ikke længere hører til miljøet.
+//
+// Omdøbningen sker via API'et (PUT på flowets og tabellens id), ikke via Archy:
+// Archy finder flows på navnet og ville lave et NYT flow ved siden af. Med
+// API'et beholder flowet sit id, alle udgaver får det nye navn, og alt der
+// peger på det med id — telefonnumre, andre flows, køer — virker videre.
+
+// Ren plan: hvad skal hedde hvad, og hvad kolliderer. flows/tables er lister af
+// { id, name, type? } fra org'en.
+function prefixRenamePlan(env, newPrefix, flows, tables, all) {
+  const efter = { ...env, prefix: String(newPrefix || '').trim() };
+  const soeskende = e => all.map(c => c.id === env.id ? e : c).filter(c => orgKeyOf(c) === orgKeyOf(env));
+  const foer = soeskende(env);
+  const nytNavn = navn => withEnvPrefix(stripEnvPrefix(navn, env), efter);
+  const erManifest = navn => String(navn).endsWith(ORG_MANIFEST_BASE);
+  // Moduler og bots kaldes ved NAVN i eksporteret YAML. Det tager vores egen
+  // omskrivning sig af ved næste forfremmelse, men eksterne værktøjer og
+  // gemte YAML-filer der nævner dem, skal rettes i hånden.
+  const kaldesVedNavn = type => ['COMMONMODULE', 'BOT', 'DIGITALBOT'].includes(normType(type));
+
+  const planFlows = [];
+  for (const f of flows) {
+    if (!belongsToEnv(f.name, env, foer)) continue;
+    const to = nytNavn(f.name);
+    if (to === f.name) continue;
+    const kollision = flows.find(x => x.id !== f.id && x.name === to && normType(x.type) === normType(f.type));
+    planFlows.push({ id: f.id, type: f.type, from: f.name, to, conflict: !!kollision, calledByName: kaldesVedNavn(f.type) });
+  }
+  const planTables = [];
+  for (const t of tables) {
+    if (erManifest(t.name) || !belongsToEnv(t.name, env, foer)) continue;
+    const to = nytNavn(t.name);
+    if (to === t.name) continue;
+    planTables.push({ id: t.id, from: t.name, to, conflict: tables.some(x => x.id !== t.id && x.name === to) });
+  }
+  const mFra = manifestTableName(env), mTil = manifestTableName(efter);
+  const mTabel = tables.find(t => t.name === mFra);
+  const manifest = mTabel && mFra !== mTil
+    ? { id: mTabel.id, from: mFra, to: mTil, conflict: tables.some(x => x.name === mTil) }
+    : null;
+  return { oldPrefix: prefixOf(env), newPrefix: efter.prefix, flows: planFlows, tables: planTables, manifest };
+}
+
+async function listAllTables(env) {
+  const { token, apiBase } = await getToken(env);
+  const acc = [];
+  for (let page = 1; ; page++) {
+    const r = await axios.get(`${apiBase}/api/v2/flows/datatables`, {
+      headers: { Authorization: `Bearer ${token}` }, params: { pageSize: 100, pageNumber: page } });
+    acc.push(...(r.data.entities || []).map(t => ({ id: t.id, name: t.name })));
+    if (page >= (r.data.pageCount || 1)) break;
+  }
+  return acc;
+}
+
+async function prefixPlanFor(env, newPrefix) {
+  const all = loadCustomers();
+  const flows = isDemo(env) ? demoFlowsFor(env).map(f => ({ id: `${env.id}:${f.name}`, name: f.name, type: f.type }))
+                            : await listAllFlows(env);
+  const tables = isDemo(env) ? [] : await listAllTables(env);
+  return prefixRenamePlan(env, newPrefix, flows, tables, all);
+}
+
+// Prøv præfikset af, før det gemmes: findes det i forvejen, eller er det ugyldigt?
+function prefixChangeError(env, newPrefix, all) {
+  const fejl = envFieldError({ prefix: newPrefix }, all.filter(c => c.id !== env.id));
+  if (fejl) return fejl;
+  return prefixClash({ ...env, prefix: newPrefix }, all);
+}
+
+app.post('/api/prefix/plan', async (req, res) => {
+  const all = loadCustomers();
+  const env = all.find(c => c.id === req.body?.envId);
+  if (!env) return res.status(404).json({ error: 'Not found' });
+  const newPrefix = String(req.body.prefix || '').trim();
+  const fejl = prefixChangeError(env, newPrefix, all);
+  if (fejl) return res.status(400).json({ error: fejl });
+  try {
+    res.json({ ok: true, ...(await prefixPlanFor(env, newPrefix)) });
+  } catch (e) {
+    res.status(500).json({ error: describeApiError(e) });
+  }
+});
+
+// Ét navn ændret i org'en. Hentes først, så PUT bærer resten af objektet
+// uændret — et flow skal have sin type med, en tabel sit skema.
+async function renameInOrg(env, kind, id, to) {
+  const { token, apiBase } = await getToken(env);
+  const H = { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } };
+  if (kind === 'flow') {
+    // Genesys kræver at flowet er tjekket ud af den der omdøber (409 "not
+    // locked by client …"). Afprøvet mod Sabio DEV: checkout → PUT → revert.
+    // Revert beholder det nye navn, kasserer den kladde checkout lavede og
+    // frigiver låsen. Havde flowet en gemt kladde i forvejen, bruges unlock i
+    // stedet — revert ville smide den kladde væk.
+    const act = a => axios.post(`${apiBase}/api/v2/flows/actions/${a}`, null, { ...H, params: { flow: id } });
+    const f = (await axios.get(`${apiBase}/api/v2/flows/${encodeURIComponent(id)}`, H)).data;
+    if (f.lockedUser || f.lockedClient)
+      throw new Error(`checked out by ${f.lockedUser?.name || f.lockedClient?.name || 'someone else'}`);
+    const havdeKladde = !!f.savedVersion;
+    await act('checkout');
+    try {
+      await axios.put(`${apiBase}/api/v2/flows/${encodeURIComponent(id)}`,
+        { id: f.id, name: to, type: f.type, description: f.description || '', division: f.division }, H);
+    } finally {
+      try { await act(havdeKladde ? 'unlock' : 'revert'); }
+      catch (_) { try { await act('unlock'); } catch (__) {} }
+    }
+  } else {
+    const t = (await axios.get(`${apiBase}/api/v2/flows/datatables/${encodeURIComponent(id)}`,
+      { ...H, params: { expand: 'schema' } })).data;
+    await axios.put(`${apiBase}/api/v2/flows/datatables/${encodeURIComponent(id)}`, { ...t, name: to }, H);
+  }
+}
+
+app.post('/api/prefix/apply', async (req, res) => {
+  const all = loadCustomers();
+  const env = all.find(c => c.id === req.body?.envId);
+  if (!env) return res.status(404).json({ error: 'Not found' });
+  const newPrefix = String(req.body.prefix || '').trim();
+  const fejl = prefixChangeError(env, newPrefix, all);
+  if (fejl) return res.status(400).json({ error: fejl });
+
+  // Planen regnes ud igen her — klienten vælger kun HVILKE punkter, aldrig
+  // navnene. Kolliderende punkter springes altid over.
+  let plan;
+  try { plan = await prefixPlanFor(env, newPrefix); }
+  catch (e) { return res.status(500).json({ error: describeApiError(e) }); }
+  const valgteFlows = new Set(req.body.flowIds || []), valgteTabeller = new Set(req.body.tableIds || []);
+  const opgaver = [
+    ...plan.flows.filter(x => valgteFlows.has(x.id) && !x.conflict).map(x => ({ kind: 'flow', ...x })),
+    ...plan.tables.filter(x => valgteTabeller.has(x.id) && !x.conflict).map(x => ({ kind: 'table', ...x })),
+    ...(req.body.manifest && plan.manifest && !plan.manifest.conflict ? [{ kind: 'table', manifest: true, ...plan.manifest }] : [])
+  ];
+
+  addLog('INFO', `Prefix change for ${env.name}: "${plan.oldPrefix}" → "${newPrefix}" — renaming ${opgaver.length} item(s)`, env.name, 'CUSTOMER');
+  const udfoert = [], resultater = [];
+  let fejlet = null;
+  for (const o of opgaver) {
+    try {
+      if (isDemo(env)) {
+        const d = loadDemo();
+        const f = (d.flows[demoFlowKey(env)] || []).find(x => x.name === o.from && x.type === o.type);
+        if (!f) throw new Error('not found');
+        f.name = o.to; f.content = renameFlowInYaml(f.content, o.to);
+        saveDemo(d);
+      } else {
+        await renameInOrg(env, o.kind, o.id, o.to);
+      }
+      udfoert.push(o);
+      resultater.push({ kind: o.kind, from: o.from, to: o.to, ok: true });
+      addLog('SUCCESS', `Renamed ${o.kind} "${o.from}" → "${o.to}"`, env.name, 'CUSTOMER');
+    } catch (e) {
+      fejlet = { kind: o.kind, from: o.from, to: o.to, ok: false, error: describeApiError(e) };
+      resultater.push(fejlet);
+      addLog('ERROR', `Could not rename ${o.kind} "${o.from}": ${fejlet.error}`, env.name, 'CUSTOMER');
+      break;
+    }
+  }
+
+  // Fejlede én, rulles de andre tilbage — et halvt omdøbt miljø er værre end
+  // et der slet ikke blev rørt. Præfikset ændres kun når alt gik igennem.
+  if (fejlet) {
+    for (const o of udfoert.reverse()) {
+      try {
+        if (isDemo(env)) {
+          const d = loadDemo();
+          const f = (d.flows[demoFlowKey(env)] || []).find(x => x.name === o.to && x.type === o.type);
+          if (f) { f.name = o.from; f.content = renameFlowInYaml(f.content, o.from); saveDemo(d); }
+        } else await renameInOrg(env, o.kind, o.id, o.from);
+        addLog('INFO', `Rolled back ${o.kind} "${o.to}" → "${o.from}"`, env.name, 'CUSTOMER');
+      } catch (e) {
+        addLog('ERROR', `Rollback failed for ${o.kind} "${o.to}": ${describeApiError(e)} — rename it back by hand`, env.name, 'CUSTOMER');
+        resultater.push({ kind: o.kind, from: o.to, to: o.from, ok: false, rollbackFailed: true, error: describeApiError(e) });
+      }
+    }
+    return res.status(502).json({ ok: false, error: fejlet.error, failed: fejlet, results: resultater, rolledBack: true });
+  }
+
+  const kunder = loadCustomers();
+  const i = kunder.findIndex(c => c.id === env.id);
+  kunder[i] = { ...kunder[i], prefix: newPrefix };
+  saveCustomers(kunder);
+  delete _mfTableCache[env.id];
+  addLog('SUCCESS', `Prefix of ${env.name} is now "${newPrefix}" — ${udfoert.length} item(s) renamed`, env.name, 'CUSTOMER');
+  res.json({ ok: true, prefix: newPrefix, results: resultater });
+});
 
 app.post('/api/customers/:id/prefix-check', async (req, res) => {
   const all = loadCustomers();
@@ -1357,7 +1634,8 @@ const PROD_WRITE_ROUTES = {
   '/api/datatables/migrate':      'targetId',
   '/api/prompts/migrate':         'targetId',
   '/api/surveyforms/migrate':     'targetId',
-  '/api/divisions/create':        'targetId'
+  '/api/divisions/create':        'targetId',
+  '/api/prefix/apply':            'envId'
 };
 
 function deployRequirements(env) {
@@ -1581,7 +1859,7 @@ app.get('/api/auth/login/:id', (req, res) => {
 
   const apiBase    = REGION_MAP[customer.region] || `https://api.${customer.region}`;
   const loginBase  = apiBase.replace('api.', 'login.');
-  const redirectUri = 'http://localhost:3737/auth/callback';
+  const redirectUri = OAUTH_REDIRECT_URI;
   const url = `${loginBase}/oauth/authorize?response_type=code` +
     `&client_id=${encodeURIComponent(customer.clientId)}` +
     `&redirect_uri=${encodeURIComponent(redirectUri)}` +
@@ -1635,7 +1913,7 @@ app.get('/auth/callback', async (req, res) => {
 
   const apiBase    = REGION_MAP[customer.region] || `https://api.${customer.region}`;
   const loginBase  = apiBase.replace('api.', 'login.');
-  const redirectUri = 'http://localhost:3737/auth/callback';
+  const redirectUri = OAUTH_REDIRECT_URI;
 
   try {
     const resp = await axios.post(
@@ -2510,6 +2788,21 @@ function flowContentHash(yaml, env) {
 }
 
 // Archy lægger versionen i filnavnet: "Mit Flow_v16-0.yaml" → 16
+// Versionsudligning: hver publicering i Genesys giver én ny udgave, og tælleren
+// er pr. org. Efter en forfremmelse står målet derfor typisk lavere end kilden
+// (dev v10 → test v3). Vil man have samme nummer begge steder, publiceres målet
+// det antal ekstra gange der mangler. Ét antal pr. forfremmelse, og aldrig ned:
+// står målet højere, kan det ikke rettes ved at publicere.
+const MAX_ALIGN_PUBLISHES = 25;
+function alignmentPlan(sourceVersion, targetVersion) {
+  const major = v => parseInt(String(v ?? '').split('.')[0], 10);
+  const s = major(sourceVersion), t = major(targetVersion);
+  if (!Number.isFinite(s) || !Number.isFinite(t)) return { extra: 0, reason: 'unknown' };
+  if (t >= s) return { extra: 0, reason: t > s ? 'target_ahead' : 'equal', source: s, target: t };
+  if (s - t > MAX_ALIGN_PUBLISHES) return { extra: 0, reason: 'too_many', needed: s - t, source: s, target: t };
+  return { extra: s - t, reason: 'ok', source: s, target: t };
+}
+
 function versionFromFileName(fileName) {
   const m = String(fileName).match(/_v(\d+)-\d+\.yaml$/i);
   return m ? parseInt(m[1], 10) : null;
@@ -6018,7 +6311,37 @@ app.post('/api/migrate/commit', async (req, res) => {
     const yamlType = (importedYaml.match(/^(\w+):/m) || [])[1] || null;
     const [sourceOrgId, targetOrgId] = await Promise.all([getOrgId(source), getOrgId(target)]);
     // Slå målet op under DETS navn — ellers finder vi intet og noterer null.
-    const pub = await getFlowPublishInfo(target, nyName, yamlType).catch(() => null);
+    let pub = await getFlowPublishInfo(target, nyName, yamlType).catch(() => null);
+
+    // Versionsudligning: publicér det importerede flow igen, til målets nummer
+    // matcher kildens. Samme indhold hver gang — kun tælleren flytter sig.
+    let aligned = null;
+    if (req.body.alignVersion && cmd === 'publish') {
+      const plan = alignmentPlan(versionFromFileName(path.basename(resolved)), pub?.version);
+      aligned = { ...plan, done: 0 };
+      if (plan.extra > 0) {
+        const alignFile = path.join(path.dirname(resolved), `.align-${sanitizeName(target.name)}-${path.basename(resolved)}`);
+        fs.writeFileSync(alignFile, importYaml, 'utf8');
+        try {
+          for (let k = 1; k <= plan.extra; k++) {
+            await runArchy(`publish --file ${archyArg(alignFile, 'File path')}`, target);
+            aligned.done = k;
+          }
+        } catch (e) {
+          addLog('ERROR', `Version alignment of "${nyName}" stopped after ${aligned.done} of ${plan.extra} publishes: ${e.message}`, target.name, 'MIGRATE');
+          aligned.error = e.message;
+        } finally {
+          try { fs.unlinkSync(alignFile); } catch (_) {}
+        }
+        pub = await getFlowPublishInfo(target, nyName, yamlType).catch(() => pub);
+        addLog(aligned.error ? 'WARN' : 'SUCCESS',
+          `Version aligned: "${nyName}" in ${target.name} published ${aligned.done} extra time(s) → v${pub?.version || '?'} (source v${plan.source})`,
+          target.name, 'MIGRATE');
+      } else if (plan.reason !== 'equal') {
+        addLog('INFO', `Version not aligned for "${nyName}" (${plan.reason}${plan.needed ? ', ' + plan.needed + ' needed' : ''})`, target.name, 'MIGRATE');
+      }
+      aligned.version = pub?.version || null;
+    }
 
     recordManifest({
       ts: new Date().toISOString(), kind: 'migration',
@@ -6079,7 +6402,7 @@ app.post('/api/migrate/commit', async (req, res) => {
     res.json({ ok: true, fileName: path.basename(resolved), output: out, yaml: fs.readFileSync(resolved, 'utf8'),
       targetName: nyName, releaseRef: release ? releaseRef(release) : null,
       diff: release ? { added: release.diff.added, removed: release.diff.removed, noPrevious: release.diff.noPrevious } : null,
-      dependents });
+      dependents, aligned });
   } catch (e) {
     let msg = e.message || '';
     // "create" fejler når flowet allerede findes i mål-org'en. Archy foreslår
@@ -6320,7 +6643,7 @@ if (require.main === module) {
 module.exports = {
   app, tokenStore, getToken,
   // konventioner
-  STAGES, VERSION_SUFFIX,
+  STAGES, VERSION_SUFFIX, stageListError, alignmentPlan, MAX_ALIGN_PUBLISHES, prefixRenamePlan,
   // navne og versioner
   compareVersions, baseFlowName, versionSuffixOf, promotionName, versionFromFileName,
   isPipelineOrigin, promotionNameFrom, carriesVersionSuffix, prefixClash, prefixChangeImpact,
