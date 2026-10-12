@@ -2137,7 +2137,7 @@ app.post('/api/customers/:id/test', async (req, res) => {
         headers: { Authorization: `Bearer ${token}` }
       });
       name    = me.data.name;
-      orgName = me.data.organization?.name || '?';
+      orgName = me.data.organization?.name || tokenStore[customer.id]?.orgName || '?';
     } else {
       const org = await axios.get(`${apiBase}/api/v2/organizations/me`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -3622,6 +3622,7 @@ async function syncSetup(envId) {
       addLog('INFO', `Setup from the org applied to ${env.name}: ${applied.map(a => `${a.field} "${a.from}" → "${a.to}"`).join(', ')}`, env.name, 'MANIFEST');
   }
   const w = await writeSetupRow(env, row);
+  if (w.wrote) addLog('INFO', `Setup row written in ${manifestTableName(env)}${row ? ' (updated)' : ' (first write)'}`, env.name, 'MANIFEST');
   return { ok: true, applied, stagesAdded, wrote: !!w.wrote, pending: !w.ok, reason: w.reason || null };
 }
 

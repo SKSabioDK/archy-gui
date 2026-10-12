@@ -5,6 +5,19 @@
 
 ---
 
+### v1.48.3
+---
+**🇩🇰 Dansk**
+
+- **Opsætningsrækken kan ses i loggen.** Når *ArchyGUI_Setup* skrives i org'ens tabel, står det nu i systemloggen under MANIFEST (første skrivning eller opdatering). Før blev en vellykket skrivning ikke nævnt.
+- **Org-navnet vises ved 🔌 Test af PKCE-miljøer.** Der stod `org: ?`, når Genesys ikke gav navnet med; nu bruges det fra login'et.
+
+**🇬🇧 English**
+- **The setup row shows in the log:** writing *ArchyGUI_Setup* to the org's table is logged under MANIFEST (first write or update).
+- **The org name shows for PKCE environments in 🔌 Test:** it said `org: ?` when Genesys left the name out; it now comes from the login.
+
+---
+
 ### v1.48.2
 ---
 **🇩🇰 Dansk**
