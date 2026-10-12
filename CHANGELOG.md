@@ -5,6 +5,21 @@
 
 ---
 
+### v1.48.9
+---
+**🇩🇰 Dansk**
+
+- **Samme standard på alle pc'er.** Kortet regnede et miljø for «gennemgået», så snart org'en kendte det, mens guiden selv viste 0 afkrydsede punkter — de to var uenige. Nu går begge kun ud fra guidens punkter: et miljø er gennemgået, når rettigheder, klient, division og manifest er kontrolleret mod org'en (eller afkrydset). Så ser alle pc'er, der forbinder til samme kunde, det samme, og man kan ikke springe en opsætning over uden at vælge *Vis ikke igen*.
+- **Guiden kører Tjek alt, når den åbnes**, og igen når et login lykkes. Det, der kan kontrolleres mod org'en, bliver krydset af uden at man skal trykke; det, der kræver login, siger det.
+- **Det sidste punkt, *Få flows ind i miljøet*, er valgfrit** og tæller ikke med i «x af y».
+
+**🇬🇧 English**
+- **The same standard on every PC:** the card counted an environment as «gone through» as soon as the org knew it, while the guide itself showed 0 ticked steps — the two disagreed. Both now go only by the guide's steps: an environment is gone through when permissions, client, division and manifest have been verified against the org (or ticked). So every PC that connects to the same customer sees the same, and a setup cannot be skipped without choosing *Do not show again*.
+- **The guide runs Check all when it opens,** and again when a login succeeds. What can be verified against the org is ticked without pressing anything; what needs a login says so.
+- **The last step, *Get flows into the environment*, is optional** and does not count towards «x of y».
+
+---
+
 ### v1.48.8
 ---
 **🇩🇰 Dansk**

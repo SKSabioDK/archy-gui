@@ -533,7 +533,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.48.8 · Archy GUI</div>
+    <div class="version" id="app-version">v1.48.9 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -2008,6 +2008,7 @@ const LANGS = {
     pfx_unreadable:'Org\'en kunne ikke læses, så navnene kan ikke ændres med: {err}\n\nGem præfikset alligevel? Flows med det gamle præfiks bliver så stående som deres egne rækker på tavlen.',
     gd_title:'Opsætningsguide — {env}',
     gd_open_guide:'📋 Opsætningsguide',
+    gd_optional:'(valgfrit)',
     tip_btn_guide:'Opsætningsguide: en tjekliste i et nyt vindue til at sætte org\'en og miljøet rigtigt op',
     btn_guide:'📋 Opsætning',
     card_guide_todo:'Opsætningsguiden er ikke gennemgået ({n} af {m})',
@@ -2851,6 +2852,7 @@ const LANGS = {
     pfx_unreadable:'The org could not be read, so the names cannot be changed along: {err}\n\nSave the prefix anyway? Flows with the old prefix then remain as their own rows on the board.',
     gd_title:'Setup guide — {env}',
     gd_open_guide:'📋 Setup guide',
+    gd_optional:'(optional)',
     tip_btn_guide:'Setup guide: a checklist in a new window for setting up the org and the environment correctly',
     btn_guide:'📋 Setup',
     card_guide_todo:'The setup guide has not been gone through ({n} of {m})',
@@ -3694,6 +3696,7 @@ const LANGS = {
     pfx_unreadable:'L\'org n\'a pas pu être lue, les noms ne peuvent donc pas suivre : {err}\n\nEnregistrer le préfixe quand même ? Les flows avec l\'ancien préfixe resteront alors comme lignes à part sur le tableau.',
     gd_title:'Guide de configuration — {env}',
     gd_open_guide:'📋 Guide de configuration',
+    gd_optional:'(facultatif)',
     tip_btn_guide:'Guide de configuration : une liste dans une nouvelle fenêtre pour bien configurer l\'org et l\'environnement',
     btn_guide:'📋 Configuration',
     card_guide_todo:'Le guide de configuration n\'a pas été parcouru ({n} sur {m})',
@@ -4537,6 +4540,7 @@ const LANGS = {
     pfx_unreadable:'De org kon niet worden gelezen, dus de namen kunnen niet mee veranderen: {err}\n\nHet voorvoegsel toch opslaan? Flows met het oude voorvoegsel blijven dan als eigen rijen op het bord staan.',
     gd_title:'Installatiegids — {env}',
     gd_open_guide:'📋 Installatiegids',
+    gd_optional:'(optioneel)',
     tip_btn_guide:'Installatiegids: een checklist in een nieuw venster om de org en de omgeving goed in te richten',
     btn_guide:'📋 Inrichting',
     card_guide_todo:'De installatiegids is niet doorlopen ({n} van {m})',
@@ -5380,6 +5384,7 @@ const LANGS = {
     pfx_unreadable:'No se pudo leer la org, así que los nombres no pueden cambiar con él: {err}\n\n¿Guardar el prefijo de todos modos? Los flows con el prefijo antiguo quedarán como filas propias en el tablero.',
     gd_title:'Guía de configuración — {env}',
     gd_open_guide:'📋 Guía de configuración',
+    gd_optional:'(opcional)',
     tip_btn_guide:'Guía de configuración: una lista en una ventana nueva para configurar bien la org y el entorno',
     btn_guide:'📋 Configuración',
     card_guide_todo:'La guía de configuración no se ha completado ({n} de {m})',
@@ -5881,7 +5886,7 @@ window.onload = async () => {
   fillStages();
   await refreshCustomers();
   const guideId = new URLSearchParams(location.search).get('guide');
-  if (guideId) { document.body.classList.add('guide-mode'); renderGuide(guideId); return; }
+  if (guideId) { document.body.classList.add('guide-mode'); renderGuide(guideId); guideCheckAll(); return; }
   // Er der sat grupper op, er pipelinen det man arbejder i — så starter vi dér,
   // med den kunde man sidst arbejdede med valgt. Tavlen hentes ikke af sig
   // selv: det kalder alle gruppens orgs, og et OAuth-miljø ville bede om login.
@@ -10151,14 +10156,14 @@ async function changePrefixGuided(id, gammel, nyt) {
 // op. Punkter programmet selv kan kontrollere, har en Tjek-knap; resten krydser
 // man af. Afkrydsningerne huskes pr. miljø i denne browser.
 // ── Er guiden gennemgået? ─────────────────────────────────────────────────────
-// Afkrydsningerne ligger i browseren (guideState). Et miljø regnes også for
-// gennemgået, når org'en allerede kender det: koblet til sin tabel (setupAt) —
-// eller, for et miljø uden trin, når det er valgt som kun import/eksport.
+// Ja, når alle obligatoriske punkter er kontrolleret og krydset af i guiden — ikke
+// fordi org'en kender miljøet. Så ser alle pc'er det samme, og et miljø kan ikke
+// regnes for sat rigtigt op uden at rettigheder, klient, division og manifest er
+// tjekket mod org'en. Guiden kører Tjek alt, når den åbnes.
 function guideInfo(env) {
-  const st = guideState(env.id), steps = guideSteps(env);
-  const ticked = steps.filter(x => st[x.k]).length;
-  const linked = env.stage ? (!!env.setupAt && !env.setupPending) : !!st.loose;
-  return { done: !!st.dismissed || ticked === steps.length || linked, ticked, total: steps.length };
+  const st = guideState(env.id), krav = guideSteps(env).filter(x => !x.optional);
+  const ticked = krav.filter(x => st[x.k]).length;
+  return { done: !!st.dismissed || ticked === krav.length, ticked, total: krav.length };
 }
 
 function guideCardLine(c) {
@@ -10234,7 +10239,7 @@ function guideSteps(env) {
     env.division && { k: 'division', auto: true },
     pipeline && { k: 'manifest', auto: true },
     pipeline && prod && { k: 'deploy', auto: true },
-    { k: 'flows', auto: false },
+    { k: 'flows', auto: false, optional: true },
   ].filter(Boolean);
 }
 
@@ -10247,7 +10252,8 @@ function renderGuide(id) {
   document.title = t('gd_title').replace('{env}', env.name);
   const st = guideState(id);
   const steps = guideSteps(env);
-  const doneCount = steps.filter(x => st[x.k]).length;
+  const krav = steps.filter(x => !x.optional);
+  const doneCount = krav.filter(x => st[x.k]).length;
   const oauth = env.authType === 'oauth';
   const permHtml = (K?.permissionChecks || []).filter(c => !(c.credsOnly && oauth))
     .map(c => `<div>• ${escapeHtml(t('perm_area_' + c.area))}: <span style="font-family:var(--mono)">${c.perms.map(escapeHtml).join(', ')}</span></div>`).join('');
@@ -10282,17 +10288,17 @@ function renderGuide(id) {
     <div style="font-size:13px;margin-bottom:14px">${escapeHtml(t('gd_intro'))}</div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
       <button class="btn btn-primary btn-sm" onclick="guideCheckAll()">${t('gd_check_all')}</button>
-      <span style="font-size:12px;color:${doneCount === steps.length ? 'var(--green)' : 'var(--muted)'}">${escapeHtml(t('gd_progress').replace('{n}', doneCount).replace('{m}', steps.length))}</span>
+      <span style="font-size:12px;color:${doneCount === krav.length ? 'var(--green)' : 'var(--muted)'}">${escapeHtml(t('gd_progress').replace('{n}', doneCount).replace('{m}', krav.length))}</span>
     </div>
     ${steps.map((x, i) => `<div class="gd-step${st[x.k] ? ' done' : ''}">
       <div class="gd-head">
         <input type="checkbox" ${st[x.k] ? 'checked' : ''} onchange="guideToggle('${x.k}', this.checked)" />
-        <span class="gd-title">${i + 1}. ${escapeHtml(t('gd_' + x.k + '_title'))}</span>
+        <span class="gd-title">${i + 1}. ${escapeHtml(t('gd_' + x.k + '_title'))}${x.optional ? ` <span style="font-weight:400;color:var(--muted);font-size:12px">${escapeHtml(t('gd_optional'))}</span>` : ''}</span>
         ${buttonsFor(x)}
       </div>
       <div class="gd-body">${body(x.k)}</div>${res(x.k)}</div>
       `).join('')}
-    ${doneCount === steps.length ? `<div style="margin-top:14px;font-weight:700;color:var(--green)">${escapeHtml(t('gd_done_all'))}</div>
+    ${doneCount === krav.length ? `<div style="margin-top:14px;font-weight:700;color:var(--green)">${escapeHtml(t('gd_done_all'))}</div>
     ` : ''}
     <div style="margin-top:18px"><button class="btn btn-secondary btn-sm" onclick="window.close()">${t('gd_close')}</button></div>`;
 }
@@ -10405,7 +10411,7 @@ async function guideWatchLogin(id) {
   for (let i = 0; i < 90; i++) {
     await new Promise(r => setTimeout(r, 2000));
     const s = await fetch('/api/auth/status/' + encodeURIComponent(id)).then(x => x.json()).catch(() => ({}));
-    if (s.authenticated) { await guideCheck('login'); await guideCheck('discover'); return; }
+    if (s.authenticated) { await reloadCustomersQuiet(); await guideCheckAll(); return; }
   }
 }
 

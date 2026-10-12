@@ -24,3 +24,10 @@ test('guidens tekster findes på alle fem sprog', () => {
     assert.equal(n, 5, `${k} skal stå på da, en, fr, nl og es — fandt ${n}`);
   }
 });
+
+test('kortet regner ikke et miljø for gennemgået fordi org\'en kender det', () => {
+  const fn = HTML.slice(HTML.indexOf('function guideInfo('), HTML.indexOf('function guideCardLine('));
+  assert.ok(fn.length > 100, 'fandt ikke guideInfo');
+  assert.ok(!fn.includes('setupAt'), 'guideInfo må kun gå ud fra guidens punkter — ellers ser pc\'erne forskelligt');
+  assert.ok(fn.includes('optional'), 'det valgfrie punkt skal ikke tælle med');
+});
