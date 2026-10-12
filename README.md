@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.47.5
+# Archy GUI — Flow Manager · v1.48.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -11,8 +11,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.47.5**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.47.5**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.48.0**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.48.0**.
 
 ---
 
@@ -69,6 +69,10 @@ Nye miljøer oprettes altid med **🌐 OAuth (PKCE)**: du logger ind i Genesys s
 **🔌 Test** kontrollerer forbindelsen og **rettighederne**. Programmet slår miljøets faktiske rettigheder op — for en person (PKCE) direkte, for client credentials via klientens roller — og holder dem op mod hver funktion: læse, importere og publicere flows, Archy, datatabeller og manifest, Data Actions, prompts, divisioner, køer, brugere og afhængigheder. Kortet viser en liste med ✓ og ✗ og de rettigheder der mangler. Kan klientens roller ikke læses (kræver `oauth:client:view` og `authorization:role:view`), prøves læseadgangen af i stedet, og det der ikke kan prøves uden at skrive, står som *kunne ikke afgøres*. Fejler forbindelsen, står fejlen på kortet.
 
 **📋 Opsætningsguide.** Knappen 📋 på et miljøkort — og et link når et nyt miljø er oprettet — åbner en tjekliste i sit eget vindue, som man kan have stående ved siden af Genesys: opret OAuth-klienten (grant type, PKCE), redirect-URI, miljøets felter her, log ind, rettighederne (listen over hvad programmet bruger), divisionen, manifest-tabellen og — på prod — deploy-retten. Punkter med **Tjek** kontrollerer programmet selv mod org'en; **▶ Tjek alt** kører dem alle. Resten krydser man af, og afkrydsningerne huskes pr. miljø i browseren.
+
+**🔎 Find det der allerede er sat op.** Efter login ser guiden efter ArchyGUI's egne tabeller i org'en. Er miljøet sat op fra en anden pc, står det dér — med navn, kunde, gruppe, trin og præfiks — og **Brug dette** tager det i brug uden at skrive noget. **Opret nyt ud fra dette** laver et nyt miljø i samme org med den fundne opsætning som skabelon; du vælger trin og præfiks, og præfikser der allerede bruges, afvises. Er der intet i org'en, vælger du mellem **Kun import/eksport** og **Start en pipeline**. Opsætningen nævner også pipelinens miljøer i **andre orgs** — fx prod — og de kan tilføjes herfra med ét klik; org-id'et sættes med det samme, så login'et afvises hvis man vælger en forkert org.
+
+**Kun import/eksport.** Et miljø uden trin er ikke med i nogen pipeline. Det kan importere og eksportere flows som alle andre, men ArchyGUI opretter ingen tabel og skriver intet i dets org.
 
 <img src="docs/setup-guide.png" alt="Opsætningsguiden for Sabio APS" width="560">
 
@@ -203,7 +207,7 @@ Samme tilbud kommer når et modul **publiceres i Flow Browser**, **importeres me
 
 **Vagter, håndhævet på serveren:** migrering på tværs af grupper er spærret; prod kræver en bevidst bekræftelse **og et personligt login med rettigheden** (se Sikkerhed); kilden skal være publiceret; kilde og mål må ikke være samme miljø.
 
-**Delt manifest.** Hvert miljø kan have en **Genesys Data Table** i sin org — den samme slags tabel man ser under *Architect → Data Tables* — der hedder `ArchyGUI_Manifest`, med præfiks hvis miljøet har et. Den beskriver **sig selv**: hvad org'en indeholder, hvornår det kom hertil og hvem der gjorde det. Fordi hver org kun skriver om sig selv, kan to personer på hver sin pc aldrig sige hver sit om samme celle. Tabellen oprettes med knappen under *Delt manifest* på Pipeline, aldrig af sig selv, og kræver rettigheden `architect:datatable:add`. Uden tabellen falder værktøjet tilbage på en lokal fil, som ikke er delt.
+**Delt manifest.** Hvert miljø kan have en **Genesys Data Table** i sin org — den samme slags tabel man ser under *Architect → Data Tables* — der hedder `ArchyGUI_Manifest`, med præfiks hvis miljøet har et. Den beskriver **sig selv**: hvad org'en indeholder, hvornår det kom hertil og hvem der gjorde det. Fordi hver org kun skriver om sig selv, kan to personer på hver sin pc aldrig sige hver sit om samme celle. Tabellen oprettes med knappen under *Delt manifest* på Pipeline eller fra opsætningsguiden, aldrig af sig selv, og kræver rettigheden `architect:datatable:add`. Uden tabellen falder værktøjet tilbage på en lokal fil, som ikke er delt.
 
 Tabellen har to kolonner:
 
@@ -240,6 +244,12 @@ Tabellen har to kolonner:
 > **Ét manifest pr. miljø, ikke pr. org.** Deler flere virtuelle miljøer den samme org, skal hvert af dem have sin egen tabel: `DEV_ArchyGUI_Manifest`, `TEST_ArchyGUI_Manifest`, og `ArchyGUI_Manifest` for prod.
 >
 > Rækkenøglen er nemlig **grundnavnet uden præfiks** — `WeekNumber|INBOUNDCALL` — så tavlen kan parre `DEV_WeekNumber` og `WeekNumber` som én række. I én fælles tabel ville de to miljøer derfor skrive på samme nøgle og overskrive hinanden, og begge celler ville vise det samme.
+
+**Opsætningsrækken.** Ud over én række pr. flow har tabellen én række med nøglen `ArchyGUI_Setup`, der beskriver miljøet selv: navn, kunde, gruppe, trin, præfiks, farve, division, deploy-krav, region, org-id, et fast `pipelineId`, kundens trinliste, de præfikser org'en bruger, og pipelinens andre miljøer — også dem i andre orgs. Det er den rækken som en ny pc finder miljøerne med. Den indeholder **ingen hemmeligheder**: ingen secret og intet token, og Client ID kun for PKCE-klienter. Den skrives automatisk, når tabellen oprettes, når et miljø oprettes, rettes eller slettes i pipelinen, og første gang et ældre miljø skriver til sit manifest — i alle pipelinens orgs, men i prod kun med et login der må deploye; ellers venter den, og kortet viser *⚠ Opsætningen er ikke skrevet til org'en*.
+
+**Org'en vinder.** Ved login, 🔌 Test og når Pipeline åbnes, hentes org'ens opsætning ind, og det der er ændret, vises én gang øverst på siden. En rettelse her på pc'en skrives derfor straks til org'en. Har nogen ændret org'ens række, mens en rettelse herfra ventede, vælger man i guiden hvem der har ret. **Prod-vagten løsnes aldrig udefra:** org'en kan ikke sætte et prod-miljø til et andet trin eller ændre dets deploy-krav — det bliver en uenighed, og at tage org'ens kræver prod-login. Trin org'en har og pc'en mangler (fx staging), lægges til listen; der fjernes aldrig nogen. Et miljø uden præfiks tager aldrig flows med et præfiks org'en bruger — heller ikke på en pc hvor dev og test ikke er tilføjet.
+
+**Genopbyg.** Er tabellen slettet, opretter **Genopbyg** (under *Delt manifest* og i guiden) den igen, skriver opsætningen og en række pr. flow i miljøet. Rækker der står, røres ikke. Hvad org'en indeholder nu, kan altid læses i Genesys; historikken — hvem forfremmede hvad hvorfra — tages fra denne pc's lokale filer, hvor den findes. Rækker uden historik er et nulpunkt, og svaret siger hvor mange der fik historik med.
 
 #### 🔀 På tværs af kunder
 Viser de flows der findes hos **flere kunder** — fx det samme common module i dev, uat og prod. Hver kunde vises med sin version, publiceringstidspunkt og om flowet er aktivt.
@@ -412,7 +422,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-239 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+271 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -475,6 +485,10 @@ New environments are always created with **🌐 OAuth (PKCE)**: you log in to Ge
 **🔌 Test** checks the connection and the **permissions**. The app looks up the environment's actual permissions — directly for a person (PKCE), via the client's roles for client credentials — and holds them against each feature: reading, importing and publishing flows, Archy, data tables and manifest, Data Actions, prompts, divisions, queues, users and dependencies. The card shows a ✓/✗ list with the missing permissions. If the client's roles cannot be read (needs `oauth:client:view` and `authorization:role:view`), read access is tried instead, and what cannot be tried without writing is shown as *could not be verified*. If the connection fails, the error is shown on the card.
 
 **📋 Setup guide.** The 📋 button on an environment card — and a link after a new environment is created — opens a checklist in its own window, to keep beside Genesys: create the OAuth client (grant type, PKCE), redirect URI, the environment's fields here, log in, permissions (the list of what the app uses), division, manifest table and — on prod — deploy rights. Items with **Check** are verified by the app against the org; **▶ Check all** runs them all. The rest you tick off, and the ticks are remembered per environment in the browser.
+
+**🔎 Find what is already set up.** After login the guide looks for ArchyGUI's own tables in the org. If the environment was set up from another PC, it is there — with name, customer, group, stage and prefix — and **Use this** takes it into use without writing anything. **Create new from this** makes a new environment in the same org with that setup as a template; you choose stage and prefix, and prefixes already in use are refused. If the org has nothing, you choose between **Import/export only** and **Start a pipeline**. The setup also lists the pipeline's environments in **other orgs** — prod, say — and they can be added from here in one click; the org id is set right away, so the login is refused if the wrong org is picked.
+
+**Import/export only.** An environment without a stage is not part of any pipeline. It imports and exports flows like any other, but ArchyGUI creates no table and writes nothing in its org.
 
 <img src="docs/setup-guide.png" alt="The setup guide for Sabio APS" width="560">
 
@@ -601,7 +615,7 @@ The same offer comes when a module is **published in Flow Browser**, **imported 
 
 **Guards, enforced on the server:** migrating across groups is blocked; prod requires a deliberate confirmation **and a personal login with the permission** (see Security); the source must be published; source and target cannot be the same environment.
 
-**Shared manifest.** Each environment can have a **Genesys Data Table** in its org — the same kind of table you see under *Architect → Data Tables* — named `ArchyGUI_Manifest`, prefixed if the environment has a prefix. It describes **itself**: what the org holds, when it arrived, and who did it. Because each org only writes about itself, two people on different PCs can never disagree about the same cell. The table is created with the button under *Shared manifest* on Pipeline, never on its own, and needs the permission `architect:datatable:add`. Without it the tool falls back on a local file that is not shared.
+**Shared manifest.** Each environment can have a **Genesys Data Table** in its org — the same kind of table you see under *Architect → Data Tables* — named `ArchyGUI_Manifest`, prefixed if the environment has a prefix. It describes **itself**: what the org holds, when it arrived, and who did it. Because each org only writes about itself, two people on different PCs can never disagree about the same cell. The table is created with the button under *Shared manifest* on Pipeline or from the setup guide, never on its own, and needs the permission `architect:datatable:add`. Without it the tool falls back on a local file that is not shared.
 
 The table has two columns:
 
@@ -638,6 +652,12 @@ One row per flow. `Data` for `UAT_Ordreflow` looks like this:
 > **One manifest per environment, not per org.** If several virtual environments share one org, each needs its own table: `DEV_ArchyGUI_Manifest`, `TEST_ArchyGUI_Manifest`, and `ArchyGUI_Manifest` for prod.
 >
 > The row key is the **base name without prefix** — `WeekNumber|INBOUNDCALL` — so the board can pair `DEV_WeekNumber` and `WeekNumber` as one row. In a single shared table the two environments would therefore write to the same key and overwrite each other, and both cells would show the same thing.
+
+**The setup row.** Besides one row per flow, the table has one row keyed `ArchyGUI_Setup` describing the environment itself: name, customer, group, stage, prefix, colour, division, deploy requirements, region, org id, a fixed `pipelineId`, the customer's stage list, the prefixes the org uses, and the pipeline's other environments — including those in other orgs. That row is how a new PC finds the environments. It holds **no secrets**: no secret, no token, and a Client ID only for PKCE clients. It is written automatically when the table is created, when an environment in the pipeline is created, changed or deleted, and the first time an older environment writes to its manifest — in every org of the pipeline, but in prod only with a login allowed to deploy; otherwise it waits, and the card shows *⚠ The setup is not written to the org*.
+
+**The org wins.** At login, 🔌 Test and when Pipeline opens, the org's setup is read in, and what changed is shown once at the top of the page. A change made on this PC is therefore written to the org straight away. If someone changed the org's row while a change from here was waiting, you choose in the guide who is right. **The prod guard is never loosened from outside:** the org cannot move a prod environment to another stage or change its deploy requirements — that becomes a disagreement, and taking the org's version needs a prod login. Stages the org has and the PC lacks (e.g. staging) are added to the list; none are ever removed. An environment without a prefix never takes flows carrying a prefix the org uses — not even on a PC where dev and test have not been added.
+
+**Rebuild.** If the table was deleted, **Rebuild** (under *Shared manifest* and in the guide) creates it again and writes the setup and one row per flow in the environment. Rows that exist are left alone. What the org holds now can always be read from Genesys; the history — who promoted what from where — is taken from this PC's local files where it exists. Rows without history are a baseline, and the result says how many got history.
 
 #### 🔀 Across customers
 Lists the flows that exist at **more than one customer** — for example the same common module in dev, uat and prod. Each customer is shown with its version, publish time and whether the flow is active.
@@ -810,7 +830,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-239 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+271 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 

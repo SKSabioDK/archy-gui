@@ -107,12 +107,28 @@ const SKRIVER_IKKE_TIL_ORG = new Set([
   '/api/logs/clear', '/api/files/cleanup'
 ]);
 const TJEKKER_SELV = ['/api/releases/rollback', '/api/releases/note'];
+// Opsætningsrækken skrives gennem writeSetupRow, som selv spørger prod-vagten.
+// Ruterne kan ikke stå foran vagten: miljøet de handler om, er ikke altid det
+// der skrives i (søskende i andre orgs), og læsningen skal virke uden login.
+const OPSAETNING = ['/api/setup/discover', '/api/setup/adopt', '/api/setup/add-sibling',
+                    '/api/setup/sync', '/api/setup/resolve'];
 
 test('hver skrivende rute står foran vagten', () => {
   const ruter = [...SERVER.matchAll(/app\.(post|put|delete|patch)\('([^']+)'/g)].map(m => m[2]);
-  const glemt = ruter.filter(r => !s.PROD_WRITE_ROUTES[r] && !SKRIVER_IKKE_TIL_ORG.has(r) && !TJEKKER_SELV.includes(r));
+  const glemt = ruter.filter(r => !s.PROD_WRITE_ROUTES[r] && !SKRIVER_IKKE_TIL_ORG.has(r) && !TJEKKER_SELV.includes(r) && !OPSAETNING.includes(r));
   assert.deepEqual(glemt, [], 'nye ruter — skriver de til en org, skal de i PROD_WRITE_ROUTES:\n  ' + glemt.join('\n  '));
   for (const r of Object.keys(s.PROD_WRITE_ROUTES)) assert.ok(ruter.includes(r), `${r} findes ikke længere`);
+});
+
+test('opsætningsrækken spørger prod-vagten før den skrives', () => {
+  const fn = SERVER.slice(SERVER.indexOf('async function writeSetupRow('), SERVER.indexOf('async function readSetupRow('));
+  assert.ok(fn.length > 100, 'writeSetupRow findes ikke');
+  assert.ok(fn.indexOf('prodWriteBlock(') !== -1 && fn.indexOf('prodWriteBlock(') < fn.indexOf('putOrgManifestRow('),
+    'writeSetupRow skal spørge vagten før den skriver');
+  // Den nye tabel fra opdagelsen er også en skrivning
+  const adopt = SERVER.slice(SERVER.indexOf("app.post('/api/setup/adopt'"), SERVER.indexOf("app.post('/api/setup/add-sibling'"));
+  assert.ok(adopt.indexOf('prodWriteBlock(') !== -1 && adopt.indexOf('prodWriteBlock(') < adopt.indexOf('createOrgManifestTable('));
+  for (const r of OPSAETNING) assert.ok(SERVER.includes(`app.post('${r}'`), `${r} findes ikke længere`);
 });
 
 test('rollback og noter tjekker selv', () => {

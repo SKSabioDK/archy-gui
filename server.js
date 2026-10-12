@@ -449,11 +449,18 @@ function rememberOrgId(customer, orgId) {
 // Hører flownavnet til dette miljø? Et præfikset miljø tager kun sine egne.
 // Prod har intet præfiks og tager alt DER IKKE bærer et søskendepræfiks —
 // ellers ville prod se hele orgen, dev og test inklusive.
+//
+// Søskendene er dem der er tilføjet på DENNE pc. Er UAT uden præfiks tilføjet
+// alene, kendte den ikke DEV_ og TEST_, og så var "DEV_Betaling" UAT's flow.
+// takenPrefixes er de præfikser org'en selv har vist sig at bruge (fundet ved
+// opdagelsen og husket i opsætningsrækken), så de holdes ude uanset hvad der
+// er tilføjet lokalt.
 function belongsToEnv(name, env, siblings) {
   const p = prefixOf(env);
   const n = String(name || '');
   if (p) return n.startsWith(p);
-  return !siblings.some(s => s !== env && prefixOf(s) && n.startsWith(prefixOf(s)));
+  const andre = [...siblings.filter(s => s !== env).map(prefixOf), ...(env.takenPrefixes || [])];
+  return !andre.some(x => x && n.startsWith(x));
 }
 
 function stripEnvPrefix(name, env) {
@@ -1455,8 +1462,14 @@ app.post('/api/prefix/apply', async (req, res) => {
   const kunder = loadCustomers();
   const i = kunder.findIndex(c => c.id === env.id);
   kunder[i] = { ...kunder[i], prefix: newPrefix };
+  // Miljøer uden præfiks i samme org husker de præfikser org'en bruger. Det
+  // gamle er væk nu, det nye er kommet til.
+  for (const c of kunder)
+    if (c.id !== env.id && !prefixOf(c) && orgKeyOf(c) === orgKeyOf(env) && Array.isArray(c.takenPrefixes))
+      c.takenPrefixes = [...new Set([...c.takenPrefixes.filter(p => p !== plan.oldPrefix), newPrefix].filter(Boolean))].sort();
   saveCustomers(kunder);
   delete _mfTableCache[env.id];
+  afterEnvChange(env, kunder[i], 'prefix changed');
   addLog('SUCCESS', `Prefix of ${env.name} is now "${newPrefix}" — ${udfoert.length} item(s) renamed`, env.name, 'CUSTOMER');
   res.json({ ok: true, prefix: newPrefix, results: resultater });
 });
@@ -1524,7 +1537,8 @@ app.post('/api/customers', (req, res) => {
   customers.push(customer);
   saveCustomers(customers);
   addLog('INFO', `Customer created: ${name} (region: ${region}, auth: ${customer.authType})`, name, 'CUSTOMER');
-  res.json({ ...customer, clientSecret: '••••••••' });
+  afterEnvChange(null, customer, 'environment created');
+  res.json(masked(loadCustomers().find(c => c.id === customer.id) || customer));
 });
 
 app.put('/api/customers/:id', (req, res) => {
@@ -1593,7 +1607,10 @@ app.put('/api/customers/:id', (req, res) => {
     moveCustomerFolder(before.name, updated.name);
   }
   addLog('INFO', `Customer updated: ${updated.name}`, updated.name, 'CUSTOMER');
-  res.json({ ...updated, clientSecret: '••••••••' });
+  // Org'en vinder ved næste synkronisering — så en rettelse her skal skrives
+  // til org'en med det samme, og søskendenes lister med.
+  afterEnvChange(before, updated, 'environment changed');
+  res.json(masked(loadCustomers().find(c => c.id === updated.id) || updated));
 });
 
 app.delete('/api/customers/:id', (req, res) => {
@@ -1601,6 +1618,9 @@ app.delete('/api/customers/:id', (req, res) => {
   const customer = customers.find(c => c.id === req.params.id);
   saveCustomers(customers.filter(c => c.id !== req.params.id));
   addLog('WARN', `Customer deleted: ${customer?.name || req.params.id}`, customer?.name, 'CUSTOMER');
+  // Tabellen i org'en bliver stående — miljøet er kun fjernet fra denne pc.
+  // Men søskendene skal ikke længere nævne det.
+  if (customer) afterEnvChange(customer, null, 'environment deleted');
   res.json({ ok: true });
 });
 
@@ -1626,6 +1646,7 @@ const PROD_WRITE_ROUTES = {
   '/api/flows/publish':           'customerId',
   '/api/flows/republish':         'envId',
   '/api/manifest/create':         'envId',
+  '/api/manifest/rebuild':        'envId',
   '/api/flows/baseline':          'targetId',
   '/api/migrate/prepare':         'targetId',
   '/api/migrate/commit':          'targetId',
@@ -3070,19 +3091,34 @@ function demoManifestWrite(envId, key, data) {
   saveDemo(d);
 }
 
+// Kun flowrækker. Opsætningsrækken (SETUP_KEY) står i samme tabel, men den er
+// ikke et flow — tavlen, release-historikken og status må aldrig se den.
+// Et flows nøgle er altid "grundnavn|TYPE", så en nøgle uden "|" er reserveret.
+const isFlowRowKey = k => String(k || '').includes('|');
+const onlyFlowRows = rows => Object.fromEntries(Object.entries(rows || {}).filter(([k]) => isFlowRowKey(k)));
+
 async function readOrgManifest(customer) {
-  if (isDemo(customer)) return demoManifest(customer.id);
+  if (isDemo(customer)) return onlyFlowRows(demoManifest(customer.id));
   const tableId = await findOrgManifestTable(customer);
   if (!tableId) return null;                       // ingen tabel = ikke taget i brug
   const { token, apiBase } = await getToken(customer);
   const out = {};
   let page = 1;
   for (;;) {
-    const r = await axios.get(`${apiBase}/api/v2/flows/datatables/${tableId}/rows`, {
-      headers: { Authorization: `Bearer ${token}` },
-      params: { pageSize: 100, pageNumber: page, showbrief: false }
-    });
+    let r;
+    try {
+      r = await axios.get(`${apiBase}/api/v2/flows/datatables/${tableId}/rows`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { pageSize: 100, pageNumber: page, showbrief: false }
+      });
+    } catch (e) {
+      // Tabellens id huskes i fem minutter. Er den slettet i org'en imens, er
+      // svaret 404 — og så har miljøet ingen tabel, ikke en fejl.
+      if (e.response?.status === 404 && page === 1) { delete _mfTableCache[customer.id]; return null; }
+      throw e;
+    }
     for (const row of (r.data.entities || [])) {
+      if (!isFlowRowKey(row.key)) continue;
       try { out[row.key] = JSON.parse(row.Data || '{}'); }
       catch (_) { /* en række nogen har rettet i hånden — spring den over */ }
     }
@@ -3096,9 +3132,15 @@ async function readOrgManifestRow(customer, key) {
   if (isDemo(customer)) return demoManifest(customer.id)[key] || null;
   const tableId = await findOrgManifestTable(customer);
   if (!tableId) return undefined;
+  return readTableRow(customer, tableId, key);
+}
+
+// Én række i en bestemt tabel. Opdagelsen læser andre miljøers tabeller i
+// samme org — dem kender findOrgManifestTable ikke.
+async function readTableRow(customer, tableId, key) {
   const { token, apiBase } = await getToken(customer);
   try {
-    const r = await axios.get(`${apiBase}/api/v2/flows/datatables/${tableId}/rows/${encodeURIComponent(key)}`, {
+    const r = await axios.get(`${apiBase}/api/v2/flows/datatables/${encodeURIComponent(tableId)}/rows/${encodeURIComponent(key)}`, {
       headers: { Authorization: `Bearer ${token}` }, params: { showbrief: false }
     });
     try { return JSON.parse(r.data.Data || '{}'); } catch (_) { return null; }
@@ -3152,10 +3194,16 @@ async function writeOrgManifestRow(customer, flowName, flowType, data) {
 // én nøgle og blive læst under en anden.
 async function recordOrgManifest(source, target, flowName, flowType, info) {
   const write = async (env, data, hvad) => {
+    // Et løst miljø (intet trin) er ikke med i nogen pipeline. Dér skrives der
+    // aldrig — kunden har ikke bedt om en ArchyGUI-tabel i sin org.
+    if (!env || !stageOf(env)) return;
     try {
       const r = await writeOrgManifestRow(env, flowName, flowType, data);
       if (!r.ok && r.reason === 'no-table')
         addLog('WARN', `${env.name} has no manifest table — ${hvad} was not recorded. Create it from the Pipeline page.`, env.name, 'MANIFEST');
+      // Første manifest-skrivning på et miljø fra før opsætningsrækken fandtes:
+      // så skrives den også, i baggrunden.
+      else if (r.ok && !env.setupAt) setupInBackground([env.id], 'first manifest write');
     } catch (e) {
       addLog('ERROR', `Could not write the manifest in ${env.name}: ${describeApiError(e)}`, env.name, 'MANIFEST');
     }
@@ -3182,16 +3230,19 @@ app.get('/api/manifest/status', async (req, res) => {
     .sort((a, b) => stageOrder(a.stage) - stageOrder(b.stage));
   if (!envs.length) return res.status(404).json({ error: 'Ingen miljøer i den gruppe' });
   const out = [];
+  // Opsætningsrækken: skrevet og i trit, venter på at blive skrevet, eller
+  // aldrig skrevet fra denne pc.
+  const setupState = c => c.setupPending ? 'pending' : c.setupAt ? 'ok' : 'none';
   for (const c of envs) {
     if (isDemo(c)) {
-      out.push({ id: c.id, name: c.name, stage: stageOf(c), hasTable: true,
+      out.push({ id: c.id, name: c.name, stage: stageOf(c), hasTable: true, setup: setupState(c),
                  table: manifestTableName(c),
-                 rows: Object.keys(demoManifest(c.id)).length, demo: true });
+                 rows: Object.keys(onlyFlowRows(demoManifest(c.id))).length, demo: true });
       continue;
     }
     try {
       const rows = await readOrgManifest(c);
-      out.push({ id: c.id, name: c.name, stage: stageOf(c), table: manifestTableName(c),
+      out.push({ id: c.id, name: c.name, stage: stageOf(c), table: manifestTableName(c), setup: setupState(c),
                  hasTable: rows !== null, rows: rows ? Object.keys(rows).length : 0 });
     } catch (e) {
       out.push({ id: c.id, name: c.name, stage: stageOf(c), table: manifestTableName(c), hasTable: false, error: describeApiError(e) });
@@ -3204,13 +3255,754 @@ app.post('/api/manifest/create', async (req, res) => {
   const c = loadCustomers().find(x => x.id === req.body.envId);
   if (!c) return res.status(404).json({ error: 'Ukendt miljø' });
   if (isDemo(c)) return res.json({ ok: true, demo: true });
+  if (!stageOf(c))
+    return res.status(400).json({ error: `"${c.name}" har intet trin og er ikke med i en pipeline — så får org'en ingen ArchyGUI-tabel. Giv miljøet et trin først.` });
   try {
     const existing = await findOrgManifestTable(c);
-    if (existing) return res.json({ ok: true, existed: true });
+    if (existing) { setupInBackground([c.id], 'manifest table found'); return res.json({ ok: true, existed: true }); }
     await createOrgManifestTable(c);
-    res.json({ ok: true, created: true });
+    // Tabellen fødes med opsætningsrækken i — så kan en anden pc finde miljøet.
+    ensurePipelineIdsSaved();
+    let setup;
+    try { setup = await writeSetupRow(loadCustomers().find(x => x.id === c.id) || c, null); }
+    catch (e) { setup = { ok: false, error: describeApiError(e) }; }
+    setupInBackground(pipelinePeers(c, loadCustomers()).map(x => x.id).filter(id => id !== c.id), 'new manifest table');
+    res.json({ ok: true, created: true, setup });
   } catch (e) {
     addLog('ERROR', `Could not create the manifest table: ${describeApiError(e)}`, c.name, 'MANIFEST');
+    res.status(500).json({ error: describeApiError(e) });
+  }
+});
+
+// ── Opsætningen i org'en ─────────────────────────────────────────────────────
+// customers.json ligger på én pc. En kollega på en anden pc vidste derfor intet
+// om de miljøer der allerede var sat op — heller ikke når org'en havde dem.
+//
+// Hvert pipeline-miljø har sin manifest-tabel i org'en. I den står nu også én
+// række der beskriver miljøet selv: navn, kunde, gruppe, trin, præfiks — og de
+// andre miljøer i samme pipeline, også dem i andre orgs. Så kan en ny pc logge
+// ind, finde tabellerne og bygge miljøerne op igen, og en slettet tabel kan
+// genopbygges fra pc'en. Den lokale fil og org'en kan genskabe hinanden.
+//
+// Reglerne blev aftalt før koden:
+//   · org'en vinder for de delte felter. En lokal rettelse skrives derfor
+//     straks til org'en; lykkes det ikke, er miljøet "ikke synkroniseret", og
+//     rettelsen bliver stående til den kan skrives
+//   · rækken skrives automatisk — og i alle pipelinens orgs, også prod, men
+//     kun med et login der må skrive dertil (prod-vagten gælder også her)
+//   · et løst miljø (intet trin) får aldrig en tabel eller en række
+//   · ingen hemmeligheder: hverken secret, token eller andet der giver adgang
+const SETUP_KEY = 'ArchyGUI_Setup';
+const SETUP_SCHEMA = 1;
+
+// Felterne org'en vinder på. Præfikset står der ikke: det er dét tabellen blev
+// fundet på, så det kan ikke være uenigt med sig selv.
+const SETUP_SHARED = ['name', 'tenant', 'group', 'stage', 'orgLabel', 'color', 'division',
+                      'deployPermission', 'deployGroup'];
+// Felter de ANDRE miljøers rækker nævner. Ændres et af dem, skal søskendene
+// have deres liste skrevet om.
+const SETUP_SIBLING_FIELDS = [...SETUP_SHARED, 'prefix', 'region', 'clientId', 'authType', 'orgId', 'pipelineId'];
+
+const isSetupRow = r => !!(r && r.kind === 'archygui-setup' && r.env && typeof r.env === 'object');
+
+// Miljøerne i samme pipeline som env — env selv iberegnet. pipelineId er den
+// faste nøgle; kunde og gruppe er fritekst og kan staves forskelligt på to pc'er.
+function pipelinePeers(env, all) {
+  if (!env) return [];
+  if (!stageOf(env)) return [env];
+  return all.filter(c => stageOf(c) && isDemo(c) === isDemo(env) &&
+    (c.id === env.id || (env.pipelineId && c.pipelineId === env.pipelineId) || sameGroup(c, env)));
+}
+
+// Hvert pipeline-miljø får et pipelineId. Har et miljø i samme kunde og gruppe
+// allerede et, arves det; ellers dannes et nyt. Ændrer listen på stedet og
+// returnerer id'erne på de miljøer der fik et.
+function ensurePipelineIds(all, nyId = () => crypto.randomUUID()) {
+  const fik = [];
+  for (const c of all) {
+    if (!stageOf(c) || c.pipelineId) continue;
+    const peer = all.find(x => x !== c && x.pipelineId && stageOf(x) && sameGroup(x, c));
+    c.pipelineId = peer ? peer.pipelineId : nyId();
+    fik.push(c.id);
+  }
+  return fik;
+}
+function ensurePipelineIdsSaved() {
+  const all = loadCustomers();
+  if (ensurePipelineIds(all).length) saveCustomers(all);
+  return all;
+}
+
+// Præfikser org'en bruger ud over miljøets eget: dem fra søskende på denne pc
+// i samme org, plus dem opdagelsen har set i org'en.
+function takenPrefixesFor(env, all) {
+  const set = new Set(env.takenPrefixes || []);
+  for (const c of all)
+    if (c.id !== env.id && orgKeyOf(c) === orgKeyOf(env) && prefixOf(c)) set.add(prefixOf(c));
+  set.delete(prefixOf(env));
+  set.delete('');
+  return [...set].sort();
+}
+
+// Det en anden pc skal bruge for at tilføje miljøet — og ikke mere. Client
+// ID'et er ikke hemmeligt, men kun en PKCE-klient kan bruges til at logge ind
+// med. En client credentials-klient kræver en secret, og den deles aldrig.
+function setupSibling(c) {
+  return { name: c.name, stage: stageOf(c) || '', prefix: prefixOf(c), region: c.region || '',
+           orgId: c.orgId || null, orgLabel: c.orgLabel || '',
+           clientId: c.authType === 'oauth' ? (c.clientId || '') : '' };
+}
+
+// Er to søskendeposter det samme miljø? Samme præfiks, og samme org — eller,
+// før org'en kendes, samme klient i samme region.
+function sameSibling(a, b) {
+  if (String(a.prefix || '') !== String(b.prefix || '')) return false;
+  if (a.orgId && b.orgId) return a.orgId === b.orgId;
+  return !!a.clientId && a.clientId === b.clientId && a.region === b.region;
+}
+
+// En søskendepost fra org'en er data andre har skrevet. Kun de kendte felter,
+// i den form vi selv skriver dem.
+function cleanSibling(s) {
+  if (!s || typeof s !== 'object') return null;
+  const str = (v, max) => String(v ?? '').slice(0, max);
+  const ud = { name: str(s.name, 60), stage: str(s.stage, 20).toLowerCase(), prefix: str(s.prefix, 20),
+               region: str(s.region, 40), orgId: GUID.test(String(s.orgId || '')) ? String(s.orgId) : null,
+               orgLabel: str(s.orgLabel, 60), clientId: GUID.test(String(s.clientId || '')) ? String(s.clientId) : '' };
+  return ud.name && (ud.orgId || ud.clientId) ? ud : null;
+}
+
+// Rækken som den skal stå i miljøets tabel.
+//
+// Søskendelisten er IKKE bare de miljøer denne pc har. En pc med kun dev
+// tilføjet ville så skrive en tom liste og slette org'ens viden om prod. Listen
+// flettes derfor med den der står (previous); denne pc's miljøer erstatter
+// deres egne poster, og en post fjernes kun når miljøet har forladt pipelinen
+// (forget) — ikke fordi én pc har slettet det fra sin egen liste.
+function setupRowFor(env, all, { stages = STAGES, by = null, bySource = null, at = Date.now(), previous = null, forget = [] } = {}) {
+  const egne = {};
+  for (const k of SETUP_SHARED) egne[k] = String(env[k] ?? '');
+  egne.stage = stageOf(env) || '';
+  const mig = setupSibling(env);
+  const lokale = pipelinePeers(env, all).filter(c => c.id !== env.id).map(setupSibling);
+  const siblings = (isSetupRow(previous) && Array.isArray(previous.siblings) ? previous.siblings : [])
+    .map(cleanSibling).filter(Boolean)
+    .filter(s => !lokale.some(l => sameSibling(l, s)) && !sameSibling(s, mig) && !forget.some(x => sameSibling(x, s)));
+  siblings.push(...lokale);
+  return {
+    kind: 'archygui-setup', schemaVersion: SETUP_SCHEMA,
+    env: { ...egne, prefix: prefixOf(env), region: env.region || '', orgId: env.orgId || null },
+    pipelineId: env.pipelineId || null,
+    stages: [...stages],
+    takenPrefixes: takenPrefixesFor(env, all),
+    siblings: siblings.sort((a, b) => stageOrder(a.stage) - stageOrder(b.stage) || a.name.localeCompare(b.name)),
+    by, bySource, at
+  };
+}
+
+// Miljøer der har forladt en pipeline, og som søskendenes rækker skal glemme.
+// Nøglen er søskendens id; den tømmes når rækken er skrevet.
+const setupForget = {};
+
+// To rækker siger det samme, hvis kun hvem og hvornår er forskellige.
+const setupComparable = row => { const { by, bySource, at, ...rest } = row || {}; return JSON.stringify(rest); };
+const sameSetup = (a, b) => !!a && !!b && setupComparable(a) === setupComparable(b);
+
+// Hvor er org'ens række uenig med miljøet? apply er det org'en vinder på;
+// held er det der IKKE tages automatisk:
+//   · et trin denne pc ikke kender
+//   · prod-vagtens egne felter på et prod-miljø. Ellers kunne en hvilken som
+//     helst række i en datatabel slå vagten fra på alle andre pc'er — sætte
+//     trinnet til uat eller fjerne gruppekravet. Ændres de, skal det ske under
+//     ⚙ Indstillinger, med det login vagten kræver.
+function setupChanges(local, row, stages = STAGES) {
+  const org = isSetupRow(row) ? row.env : {};
+  const apply = {}, held = [];
+  const prodLokalt = stageOf(local) === 'prod' && !isDemo(local);
+  for (const k of SETUP_SHARED) {
+    if (org[k] === undefined || org[k] === null) continue;
+    const fra = String(local[k] ?? ''), til = String(org[k]).trim();
+    if (fra === til) continue;
+    if (k === 'stage' && til && !stages.includes(til)) { held.push({ field: k, local: fra, org: til, reason: 'unknown-stage' }); continue; }
+    if (prodLokalt && PROD_GUARDED_FIELDS.includes(k)) { held.push({ field: k, local: fra, org: til, reason: 'prod-guarded' }); continue; }
+    apply[k] = til;
+  }
+  return { apply, held };
+}
+
+// Org'ens trin flettes ind i den lokale liste — de erstatter den aldrig, for
+// så ville én kundes trin fjerne en anden kundes. Et nyt trin lægges efter det
+// nærmeste trin før det i org'ens liste, og prod bliver stående sidst.
+function mergeStages(local, remote) {
+  const ud = [...local];
+  if (!Array.isArray(remote)) return ud;
+  let efter = -1;
+  for (const s0 of remote) {
+    const s = String(s0 || '').toLowerCase();
+    if (!STAGE_NAME.test(s)) continue;
+    const i = ud.indexOf(s);
+    if (i !== -1) { efter = i; continue; }
+    const prod = ud.indexOf('prod');
+    let pos = efter + 1;
+    if (prod !== -1 && pos > prod) pos = prod;
+    ud.splice(pos, 0, s);
+    efter = pos;
+  }
+  return stageListError(ud).stages ? ud : [...local];
+}
+
+// Miljøet efter org'ens række er lagt ind. Ren funktion: { env, applied, held }.
+function applyOrgSetup(env, row, all, stages = STAGES) {
+  if (!isSetupRow(row)) return { env, applied: [], held: [] };
+  const { apply, held } = setupChanges(env, row, stages);
+  const andre = all.filter(c => c.id !== env.id);
+  const applied = [];
+  const ud = { ...env };
+  for (const [k, v] of Object.entries(apply)) {
+    const fejl = envFieldError({ [k]: v }, andre);
+    if (fejl) { held.push({ field: k, local: String(env[k] ?? ''), org: v, reason: 'invalid', error: fejl }); continue; }
+    applied.push({ field: k, from: String(env[k] ?? ''), to: v });
+    ud[k] = v;
+  }
+  // Ville trin, kunde eller gruppe få miljøet til at støde ind i et andet med
+  // samme præfiks i samme org, tages ingen af dem.
+  if (applied.length && prefixClash(ud, all.map(c => c.id === env.id ? ud : c))) {
+    for (const a of applied) { held.push({ field: a.field, local: a.from, org: a.to, reason: 'clash' }); ud[a.field] = env[a.field]; }
+    applied.length = 0;
+  }
+  if (row.pipelineId && typeof row.pipelineId === 'string' && row.pipelineId.length <= 64) ud.pipelineId = row.pipelineId;
+  const taget = new Set([...(ud.takenPrefixes || []), ...(Array.isArray(row.takenPrefixes) ? row.takenPrefixes : [])]);
+  taget.delete(prefixOf(ud));
+  ud.takenPrefixes = [...taget].filter(p => /^[A-Za-z0-9_\-]{1,20}$/.test(String(p))).sort();
+  return { env: ud, applied, held };
+}
+
+// Gemmer felter på ét miljø. Listen læses og skrives uden et await imellem, så
+// to opgaver i baggrunden ikke kan skrive hinandens ændringer over.
+function patchEnv(id, patch) {
+  const all = loadCustomers();
+  const i = all.findIndex(c => c.id === id);
+  if (i === -1) return null;
+  all[i] = { ...all[i], ...patch };
+  saveCustomers(all);
+  return all[i];
+}
+
+// Lægger org'ens trin til den lokale liste. Returnerer de nye trin.
+function adoptStages(remote) {
+  const ny = mergeStages(STAGES, remote);
+  const tilfoejet = ny.filter(s => !STAGES.includes(s));
+  if (!tilfoejet.length) return [];
+  applyStages(ny);
+  saveSettings({ stages: ny });
+  addLog('INFO', `Stages added from the org: ${tilfoejet.join(', ')} — now ${ny.join(' → ')}`, null, 'MANIFEST');
+  return tilfoejet;
+}
+
+// Gemmer et miljø efter org'en har vundet, og flytter eksportmappen med navnet.
+function commitOrgSetup(before, after) {
+  const all = loadCustomers();
+  const i = all.findIndex(c => c.id === before.id);
+  if (i === -1) return null;
+  all[i] = { ...all[i], ...after };
+  saveCustomers(all);
+  if (before.name !== all[i].name) moveCustomerFolder(before.name, all[i].name);
+  return all[i];
+}
+
+// Skriver miljøets opsætningsrække. current er rækken som den står i org'en
+// lige nu (null = ingen), så en uændret række ikke skrives igen.
+async function writeSetupRow(env, current) {
+  if (!stageOf(env)) return { ok: true, skipped: 'loose' };
+  // Også opsætningen er en skrivning i org'en. I prod kræver den samme login
+  // som alt andet — ellers bliver den stående til næste gang.
+  const blocked = prodWriteBlock(env, tokenStore[env.id]);
+  if (blocked) { patchEnv(env.id, { setupPending: true }); return { ok: false, reason: blocked.code }; }
+  const all = loadCustomers();
+  const nu = all.find(c => c.id === env.id) || env;
+  const glem = setupForget[env.id] || [];
+  const row = setupRowFor(nu, all, { previous: current, forget: glem });
+  if (current && sameSetup(current, row)) {
+    patchEnv(env.id, { setupPending: false, setupAt: current.at || null });
+    delete setupForget[env.id];
+    return { ok: true, unchanged: true };
+  }
+  const who = await whoAmI(nu);
+  row.by = who.by; row.bySource = who.bySource;
+  const r = await putOrgManifestRow(nu, SETUP_KEY, row);
+  if (!r.ok) return r;
+  patchEnv(env.id, { setupPending: false, setupAt: row.at });
+  delete setupForget[env.id];
+  return { ok: true, wrote: true };
+}
+
+// Læser rækken. undefined = ingen tabel, null = ingen (brugbar) række.
+async function readSetupRow(env) {
+  const row = await readOrgManifestRow(env, SETUP_KEY);
+  if (row === undefined || row === null) return row;
+  if (isSetupRow(row)) return row;
+  addLog('WARN', `The setup row in ${manifestTableName(env)} (${env.name}) is not in ArchyGUI's format — ignored and rewritten`, env.name, 'MANIFEST');
+  return null;
+}
+
+// Skubber miljøets egen opsætning til org'en. Er org'ens række ændret siden vi
+// sidst så den, og er den uenig med os, skrives der IKKE ovenpå — så skal
+// brugeren vælge, i guiden.
+async function pushSetup(envId) {
+  const env = loadCustomers().find(c => c.id === envId);
+  if (!env || !stageOf(env)) return { ok: true, skipped: 'loose' };
+  let row;
+  try { row = await readSetupRow(env); }
+  catch (e) { patchEnv(envId, { setupPending: true }); return { ok: false, error: describeApiError(e) }; }
+  if (row === undefined) return { ok: false, reason: 'no-table' };
+  if (row && row.at !== env.setupAt) {
+    const { apply, held } = setupChanges(env, row);
+    if (Object.keys(apply).length || held.length) { patchEnv(envId, { setupPending: true }); return { ok: false, conflict: true }; }
+  }
+  return writeSetupRow(env, row);
+}
+
+// Henter org'ens opsætning ind (org'en vinder) og skriver bagefter det org'en
+// mangler — fx en søskendeliste der er blevet længere.
+async function syncSetup(envId) {
+  ensurePipelineIdsSaved();
+  let env = loadCustomers().find(c => c.id === envId);
+  if (!env) return { ok: false, error: 'Ukendt miljø' };
+  if (!stageOf(env)) return { ok: true, skipped: 'loose' };
+  let row;
+  try { row = await readSetupRow(env); }
+  catch (e) { return { ok: false, error: describeApiError(e) }; }
+  if (row === undefined) return { ok: true, noTable: true };
+
+  const uenighed = () => {
+    const { apply, held } = setupChanges(env, row);
+    return [...Object.entries(apply).map(([field, org]) => ({ field, local: String(env[field] ?? ''), org })), ...held];
+  };
+  // Har denne pc en rettelse der ikke er skrevet, og har nogen ændret org'ens
+  // række imens, er der to sandheder. Så vælger brugeren.
+  if (row && env.setupPending && row.at !== env.setupAt) {
+    const fields = uenighed();
+    if (fields.length) return { ok: true, conflict: true, fields, orgBy: row.by || null, orgAt: row.at || null };
+  }
+
+  let applied = [], stagesAdded = [];
+  if (row && !env.setupPending) {
+    stagesAdded = adoptStages(row.stages);
+    const r = applyOrgSetup(env, row, loadCustomers());
+    applied = r.applied;
+    // Det org'en ikke fik lov at bestemme, skrives heller ikke ovenpå.
+    if (r.held.length)
+      return { ok: true, conflict: true, fields: r.held, applied, stagesAdded, orgBy: row.by || null, orgAt: row.at || null };
+    env = commitOrgSetup(env, r.env) || env;
+    if (applied.length)
+      addLog('INFO', `Setup from the org applied to ${env.name}: ${applied.map(a => `${a.field} "${a.from}" → "${a.to}"`).join(', ')}`, env.name, 'MANIFEST');
+  }
+  const w = await writeSetupRow(env, row);
+  return { ok: true, applied, stagesAdded, wrote: !!w.wrote, pending: !w.ok, reason: w.reason || null };
+}
+
+// Skubber opsætningen for flere miljøer i baggrunden. Bruges når et miljø er
+// oprettet, rettet eller slettet: så har søskendene i pipelinen fået en ny
+// liste, og den skal stå i deres orgs også.
+function setupInBackground(ids, why) {
+  const liste = [...new Set(ids)].filter(Boolean);
+  if (!liste.length) return;
+  setImmediate(async () => {
+    for (const id of liste) {
+      const env = loadCustomers().find(c => c.id === id);
+      if (!env || !stageOf(env)) continue;
+      try {
+        const r = await pushSetup(id);
+        if (r.wrote) addLog('INFO', `Setup row written in ${manifestTableName(env)} (${why})`, env.name, 'MANIFEST');
+        else if (r.conflict) addLog('WARN', `The setup in ${env.name}'s org differs from this PC — open 📋 the setup guide to choose`, env.name, 'MANIFEST');
+        else if (!r.ok && r.reason !== 'no-table')
+          addLog('INFO', `Setup row for ${env.name} not written yet (${r.reason || r.error}) — it is written at the next login or check`, env.name, 'MANIFEST');
+      } catch (e) {
+        addLog('WARN', `Could not write the setup row for ${env.name}: ${describeApiError(e)}`, env.name, 'MANIFEST');
+      }
+    }
+  });
+}
+
+// Efter et miljø er oprettet, rettet eller slettet: hvem skal have deres
+// opsætningsrække skrevet om? before/after er miljøet før og efter (null ved
+// oprettelse og sletning).
+function afterEnvChange(before, after, why) {
+  const relevant = !before || !after || SETUP_SIBLING_FIELDS.some(k => String(before[k] ?? '') !== String(after[k] ?? ''));
+  if (!relevant || (!stageOf(before || {}) && !stageOf(after || {}))) return;
+  const all = loadCustomers();
+  let gem = false;
+  // Skifter miljøet kunde eller gruppe her på pc'en, skifter det pipeline — så
+  // skal det ikke tage det gamle pipelineId med sig.
+  const nu0 = after && all.find(c => c.id === after.id);
+  if (before && nu0 && nu0.pipelineId && nu0.pipelineId === before.pipelineId &&
+      (tenantOf(before) !== tenantOf(nu0) || groupOf(before) !== groupOf(nu0))) { delete nu0.pipelineId; gem = true; }
+  if (ensurePipelineIds(all).length) gem = true;
+  const ids = new Set();
+  if (after) {
+    const nu = all.find(c => c.id === after.id);
+    // En rettelse af de delte felter er denne pc's sandhed, til den er skrevet.
+    if (nu && before && stageOf(nu) && SETUP_SHARED.some(k => String(before[k] ?? '') !== String(after[k] ?? ''))) {
+      nu.setupPending = true; gem = true;
+    }
+    if (nu) pipelinePeers(nu, all).forEach(c => ids.add(c.id));
+  }
+  if (before) pipelinePeers(before, all).forEach(c => ids.add(c.id));
+  // Har miljøet forladt pipelinen (intet trin, anden kunde/gruppe) eller skiftet
+  // identitet (præfiks, org, klient), skal de gamle søskende glemme den gamle
+  // post. En sletning tæller IKKE: at fjerne et miljø fra denne pc fjerner det
+  // ikke fra pipelinen — en anden pc kan sagtens have det.
+  if (before && after && stageOf(before)) {
+    const nu = all.find(c => c.id === after.id) || after;
+    const forladt = !stageOf(nu) || !(sameGroup(nu, before) || (before.pipelineId && nu.pipelineId === before.pipelineId));
+    const gammel = setupSibling(before);
+    if (forladt || !sameSibling(gammel, setupSibling(nu)))
+      for (const c of pipelinePeers(before, all)) if (c.id !== after.id)
+        (setupForget[c.id] ||= []).push(gammel);
+  }
+  if (gem) saveCustomers(all);
+  setupInBackground([...ids], why);
+}
+
+// Hvad opdagelsen fandt, gjort klar til brugerfladen. Ren funktion.
+//   tables: [{ id, name, prefix, setup }] — org'ens manifest-tabeller
+// cards er miljøerne i DENNE org; elsewhere er pipelinens miljøer i andre orgs,
+// som denne pc ikke har.
+function discoveryResult(env, all, orgId, tables) {
+  const iOrg = c => !isDemo(c) && (orgId && c.orgId ? c.orgId === orgId : orgKeyOf(c) === orgKeyOf(env));
+  const selv = s => !!(env.setupAt || (s && s.env.stage && s.env.stage === stageOf(env)));
+  const cards = tables.map(t => {
+    const s = t.setup;
+    const lokal = all.find(c => iOrg(c) && stageOf(c) && prefixOf(c) === t.prefix);
+    return {
+      tableId: t.id, table: t.name, prefix: t.prefix,
+      setup: s ? { ...s.env, pipelineId: s.pipelineId || null, by: s.by || null, at: s.at || null,
+                   siblings: (s.siblings || []).length } : null,
+      // Miljøet selv — men kun når det er bekræftet: koblet før (setupAt) eller
+      // på samme trin. Et nyt miljø der bare har samme præfiks, er ikke koblet.
+      localId: lokal && (lokal.id !== env.id || selv(s)) ? lokal.id : null,
+      self: !!(lokal && lokal.id === env.id && selv(s)),
+      wrongOrg: !!(s && s.env.orgId && orgId && s.env.orgId !== orgId)
+    };
+  }).sort((a, b) => stageOrder(a.setup?.stage) - stageOrder(b.setup?.stage) || a.prefix.localeCompare(b.prefix));
+
+  const set = new Set(), elsewhere = [];
+  for (const t of tables) for (const sib of (t.setup?.siblings || [])) {
+    const pfx = String(sib.prefix || '');
+    if (orgId && sib.orgId === orgId) continue;                       // står som kort
+    if (!sib.orgId && tables.some(x => x.prefix === pfx) && sib.region === env.region) continue;
+    const key = `${sib.orgId || (sib.region + '|' + sib.clientId)}|${pfx}`;
+    if (set.has(key)) continue;
+    set.add(key);
+    const kendt = all.find(c => !isDemo(c) && prefixOf(c) === pfx &&
+      (sib.orgId ? c.orgId === sib.orgId : (c.clientId === sib.clientId && c.region === sib.region)));
+    if (kendt) continue;
+    elsewhere.push({ name: String(sib.name || ''), stage: String(sib.stage || ''), prefix: pfx,
+                     region: String(sib.region || ''), orgId: sib.orgId || null, orgLabel: String(sib.orgLabel || ''),
+                     clientId: String(sib.clientId || ''),
+                     tenant: t.setup.env.tenant || '', group: t.setup.env.group || '',
+                     pipelineId: t.setup.pipelineId || null });
+  }
+  elsewhere.sort((a, b) => stageOrder(a.stage) - stageOrder(b.stage) || a.name.localeCompare(b.name));
+  return { cards, elsewhere };
+}
+
+const masked = c => c ? { ...c, clientSecret: '••••••••' } : c;
+
+// org'ens manifest-tabeller med præfiks. Andre tabeller der tilfældigvis ender
+// på samme navn, men ikke kan være vores (ugyldigt præfiks), springes over.
+async function orgManifestTables(env) {
+  return (await listAllTables(env))
+    .filter(t => t.name.endsWith(ORG_MANIFEST_BASE))
+    .map(t => ({ ...t, prefix: t.name.slice(0, -ORG_MANIFEST_BASE.length) }))
+    .filter(t => !envFieldError({ prefix: t.prefix }));
+}
+
+app.post('/api/setup/discover', async (req, res) => {
+  const env = loadCustomers().find(c => c.id === req.body?.envId);
+  if (!env) return res.status(404).json({ error: 'Ukendt miljø' });
+  if (isDemo(env)) return res.json({ ok: true, demo: true, cards: [], elsewhere: [] });
+  try {
+    const tabeller = await orgManifestTables(env);
+    for (const t of tabeller) {
+      try { const r = await readTableRow(env, t.id, SETUP_KEY); t.setup = isSetupRow(r) ? r : null; }
+      catch (_) { t.setup = null; }
+    }
+    const orgId = tokenStore[env.id]?.orgId || await getOrgId(env);
+    // Scanningen ser hvilke præfikser org'en bruger. De holdes ude af et
+    // miljø uden præfiks, også hvis søskendene ikke er tilføjet her.
+    const taget = tabeller.map(t => t.prefix).filter(p => p && p !== prefixOf(env)).sort();
+    patchEnv(env.id, { takenPrefixes: taget });
+    addLog('INFO', `Discovery in ${env.name}'s org: ${tabeller.length} ArchyGUI table(s)` +
+      (tabeller.length ? ` (${tabeller.map(t => t.name).join(', ')})` : ''), env.name, 'MANIFEST');
+    res.json({ ok: true, orgId, orgName: tokenStore[env.id]?.orgName || '',
+               ...discoveryResult(env, loadCustomers(), orgId, tabeller) });
+  } catch (e) {
+    res.status(500).json({ error: describeApiError(e) });
+  }
+});
+
+// Brugerens valg efter opdagelsen:
+//   use      — miljøet ER det miljø tabellen beskriver. Skriver intet.
+//   template — et nyt miljø i org'en, med en fundet opsætning som skabelon
+//   pipeline — et nyt miljø og en ny pipeline (ingen tabel fundet)
+//   loose    — kun import/eksport: intet trin, ingen tabel, intet i org'en
+app.post('/api/setup/adopt', async (req, res) => {
+  const tr = v => String(v ?? '').trim();
+  const all = loadCustomers();
+  const env = all.find(c => c.id === req.body?.envId);
+  if (!env) return res.status(404).json({ error: 'Ukendt miljø' });
+  if (isDemo(env)) return res.status(400).json({ error: 'Demo-miljøer har ingen org.' });
+  const mode = tr(req.body.mode), f = req.body.fields || {};
+  const andre = all.filter(c => c.id !== env.id);
+
+  if (mode === 'loose') {
+    const ud = patchEnv(env.id, { stage: '', setupPending: false });
+    afterEnvChange(env, ud, 'environment set to import/export only');
+    addLog('INFO', `${env.name} set to import/export only — nothing is written to its org`, env.name, 'MANIFEST');
+    return res.json({ ok: true, env: masked(ud) });
+  }
+  if (!['use', 'template', 'pipeline'].includes(mode)) return res.status(400).json({ error: `Ukendt valg "${mode}"` });
+
+  // Tabellerne læses igen her — klienten vælger kun HVILKEN.
+  let tabeller;
+  try { tabeller = await orgManifestTables(env); }
+  catch (e) { return res.status(500).json({ error: describeApiError(e) }); }
+  const orgPrefikser = tabeller.map(t => t.prefix);
+  const orgId = tokenStore[env.id]?.orgId || env.orgId || null;
+  const laesSetup = async t => { try { const r = await readTableRow(env, t.id, SETUP_KEY); return isSetupRow(r) ? r : null; } catch (_) { return null; } };
+
+  let ud, applied = [], stagesAdded = [], skriv = false;
+  if (mode === 'use') {
+    const t = tabeller.find(x => x.id === req.body.tableId);
+    if (!t) return res.status(404).json({ error: 'Tabellen findes ikke længere i org\'en — kør Tjek forbindelse igen.' });
+    const row = await laesSetup(t);
+    if (row && row.env.orgId && orgId && row.env.orgId !== orgId)
+      return res.status(400).json({ error: `Tabellen beskriver et miljø i en anden org (${row.env.orgId}). Den er ikke taget i brug.` });
+    ud = { ...env, prefix: t.prefix };
+    if (row) {
+      stagesAdded = adoptStages(row.stages);
+      // Et bevidst valg af org'ens miljø: alle delte felter tages, også trinnet.
+      const r = applyOrgSetup({ ...ud, stage: '' }, row, all);
+      if (r.held.length) return res.status(400).json({ error: `Opsætningen kan ikke tages i brug: ${r.held.map(h => h.error || `${h.field} "${h.org}"`).join('; ')}` });
+      ud = { ...r.env };
+      applied = r.applied;
+      ud.setupAt = row.at || null;
+      ud.setupPending = false;
+    } else {
+      // En tabel fra før opsætningsrækken: trinnet kan ikke gættes — en tabel
+      // uden præfiks kan være både UAT og prod. Brugeren vælger.
+      const stage = tr(f.stage).toLowerCase();
+      if (!STAGES.includes(stage)) return res.status(400).json({ error: 'Tabellen har ingen opsætning endnu — vælg hvilket trin miljøet er.' });
+      ud = { ...ud, stage, tenant: tr(f.tenant) || env.tenant || '', group: tr(f.group) || env.group || '', setupPending: true };
+      skriv = true;
+    }
+  } else {
+    const stage = tr(f.stage).toLowerCase();
+    if (!STAGES.includes(stage)) return res.status(400).json({ error: `Vælg et trin: ${STAGES.join(', ')}` });
+    const prefix = tr(f.prefix);
+    if (orgPrefikser.includes(prefix))
+      return res.status(400).json({ error: prefix ? `Præfikset "${prefix}" er allerede i brug i denne org.` : 'Der findes allerede et miljø uden præfiks i denne org — giv det nye et præfiks (fx UAT_).' });
+    ud = { ...env, stage, prefix, name: tr(f.name) || env.name,
+           tenant: tr(f.tenant) || env.tenant || '', group: tr(f.group) || env.group || '' };
+    // undefined, ikke delete: commitOrgSetup fletter, og et slettet felt ville
+    // bare komme igen fra den gemte post. JSON dropper undefined.
+    ud.pipelineId = undefined;
+    if (mode === 'template') {
+      const t = tabeller.find(x => x.id === req.body.tableId);
+      if (!t) return res.status(404).json({ error: 'Skabelonen findes ikke længere i org\'en — kør Tjek forbindelse igen.' });
+      const row = await laesSetup(t);
+      if (row) {
+        const e = row.env;
+        ud.tenant = tr(f.tenant) || e.tenant || ud.tenant;
+        ud.group  = tr(f.group)  || e.group  || ud.group;
+        ud.orgLabel = e.orgLabel || ud.orgLabel || '';
+        // Deploy-kravene hører til prod; divisionen og farven er miljøets egne.
+        if (stage === 'prod') { ud.deployPermission = e.deployPermission || ''; ud.deployGroup = e.deployGroup || ''; }
+        if (row.pipelineId) ud.pipelineId = row.pipelineId;
+        stagesAdded = adoptStages(row.stages);
+      }
+    }
+    skriv = true;
+  }
+  ud.takenPrefixes = orgPrefikser.filter(p => p && p !== prefixOf(ud)).sort();
+
+  const changed = {};
+  for (const k of ['name', 'tenant', 'group', 'prefix', 'orgLabel', 'color', 'deployPermission', 'deployGroup'])
+    if (String(env[k] ?? '') !== String(ud[k] ?? '')) changed[k] = ud[k];
+  const fejl = envFieldError(changed, andre) || prefixClash(ud, all.map(c => c.id === env.id ? ud : c));
+  if (fejl) return res.status(400).json({ error: fejl });
+
+  const gemt = commitOrgSetup(env, ud);
+  ensurePipelineIdsSaved();
+  delete _mfTableCache[env.id];
+  addLog('INFO', `${gemt.name} ${mode === 'use' ? 'linked to' : 'created next to'} the ArchyGUI table${mode === 'use' ? ' ' + manifestTableName(gemt) : 's'} in its org` +
+    (applied.length ? ` — taken from the org: ${applied.map(a => a.field).join(', ')}` : ''), gemt.name, 'MANIFEST');
+
+  let tableCreated = false, blocked = null, writeError = null;
+  if (mode !== 'use') {
+    // Den nye tabel er en skrivning i org'en — i prod med samme login som alt andet.
+    const nu = loadCustomers().find(c => c.id === env.id);
+    const b = prodWriteBlock(nu, tokenStore[nu.id]);
+    if (b) blocked = b;
+    else {
+      try {
+        await createOrgManifestTable(nu);
+        await writeSetupRow(loadCustomers().find(c => c.id === env.id), null);
+        tableCreated = true;
+      } catch (e) { writeError = describeApiError(e); addLog('ERROR', `Could not create the manifest table for ${nu.name}: ${writeError}`, nu.name, 'MANIFEST'); }
+    }
+  }
+  const nu = loadCustomers().find(c => c.id === env.id);
+  // Søskendene får miljøet på deres liste; en gammel tabel får sin række.
+  setupInBackground(pipelinePeers(nu, loadCustomers()).map(c => c.id)
+    .filter(id => skriv || id !== nu.id).filter(id => !(tableCreated && id === nu.id)), 'environment added from discovery');
+  res.json({ ok: true, env: masked(nu), applied, stagesAdded, tableCreated,
+             blocked: blocked ? blocked.code : null, blockedError: blocked ? blocked.error : null, error: writeError });
+});
+
+// Tilføjer et miljø fra pipelinens søskendeliste — typisk prod i en anden org.
+// Org-id'et sættes med det samme, så login'et afvises hvis man vælger en
+// anden org på Genesys' side: sådan tjekkes det at listen taler sandt.
+app.post('/api/setup/add-sibling', (req, res) => {
+  const tr = v => String(v ?? '').trim();
+  const all = loadCustomers();
+  const fra = all.find(c => c.id === req.body?.fromEnvId);
+  if (!fra) return res.status(404).json({ error: 'Ukendt miljø' });
+  const s = req.body.sibling || {};
+  const env = {
+    id: Date.now().toString(), name: tr(req.body.name || s.name), clientId: tr(req.body.clientId || s.clientId),
+    clientSecret: '', region: tr(s.region), authType: 'oauth',
+    tenant: tr(s.tenant) || fra.tenant || '', group: tr(s.group) || fra.group || '',
+    stage: tr(s.stage).toLowerCase(), prefix: tr(s.prefix), orgLabel: tr(s.orgLabel), color: '',
+    division: '', deployPermission: '', deployGroup: '',
+    pipelineId: tr(s.pipelineId) || fra.pipelineId || undefined
+  };
+  if (!env.name || !env.clientId) return res.status(400).json({ error: 'Navn og Client ID skal udfyldes.' });
+  if (!STAGES.includes(env.stage)) return res.status(400).json({ error: `Ukendt trin "${s.stage}" — tilføj det under Kunder → Trin først.` });
+  const fejl = envFieldError({ name: env.name, clientId: env.clientId, region: env.region, tenant: env.tenant,
+                               group: env.group, prefix: env.prefix, orgLabel: env.orgLabel }, all);
+  if (fejl) return res.status(400).json({ error: fejl });
+  if (s.orgId) {
+    if (!GUID.test(String(s.orgId))) return res.status(400).json({ error: 'Org-id\'et i søskendelisten er ikke gyldigt.' });
+    env.orgId = String(s.orgId);
+    const ejer = all.find(c => c.orgId === env.orgId && !isDemo(c) && tenantOf(c) !== tenantOf(env));
+    if (ejer) return res.status(400).json({ error: `Org'en hører til "${ejer.name}" hos en anden kunde på denne pc.` });
+  }
+  const clash = prefixClash(env, all);
+  if (clash) return res.status(400).json({ error: clash });
+  all.push(env);
+  saveCustomers(all);
+  addLog('INFO', `Environment added from the pipeline's sibling list: ${env.name} (${env.stage}, region ${env.region}) — log in to confirm the org`, env.name, 'CUSTOMER');
+  res.json({ ok: true, env: masked(env) });
+});
+
+app.post('/api/setup/sync', async (req, res) => {
+  try { res.json(await syncSetup(String(req.body?.envId || ''))); }
+  catch (e) { res.status(500).json({ error: describeApiError(e) }); }
+});
+
+// Uenighed mellem pc og org: brugeren vælger hvem der har ret.
+//   org   — org'ens række tages. Prod-vagtens felter kun med prod-login.
+//   local — denne pc's opsætning skrives til org'en.
+app.post('/api/setup/resolve', async (req, res) => {
+  const env = loadCustomers().find(c => c.id === req.body?.envId);
+  if (!env) return res.status(404).json({ error: 'Ukendt miljø' });
+  const choice = String(req.body.choice || '');
+  if (!['org', 'local'].includes(choice)) return res.status(400).json({ error: `Ukendt valg "${choice}"` });
+  try {
+    const row = await readSetupRow(env);
+    if (row === undefined) return res.status(400).json({ error: 'Miljøet har ingen manifest-tabel.' });
+    if (choice === 'local' || !row) {
+      patchEnv(env.id, { setupAt: row ? row.at || null : null, setupPending: true });
+      const w = await writeSetupRow(loadCustomers().find(c => c.id === env.id), row);
+      if (!w.ok) return res.status(w.reason === 'prod-login' || w.reason === 'prod-rights' ? 403 : 500)
+        .json({ error: prodWriteBlock(env, tokenStore[env.id])?.error || w.error || w.reason });
+      addLog('INFO', `Setup conflict for ${env.name} resolved: this PC's setup written to the org`, env.name, 'MANIFEST');
+      return res.json({ ok: true, wrote: true });
+    }
+    const { apply, held } = setupChanges(env, row);
+    // Her vælger brugeren org'en bevidst — også det der ellers holdes tilbage.
+    const alt = { ...apply };
+    for (const h of held) alt[h.field] = h.org;
+    const laast = prodSettingsBlock(env, alt, tokenStore[env.id]);
+    if (laast) return res.status(403).json(laast);
+    if (held.some(h => h.reason === 'unknown-stage')) adoptStages(row.stages);
+    if (alt.stage && !STAGES.includes(alt.stage)) return res.status(400).json({ error: `Ukendt trin "${alt.stage}" — tilføj det under Kunder → Trin først.` });
+    const fejl = envFieldError(alt, loadCustomers().filter(c => c.id !== env.id));
+    if (fejl) return res.status(400).json({ error: fejl });
+    const ud = { ...env, ...alt, setupAt: row.at || null, setupPending: false,
+                 pipelineId: (typeof row.pipelineId === 'string' && row.pipelineId) || env.pipelineId };
+    const clash = prefixClash(ud, loadCustomers().map(c => c.id === env.id ? ud : c));
+    if (clash) return res.status(400).json({ error: clash });
+    const gemt = commitOrgSetup(env, ud);
+    if (Object.keys(alt).some(k => PROD_GUARDED_FIELDS.includes(k))) { delete tokenStore[env.id]; delete _whoCache[env.id]; }
+    addLog('INFO', `Setup conflict for ${env.name} resolved: the org's setup taken (${Object.keys(alt).join(', ') || 'no field changes'})`, gemt.name, 'MANIFEST');
+    afterEnvChange(env, gemt, 'setup taken from the org');
+    res.json({ ok: true, applied: Object.keys(alt) });
+  } catch (e) {
+    res.status(500).json({ error: describeApiError(e) });
+  }
+});
+
+// ── Genopbygning af manifestet ───────────────────────────────────────────────
+// En slettet tabel kan bygges op igen. Hvad org'en indeholder NU, kan altid
+// læses i Genesys. Historikken — hvem forfremmede hvad, hvornår, hvorfra — kan
+// kun findes på en pc der har den i sine lokale filer. Hver række siger derfor
+// hvor den kommer fra (history: 'local' eller 'none'), så tavlen og brugeren
+// ikke tror historikken er hel, når den ikke er.
+function rebuiltManifestRow(flow, entry, releases = []) {
+  const row = entry
+    ? { flowName: flow.name, version: entry.targetVersion ?? null, publishedAt: entry.targetPublishedAt ?? null,
+        kind: entry.kind || 'migration',
+        promotedFrom: entry.kind === 'baseline' ? null : (entry.sourceName || null),
+        sourceVersion: entry.sourceVersion ?? null, hash: entry.hash || null }
+    : { flowName: flow.name, version: flow.version ?? null, publishedAt: flow.publishedAt ?? null, kind: 'baseline' };
+  row.rebuilt = true;
+  row.history = entry || releases.length ? 'local' : 'none';
+  if (releases.length) row.releases = trimOrgReleases(releases.map(compactRelease), row);
+  return row;
+}
+
+app.post('/api/manifest/rebuild', async (req, res) => {
+  ensurePipelineIdsSaved();
+  const env = loadCustomers().find(c => c.id === req.body?.envId);
+  if (!env) return res.status(404).json({ error: 'Ukendt miljø' });
+  if (!stageOf(env)) return res.status(400).json({ error: `"${env.name}" har intet trin og dermed intet manifest.` });
+  // Spørg org'en, ikke hukommelsen: genopbygning sker netop når tabellen er væk.
+  delete _mfTableCache[env.id];
+  try {
+    let created = false;
+    if (!isDemo(env) && !(await findOrgManifestTable(env))) { await createOrgManifestTable(env); created = true; }
+    const findes = (await readOrgManifest(env)) || {};
+    const soeskende = loadCustomers().filter(c => orgKeyOf(c) === orgKeyOf(env));
+    const flows = (isDemo(env)
+      ? demoFlowsFor(env).map(f => ({ name: f.name, type: f.type, version: f.published ?? null, publishedAt: f.publishedAt ?? null }))
+      : (await listAllFlows(env)).map(f => ({ name: f.name, type: f.type,
+          version: f.publishedVersion?.name || f.checkedInVersion?.name || null,
+          publishedAt: f.publishedVersion?.dateCheckedIn || f.publishedVersion?.dateCreated || null })))
+      .filter(f => belongsToEnv(f.name, env, soeskende));
+    const lokal = loadManifest(), rels = loadReleases();
+    const who = await whoAmI(env);
+    let rows = 0, withHistory = 0, kept = 0;
+    for (const f of flows) {
+      const base = baseFlowName(stripEnvPrefix(f.name, env));
+      const key = orgManifestKey(base, f.type);
+      if (findes[key]) { kept++; continue; }        // rækker der står, røres ikke
+      const opslag = { targetOrgId: env.orgId || null, targetId: env.id, flowType: f.type };
+      const entry = findManifestEntry(lokal, { ...opslag, flowName: base }) || findManifestEntry(lokal, { ...opslag, flowName: f.name });
+      const mine = rels.filter(r => r.targetId === env.id && orgManifestKey(r.baseName, r.flowType) === key);
+      const row = rebuiltManifestRow(f, entry, mine);
+      await putOrgManifestRow(env, key, { ...row, by: who.by, bySource: who.bySource, at: Date.now() });
+      rows++;
+      if (row.history === 'local') withHistory++;
+    }
+    const setup = await writeSetupRow(loadCustomers().find(c => c.id === env.id) || env, await readSetupRow(env));
+    addLog('SUCCESS', `Manifest rebuilt in ${env.name}: ${rows} row(s) written (${withHistory} with history from this PC), ` +
+      `${kept} kept${created ? ', table created' : ''}`, env.name, 'MANIFEST');
+    res.json({ ok: true, created, rows, withHistory, kept, partial: rows > withHistory, setup });
+  } catch (e) {
+    addLog('ERROR', `Could not rebuild the manifest in ${env.name}: ${describeApiError(e)}`, env.name, 'MANIFEST');
     res.status(500).json({ error: describeApiError(e) });
   }
 });
@@ -3471,6 +4263,7 @@ async function updateOrgReleases(env, baseName, flowType, fn) {
 // det siges i loggen, for så kan en anden pc ikke se den.
 async function recordReleaseEverywhere(env, entry) {
   const rel = recordRelease(entry);
+  if (!stageOf(env)) return rel;          // løst miljø: kun på denne pc
   try {
     const r = await updateOrgReleases(env, rel.baseName, rel.flowType, list => [...list, compactRelease(rel)]);
     if (!r.ok && r.reason === 'no-table')
@@ -6661,7 +7454,10 @@ module.exports = {
   stripEnvPrefixesInYaml, flowContentHash, scanYamlDependencies, notMeta,
   stripFormIds, stripSchemaUris,
   // manifest
-  orgManifestKey, findManifestEntry,
+  orgManifestKey, findManifestEntry, isFlowRowKey, onlyFlowRows, rebuiltManifestRow,
+  // opsætningen i org'en
+  SETUP_KEY, SETUP_SHARED, setupRowFor, setupChanges, sameSetup, mergeStages, applyOrgSetup,
+  ensurePipelineIds, pipelinePeers, takenPrefixesFor, discoveryResult, sameSibling, cleanSibling,
   // common modules
   isBehindModule, staleModules,
   // Archy og fejltekster

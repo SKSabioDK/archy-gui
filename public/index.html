@@ -270,6 +270,8 @@
   .gd-title { font-weight:700; flex:1; }
   .gd-body { font-size:12px; color:var(--muted); margin:6px 0 0 30px; line-height:1.55; }
   .gd-res { font-size:12px; margin:6px 0 0 30px; font-family:var(--mono); }
+  .disc-card { border:1px solid var(--border); border-radius:6px; padding:8px 10px; margin-top:6px; background:var(--bg); color:var(--text); }
+  .disc-card input, .disc-card select { margin-top:2px; }
   .fh-note { font-size:11px; line-height:1.4; color:var(--muted); margin:0 0 8px; }
   .fh-text { font-size:11px; line-height:1.45; color:var(--text); background:var(--hover); border-left:2px solid var(--blue);
              padding:6px 9px; border-radius:4px; margin:-2px 0 6px; }
@@ -521,7 +523,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.47.5 · Archy GUI</div>
+    <div class="version" id="app-version">v1.48.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -537,6 +539,8 @@
 
     <!-- Miljøer der kræver login, fra hvilken som helst side -->
     <div id="login-bar" style="display:none;position:sticky;top:0;z-index:50;margin-bottom:12px"></div>
+    <!-- Hvad org'en har ændret i miljøets opsætning, siden sidst -->
+    <div id="setup-bar" style="display:none;margin-bottom:12px"></div>
 
     <!-- CUSTOMERS PAGE -->
     <div class="page active" id="page-customers">
@@ -2042,6 +2046,66 @@ const LANGS = {
     gd_deploy_missing:'Mangler: {list}',
     gd_flows_title:'Få flows ind i miljøet',
     gd_flows_body:'Er miljøet tomt, så brug ⟵ Hent hertil på pipelinen, eller Migrer Flow. Flow Browser viser hvad der allerede ligger i org\'en.',
+    gd_discover_title:'Find det der allerede er sat op',
+    gd_discover_body:'ArchyGUI ser efter sine egne tabeller i org\'en. Er miljøet sat op fra en anden pc, står det dér, og så tager du det i brug i stedet for at sætte det op igen.',
+    gd_env_body_loose:'Miljøet har intet trin: det bruges kun til import og eksport og er ikke med i en pipeline. Region og Client ID skal passe til org\'en.',
+    gd_env_loose_ok:'Kun import/eksport — intet trin.',
+    disc_found:'Org\'en {org} har {n} ArchyGUI-miljø(er):',
+    disc_none:'Org\'en {org} har ingen ArchyGUI-tabeller endnu.',
+    disc_no_setup:'opsætning ukendt (tabel fra før v1.48) — vælg trinnet',
+    disc_by:'Sidst rettet af {who}, {when}',
+    disc_wrong_org:'Tabellen siger at den hører til en anden org. Den tages ikke i brug.',
+    disc_self:'Det er dette miljø.',
+    disc_local:'Findes allerede på denne pc som {name}.',
+    disc_use:'Brug dette',
+    disc_template:'Opret nyt ud fra dette',
+    tip_disc_use:'Gør dette miljø til det miljø tabellen beskriver. Opsætningen hentes fra org\'en, og der skrives intet.',
+    tip_disc_template:'Opretter et nyt miljø i samme org med denne opsætning som skabelon. Du vælger trin og præfiks.',
+    disc_elsewhere_title:'Pipelinen har også miljøer i andre orgs:',
+    disc_added:'Tilføjet. Log ind på det for at bekræfte org\'en.',
+    disc_clientid_ph:'Client ID (PKCE-klient i den org)',
+    disc_add:'Tilføj',
+    tip_disc_add:'Tilføjer miljøet på denne pc. Org-id\'et sættes med det samme, så login\'et afvises hvis du vælger en anden org.',
+    disc_conflict_title:'Org\'en og denne pc er uenige:',
+    disc_this_pc:'denne pc',
+    disc_the_org:'org\'en',
+    disc_take_org:'Brug org\'ens',
+    disc_keep_local:'Behold denne pc\'s',
+    disc_applied:'Taget fra org\'en: {list}',
+    msg_stages_added:'Nye trin fra org\'en: {list}. Genindlæs siden for at se dem i listerne.',
+    disc_sync_pending_prod:'Opsætningen er ikke skrevet til prod endnu — det sker næste gang du logger ind med deploy-ret.',
+    disc_sync_pending:'Opsætningen er ikke skrevet til org\'en endnu — det prøves igen ved næste login eller tjek.',
+    disc_sync_wrote:'Opsætningen er skrevet til org\'en.',
+    disc_sync_ok:'Opsætningen er i trit med org\'en.',
+    disc_loose_ok:'Kun import/eksport — intet skrives i org\'en.',
+    disc_loose:'Kun import/eksport',
+    tip_disc_loose:'Miljøet bruges kun til import og eksport af flows. Det får intet trin, og der oprettes intet i kundens org.',
+    disc_new:'Opret helt nyt',
+    disc_pipeline:'Start en pipeline',
+    tip_disc_pipeline:'Giver miljøet et trin og opretter dets manifest-tabel i org\'en.',
+    disc_form_template:'Nyt miljø ud fra {name}',
+    disc_form_pipeline:'Nyt pipeline-miljø',
+    disc_taken:'Præfikser der allerede bruges i org\'en: {list}',
+    disc_create:'Opret',
+    disc_cancel:'Annullér',
+    disc_table_created:'Manifest-tabellen er oprettet med opsætningen i.',
+    disc_table_blocked:'Tabellen er ikke oprettet: skrivning til prod kræver et login med deploy-ret. Log ind igen og opret den under punktet om manifest-tabellen.',
+    disc_pick_stage:'Vælg et trin.',
+    disc_conflict_short:'Org\'en og denne pc er uenige — vælg nedenfor.',
+    disc_linked:'Koblet til {table}.',
+    disc_choose:'Vælg nedenfor hvad miljøet skal være.',
+    sync_conflict:'Opsætningen for {env} er ændret i org\'en, og denne pc har en rettelse der ikke er skrevet. Vælg hvem der har ret i guiden.',
+    sync_applied:'Org\'en har ændret {env}: {list}',
+    mf_rebuild:'Genopbyg',
+    tip_mf_rebuild:'Opretter tabellen hvis den mangler, skriver opsætningen og en række for hvert flow i miljøet. Historikken tages fra denne pc, hvor den findes.',
+    mf_rebuild_confirm:'Genopbyg manifestet i {env}? Tabellen oprettes hvis den mangler, og der skrives en række pr. flow i kundens org. Rækker der allerede står, røres ikke.',
+    mf_rebuild_running:'Genopbygger manifestet…',
+    mf_rebuilt:'Manifestet er genopbygget: {n} rækker skrevet, alle med historik fra denne pc. {k} rækker stod allerede.',
+    mf_rebuilt_partial:'Manifestet er genopbygget: {n} rækker skrevet, {h} med historik fra denne pc — resten er et nulpunkt for hvad org\'en indeholder nu. {k} rækker stod allerede.',
+    cc_setup_pending:'Opsætningen er ikke skrevet til org\'en',
+    tip_setup_pending:'En rettelse her på pc\'en venter på at blive skrevet til miljøets tabel i org\'en — typisk fordi der mangler et login. Den skrives næste gang det kan lade sig gøre.',
+    mf_setup_pending:'opsætning ikke skrevet',
+    mf_setup_ok:'opsætning',
     env_color_label:'Farve', color_auto:'Trinnets farve', color_green:'Grøn', color_yellow:'Gul', color_orange:'Orange', color_red:'Rød', color_blue:'Blå', color_grey:'Grå',
     prod_deploy_perm:'Kræver rettighed: architect:flow:publish',
     prod_deploy_group:'Kræver gruppe (valgfri)',
@@ -2073,7 +2137,7 @@ const LANGS = {
     action_default_note:'publiceres som standard — flowet er i drift med det samme',
     action_prod_note:'prod: publiceres IKKE som standard — lægges som kladde du selv publicerer',
     tree_ungrouped:'Ikke grupperet',
-    help_customers:'Ét miljø er én Genesys-org set gennem én OAuth-klient.\n• Nye miljøer bruger altid **OAuth (PKCE)**: du logger ind i Genesys som dig selv, og der gemmes ingen secret. Ældre miljøer med client credentials er markeret med **gult**.\n• **⚙ Indstillinger** rummer navn, kunde, gruppe, trin, præfiks, org-navn, farve, division, godkendelse og krav til prod. Hvert felt har et **ⓘ** — hold musen over eller klik for at se hvad det bruges til. Ulovlige tegn og navne der ville give samme mappe, afvises når du gemmer.\n• **Kunde + gruppe** afgør hvad der må migreres indbyrdes — gruppen er pipelinen, og den kan hedde et land eller et firma.\n• **Trin** er dev, test, uat eller prod og bestemmer rækkefølgen på pipelinen. Under **Trin** nederst på siden kan du tilføje egne, fx staging eller preprod — prod står altid sidst.\n• **Farve**: hvert miljø vises i sit trins farve — dev grøn, test gul, uat orange, prod rød — på pipelinen, i sidebjælken og på kortene. Vælg en anden under ⚙ Indstillinger.\n• **Rigtig org ved login**: login\'et tjekker hvilken org du landede i. Vælger du en forkert på Genesys\' login-side (fx en kundes via trusted org), afvises det. Org\'en står ved miljøet når du er logget ind.\n• **Præfiks** bruges kun når flere miljøer deler den samme org og kendes på fx DEV_. Ændrer du præfikset, viser dialogen hvilke flows, datatabeller og manifest-tabel der omdøbes i org\'en med — de beholder deres id. Lad det stå tomt for prod.\n• **Prod kræver et prod-login**: ved login tjekkes at du har rettigheden (som standard architect:flow:publish) og evt. er med i en gruppe. Retten gælder 30 minutter. Trin, godkendelse og krav på et prod-miljø kan kun ændres med et gyldigt prod-login.\n• **📋 Opsætningsguide**: knappen 📋 på et kort åbner en tjekliste i et nyt vindue til at sætte org\'en og miljøet rigtigt op. Tjek-knapperne kontrollerer selv.\n• **Log ind hvor du står**: mangler et miljø login, kommer der en bjælke øverst med en Log ind-knap — på alle sider. 🔒 ved miljøet i sidebjælken logger også ind, og siden hentes igen bagefter.\n• **Søg** i miljøerne over kortene, eller vis kun dem der kræver login. Formularen og demo-kunderne kan foldes ud.\n• **Demo-kunderne** er helt lokale — intet login, ingen kald til Genesys.',
+    help_customers:'Ét miljø er én Genesys-org set gennem én OAuth-klient.\n• Nye miljøer bruger altid **OAuth (PKCE)**: du logger ind i Genesys som dig selv, og der gemmes ingen secret. Ældre miljøer med client credentials er markeret med **gult**.\n• **⚙ Indstillinger** rummer navn, kunde, gruppe, trin, præfiks, org-navn, farve, division, godkendelse og krav til prod. Hvert felt har et **ⓘ** — hold musen over eller klik for at se hvad det bruges til. Ulovlige tegn og navne der ville give samme mappe, afvises når du gemmer.\n• **Kunde + gruppe** afgør hvad der må migreres indbyrdes — gruppen er pipelinen, og den kan hedde et land eller et firma.\n• **Trin** er dev, test, uat eller prod og bestemmer rækkefølgen på pipelinen. Under **Trin** nederst på siden kan du tilføje egne, fx staging eller preprod — prod står altid sidst.\n• **Farve**: hvert miljø vises i sit trins farve — dev grøn, test gul, uat orange, prod rød — på pipelinen, i sidebjælken og på kortene. Vælg en anden under ⚙ Indstillinger.\n• **Rigtig org ved login**: login\'et tjekker hvilken org du landede i. Vælger du en forkert på Genesys\' login-side (fx en kundes via trusted org), afvises det. Org\'en står ved miljøet når du er logget ind.\n• **Præfiks** bruges kun når flere miljøer deler den samme org og kendes på fx DEV_. Ændrer du præfikset, viser dialogen hvilke flows, datatabeller og manifest-tabel der omdøbes i org\'en med — de beholder deres id. Lad det stå tomt for prod.\n• **Prod kræver et prod-login**: ved login tjekkes at du har rettigheden (som standard architect:flow:publish) og evt. er med i en gruppe. Retten gælder 30 minutter. Trin, godkendelse og krav på et prod-miljø kan kun ændres med et gyldigt prod-login.\n• **📋 Opsætningsguide**: knappen 📋 på et kort åbner en tjekliste i et nyt vindue til at sætte org\'en og miljøet rigtigt op. Tjek-knapperne kontrollerer selv.\n• **Log ind hvor du står**: mangler et miljø login, kommer der en bjælke øverst med en Log ind-knap — på alle sider. 🔒 ved miljøet i sidebjælken logger også ind, og siden hentes igen bagefter.\n• **Søg** i miljøerne over kortene, eller vis kun dem der kræver login. Formularen og demo-kunderne kan foldes ud.\n• **Demo-kunderne** er helt lokale — intet login, ingen kald til Genesys.\n• **📋 Guiden finder det der allerede er sat op:** efter login ser den efter ArchyGUI-tabeller i org\'en. Sat op fra en anden pc? Så tag det i brug med **Brug dette**. Pipelinens miljøer i andre orgs (fx prod) kan tilføjes derfra.\n• Et miljø **uden trin** er kun til import/eksport — der skrives intet i dets org.\n• Opsætningen står i manifest-tabellen, og **org\'en vinder**. En rettelse her skrives straks dertil; prod-vagtens felter løsnes aldrig udefra.',
     help_pipeline:'Flows som rækker, gruppens miljøer som kolonner i trin-rækkefølge.\n• Versionstallene kan **ikke** sammenlignes på tværs — de tælles pr. org. Brug **⇄ Tjek indhold**, som er det eneste der afgør om to miljøer er ens.\n• **Grøn** betyder publiceret ad den rigtige vej. **Rød** betyder enten publiceret uden om pipelinen, eller flere udgaver end trinnet før.\n• **Hver knap viser først hvad der sker** — flow, fra og til, og advarsler om prod eller ændringer der går tabt — og du kan annullere. **? Knapperne** forklarer dem alle.\n• **Udlign versionsnummer**: ved ⟶ Forfrem kan målet publiceres de ekstra gange der mangler, så det står på kildens nummer (fx dev v10 → test v10). Det kan ikke tælle ned.\n• **⟶ Forfrem** flytter ét trin ad gangen. Kun en publiceret udgave kan forfremmes — en kladde er ikke testet. Til prod kræves dit prod-login.\n• **⟵ Hent hertil** henter et flow ned fra et senere trin, fx når dev lige er sat op.\n• **↩** ruller seneste forfremmelse tilbage, og **📝** viser release notes.\n• Forfremmes eller rulles et **common module** tilbage, tilbydes du at genpublicere de flows i miljøet der bruger det. **🔁** gør det samme når modulet er rettet direkte i Architect. Er et modul publiceret efter flows der bruger det, står det øverst på tavlen, cellerne er mærket ⚠, og 🔁 er gul.\n• **Delt manifest** lægger historikken i org\'en, så flere kan arbejde på samme kunde uden at se hver sin sandhed.',
     help_flows:'Hent, søg og filtrér miljøets flows. Deler flere miljøer org\'en, vises kun dette miljøs egne.\n• Filtrér på **flowtype** — listen fyldes ud fra de typer miljøet faktisk har.\n• **Publicér** sætter en allerede migreret kladde i drift uden at hente noget fra kilden igen. Er det et common module, tilbydes du bagefter at genpublicere de flows der bruger det.\n• **Common modules tjekkes** hver gang listen hentes: er et modul publiceret **efter** et flow der bruger det, kører flowet stadig på den gamle udgave. Det står i et gult felt med en knap der genpublicerer dem, og rækkerne er mærket ⚠.\n• **🔁 Brugere** på et common module viser alle de flows der bruger det.\n• **⇄ Sammenlign** mod en anden org sammenligner **indholdet**, ikke versionsnumrene.\n• **📌 Sæt nulpunkt** noterer hvad org\'en indeholder nu, så værktøjet bagefter kan fange at nogen har publiceret direkte — også for flows det aldrig selv har migreret.',
     help_cross:'Viser de flows der findes hos **flere kunder** — fx det samme common module hos ti kunder.\n• Oversigten bygger på ét kald pr. kunde og er derfor hurtig.\n• **⇄ Sammenlign indhold** eksporterer flowet fra hver kunde og sammenligner hashen. Det tager tid, så det køres kun for den række du beder om.\n• Kunne en org ikke læses, siges det — der står **aldrig** "identisk" hvis vi mangler svar fra nogen.',
@@ -2815,6 +2879,66 @@ const LANGS = {
     gd_deploy_missing:'Missing: {list}',
     gd_flows_title:'Get flows into the environment',
     gd_flows_body:'If the environment is empty, use ⟵ Pull here on the pipeline, or Migrate Flow. Flow Browser shows what is already in the org.',
+    gd_discover_title:'Find what is already set up',
+    gd_discover_body:'ArchyGUI looks for its own tables in the org. If the environment was set up from another PC, it is there — and you take it into use instead of setting it up again.',
+    gd_env_body_loose:'The environment has no stage: it is used for import and export only and is not part of a pipeline. Region and Client ID must match the org.',
+    gd_env_loose_ok:'Import/export only — no stage.',
+    disc_found:'The org {org} has {n} ArchyGUI environment(s):',
+    disc_none:'The org {org} has no ArchyGUI tables yet.',
+    disc_no_setup:'setup unknown (table from before v1.48) — choose the stage',
+    disc_by:'Last changed by {who}, {when}',
+    disc_wrong_org:'The table says it belongs to another org. It is not taken into use.',
+    disc_self:'This is this environment.',
+    disc_local:'Already on this PC as {name}.',
+    disc_use:'Use this',
+    disc_template:'Create new from this',
+    tip_disc_use:'Makes this environment the one the table describes. The setup is fetched from the org, and nothing is written.',
+    tip_disc_template:'Creates a new environment in the same org with this setup as a template. You choose stage and prefix.',
+    disc_elsewhere_title:'The pipeline also has environments in other orgs:',
+    disc_added:'Added. Log in to it to confirm the org.',
+    disc_clientid_ph:'Client ID (PKCE client in that org)',
+    disc_add:'Add',
+    tip_disc_add:'Adds the environment on this PC. The org id is set right away, so the login is refused if you pick another org.',
+    disc_conflict_title:'The org and this PC disagree:',
+    disc_this_pc:'this PC',
+    disc_the_org:'the org',
+    disc_take_org:'Use the org\'s',
+    disc_keep_local:'Keep this PC\'s',
+    disc_applied:'Taken from the org: {list}',
+    msg_stages_added:'New stages from the org: {list}. Reload the page to see them in the lists.',
+    disc_sync_pending_prod:'The setup is not written to prod yet — that happens the next time you log in with deploy rights.',
+    disc_sync_pending:'The setup is not written to the org yet — it is tried again at the next login or check.',
+    disc_sync_wrote:'The setup is written to the org.',
+    disc_sync_ok:'The setup is in step with the org.',
+    disc_loose_ok:'Import/export only — nothing is written to the org.',
+    disc_loose:'Import/export only',
+    tip_disc_loose:'The environment is only used to import and export flows. It gets no stage, and nothing is created in the customer\'s org.',
+    disc_new:'Create a new one',
+    disc_pipeline:'Start a pipeline',
+    tip_disc_pipeline:'Gives the environment a stage and creates its manifest table in the org.',
+    disc_form_template:'New environment based on {name}',
+    disc_form_pipeline:'New pipeline environment',
+    disc_taken:'Prefixes already used in the org: {list}',
+    disc_create:'Create',
+    disc_cancel:'Cancel',
+    disc_table_created:'The manifest table is created with the setup in it.',
+    disc_table_blocked:'The table was not created: writing to prod requires a login with deploy rights. Log in again and create it under the manifest table step.',
+    disc_pick_stage:'Choose a stage.',
+    disc_conflict_short:'The org and this PC disagree — choose below.',
+    disc_linked:'Linked to {table}.',
+    disc_choose:'Choose below what the environment should be.',
+    sync_conflict:'The setup of {env} was changed in the org, and this PC has a change that is not written. Choose who is right in the guide.',
+    sync_applied:'The org changed {env}: {list}',
+    mf_rebuild:'Rebuild',
+    tip_mf_rebuild:'Creates the table if it is missing, writes the setup and a row for each flow in the environment. History is taken from this PC where it exists.',
+    mf_rebuild_confirm:'Rebuild the manifest in {env}? The table is created if it is missing, and a row per flow is written in the customer\'s org. Rows that already exist are left alone.',
+    mf_rebuild_running:'Rebuilding the manifest…',
+    mf_rebuilt:'The manifest is rebuilt: {n} rows written, all with history from this PC. {k} rows already existed.',
+    mf_rebuilt_partial:'The manifest is rebuilt: {n} rows written, {h} with history from this PC — the rest are a baseline of what the org holds now. {k} rows already existed.',
+    cc_setup_pending:'The setup is not written to the org',
+    tip_setup_pending:'A change on this PC is waiting to be written to the environment\'s table in the org — usually because a login is missing. It is written the next time that is possible.',
+    mf_setup_pending:'setup not written',
+    mf_setup_ok:'setup',
     env_color_label:'Colour', color_auto:'Stage colour', color_green:'Green', color_yellow:'Yellow', color_orange:'Orange', color_red:'Red', color_blue:'Blue', color_grey:'Grey',
     prod_deploy_perm:'Requires permission: architect:flow:publish',
     prod_deploy_group:'Requires group (optional)',
@@ -2846,7 +2970,7 @@ const LANGS = {
     action_default_note:'published by default — the flow is live straight away',
     action_prod_note:'prod: NOT published by default — left as a draft for you to publish',
     tree_ungrouped:'Not grouped',
-    help_customers:'One environment is one Genesys org seen through one OAuth client.\n• New environments always use **OAuth (PKCE)**: you log in to Genesys as yourself and no secret is stored. Older environments using client credentials are marked in **yellow**.\n• **⚙ Settings** holds name, customer, group, stage, prefix, org label, colour, division, authentication and prod requirements. Every field has an **ⓘ** — hover or click it to see what it is for. Invalid characters, and names that would share a folder, are rejected on save.\n• **Customer + group** decide what may be migrated between — the group is the pipeline, named after a country or a company.\n• **Stage** is dev, test, uat or prod and sets the order on the pipeline. Under **Stages** at the bottom of the page you can add your own, e.g. staging or preprod — prod is always last.\n• **Colour**: each environment shows in its stage colour — dev green, test yellow, uat orange, prod red — on the pipeline, in the sidebar and on the cards. Pick another under ⚙ Settings.\n• **Right org at login**: the login checks which org you landed in. Picking the wrong one on Genesys\' login page (e.g. a customer\'s via trusted org) is refused. The org is shown next to the environment once logged in.\n• **Prefix** is only used when several environments share one org, recognised by e.g. DEV_. Change it, and a dialog shows which flows, data tables and manifest table are renamed in the org along with it — they keep their id. Leave it empty for prod.\n• **Prod requires a prod login**: at login you are checked for the permission (architect:flow:publish by default) and optionally a group. The right lasts 30 minutes. Stage, authentication and requirements of a prod environment can only be changed with a valid prod login.\n• **📋 Setup guide**: the 📋 button on a card opens a checklist in a new window for setting up the org and environment. The Check buttons verify for you.\n• **Log in where you are**: when an environment needs a login, a bar with a Log in button appears at the top — on every page. 🔒 next to the environment in the sidebar logs in too, and the page reloads afterwards.\n• **Search** the environments above the cards, or show only those requiring login. The form and the demo customers can be expanded.\n• **Demo customers** are fully local — no login, no calls to Genesys.',
+    help_customers:'One environment is one Genesys org seen through one OAuth client.\n• New environments always use **OAuth (PKCE)**: you log in to Genesys as yourself and no secret is stored. Older environments using client credentials are marked in **yellow**.\n• **⚙ Settings** holds name, customer, group, stage, prefix, org label, colour, division, authentication and prod requirements. Every field has an **ⓘ** — hover or click it to see what it is for. Invalid characters, and names that would share a folder, are rejected on save.\n• **Customer + group** decide what may be migrated between — the group is the pipeline, named after a country or a company.\n• **Stage** is dev, test, uat or prod and sets the order on the pipeline. Under **Stages** at the bottom of the page you can add your own, e.g. staging or preprod — prod is always last.\n• **Colour**: each environment shows in its stage colour — dev green, test yellow, uat orange, prod red — on the pipeline, in the sidebar and on the cards. Pick another under ⚙ Settings.\n• **Right org at login**: the login checks which org you landed in. Picking the wrong one on Genesys\' login page (e.g. a customer\'s via trusted org) is refused. The org is shown next to the environment once logged in.\n• **Prefix** is only used when several environments share one org, recognised by e.g. DEV_. Change it, and a dialog shows which flows, data tables and manifest table are renamed in the org along with it — they keep their id. Leave it empty for prod.\n• **Prod requires a prod login**: at login you are checked for the permission (architect:flow:publish by default) and optionally a group. The right lasts 30 minutes. Stage, authentication and requirements of a prod environment can only be changed with a valid prod login.\n• **📋 Setup guide**: the 📋 button on a card opens a checklist in a new window for setting up the org and environment. The Check buttons verify for you.\n• **Log in where you are**: when an environment needs a login, a bar with a Log in button appears at the top — on every page. 🔒 next to the environment in the sidebar logs in too, and the page reloads afterwards.\n• **Search** the environments above the cards, or show only those requiring login. The form and the demo customers can be expanded.\n• **Demo customers** are fully local — no login, no calls to Genesys.\n• **📋 The guide finds what is already set up:** after login it looks for ArchyGUI tables in the org. Set up from another PC? Take it into use with **Use this**. The pipeline\'s environments in other orgs (e.g. prod) can be added from there.\n• An environment **without a stage** is import/export only — nothing is written in its org.\n• The setup lives in the manifest table, and **the org wins**. A change here is written there straight away; the prod guard\'s fields are never loosened from outside.',
     help_pipeline:'Flows as rows, the group\'s environments as columns in stage order.\n• Version numbers **cannot** be compared across orgs — they are counted per org. Use **⇄ Check content**, the only thing that decides whether two environments match.\n• **Green** means published the right way. **Red** means published outside the pipeline, or more versions than the stage before.\n• **Every button first shows what will happen** — flow, from and to, and warnings about prod or changes that would be lost — and you can cancel. **? Buttons** explains them all.\n• **Align version number**: on ⟶ Promote the target can be published the missing extra times so it matches the source number (e.g. dev v10 → test v10). It cannot count down.\n• **⟶ Promote** moves one stage at a time. Only a published version can be promoted — a draft is untested. Prod requires your prod login.\n• **⟵ Pull here** fetches a flow from a later stage, e.g. when dev has just been set up.\n• **↩** rolls back the latest promotion, and **📝** shows release notes.\n• When a **common module** is promoted or rolled back, you are offered to republish the flows in that environment that use it. **🔁** does the same when the module was changed directly in Architect. If a module was published after flows that use it, this is listed at the top of the board, the cells are marked ⚠ and 🔁 turns yellow.\n• **Shared manifest** keeps history in the org, so several people can work on one customer and see the same truth.',
     help_flows:'Fetch, search and filter the environment\'s flows. When several environments share an org, only this environment\'s own are shown.\n• Filter by **flow type** — the list is populated from the types the environment actually has.\n• **Publish** puts an already-migrated draft live without fetching anything from the source again. For a common module, you are then offered to republish the flows that use it.\n• **Common modules are checked** every time the list is fetched: if a module was published **after** a flow that uses it, the flow still runs the old version. This is shown in a yellow box with a button to republish them, and the rows are marked ⚠.\n• **🔁 Users** on a common module lists every flow that uses it.\n• **⇄ Compare** against another org compares **content**, not version numbers.\n• **📌 Set baseline** records what the org holds now, so the tool can later catch someone publishing directly — even for flows it never migrated itself.',
     help_cross:'Shows the flows that exist at **more than one customer** — the same common module at ten customers, say.\n• The overview rests on one call per customer and is therefore quick.\n• **⇄ Compare content** exports the flow from each customer and compares the hash. That takes time, so it runs only for the row you ask for.\n• If an org could not be read, it says so — it **never** reports "identical" when an answer is missing.',
@@ -3588,6 +3712,66 @@ const LANGS = {
     gd_deploy_missing:'Manquant : {list}',
     gd_flows_title:'Faire entrer des flows dans l\'environnement',
     gd_flows_body:'Si l\'environnement est vide, utilisez ⟵ Ramener ici sur le pipeline, ou Migrer un flow. Flow Browser montre ce qui est déjà dans l\'org.',
+    gd_discover_title:'Trouver ce qui est déjà configuré',
+    gd_discover_body:'ArchyGUI cherche ses propres tables dans l\'org. Si l\'environnement a été configuré depuis un autre PC, il s\'y trouve — et vous le reprenez au lieu de le configurer à nouveau.',
+    gd_env_body_loose:'L\'environnement n\'a pas d\'étape : il sert uniquement à l\'import et à l\'export et ne fait partie d\'aucun pipeline. La région et le Client ID doivent correspondre à l\'org.',
+    gd_env_loose_ok:'Import/export uniquement — pas d\'étape.',
+    disc_found:'L\'org {org} a {n} environnement(s) ArchyGUI :',
+    disc_none:'L\'org {org} n\'a pas encore de tables ArchyGUI.',
+    disc_no_setup:'configuration inconnue (table d\'avant la v1.48) — choisissez l\'étape',
+    disc_by:'Modifié en dernier par {who}, {when}',
+    disc_wrong_org:'La table indique qu\'elle appartient à une autre org. Elle n\'est pas reprise.',
+    disc_self:'C\'est cet environnement.',
+    disc_local:'Existe déjà sur ce PC sous le nom {name}.',
+    disc_use:'Utiliser celui-ci',
+    disc_template:'Créer un nouveau à partir de celui-ci',
+    tip_disc_use:'Fait de cet environnement celui que décrit la table. La configuration est lue dans l\'org, et rien n\'est écrit.',
+    tip_disc_template:'Crée un nouvel environnement dans la même org avec cette configuration comme modèle. Vous choisissez l\'étape et le préfixe.',
+    disc_elsewhere_title:'Le pipeline a aussi des environnements dans d\'autres orgs :',
+    disc_added:'Ajouté. Connectez-vous pour confirmer l\'org.',
+    disc_clientid_ph:'Client ID (client PKCE dans cette org)',
+    disc_add:'Ajouter',
+    tip_disc_add:'Ajoute l\'environnement sur ce PC. L\'id de l\'org est fixé tout de suite, donc la connexion est refusée si vous choisissez une autre org.',
+    disc_conflict_title:'L\'org et ce PC ne sont pas d\'accord :',
+    disc_this_pc:'ce PC',
+    disc_the_org:'l\'org',
+    disc_take_org:'Prendre celle de l\'org',
+    disc_keep_local:'Garder celle de ce PC',
+    disc_applied:'Repris de l\'org : {list}',
+    msg_stages_added:'Nouvelles étapes venant de l\'org : {list}. Rechargez la page pour les voir dans les listes.',
+    disc_sync_pending_prod:'La configuration n\'est pas encore écrite en prod — elle le sera à votre prochaine connexion avec le droit de déployer.',
+    disc_sync_pending:'La configuration n\'est pas encore écrite dans l\'org — nouvel essai à la prochaine connexion ou vérification.',
+    disc_sync_wrote:'La configuration est écrite dans l\'org.',
+    disc_sync_ok:'La configuration est en phase avec l\'org.',
+    disc_loose_ok:'Import/export uniquement — rien n\'est écrit dans l\'org.',
+    disc_loose:'Import/export uniquement',
+    tip_disc_loose:'L\'environnement sert uniquement à importer et exporter des flows. Il n\'a pas d\'étape, et rien n\'est créé dans l\'org du client.',
+    disc_new:'Créer un nouveau',
+    disc_pipeline:'Démarrer un pipeline',
+    tip_disc_pipeline:'Donne une étape à l\'environnement et crée sa table de manifeste dans l\'org.',
+    disc_form_template:'Nouvel environnement basé sur {name}',
+    disc_form_pipeline:'Nouvel environnement de pipeline',
+    disc_taken:'Préfixes déjà utilisés dans l\'org : {list}',
+    disc_create:'Créer',
+    disc_cancel:'Annuler',
+    disc_table_created:'La table du manifeste est créée avec la configuration.',
+    disc_table_blocked:'La table n\'a pas été créée : écrire en prod exige une connexion avec le droit de déployer. Reconnectez-vous et créez-la à l\'étape de la table du manifeste.',
+    disc_pick_stage:'Choisissez une étape.',
+    disc_conflict_short:'L\'org et ce PC ne sont pas d\'accord — choisissez ci-dessous.',
+    disc_linked:'Relié à {table}.',
+    disc_choose:'Choisissez ci-dessous ce que doit être l\'environnement.',
+    sync_conflict:'La configuration de {env} a changé dans l\'org, et ce PC a une modification non écrite. Choisissez qui a raison dans le guide.',
+    sync_applied:'L\'org a modifié {env} : {list}',
+    mf_rebuild:'Reconstruire',
+    tip_mf_rebuild:'Crée la table si elle manque, écrit la configuration et une ligne par flow de l\'environnement. L\'historique vient de ce PC quand il existe.',
+    mf_rebuild_confirm:'Reconstruire le manifeste dans {env} ? La table est créée si elle manque, et une ligne par flow est écrite dans l\'org du client. Les lignes existantes ne sont pas touchées.',
+    mf_rebuild_running:'Reconstruction du manifeste…',
+    mf_rebuilt:'Le manifeste est reconstruit : {n} lignes écrites, toutes avec l\'historique de ce PC. {k} lignes existaient déjà.',
+    mf_rebuilt_partial:'Le manifeste est reconstruit : {n} lignes écrites, {h} avec l\'historique de ce PC — les autres sont un point zéro de ce que contient l\'org. {k} lignes existaient déjà.',
+    cc_setup_pending:'La configuration n\'est pas écrite dans l\'org',
+    tip_setup_pending:'Une modification sur ce PC attend d\'être écrite dans la table de l\'environnement dans l\'org — en général parce qu\'il manque une connexion. Elle sera écrite dès que possible.',
+    mf_setup_pending:'configuration non écrite',
+    mf_setup_ok:'configuration',
     env_color_label:'Couleur', color_auto:'Couleur de l\'étape', color_green:'Vert', color_yellow:'Jaune', color_orange:'Orange', color_red:'Rouge', color_blue:'Bleu', color_grey:'Gris',
     prod_deploy_perm:'Permission requise : architect:flow:publish',
     prod_deploy_group:'Groupe requis (facultatif)',
@@ -3619,7 +3803,7 @@ const LANGS = {
     action_default_note:'publié par défaut — le flow est actif immédiatement',
     action_prod_note:'prod : NON publié par défaut — laissé en brouillon à publier vous-même',
     tree_ungrouped:'Non regroupé',
-    help_customers:'Un environnement est une org Genesys vue à travers un client OAuth.\n• Les nouveaux environnements utilisent toujours **OAuth (PKCE)** : vous vous connectez à Genesys en votre nom et aucun secret n\'est stocké. Les anciens environnements en client credentials sont en **jaune**.\n• **⚙ Paramètres** contient nom, client, groupe, étape, préfixe, nom de l\'org, couleur, division, authentification et exigences prod. Chaque champ a un **ⓘ** — survolez-le ou cliquez pour voir à quoi il sert. Les caractères interdits et les noms qui partageraient un dossier sont refusés à l\'enregistrement.\n• **Client + groupe** déterminent ce qui peut être migré entre eux — le groupe est le pipeline.\n• **Étape** vaut dev, test, uat ou prod et fixe l\'ordre du pipeline. Sous **Étapes** en bas de page, vous pouvez en ajouter, par ex. staging ou preprod — prod reste en dernier.\n• **Couleur** : chaque environnement a la couleur de son étape — dev vert, test jaune, uat orange, prod rouge — sur le pipeline, dans la barre latérale et sur les cartes. Choisissez-en une autre dans ⚙ Paramètres.\n• **Bonne org à la connexion** : la connexion vérifie dans quelle org vous êtes arrivé. Une mauvaise org choisie sur la page de connexion Genesys (par ex. celle d\'un client via trusted org) est refusée. L\'org s\'affiche près de l\'environnement une fois connecté.\n• **Préfixe** ne sert que si plusieurs environnements partagent une org, reconnus par ex. DEV_. Si vous le changez, une boîte de dialogue montre les flows, tables de données et table du manifeste renommés dans l\'org — ils gardent leur id. Laissez-le vide pour prod.\n• **Prod exige une connexion prod** : à la connexion, on vérifie la permission (architect:flow:publish par défaut) et éventuellement un groupe. Le droit dure 30 minutes. Étape, authentification et exigences d\'un environnement prod ne changent qu\'avec une connexion prod valide.\n• **📋 Guide de configuration** : le bouton 📋 d\'une carte ouvre une liste dans une nouvelle fenêtre pour configurer l\'org et l\'environnement. Les boutons Vérifier contrôlent pour vous.\n• **Connectez-vous où vous êtes** : si un environnement demande une connexion, une barre avec un bouton apparaît en haut — sur toutes les pages. 🔒 dans la barre latérale connecte aussi, puis la page se recharge.\n• **Cherchez** parmi les environnements, ou affichez seulement ceux à connecter. Le formulaire et les démos se déplient.\n• **Les clients démo** sont entièrement locaux — pas de connexion, aucun appel à Genesys.',
+    help_customers:'Un environnement est une org Genesys vue à travers un client OAuth.\n• Les nouveaux environnements utilisent toujours **OAuth (PKCE)** : vous vous connectez à Genesys en votre nom et aucun secret n\'est stocké. Les anciens environnements en client credentials sont en **jaune**.\n• **⚙ Paramètres** contient nom, client, groupe, étape, préfixe, nom de l\'org, couleur, division, authentification et exigences prod. Chaque champ a un **ⓘ** — survolez-le ou cliquez pour voir à quoi il sert. Les caractères interdits et les noms qui partageraient un dossier sont refusés à l\'enregistrement.\n• **Client + groupe** déterminent ce qui peut être migré entre eux — le groupe est le pipeline.\n• **Étape** vaut dev, test, uat ou prod et fixe l\'ordre du pipeline. Sous **Étapes** en bas de page, vous pouvez en ajouter, par ex. staging ou preprod — prod reste en dernier.\n• **Couleur** : chaque environnement a la couleur de son étape — dev vert, test jaune, uat orange, prod rouge — sur le pipeline, dans la barre latérale et sur les cartes. Choisissez-en une autre dans ⚙ Paramètres.\n• **Bonne org à la connexion** : la connexion vérifie dans quelle org vous êtes arrivé. Une mauvaise org choisie sur la page de connexion Genesys (par ex. celle d\'un client via trusted org) est refusée. L\'org s\'affiche près de l\'environnement une fois connecté.\n• **Préfixe** ne sert que si plusieurs environnements partagent une org, reconnus par ex. DEV_. Si vous le changez, une boîte de dialogue montre les flows, tables de données et table du manifeste renommés dans l\'org — ils gardent leur id. Laissez-le vide pour prod.\n• **Prod exige une connexion prod** : à la connexion, on vérifie la permission (architect:flow:publish par défaut) et éventuellement un groupe. Le droit dure 30 minutes. Étape, authentification et exigences d\'un environnement prod ne changent qu\'avec une connexion prod valide.\n• **📋 Guide de configuration** : le bouton 📋 d\'une carte ouvre une liste dans une nouvelle fenêtre pour configurer l\'org et l\'environnement. Les boutons Vérifier contrôlent pour vous.\n• **Connectez-vous où vous êtes** : si un environnement demande une connexion, une barre avec un bouton apparaît en haut — sur toutes les pages. 🔒 dans la barre latérale connecte aussi, puis la page se recharge.\n• **Cherchez** parmi les environnements, ou affichez seulement ceux à connecter. Le formulaire et les démos se déplient.\n• **Les clients démo** sont entièrement locaux — pas de connexion, aucun appel à Genesys.\n• **📋 Le guide trouve ce qui est déjà configuré :** après la connexion, il cherche les tables ArchyGUI dans l\'org. Configuré depuis un autre PC ? Reprenez-le avec **Utiliser celui-ci**. Les environnements du pipeline dans d\'autres orgs (p. ex. prod) peuvent être ajoutés de là.\n• Un environnement **sans étape** sert uniquement à l\'import/export — rien n\'est écrit dans son org.\n• La configuration est dans la table du manifeste, et **l\'org l\'emporte**. Une modification ici y est écrite aussitôt ; les champs de la garde de prod ne sont jamais assouplis de l\'extérieur.',
     help_pipeline:'Les flows en lignes, les environnements du groupe en colonnes, par étape.\n• Les numéros de version ne sont **pas** comparables entre orgs — ils sont comptés par org. Utilisez **⇄ Vérifier le contenu**, seul juge de l\'égalité de deux environnements.\n• **Vert** : publié par le bon chemin. **Rouge** : publié hors du pipeline, ou plus de versions que l\'étape précédente.\n• **Chaque bouton montre d\'abord ce qui va se passer** — flow, source et cible, et avertissements sur prod ou des changements perdus — et vous pouvez annuler. **? Boutons** les explique tous.\n• **Aligner le numéro de version** : avec ⟶ Promouvoir, la cible peut être publiée les fois manquantes pour atteindre le numéro de la source (par ex. dev v10 → test v10). Impossible de décompter.\n• **⟶ Promouvoir** avance d\'une étape à la fois. Seule une version publiée peut être promue. Prod exige votre connexion prod.\n• **⟵ Ramener ici** récupère un flow d\'une étape ultérieure, par ex. quand dev vient d\'être créé.\n• **↩** annule la dernière promotion, **📝** affiche les notes de version.\n• Quand un **common module** est promu ou annulé, on vous propose de republier les flows de l\'environnement qui l\'utilisent. **🔁** fait de même si le module a été modifié directement dans Architect. Si un module a été publié après des flows qui l\'utilisent, c\'est indiqué en haut du tableau, les cellules sont marquées ⚠ et 🔁 devient jaune.\n• **Le manifeste partagé** garde l\'historique dans l\'org, pour que chacun voie la même vérité.',
     help_flows:'Récupérer, chercher et filtrer les flows de l\'environnement. Si plusieurs environnements partagent une org, seuls les siens sont affichés.\n• Filtrez par **type de flow** — la liste reprend les types réellement présents.\n• **Publier** met en service un brouillon déjà migré. Pour un common module, on vous propose ensuite de republier les flows qui l\'utilisent.\n• **Les common modules sont vérifiés** à chaque chargement : un module publié **après** un flow qui l\'utilise signifie que le flow tourne encore sur l\'ancienne version. C\'est signalé dans un encadré jaune avec un bouton pour les republier, et les lignes sont marquées ⚠.\n• **🔁 Utilisateurs** sur un common module liste tous les flows qui l\'utilisent.\n• **⇄ Comparer** avec une autre org compare le **contenu**, pas les numéros de version.\n• **📌 Point zéro** enregistre l\'état actuel de l\'org, pour repérer ensuite les publications directes.',
     help_cross:'Montre les flows présents chez **plusieurs clients** — par exemple le même common module chez dix clients.\n• La vue repose sur un appel par client et est donc rapide.\n• **⇄ Comparer le contenu** exporte le flow chez chaque client et compare l\'empreinte. C\'est long, donc réservé à la ligne demandée.\n• Si une org n\'a pas pu être lue, c\'est dit — il n\'affiche **jamais** « identique » quand une réponse manque.',
@@ -4361,6 +4545,66 @@ const LANGS = {
     gd_deploy_missing:'Ontbreekt: {list}',
     gd_flows_title:'Flows in de omgeving krijgen',
     gd_flows_body:'Is de omgeving leeg, gebruik dan ⟵ Hierheen halen op de pipeline, of Flow migreren. Flow Browser toont wat er al in de org staat.',
+    gd_discover_title:'Vind wat al is ingericht',
+    gd_discover_body:'ArchyGUI zoekt naar zijn eigen tabellen in de org. Is de omgeving vanaf een andere pc ingericht, dan staat ze daar — en neem je haar in gebruik in plaats van haar opnieuw in te richten.',
+    gd_env_body_loose:'De omgeving heeft geen fase: ze wordt alleen voor import en export gebruikt en hoort bij geen pipeline. Regio en Client ID moeten bij de org passen.',
+    gd_env_loose_ok:'Alleen import/export — geen fase.',
+    disc_found:'De org {org} heeft {n} ArchyGUI-omgeving(en):',
+    disc_none:'De org {org} heeft nog geen ArchyGUI-tabellen.',
+    disc_no_setup:'inrichting onbekend (tabel van vóór v1.48) — kies de fase',
+    disc_by:'Laatst gewijzigd door {who}, {when}',
+    disc_wrong_org:'De tabel zegt dat ze bij een andere org hoort. Ze wordt niet in gebruik genomen.',
+    disc_self:'Dit is deze omgeving.',
+    disc_local:'Staat al op deze pc als {name}.',
+    disc_use:'Deze gebruiken',
+    disc_template:'Nieuwe maken op basis hiervan',
+    tip_disc_use:'Maakt van deze omgeving de omgeving die de tabel beschrijft. De inrichting wordt uit de org gehaald, en er wordt niets geschreven.',
+    tip_disc_template:'Maakt een nieuwe omgeving in dezelfde org met deze inrichting als sjabloon. Jij kiest fase en prefix.',
+    disc_elsewhere_title:'De pipeline heeft ook omgevingen in andere orgs:',
+    disc_added:'Toegevoegd. Log erop in om de org te bevestigen.',
+    disc_clientid_ph:'Client ID (PKCE-client in die org)',
+    disc_add:'Toevoegen',
+    tip_disc_add:'Voegt de omgeving toe op deze pc. Het org-id wordt meteen gezet, zodat de login wordt geweigerd als je een andere org kiest.',
+    disc_conflict_title:'De org en deze pc zijn het oneens:',
+    disc_this_pc:'deze pc',
+    disc_the_org:'de org',
+    disc_take_org:'Die van de org gebruiken',
+    disc_keep_local:'Die van deze pc houden',
+    disc_applied:'Overgenomen uit de org: {list}',
+    msg_stages_added:'Nieuwe fases uit de org: {list}. Laad de pagina opnieuw om ze in de lijsten te zien.',
+    disc_sync_pending_prod:'De inrichting is nog niet naar prod geschreven — dat gebeurt de volgende keer dat je inlogt met deploy-recht.',
+    disc_sync_pending:'De inrichting is nog niet naar de org geschreven — dat wordt opnieuw geprobeerd bij de volgende login of controle.',
+    disc_sync_wrote:'De inrichting is naar de org geschreven.',
+    disc_sync_ok:'De inrichting loopt gelijk met de org.',
+    disc_loose_ok:'Alleen import/export — er wordt niets in de org geschreven.',
+    disc_loose:'Alleen import/export',
+    tip_disc_loose:'De omgeving wordt alleen gebruikt om flows te importeren en exporteren. Ze krijgt geen fase, en er wordt niets aangemaakt in de org van de klant.',
+    disc_new:'Helemaal nieuw maken',
+    disc_pipeline:'Een pipeline starten',
+    tip_disc_pipeline:'Geeft de omgeving een fase en maakt haar manifesttabel in de org.',
+    disc_form_template:'Nieuwe omgeving op basis van {name}',
+    disc_form_pipeline:'Nieuwe pipeline-omgeving',
+    disc_taken:'Prefixen die al in de org worden gebruikt: {list}',
+    disc_create:'Maken',
+    disc_cancel:'Annuleren',
+    disc_table_created:'De manifesttabel is gemaakt, met de inrichting erin.',
+    disc_table_blocked:'De tabel is niet gemaakt: schrijven naar prod vereist een login met deploy-recht. Log opnieuw in en maak haar bij de stap over de manifesttabel.',
+    disc_pick_stage:'Kies een fase.',
+    disc_conflict_short:'De org en deze pc zijn het oneens — kies hieronder.',
+    disc_linked:'Gekoppeld aan {table}.',
+    disc_choose:'Kies hieronder wat de omgeving moet zijn.',
+    sync_conflict:'De inrichting van {env} is in de org gewijzigd, en deze pc heeft een wijziging die niet is geschreven. Kies in de gids wie gelijk heeft.',
+    sync_applied:'De org heeft {env} gewijzigd: {list}',
+    mf_rebuild:'Herbouwen',
+    tip_mf_rebuild:'Maakt de tabel als ze ontbreekt, schrijft de inrichting en een rij voor elke flow in de omgeving. De geschiedenis komt van deze pc waar ze bestaat.',
+    mf_rebuild_confirm:'Het manifest in {env} herbouwen? De tabel wordt gemaakt als ze ontbreekt, en er wordt een rij per flow in de org van de klant geschreven. Bestaande rijen blijven onaangeroerd.',
+    mf_rebuild_running:'Manifest wordt herbouwd…',
+    mf_rebuilt:'Het manifest is herbouwd: {n} rijen geschreven, alle met geschiedenis van deze pc. {k} rijen bestonden al.',
+    mf_rebuilt_partial:'Het manifest is herbouwd: {n} rijen geschreven, {h} met geschiedenis van deze pc — de rest is een nulpunt van wat de org nu bevat. {k} rijen bestonden al.',
+    cc_setup_pending:'De inrichting is niet naar de org geschreven',
+    tip_setup_pending:'Een wijziging op deze pc wacht om naar de tabel van de omgeving in de org te worden geschreven — meestal omdat er een login ontbreekt. Ze wordt geschreven zodra dat kan.',
+    mf_setup_pending:'inrichting niet geschreven',
+    mf_setup_ok:'inrichting',
     env_color_label:'Kleur', color_auto:'Kleur van de fase', color_green:'Groen', color_yellow:'Geel', color_orange:'Oranje', color_red:'Rood', color_blue:'Blauw', color_grey:'Grijs',
     prod_deploy_perm:'Vereiste permissie: architect:flow:publish',
     prod_deploy_group:'Vereiste groep (optioneel)',
@@ -4392,7 +4636,7 @@ const LANGS = {
     action_default_note:'standaard gepubliceerd — de flow is meteen live',
     action_prod_note:'prod: standaard NIET gepubliceerd — blijft een concept dat je zelf publiceert',
     tree_ungrouped:'Niet gegroepeerd',
-    help_customers:'Eén omgeving is één Genesys-org gezien via één OAuth-client.\n• Nieuwe omgevingen gebruiken altijd **OAuth (PKCE)**: je logt in bij Genesys als jezelf en er wordt geen secret opgeslagen. Oudere omgevingen met client credentials zijn **geel** gemarkeerd.\n• **⚙ Instellingen** bevat naam, klant, groep, fase, voorvoegsel, org-naam, kleur, divisie, authenticatie en prod-eisen. Elk veld heeft een **ⓘ** — beweeg erover of klik om te zien waarvoor het dient. Ongeldige tekens en namen die een map zouden delen, worden bij opslaan geweigerd.\n• **Klant + groep** bepalen wat onderling gemigreerd mag worden — de groep is de pipeline.\n• **Fase** is dev, test, uat of prod en bepaalt de volgorde op de pipeline. Onder **Fasen** onderaan de pagina voeg je eigen fasen toe, bv. staging of preprod — prod blijft laatste.\n• **Kleur**: elke omgeving krijgt de kleur van haar fase — dev groen, test geel, uat oranje, prod rood — op de pipeline, in de zijbalk en op de kaarten. Kies een andere onder ⚙ Instellingen.\n• **Juiste org bij inloggen**: de login controleert in welke org je bent beland. Een verkeerde org op de Genesys-loginpagina (bv. die van een klant via trusted org) wordt geweigerd. De org staat bij de omgeving zodra je bent ingelogd.\n• **Voorvoegsel** wordt alleen gebruikt als meerdere omgevingen één org delen, herkenbaar aan bv. DEV_. Wijzig je het, dan toont een dialoog welke flows, datatabellen en manifesttabel in de org mee worden hernoemd — ze behouden hun id. Laat het leeg voor prod.\n• **Prod vereist een prod-login**: bij inloggen wordt gecontroleerd of je de permissie hebt (standaard architect:flow:publish) en eventueel in een groep zit. Het recht geldt 30 minuten. Fase, authenticatie en eisen van een prod-omgeving kunnen alleen met een geldige prod-login worden gewijzigd.\n• **📋 Installatiegids**: de knop 📋 op een kaart opent een checklist in een nieuw venster om de org en de omgeving in te richten. De knoppen Controleren checken voor je.\n• **Log in waar je bent**: heeft een omgeving een login nodig, dan verschijnt bovenaan een balk met een inlogknop — op elke pagina. 🔒 in de zijbalk logt ook in, en daarna wordt de pagina opnieuw geladen.\n• **Zoek** in de omgevingen, of toon alleen die login vereisen. Het formulier en de demo-klanten klap je open.\n• **Demo-klanten** zijn volledig lokaal — geen login, geen aanroepen naar Genesys.',
+    help_customers:'Eén omgeving is één Genesys-org gezien via één OAuth-client.\n• Nieuwe omgevingen gebruiken altijd **OAuth (PKCE)**: je logt in bij Genesys als jezelf en er wordt geen secret opgeslagen. Oudere omgevingen met client credentials zijn **geel** gemarkeerd.\n• **⚙ Instellingen** bevat naam, klant, groep, fase, voorvoegsel, org-naam, kleur, divisie, authenticatie en prod-eisen. Elk veld heeft een **ⓘ** — beweeg erover of klik om te zien waarvoor het dient. Ongeldige tekens en namen die een map zouden delen, worden bij opslaan geweigerd.\n• **Klant + groep** bepalen wat onderling gemigreerd mag worden — de groep is de pipeline.\n• **Fase** is dev, test, uat of prod en bepaalt de volgorde op de pipeline. Onder **Fasen** onderaan de pagina voeg je eigen fasen toe, bv. staging of preprod — prod blijft laatste.\n• **Kleur**: elke omgeving krijgt de kleur van haar fase — dev groen, test geel, uat oranje, prod rood — op de pipeline, in de zijbalk en op de kaarten. Kies een andere onder ⚙ Instellingen.\n• **Juiste org bij inloggen**: de login controleert in welke org je bent beland. Een verkeerde org op de Genesys-loginpagina (bv. die van een klant via trusted org) wordt geweigerd. De org staat bij de omgeving zodra je bent ingelogd.\n• **Voorvoegsel** wordt alleen gebruikt als meerdere omgevingen één org delen, herkenbaar aan bv. DEV_. Wijzig je het, dan toont een dialoog welke flows, datatabellen en manifesttabel in de org mee worden hernoemd — ze behouden hun id. Laat het leeg voor prod.\n• **Prod vereist een prod-login**: bij inloggen wordt gecontroleerd of je de permissie hebt (standaard architect:flow:publish) en eventueel in een groep zit. Het recht geldt 30 minuten. Fase, authenticatie en eisen van een prod-omgeving kunnen alleen met een geldige prod-login worden gewijzigd.\n• **📋 Installatiegids**: de knop 📋 op een kaart opent een checklist in een nieuw venster om de org en de omgeving in te richten. De knoppen Controleren checken voor je.\n• **Log in waar je bent**: heeft een omgeving een login nodig, dan verschijnt bovenaan een balk met een inlogknop — op elke pagina. 🔒 in de zijbalk logt ook in, en daarna wordt de pagina opnieuw geladen.\n• **Zoek** in de omgevingen, of toon alleen die login vereisen. Het formulier en de demo-klanten klap je open.\n• **Demo-klanten** zijn volledig lokaal — geen login, geen aanroepen naar Genesys.\n• **📋 De gids vindt wat al is ingericht:** na het inloggen zoekt hij naar ArchyGUI-tabellen in de org. Vanaf een andere pc ingericht? Neem het in gebruik met **Deze gebruiken**. De omgevingen van de pipeline in andere orgs (bv. prod) kunnen daar worden toegevoegd.\n• Een omgeving **zonder fase** is alleen voor import/export — er wordt niets in haar org geschreven.\n• De inrichting staat in de manifesttabel, en **de org wint**. Een wijziging hier wordt er meteen naartoe geschreven; de velden van de prod-bewaking worden nooit van buitenaf versoepeld.',
     help_pipeline:'Flows als rijen, de omgevingen van de groep als kolommen op fase-volgorde.\n• Versienummers zijn **niet** vergelijkbaar tussen orgs — ze worden per org geteld. Gebruik **⇄ Inhoud checken**, het enige dat bepaalt of twee omgevingen gelijk zijn.\n• **Groen** betekent langs de juiste weg gepubliceerd. **Rood** betekent buiten de pipeline om, of meer versies dan de vorige fase.\n• **Elke knop toont eerst wat er gebeurt** — flow, van en naar, en waarschuwingen over prod of wijzigingen die verloren gaan — en je kunt annuleren. **? Knoppen** legt ze allemaal uit.\n• **Versienummer gelijktrekken**: bij ⟶ Promoveren kan het doel de ontbrekende keren extra worden gepubliceerd, zodat het het nummer van de bron krijgt (bv. dev v10 → test v10). Terugtellen kan niet.\n• **⟶ Promoveren** gaat één fase tegelijk. Alleen een gepubliceerde versie kan worden gepromoveerd. Prod vereist je prod-login.\n• **⟵ Hierheen halen** haalt een flow op uit een latere fase, bv. als dev net is opgezet.\n• **↩** draait de laatste promotie terug, **📝** toont release notes.\n• Wordt een **common module** gepromoveerd of teruggedraaid, dan krijg je aangeboden de flows in die omgeving die hem gebruiken opnieuw te publiceren. **🔁** doet hetzelfde als de module direct in Architect is aangepast. Is een module gepubliceerd na flows die hem gebruiken, dan staat dat bovenaan het bord, zijn de cellen gemarkeerd met ⚠ en wordt 🔁 geel.\n• **Gedeeld manifest** bewaart de geschiedenis in de org, zodat iedereen dezelfde waarheid ziet.',
     help_flows:'Flows van de omgeving ophalen, zoeken en filteren. Delen meerdere omgevingen een org, dan worden alleen de eigen getoond.\n• Filter op **flowtype** — de lijst wordt gevuld met de types die de omgeving echt heeft.\n• **Publiceren** zet een al gemigreerd concept live. Bij een common module krijg je daarna aangeboden de flows die hem gebruiken opnieuw te publiceren.\n• **Common modules worden gecontroleerd** bij elke keer ophalen: is een module **na** een flow die hem gebruikt gepubliceerd, dan draait die flow nog op de oude versie. Dat staat in een geel vak met een knap om ze opnieuw te publiceren, en de rijen zijn gemarkeerd met ⚠.\n• **🔁 Gebruikers** op een common module toont alle flows die hem gebruiken.\n• **⇄ Vergelijken** met een andere org vergelijkt de **inhoud**, niet de versienummers.\n• **📌 Nulpunt** legt vast wat de org nu bevat, zodat directe publicaties later opvallen.',
     help_cross:'Toont de flows die bij **meerdere klanten** bestaan — bijvoorbeeld dezelfde common module bij tien klanten.\n• Het overzicht steunt op één aanroep per klant en is dus snel.\n• **⇄ Inhoud vergelijken** exporteert de flow bij elke klant en vergelijkt de hash. Dat kost tijd, dus alleen voor de rij die je vraagt.\n• Kon een org niet gelezen worden, dan wordt dat gezegd — er staat **nooit** "identiek" als een antwoord ontbreekt.',
@@ -5134,6 +5378,66 @@ const LANGS = {
     gd_deploy_missing:'Falta: {list}',
     gd_flows_title:'Lleve flows al entorno',
     gd_flows_body:'Si el entorno está vacío, use ⟵ Traer aquí en el pipeline, o Migrar flow. Flow Browser muestra lo que ya hay en la org.',
+    gd_discover_title:'Encontrar lo que ya está configurado',
+    gd_discover_body:'ArchyGUI busca sus propias tablas en la org. Si el entorno se configuró desde otro PC, está allí, y lo pone en uso en lugar de configurarlo de nuevo.',
+    gd_env_body_loose:'El entorno no tiene etapa: se usa solo para importar y exportar y no forma parte de ningún pipeline. La región y el Client ID deben corresponder a la org.',
+    gd_env_loose_ok:'Solo importar/exportar — sin etapa.',
+    disc_found:'La org {org} tiene {n} entorno(s) de ArchyGUI:',
+    disc_none:'La org {org} aún no tiene tablas de ArchyGUI.',
+    disc_no_setup:'configuración desconocida (tabla de antes de v1.48) — elija la etapa',
+    disc_by:'Modificado por última vez por {who}, {when}',
+    disc_wrong_org:'La tabla dice que pertenece a otra org. No se pone en uso.',
+    disc_self:'Es este entorno.',
+    disc_local:'Ya existe en este PC como {name}.',
+    disc_use:'Usar este',
+    disc_template:'Crear uno nuevo a partir de este',
+    tip_disc_use:'Convierte este entorno en el que describe la tabla. La configuración se lee de la org y no se escribe nada.',
+    tip_disc_template:'Crea un entorno nuevo en la misma org con esta configuración como plantilla. Usted elige etapa y prefijo.',
+    disc_elsewhere_title:'El pipeline también tiene entornos en otras orgs:',
+    disc_added:'Añadido. Inicie sesión en él para confirmar la org.',
+    disc_clientid_ph:'Client ID (cliente PKCE en esa org)',
+    disc_add:'Añadir',
+    tip_disc_add:'Añade el entorno en este PC. El id de la org se fija de inmediato, así que el inicio de sesión se rechaza si elige otra org.',
+    disc_conflict_title:'La org y este PC no coinciden:',
+    disc_this_pc:'este PC',
+    disc_the_org:'la org',
+    disc_take_org:'Usar la de la org',
+    disc_keep_local:'Mantener la de este PC',
+    disc_applied:'Tomado de la org: {list}',
+    msg_stages_added:'Etapas nuevas de la org: {list}. Recargue la página para verlas en las listas.',
+    disc_sync_pending_prod:'La configuración aún no se ha escrito en prod; se hará la próxima vez que inicie sesión con derecho de despliegue.',
+    disc_sync_pending:'La configuración aún no se ha escrito en la org; se intentará de nuevo en el próximo inicio de sesión o comprobación.',
+    disc_sync_wrote:'La configuración se ha escrito en la org.',
+    disc_sync_ok:'La configuración está al día con la org.',
+    disc_loose_ok:'Solo importar/exportar — no se escribe nada en la org.',
+    disc_loose:'Solo importar/exportar',
+    tip_disc_loose:'El entorno solo se usa para importar y exportar flows. No tiene etapa y no se crea nada en la org del cliente.',
+    disc_new:'Crear uno nuevo',
+    disc_pipeline:'Iniciar un pipeline',
+    tip_disc_pipeline:'Da una etapa al entorno y crea su tabla de manifiesto en la org.',
+    disc_form_template:'Entorno nuevo basado en {name}',
+    disc_form_pipeline:'Entorno nuevo de pipeline',
+    disc_taken:'Prefijos que ya se usan en la org: {list}',
+    disc_create:'Crear',
+    disc_cancel:'Cancelar',
+    disc_table_created:'La tabla de manifiesto se ha creado con la configuración dentro.',
+    disc_table_blocked:'La tabla no se ha creado: escribir en prod requiere un inicio de sesión con derecho de despliegue. Inicie sesión de nuevo y créela en el paso de la tabla de manifiesto.',
+    disc_pick_stage:'Elija una etapa.',
+    disc_conflict_short:'La org y este PC no coinciden — elija abajo.',
+    disc_linked:'Vinculado a {table}.',
+    disc_choose:'Elija abajo qué debe ser el entorno.',
+    sync_conflict:'La configuración de {env} ha cambiado en la org, y este PC tiene un cambio sin escribir. Elija quién tiene razón en la guía.',
+    sync_applied:'La org ha cambiado {env}: {list}',
+    mf_rebuild:'Reconstruir',
+    tip_mf_rebuild:'Crea la tabla si falta, escribe la configuración y una fila por cada flow del entorno. El historial se toma de este PC donde exista.',
+    mf_rebuild_confirm:'¿Reconstruir el manifiesto en {env}? La tabla se crea si falta y se escribe una fila por flow en la org del cliente. Las filas existentes no se tocan.',
+    mf_rebuild_running:'Reconstruyendo el manifiesto…',
+    mf_rebuilt:'El manifiesto se ha reconstruido: {n} filas escritas, todas con historial de este PC. {k} filas ya existían.',
+    mf_rebuilt_partial:'El manifiesto se ha reconstruido: {n} filas escritas, {h} con historial de este PC — el resto es un punto cero de lo que contiene la org ahora. {k} filas ya existían.',
+    cc_setup_pending:'La configuración no está escrita en la org',
+    tip_setup_pending:'Un cambio en este PC espera a escribirse en la tabla del entorno en la org, normalmente porque falta un inicio de sesión. Se escribirá en cuanto sea posible.',
+    mf_setup_pending:'configuración no escrita',
+    mf_setup_ok:'configuración',
     env_color_label:'Color', color_auto:'Color de la etapa', color_green:'Verde', color_yellow:'Amarillo', color_orange:'Naranja', color_red:'Rojo', color_blue:'Azul', color_grey:'Gris',
     prod_deploy_perm:'Permiso requerido: architect:flow:publish',
     prod_deploy_group:'Grupo requerido (opcional)',
@@ -5165,7 +5469,7 @@ const LANGS = {
     action_default_note:'publicado por defecto: el flow está activo de inmediato',
     action_prod_note:'prod: NO se publica por defecto: queda como borrador para que lo publique usted',
     tree_ungrouped:'Sin agrupar',
-    help_customers:'Un entorno es una org de Genesys vista a través de un cliente OAuth.\n• Los entornos nuevos usan siempre **OAuth (PKCE)**: inicia sesión en Genesys como usted mismo y no se guarda ningún secret. Los entornos antiguos con client credentials aparecen en **amarillo**.\n• **⚙ Configuración** contiene nombre, cliente, grupo, etapa, prefijo, nombre de la org, color, división, autenticación y requisitos de prod. Cada campo tiene un **ⓘ** — pase el ratón o haga clic para ver para qué sirve. Los caracteres no válidos y los nombres que compartirían carpeta se rechazan al guardar.\n• **Cliente + grupo** deciden qué se puede migrar entre sí — el grupo es el pipeline.\n• **Etapa** es dev, test, uat o prod y fija el orden del pipeline. En **Etapas**, al final de la página, puede añadir otras, p. ej. staging o preprod — prod siempre va al final.\n• **Color**: cada entorno se muestra con el color de su etapa — dev verde, test amarillo, uat naranja, prod rojo — en el pipeline, la barra lateral y las tarjetas. Elija otro en ⚙ Configuración.\n• **Org correcta al iniciar sesión**: el inicio de sesión comprueba en qué org ha entrado. Una org equivocada en la página de Genesys (p. ej. la de un cliente vía trusted org) se rechaza. La org aparece junto al entorno una vez dentro.\n• **Prefijo** solo se usa cuando varios entornos comparten una org, reconocidos por p. ej. DEV_. Si lo cambia, un diálogo muestra qué flows, tablas de datos y tabla del manifiesto se renombran en la org — conservan su id. Déjelo vacío para prod.\n• **Prod exige un inicio de sesión de prod**: al entrar se comprueba el permiso (architect:flow:publish por defecto) y opcionalmente un grupo. El derecho dura 30 minutos. Etapa, autenticación y requisitos de un entorno de prod solo se cambian con un inicio de sesión de prod válido.\n• **📋 Guía de configuración**: el botón 📋 de una tarjeta abre una lista en una ventana nueva para configurar la org y el entorno. Los botones Comprobar verifican por usted.\n• **Inicie sesión donde esté**: si un entorno necesita inicio de sesión, aparece arriba una barra con un botón — en todas las páginas. 🔒 en la barra lateral también inicia sesión, y la página se recarga después.\n• **Busque** entre los entornos, o muestre solo los que requieren inicio de sesión. El formulario y los clientes demo se despliegan.\n• **Los clientes demo** son totalmente locales — sin inicio de sesión ni llamadas a Genesys.',
+    help_customers:'Un entorno es una org de Genesys vista a través de un cliente OAuth.\n• Los entornos nuevos usan siempre **OAuth (PKCE)**: inicia sesión en Genesys como usted mismo y no se guarda ningún secret. Los entornos antiguos con client credentials aparecen en **amarillo**.\n• **⚙ Configuración** contiene nombre, cliente, grupo, etapa, prefijo, nombre de la org, color, división, autenticación y requisitos de prod. Cada campo tiene un **ⓘ** — pase el ratón o haga clic para ver para qué sirve. Los caracteres no válidos y los nombres que compartirían carpeta se rechazan al guardar.\n• **Cliente + grupo** deciden qué se puede migrar entre sí — el grupo es el pipeline.\n• **Etapa** es dev, test, uat o prod y fija el orden del pipeline. En **Etapas**, al final de la página, puede añadir otras, p. ej. staging o preprod — prod siempre va al final.\n• **Color**: cada entorno se muestra con el color de su etapa — dev verde, test amarillo, uat naranja, prod rojo — en el pipeline, la barra lateral y las tarjetas. Elija otro en ⚙ Configuración.\n• **Org correcta al iniciar sesión**: el inicio de sesión comprueba en qué org ha entrado. Una org equivocada en la página de Genesys (p. ej. la de un cliente vía trusted org) se rechaza. La org aparece junto al entorno una vez dentro.\n• **Prefijo** solo se usa cuando varios entornos comparten una org, reconocidos por p. ej. DEV_. Si lo cambia, un diálogo muestra qué flows, tablas de datos y tabla del manifiesto se renombran en la org — conservan su id. Déjelo vacío para prod.\n• **Prod exige un inicio de sesión de prod**: al entrar se comprueba el permiso (architect:flow:publish por defecto) y opcionalmente un grupo. El derecho dura 30 minutos. Etapa, autenticación y requisitos de un entorno de prod solo se cambian con un inicio de sesión de prod válido.\n• **📋 Guía de configuración**: el botón 📋 de una tarjeta abre una lista en una ventana nueva para configurar la org y el entorno. Los botones Comprobar verifican por usted.\n• **Inicie sesión donde esté**: si un entorno necesita inicio de sesión, aparece arriba una barra con un botón — en todas las páginas. 🔒 en la barra lateral también inicia sesión, y la página se recarga después.\n• **Busque** entre los entornos, o muestre solo los que requieren inicio de sesión. El formulario y los clientes demo se despliegan.\n• **Los clientes demo** son totalmente locales — sin inicio de sesión ni llamadas a Genesys.\n• **📋 La guía encuentra lo que ya está configurado:** tras iniciar sesión busca tablas de ArchyGUI en la org. ¿Configurado desde otro PC? Póngalo en uso con **Usar este**. Los entornos del pipeline en otras orgs (p. ej. prod) se pueden añadir desde allí.\n• Un entorno **sin etapa** es solo para importar/exportar — no se escribe nada en su org.\n• La configuración está en la tabla de manifiesto, y **la org manda**. Un cambio aquí se escribe allí de inmediato; los campos de la protección de prod nunca se relajan desde fuera.',
     help_pipeline:'Flows en filas, los entornos del grupo en columnas por orden de etapa.\n• Los números de versión **no** son comparables entre orgs — se cuentan por org. Use **⇄ Comprobar contenido**, lo único que decide si dos entornos son iguales.\n• **Verde**: publicado por el camino correcto. **Rojo**: publicado fuera del pipeline, o más versiones que la etapa anterior.\n• **Cada botón muestra primero qué ocurrirá** — flow, origen y destino, y avisos sobre prod o cambios que se perderían — y puede cancelar. **? Botones** los explica todos.\n• **Igualar número de versión**: al ⟶ Promover, el destino puede publicarse las veces que faltan para alcanzar el número del origen (p. ej. dev v10 → test v10). No puede bajar.\n• **⟶ Promover** avanza una etapa cada vez. Solo se puede promover una versión publicada. Prod exige su inicio de sesión de prod.\n• **⟵ Traer aquí** trae un flow de una etapa posterior, p. ej. cuando dev se acaba de crear.\n• **↩** revierte la última promoción y **📝** muestra las notas de versión.\n• Al promover o revertir un **common module**, se le ofrece volver a publicar los flows del entorno que lo usan. **🔁** hace lo mismo si el módulo se cambió directamente en Architect. Si un módulo se publicó después de flows que lo usan, se indica arriba del tablero, las celdas se marcan con ⚠ y 🔁 se vuelve amarillo.\n• **El manifiesto compartido** guarda el historial en la org, para que todos vean la misma verdad.',
     help_flows:'Obtener, buscar y filtrar los flows del entorno. Si varios entornos comparten una org, solo se muestran los propios.\n• Filtre por **tipo de flow** — la lista se llena con los tipos que el entorno tiene realmente.\n• **Publicar** pone en producción un borrador ya migrado. Si es un common module, se le ofrece después volver a publicar los flows que lo usan.\n• **Los common modules se comprueban** cada vez que se carga la lista: si un módulo se publicó **después** de un flow que lo usa, el flow sigue con la versión antigua. Se indica en un recuadro amarillo con un botón para volver a publicarlos, y las filas se marcan con ⚠.\n• **🔁 Usuarios** en un common module lista todos los flows que lo usan.\n• **⇄ Comparar** con otra org compara el **contenido**, no los números de versión.\n• **📌 Punto cero** registra lo que contiene la org ahora, para detectar después publicaciones directas.',
     help_cross:'Muestra los flows presentes en **varios clientes**, por ejemplo el mismo common module en diez clientes.\n• La vista se basa en una llamada por cliente, así que es rápida.\n• **⇄ Comparar contenido** exporta el flow de cada cliente y compara el hash. Lleva tiempo, así que solo se hace en la fila que pida.\n• Si una org no se pudo leer, se dice: **nunca** informa «idéntico» cuando falta una respuesta.',
@@ -5350,6 +5654,7 @@ function renderLoginBar() {
 function afterLogin(envId) {
   loginNeeded.delete(envId);
   renderLoginBar();
+  syncSetupFor(envId).then(showSetupNotice).catch(() => {});
   const side = document.querySelector('.page.active')?.id;
   const igen = {
     'page-flows':    () => document.getElementById('fb-customer').value && loadFlows(),
@@ -5741,6 +6046,7 @@ function renderCustomerGrid() {
       <div class="cc-region" style="display:flex;align-items:center;gap:8px">${escapeHtml(c.region)} ${authBadge}</div>
       <div style="margin-top:6px;font-size:11px;font-family:var(--mono)">${groupingBadge(c)}</div>
       ${c.stage === 'prod' && c.authType !== 'demo' ? `<div id="prod-lock-${c.id}" style="margin-top:6px;font-size:11px;font-family:var(--mono);color:var(--muted)"></div>` : ''}
+      ${c.stage && c.setupPending ? `<div style="margin-top:6px;font-size:11px;color:var(--yellow)" data-tip="tip_setup_pending">⚠ ${t('cc_setup_pending')}</div>` : ''}
       <div id="grp-${c.id}" style="display:none;margin-top:10px"></div>
       <div id="card-archy-warn-${c.id}" style="display:none;margin-top:8px;padding:6px 10px;background:rgba(241,196,15,.1);border:1px solid rgba(241,196,15,.3);border-radius:5px;font-size:11px;color:var(--yellow);font-family:var(--mono)"></div>
       <div class="cc-actions" style="margin-top:14px">
@@ -5860,6 +6166,7 @@ async function testCustomer(id) {
   dot.classList.add('ok');
   txt.textContent = data.name;
   txt.title = [data.name, data.org].filter(Boolean).join(' · ');
+  syncSetupFor(id).then(showSetupNotice).catch(() => {});
   document.getElementById('chip-' + id)?.classList.add('online');
   if (data.demo || !data.checks) { if (warnEl) warnEl.style.display = 'none'; return; }
 
@@ -9794,17 +10101,23 @@ function guideSave(id, st) { try { localStorage.setItem(guideKey(id), JSON.strin
 function guideSteps(env) {
   const oauth = env.authType === 'oauth';
   const prod = String(env.stage || '').toLowerCase() === 'prod';
+  // Et løst miljø (intet trin) er kun til import og eksport. Det får ingen
+  // manifest-tabel og ingen deploy-ret — de punkter hører til en pipeline.
+  const pipeline = !!env.stage;
   return [
     // Rækkefølgen er den man arbejder i: klienten i Genesys, miljøet her,
     // login — og først derefter det der kræver et login at kontrollere.
+    // Opdagelsen kommer lige efter login: står miljøet allerede i org'en,
+    // er resten af opsætningen måske gjort.
     { k: 'client', auto: true },
     oauth && { k: 'redirect', auto: true },
     { k: 'env', auto: true },
     oauth && { k: 'login', auto: true },
+    { k: 'discover', auto: true },
     { k: 'perms', auto: true },
     env.division && { k: 'division', auto: true },
-    { k: 'manifest', auto: true },
-    prod && { k: 'deploy', auto: true },
+    pipeline && { k: 'manifest', auto: true },
+    pipeline && prod && { k: 'deploy', auto: true },
     { k: 'flows', auto: false },
   ].filter(Boolean);
 }
@@ -9828,13 +10141,16 @@ function renderGuide(id) {
     if (k === 'client') return fillT(oauth ? 'gd_client_body_oauth' : 'gd_client_body_creds', {});
     if (k === 'perms') return fillT(oauth ? 'gd_perms_body_oauth' : 'gd_perms_body_creds', {}) + `<div style="margin-top:4px">${permHtml}</div>`;
     if (k === 'deploy') return fillT('gd_deploy_body', { perm: v.perm }) + (env.deployGroup ? ' ' + fillT('gd_deploy_group', { g: env.deployGroup }) : '');
+    if (k === 'discover') return fillT('gd_discover_body', {}) + discoveryHtml(env);
+    if (k === 'env' && !env.stage) return fillT('gd_env_body_loose', {});
     return fillT('gd_' + k + '_body', v);
   };
   const buttonsFor = x => {
     const b = [];
     if (x.auto) b.push(`<button class="btn btn-secondary btn-sm" onclick="guideCheck('${x.k}')">${t('gd_check')}</button>`);
     if (x.k === 'login') b.push(`<button class="btn btn-secondary btn-sm" onclick="oauthLogin(${jsAttr(id)})">${t('gd_login_btn')}</button>`);
-    if (x.k === 'manifest') b.push(`<button class="btn btn-secondary btn-sm" onclick="guideCreateManifest()">${t('gd_manifest_create')}</button>`);
+    if (x.k === 'manifest') b.push(`<button class="btn btn-secondary btn-sm" onclick="guideCreateManifest()">${t('gd_manifest_create')}</button>`,
+                                   `<button class="btn btn-secondary btn-sm" data-tip="tip_mf_rebuild" onclick="rebuildManifest(${jsAttr(id)})">${t('mf_rebuild')}</button>`);
     return b.join(' ');
   };
   const res = k => {
@@ -9926,6 +10242,9 @@ async function guideRun(k, env) {
       : { ok: true, msg: escapeHtml(t(unknownCount ? 'perm_ok_partial' : 'perm_all_ok').replace(/^✓s*/, '')) };
   }
   if (k === 'env') {
+    // Et løst miljø skal kun kunne logge ind. Kunde, gruppe og trin er pipelinens.
+    if (!env.stage) return env.clientId ? { ok: true, msg: escapeHtml(t('gd_env_loose_ok')) }
+                                        : { ok: false, msg: fillT('gd_env_missing', { list: t('label_clientid').replace(/\s*\*$/, '') }) };
     const missingList = [['tenant', 'label_tenant'], ['group', 'label_group'], ['stage', 'label_stage'], ['clientId', 'label_clientid']]
       .filter(([f]) => !env[f]).map(([, l]) => t(l).replace(/\s*\*$/, ''));
     return missingList.length ? { ok: false, msg: fillT('gd_env_missing', { list: missingList.join(', ') }) }
@@ -9945,6 +10264,7 @@ async function guideRun(k, env) {
     return (r.divisions || []).includes(env.division) ? { ok: true, msg: fillT('gd_division_ok', { div: env.division }) }
                                                       : { ok: false, msg: fillT('gd_division_missing', { div: env.division }) };
   }
+  if (k === 'discover') return guideDiscover(env);
   if (k === 'manifest') {
     const r = await json('/api/manifest/status?tenant=' + encodeURIComponent(env.tenant || '') + '&group=' + encodeURIComponent(env.group || ''));
     const me = (r.environments || []).find(e => e.id === id);
@@ -9969,8 +10289,259 @@ async function guideWatchLogin(id) {
   for (let i = 0; i < 90; i++) {
     await new Promise(r => setTimeout(r, 2000));
     const s = await fetch('/api/auth/status/' + encodeURIComponent(id)).then(x => x.json()).catch(() => ({}));
-    if (s.authenticated) { await guideCheck('login'); return; }
+    if (s.authenticated) { await guideCheck('login'); await guideCheck('discover'); return; }
   }
+}
+
+// ── Opdagelsen: hvad har org'en allerede? ─────────────────────────────────────
+// Efter login ser guiden efter ArchyGUI-tabeller i org'en. Er miljøet sat op
+// fra en anden pc, står det dér — og så kan man tage det i brug i stedet for at
+// sætte det op igen. Er der intet, vælger man mellem kun import/eksport og en
+// ny pipeline. Opsætningsrækken fortæller også om pipelinens miljøer i andre
+// orgs, så prod kan tilføjes herfra.
+let guideDisc = null;    // svaret fra /api/setup/discover
+let guideSync = null;    // svaret fra /api/setup/sync
+let discForm = null;     // { mode, tableId, name, tenant, group, stage, pfx }
+
+const postJson = (url, body) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(body || {}) }).then(x => x.json()).catch(e => ({ error: e.message }));
+
+async function reloadCustomersQuiet() {
+  try { customers = await fetch('/api/customers').then(x => x.json()); } catch (_) {}
+}
+
+async function guideDiscover(env) {
+  const r = await postJson('/api/setup/discover', { envId: env.id });
+  if (r.error) { guideDisc = null; return { ok: false, msg: escapeHtml(r.error) }; }
+  guideDisc = { ...r, envId: env.id };
+  guideSync = null;
+  // Er miljøet allerede koblet til sin tabel, hentes org'ens opsætning ind.
+  if (env.stage && (r.cards || []).some(c => c.self)) guideSync = await postJson('/api/setup/sync', { envId: env.id });
+  await reloadCustomersQuiet();
+  return discoverVerdict(customers.find(c => c.id === env.id) || env);
+}
+
+function discoverVerdict(env) {
+  const d = guideDisc || { cards: [] };
+  if (guideSync?.conflict) return { ok: false, msg: escapeHtml(t('disc_conflict_short')) };
+  if (guideSync?.error) return { ok: false, msg: escapeHtml(guideSync.error) };
+  if (d.cards.some(c => c.self)) return { ok: true, msg: fillT('disc_linked', { table: (env.prefix || '') + 'ArchyGUI_Manifest' }) };
+  if (!env.stage && guideState(env.id).loose) return { ok: true, msg: escapeHtml(t('disc_loose_ok')) };
+  return { ok: null, msg: escapeHtml(t('disc_choose')) };
+}
+
+function discoveryHtml(env) {
+  const d = guideDisc;
+  if (!d || d.envId !== env.id) return '';
+  const stg = s => s ? `<span style="color:${stageColor(s)};font-weight:700;font-family:var(--mono)">${escapeHtml(s.toUpperCase())}</span>`
+                     : `<span style="color:var(--muted);font-family:var(--mono)">?</span>`;
+  // Kaldes med en allerede escapet værdi.
+  const pfx = p => `<span style="font-family:var(--mono)">${p || escapeHtml(t('pfx_none'))}</span>`;
+  const lbl = k => escapeHtml(t(k).replace(/\s*\*$/, ''));
+  let html = `<div style="margin:10px 0 6px;color:var(--text)">${d.cards.length
+    ? fillT('disc_found', { org: d.orgName || d.orgId || '?', n: d.cards.length })
+    : fillT('disc_none', { org: d.orgName || d.orgId || '?' })}</div>`;
+
+  for (const c of d.cards) {
+    const s = c.setup;
+    const hoved = s
+      ? `${stg(s.stage)} <b>${escapeHtml(s.name)}</b> · ${escapeHtml([s.tenant, s.group].filter(Boolean).join(' / ') || '—')} · ${lbl('label_prefix')}: ${pfx(escapeHtml(c.prefix))}`
+      : `${stg('')} <b style="font-family:var(--mono)">${escapeHtml(c.table)}</b> · ${lbl('label_prefix')}: ${pfx(escapeHtml(c.prefix))} · <span style="color:var(--yellow)">${escapeHtml(t('disc_no_setup'))}</span>`;
+    const af = s && s.by ? `<div style="font-size:11px;margin-top:2px">${fillT('disc_by', { who: s.by, when: s.at ? new Date(s.at).toLocaleString() : '?' })}</div>` : '';
+    let valg;
+    if (c.wrongOrg) valg = `<div style="color:var(--red);margin-top:4px">${escapeHtml(t('disc_wrong_org'))}</div>`;
+    else if (c.self) valg = `<div style="color:var(--green);margin-top:4px">✓ ${escapeHtml(t('disc_self'))}</div>`;
+    else if (c.localId) valg = `<div style="margin-top:4px">${fillT('disc_local', { name: (customers.find(x => x.id === c.localId) || {}).name || c.localId })}</div>`;
+    else valg = `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px">
+        ${s ? '' : `<select id="disc-stage-${escapeHtml(c.tableId)}" style="width:auto;padding:3px 6px">
+             ${STAGES.map(x => `<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join('')}</select>`}
+        <button class="btn btn-primary btn-sm" data-tip="tip_disc_use" onclick="discUse(${jsAttr(c.tableId)})">${t('disc_use')}</button>
+        <button class="btn btn-secondary btn-sm" data-tip="tip_disc_template" onclick="discOpenForm('template', ${jsAttr(c.tableId)})">${t('disc_template')}</button></div>`;
+    html += `<div class="disc-card">${hoved}${af}${valg}</div>`;
+  }
+
+  // Pipelinens miljøer i andre orgs, som denne pc ikke har.
+  if ((d.elsewhere || []).length) {
+    html += `<div style="margin:12px 0 4px;color:var(--text);font-weight:700">${escapeHtml(t('disc_elsewhere_title'))}</div>`;
+    d.elsewhere.forEach((e, i) => {
+      const hvor = [e.orgLabel, e.region, e.orgId ? e.orgId.slice(0, 8) + '…' : ''].filter(Boolean).join(' · ');
+      const tilf = e.added
+        ? `<span style="color:var(--green)">✓ ${escapeHtml(t('disc_added'))}</span>
+           <button class="btn btn-secondary btn-sm" onclick="openSetupGuide(${jsAttr(e.added)})">${t('gd_open_guide')}</button>`
+        : `${e.clientId ? '' : `<input id="disc-sib-cid-${i}" placeholder="${escapeHtml(t('disc_clientid_ph'))}" maxlength="36" style="width:260px;padding:3px 6px" />`}
+           <button class="btn btn-primary btn-sm" data-tip="tip_disc_add" onclick="discAddSibling(${i})">${t('disc_add')}</button>`;
+      html += `<div class="disc-card">${stg(e.stage)} <b>${escapeHtml(e.name)}</b> · ${lbl('label_prefix')}: ${pfx(escapeHtml(e.prefix))}
+        <div style="font-size:11px;margin-top:2px">${escapeHtml(hvor)}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px">${tilf}</div></div>`;
+    });
+  }
+
+  // Org'ens opsætning holdt op mod denne pc's.
+  const sy = guideSync;
+  if (sy && sy.conflict) {
+    html += `<div class="disc-card" style="border-color:var(--yellow)">
+      <div style="color:var(--text);font-weight:700">${escapeHtml(t('disc_conflict_title'))}</div>
+      ${(sy.fields || []).map(f => `<div style="font-family:var(--mono);font-size:11px">${escapeHtml(f.field)}: ${escapeHtml(t('disc_this_pc'))} «${escapeHtml(f.local || '—')}» · ${escapeHtml(t('disc_the_org'))} «${escapeHtml(f.org || '—')}»</div>`).join('')}
+      ${sy.orgBy ? `<div style="font-size:11px;margin-top:2px">${fillT('disc_by', { who: sy.orgBy, when: sy.orgAt ? new Date(sy.orgAt).toLocaleString() : '?' })}</div>` : ''}
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <button class="btn btn-primary btn-sm" onclick="discResolve('org')">${t('disc_take_org')}</button>
+        <button class="btn btn-secondary btn-sm" onclick="discResolve('local')">${t('disc_keep_local')}</button></div></div>`;
+  } else if (sy && !sy.error && !sy.skipped && !sy.noTable) {
+    const linjer = [];
+    if ((sy.applied || []).length) linjer.push(fillT('disc_applied', { list: sy.applied.map(a => `${a.field}: ${a.from || '—'} → ${a.to || '—'}`).join(', ') }));
+    if ((sy.stagesAdded || []).length) linjer.push(fillT('msg_stages_added', { list: sy.stagesAdded.join(', ') }));
+    linjer.push(escapeHtml(t(sy.pending ? (/^prod-/.test(sy.reason || '') ? 'disc_sync_pending_prod' : 'disc_sync_pending')
+                             : sy.wrote ? 'disc_sync_wrote' : 'disc_sync_ok')));
+    html += `<div style="margin-top:8px;color:var(--text)">${linjer.join('<br>')}</div>`;
+  }
+
+  // Er miljøet ikke koblet til noget endnu, vælger man her.
+  const koblet = d.cards.some(c => c.self);
+  if (!koblet && !discForm) {
+    const loest = !env.stage && guideState(env.id).loose;
+    html += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      ${loest ? `<span style="color:var(--green)">✓ ${escapeHtml(t('disc_loose_ok'))}</span>`
+              : `<button class="btn btn-secondary btn-sm" data-tip="tip_disc_loose" onclick="discLoose()">${t('disc_loose')}</button>`}
+      <button class="btn btn-secondary btn-sm" data-tip="tip_disc_pipeline" onclick="discOpenForm('pipeline')">${t(d.cards.length ? 'disc_new' : 'disc_pipeline')}</button></div>`;
+  }
+
+  if (discForm) {
+    const f = discForm;
+    const felt = (k, label, extra = '') => `<label style="display:block;margin-top:6px">${lbl(label)}
+      <input value="${escapeHtml(f[k] || '')}" oninput="discField('${k}', this.value)" ${extra} /></label>`;
+    const tmpl = f.tableId && d.cards.find(c => c.tableId === f.tableId);
+    const brugte = (d.cards || []).map(c => c.prefix || t('pfx_none')).join(', ');
+    html += `<div class="disc-card" style="border-color:var(--blue)">
+      <div style="color:var(--text);font-weight:700">${tmpl ? fillT('disc_form_template', { name: tmpl.setup?.name || tmpl.table }) : escapeHtml(t('disc_form_pipeline'))}</div>
+      ${felt('name', 'label_customername', 'maxlength="60"')}
+      ${felt('tenant', 'label_tenant', 'maxlength="40" list="tenantList"')}
+      ${felt('group', 'label_group', 'maxlength="40" list="groupList"')}
+      <label style="display:block;margin-top:6px">${lbl('label_stage')}
+        <select onchange="discField('stage', this.value)"><option value="">—</option>
+          ${STAGES.map(x => `<option value="${escapeHtml(x)}"${f.stage === x ? ' selected' : ''}>${escapeHtml(x)}</option>`).join('')}</select></label>
+      ${felt('pfx', 'label_prefix', 'maxlength="20" placeholder="DEV_"')}
+      ${brugte ? `<div style="font-size:11px;margin-top:4px">${fillT('disc_taken', { list: brugte })}</div>` : ''}
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button class="btn btn-primary btn-sm" onclick="discSubmitForm()">${t('disc_create')}</button>
+        <button class="btn btn-secondary btn-sm" onclick="discForm = null; renderGuide(guideEnvId)">${t('disc_cancel')}</button></div></div>`;
+  }
+  return html;
+}
+
+function discField(k, v) { if (discForm) discForm[k] = v; }
+
+function discOpenForm(mode, tableId) {
+  const env = customers.find(c => c.id === guideEnvId) || {};
+  const tmpl = tableId ? (guideDisc?.cards || []).find(c => c.tableId === tableId)?.setup : null;
+  discForm = { mode, tableId: tableId || null, name: env.name || '',
+               tenant: (tmpl && tmpl.tenant) || env.tenant || '', group: (tmpl && tmpl.group) || env.group || '',
+               stage: '', pfx: '' };
+  renderGuide(guideEnvId);
+}
+
+async function discAdopt(body, efter = '') {
+  guideResults.discover = { ok: null, msg: escapeHtml(t('gd_pending')) };
+  renderGuide(guideEnvId);
+  const r = await postJson('/api/setup/adopt', { envId: guideEnvId, ...body });
+  if (r.error && !r.ok) { guideResults.discover = { ok: false, msg: escapeHtml(r.error) }; renderGuide(guideEnvId); return; }
+  discForm = null;
+  if (body.mode === 'loose') { const st = guideState(guideEnvId); st.loose = true; guideSave(guideEnvId, st); }
+  const noter = [];
+  if ((r.applied || []).length) noter.push(fillT('disc_applied', { list: r.applied.map(a => `${a.field}: ${a.to || '—'}`).join(', ') }));
+  if ((r.stagesAdded || []).length) noter.push(fillT('msg_stages_added', { list: r.stagesAdded.join(', ') }));
+  if (r.tableCreated) noter.push(escapeHtml(t('disc_table_created')));
+  if (r.blocked) noter.push(escapeHtml(r.blockedError || t('disc_table_blocked')));
+  if (r.error) noter.push(`<span style="color:var(--red)">${escapeHtml(r.error)}</span>`);
+  await reloadCustomersQuiet();
+  await guideCheck('discover');
+  if (noter.length || efter) {
+    guideResults.discover.msg += '<br>' + [...noter, efter].filter(Boolean).join('<br>');
+    renderGuide(guideEnvId);
+  }
+  // Nye trin fra org'en står først i rullelisterne efter en genindlæsning.
+  if ((r.stagesAdded || []).length) setTimeout(() => location.reload(), 3000);
+}
+
+async function discUse(tableId) {
+  const card = (guideDisc?.cards || []).find(c => c.tableId === tableId);
+  if (!card) return;
+  const fields = card.setup ? {} : { stage: document.getElementById('disc-stage-' + tableId)?.value || '' };
+  await discAdopt({ mode: 'use', tableId, fields });
+}
+
+async function discLoose() {
+  await discAdopt({ mode: 'loose' });
+}
+
+async function discSubmitForm() {
+  const f = discForm;
+  if (!f) return;
+  if (!f.stage) { alert(t('disc_pick_stage')); return; }
+  // En ny tabel er et nyt objekt i kundens org — det skal bekræftes, som når
+  // tabellen oprettes fra pipelinen.
+  if (!confirm(t('mf_confirm').replace('{env}', f.name || '?'))) return;
+  await discAdopt({ mode: f.mode, tableId: f.tableId,
+                    fields: { name: f.name, tenant: f.tenant, group: f.group, stage: f.stage, prefix: f.pfx } });
+}
+
+async function discAddSibling(i) {
+  const e = guideDisc?.elsewhere?.[i];
+  if (!e) return;
+  const clientId = e.clientId || (document.getElementById('disc-sib-cid-' + i)?.value || '').trim();
+  const r = await postJson('/api/setup/add-sibling', { fromEnvId: guideEnvId, sibling: e, clientId });
+  if (r.error) { guideResults.discover = { ok: false, msg: escapeHtml(r.error) }; renderGuide(guideEnvId); return; }
+  e.added = r.env.id;
+  await reloadCustomersQuiet();
+  renderGuide(guideEnvId);
+}
+
+async function discResolve(choice) {
+  const r = await postJson('/api/setup/resolve', { envId: guideEnvId, choice });
+  if (r.error) { guideResults.discover = { ok: false, msg: escapeHtml(r.error) }; renderGuide(guideEnvId); return; }
+  await reloadCustomersQuiet();
+  await guideCheck('discover');
+}
+
+// ── Opsætningen uden for guiden ───────────────────────────────────────────────
+// Efter et login eller en forbindelsestest hentes org'ens opsætning ind. Har
+// org'en ændret noget, siges det én gang; er der uenighed, peges der på guiden.
+async function syncSetupFor(envId) {
+  const env = customers.find(c => c.id === envId);
+  if (!env || !env.stage || env.demo) return;
+  const r = await postJson('/api/setup/sync', { envId });
+  const linjer = [];
+  if (r.conflict) linjer.push(fillT('sync_conflict', { env: env.name }) +
+    ` <a href="#" onclick="openSetupGuide(${jsAttr(envId)}); return false">${t('gd_open_guide')}</a>`);
+  if ((r.applied || []).length) linjer.push(fillT('sync_applied', { env: env.name,
+    list: r.applied.map(a => `${a.field}: ${a.from || '—'} → ${a.to || '—'}`).join(', ') }));
+  if ((r.stagesAdded || []).length) linjer.push(fillT('msg_stages_added', { list: r.stagesAdded.join(', ') }));
+  if ((r.applied || []).length || (r.stagesAdded || []).length) await refreshCustomers();
+  return linjer;
+}
+
+function showSetupNotice(linjer) {
+  const bar = document.getElementById('setup-bar');
+  if (!bar || !linjer || !linjer.length) return;
+  bar.style.display = 'block';
+  bar.innerHTML = `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 14px;margin-bottom:6px;border:1px solid var(--blue);
+      border-radius:6px;background:color-mix(in srgb, var(--blue) 10%, var(--card));font-size:12px">
+      <span style="flex:1">${linjer.join('<br>')}</span>
+      <button class="btn btn-secondary btn-sm" onclick="this.closest('#setup-bar').style.display='none'">✕</button></div>`;
+}
+
+async function rebuildManifest(envId) {
+  const env = customers.find(c => c.id === envId);
+  if (!confirm(t('mf_rebuild_confirm').replace('{env}', env ? env.name : envId))) return;
+  const iGuide = document.body.classList.contains('guide-mode');
+  const sig = (msg, ok) => {
+    if (iGuide) { guideResults.manifest = { ok, msg }; renderGuide(guideEnvId); }
+    else showAlert('pipelineAlert', msg, ok === false ? 'err' : ok ? 'ok' : 'info');
+  };
+  sig(`<span class="spin"></span> ${escapeHtml(t('mf_rebuild_running'))}`, null);
+  const r = await postJson('/api/manifest/rebuild', { envId });
+  if (r.error) return sig(escapeHtml(r.error), false);
+  sig(fillT(r.partial ? 'mf_rebuilt_partial' : 'mf_rebuilt', { n: r.rows, h: r.withHistory, k: r.kept }), true);
+  if (!iGuide) loadManifestStatus(false);
 }
 
 // ── Pipeline ──────────────────────────────────────────────────────────────────
@@ -11124,7 +11695,7 @@ async function demoRemove(which = '1') {
 }
 
 // ── Delt manifest ─────────────────────────────────────────────────────────────
-async function loadManifestStatus() {
+async function loadManifestStatus(synk = true) {
   const tenant = document.getElementById('pl-tenant').value;
   const group  = document.getElementById('pl-group').value;
   const card = document.getElementById('mfCard');
@@ -11138,14 +11709,25 @@ async function loadManifestStatus() {
       ? `<span style="color:var(--red)">${escapeHtml(e.error)}</span>`
       : e.hasTable
         ? `<span style="color:var(--green)">✓ ${t('mf_has_table')}</span>
-           <span style="color:var(--muted)">· ${e.rows} ${t('mf_rows')}</span>`
+           <span style="color:var(--muted)">· ${e.rows} ${t('mf_rows')}</span>
+           ${e.setup === 'pending' ? `<span style="color:var(--yellow)" data-tip="tip_setup_pending">· ⚠ ${t('mf_setup_pending')}</span>`
+             : e.setup === 'ok' ? `<span style="color:var(--muted)">· ✓ ${t('mf_setup_ok')}</span>` : ''}`
         : `<span style="color:var(--yellow)">${t('mf_no_table')}</span>
            <button class="btn btn-secondary btn-sm" style="margin-left:8px;font-size:10px;padding:2px 8px"
-             data-tip="tip_mf_create" onclick="createManifestTable('${e.id}')">${t('mf_create')}</button>`;
+             data-tip="tip_mf_create" onclick="createManifestTable('${e.id}')">${t('mf_create')}</button>
+           <button class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 8px"
+             data-tip="tip_mf_rebuild" onclick="rebuildManifest(${jsAttr(e.id)})">${t('mf_rebuild')}</button>`;
     return `<div style="display:flex;align-items:center;gap:10px;padding:5px 0;font-size:12px">
         <span style="font-family:var(--mono);color:var(--muted);min-width:44px">${(e.stage || '—').toUpperCase()}</span>
         <span style="min-width:190px">${escapeHtml(e.name)}</span>${state}</div>`;
   }).join('');
+  // Org'ens opsætning hentes ind for hvert miljø med en tabel. Status tegnes
+  // bagefter igen uden en ny runde, så det ikke kører i ring.
+  if (!synk) return;
+  const linjer = [];
+  for (const e of r.environments.filter(x => x.hasTable && x.stage && !x.demo))
+    linjer.push(...((await syncSetupFor(e.id).catch(() => null)) || []));
+  if (linjer.length) { showSetupNotice(linjer); await loadManifestStatus(false); }
 }
 
 async function createManifestTable(envId) {
