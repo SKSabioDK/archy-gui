@@ -5,6 +5,17 @@
 
 ---
 
+### v1.48.7
+---
+**🇩🇰 Dansk**
+
+- **Opsætningsguiden kan scrolles.** Vinduet havde ingen rullebjælke, så de nederste punkter (fra punkt 6 og ned) kunne ikke nås. Guiden scroller nu selv.
+
+**🇬🇧 English**
+- **The setup guide can be scrolled:** the window had no scrollbar, so the lower steps (from step 6 down) could not be reached. The guide now scrolls on its own.
+
+---
+
 ### v1.48.6
 ---
 **🇩🇰 Dansk**

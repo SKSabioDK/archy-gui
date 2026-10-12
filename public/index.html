@@ -262,7 +262,10 @@
   /* Opsætningsguiden: samme side, men kun guiden vises (?guide=<miljø>). */
   #guide-root { display:none; }
   body.guide-mode .layout { display:none; }
-  body.guide-mode #guide-root { display:block; max-width:780px; margin:0 auto; padding:24px 16px 48px; }
+  /* html og body har overflow:hidden (det er .main der scroller), og den er skjult
+     her — så guiden scroller selv. Rullebjælken sidder yderst i vinduet. */
+  body.guide-mode #guide-root { display:block; height:100vh; overflow-y:auto; box-sizing:border-box; padding:24px 16px 48px; }
+  body.guide-mode #guide-root > * { max-width:780px; margin-left:auto; margin-right:auto; }
   .gd-step { border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:10px; background:var(--card); }
   .gd-step.done { border-color:var(--green); }
   .gd-head { display:flex; align-items:center; gap:10px; }
@@ -523,7 +526,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.48.6 · Archy GUI</div>
+    <div class="version" id="app-version">v1.48.7 · Archy GUI</div>
   </div>
 
   <!-- Main -->
