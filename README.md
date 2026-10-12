@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.48.7
+# Archy GUI — Flow Manager · v1.48.8
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -11,8 +11,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.48.7**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.48.7**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.48.8**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.48.8**.
 
 ---
 
@@ -68,7 +68,7 @@ Nye miljøer oprettes altid med **🌐 OAuth (PKCE)**: du logger ind i Genesys s
 
 **🔌 Test** kontrollerer forbindelsen og **rettighederne**. Programmet slår miljøets faktiske rettigheder op — for en person (PKCE) direkte, for client credentials via klientens roller — og holder dem op mod hver funktion: læse, importere og publicere flows, Archy, datatabeller og manifest, Data Actions, prompts, divisioner, køer, brugere og afhængigheder. Kortet viser en liste med ✓ og ✗ og de rettigheder der mangler. Kan klientens roller ikke læses (kræver `oauth:client:view` og `authorization:role:view`), prøves læseadgangen af i stedet, og det der ikke kan prøves uden at skrive, står som *kunne ikke afgøres*. Fejler forbindelsen, står fejlen på kortet.
 
-**📋 Opsætningsguide.** Knappen 📋 på et miljøkort — og et link når et nyt miljø er oprettet — åbner en tjekliste i sit eget vindue, som man kan have stående ved siden af Genesys: opret OAuth-klienten (grant type, PKCE), redirect-URI, miljøets felter her, log ind, rettighederne (listen over hvad programmet bruger), divisionen, manifest-tabellen og — på prod — deploy-retten. Punkter med **Tjek** kontrollerer programmet selv mod org'en; **▶ Tjek alt** kører dem alle. Resten krydser man af, og afkrydsningerne huskes pr. miljø i browseren.
+**📋 Opsætningsguide.** Knappen **📋 Opsætning** på et miljøkort — og et link når et nyt miljø er oprettet — åbner en tjekliste i sit eget vindue, som man kan have stående ved siden af Genesys: opret OAuth-klienten (grant type, PKCE), redirect-URI, miljøets felter her, log ind, rettighederne (listen over hvad programmet bruger), divisionen, manifest-tabellen og — på prod — deploy-retten. Punkter med **Tjek** kontrollerer programmet selv mod org'en; **▶ Tjek alt** kører dem alle. Resten krydser man af, og afkrydsningerne huskes pr. miljø i browseren. Kortet viser, om guiden er gennemgået (`x af y`), og knappen **📋 Opsætning** er fremhævet, indtil den er. **Er den ikke gennemgået, tilbydes den, når man har logget ind eller testet forbindelsen** — med valgene *Åbn guiden*, *Senere* og *Vis ikke igen for dette miljø*. Et miljø regnes også for gennemgået, når org'en allerede kender det (koblet til sin tabel).
 
 **🔎 Find det der allerede er sat op.** Efter login ser guiden efter ArchyGUI's egne tabeller i org'en. Er miljøet sat op fra en anden pc, står det dér — med navn, kunde, gruppe, trin og præfiks — og **Brug dette** tager det i brug uden at skrive noget. **Opret nyt ud fra dette** laver et nyt miljø i samme org med den fundne opsætning som skabelon; du vælger trin og præfiks, og præfikser der allerede bruges, afvises. Er der intet i org'en, vælger du mellem **Kun import/eksport** og **Start en pipeline**. Et kort for et miljø i **samme org**, som pc'en ikke har endnu — fx dev, når man starter med prod — kan tilføjes med **Tilføj som nyt miljø**: det bliver et ekstra PKCE-miljø med opsætningen fra org'en, og intet skrives i org'en. Opsætningen nævner også pipelinens miljøer i **andre orgs** — fx prod — og de kan tilføjes herfra med ét klik; org-id'et sættes med det samme, så login'et afvises hvis man vælger en forkert org.
 
@@ -422,7 +422,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-281 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+283 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -484,7 +484,7 @@ New environments are always created with **🌐 OAuth (PKCE)**: you log in to Ge
 
 **🔌 Test** checks the connection and the **permissions**. The app looks up the environment's actual permissions — directly for a person (PKCE), via the client's roles for client credentials — and holds them against each feature: reading, importing and publishing flows, Archy, data tables and manifest, Data Actions, prompts, divisions, queues, users and dependencies. The card shows a ✓/✗ list with the missing permissions. If the client's roles cannot be read (needs `oauth:client:view` and `authorization:role:view`), read access is tried instead, and what cannot be tried without writing is shown as *could not be verified*. If the connection fails, the error is shown on the card.
 
-**📋 Setup guide.** The 📋 button on an environment card — and a link after a new environment is created — opens a checklist in its own window, to keep beside Genesys: create the OAuth client (grant type, PKCE), redirect URI, the environment's fields here, log in, permissions (the list of what the app uses), division, manifest table and — on prod — deploy rights. Items with **Check** are verified by the app against the org; **▶ Check all** runs them all. The rest you tick off, and the ticks are remembered per environment in the browser.
+**📋 Setup guide.** The **📋 Setup** button on an environment card — and a link after a new environment is created — opens a checklist in its own window, to keep beside Genesys: create the OAuth client (grant type, PKCE), redirect URI, the environment's fields here, log in, permissions (the list of what the app uses), division, manifest table and — on prod — deploy rights. Items with **Check** are verified by the app against the org; **▶ Check all** runs them all. The rest you tick off, and the ticks are remembered per environment in the browser. The card shows whether the guide has been gone through (`x of y`), and the **📋 Setup** button is highlighted until it has. **If it has not, it is offered after you log in or test the connection** — with *Open the guide*, *Later* and *Do not show again for this environment*. An environment also counts as gone through when the org already knows it (linked to its table).
 
 **🔎 Find what is already set up.** After login the guide looks for ArchyGUI's own tables in the org. If the environment was set up from another PC, it is there — with name, customer, group, stage and prefix — and **Use this** takes it into use without writing anything. **Create new from this** makes a new environment in the same org with that setup as a template; you choose stage and prefix, and prefixes already in use are refused. If the org has nothing, you choose between **Import/export only** and **Start a pipeline**. A card for an environment in the **same org** that this PC does not have yet — dev, say, when you start with prod — can be added with **Add as a new environment**: it becomes an extra PKCE environment with the setup from the org, and nothing is written to the org. The setup also lists the pipeline's environments in **other orgs** — prod, say — and they can be added from here in one click; the org id is set right away, so the login is refused if the wrong org is picked.
 
@@ -830,7 +830,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-281 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+283 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 
