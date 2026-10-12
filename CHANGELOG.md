@@ -5,6 +5,17 @@
 
 ---
 
+### v1.48.4
+---
+**🇩🇰 Dansk**
+
+- **Tilføj et miljø fra et kort i samme org.** Starter man på en ny pc med fx prod, viser opdagelsen også dev, hvis det står i org'en. Kortet har nu **Tilføj som nyt miljø**: det bliver et ekstra PKCE-miljø i samme org med navn, kunde, gruppe, trin og præfiks fra opsætningen, og det er koblet med det samme. Der skrives intet i org'en. Efter tilføjelsen står **Log ind** og **Åbn guide** på kortet. Bruger det aktuelle miljø client credentials, skriver man selv Client ID'et på en PKCE-klient i org'en; en secret deles aldrig.
+
+**🇬🇧 English**
+- **Add an environment from a card in the same org:** when you start on a new PC with prod, say, the discovery also shows dev if it is in the org. The card now has **Add as a new environment**: an extra PKCE environment in the same org with name, customer, group, stage and prefix from the setup, linked straight away. Nothing is written to the org. **Log in** and **Open guide** appear on the card afterwards. If the current environment uses client credentials you type the Client ID of a PKCE client in the org yourself; a secret is never shared.
+
+---
+
 ### v1.48.3
 ---
 **🇩🇰 Dansk**

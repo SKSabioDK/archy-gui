@@ -3925,6 +3925,61 @@ app.post('/api/setup/add-sibling', (req, res) => {
   res.json({ ok: true, env: masked(env) });
 });
 
+// Tilføjer et miljø fra et kort i SAMME org som et ekstra miljø på denne pc —
+// fx dev, når man starter med prod. Det er miljøet tabellen beskriver, så det
+// kobles med det samme (setupAt), og der skrives intet i org'en. Login'et er
+// PKCE i den samme org; en client credentials-klient kræver en secret, og den
+// deles aldrig, så den må rettes bagefter under ⚙ Indstillinger.
+app.post('/api/setup/add-card', async (req, res) => {
+  const tr = v => String(v ?? '').trim();
+  const all = loadCustomers();
+  const fra = all.find(c => c.id === req.body?.fromEnvId);
+  if (!fra) return res.status(404).json({ error: 'Ukendt miljø' });
+  if (isDemo(fra)) return res.status(400).json({ error: 'Demo-miljøer har ingen org.' });
+  try {
+    const tabeller = await orgManifestTables(fra);
+    const t = tabeller.find(x => x.id === req.body.tableId);
+    if (!t) return res.status(404).json({ error: 'Tabellen findes ikke længere i org\'en — kør Tjek forbindelse igen.' });
+    const row = await readTableRow(fra, t.id, SETUP_KEY).catch(() => null);
+    if (!isSetupRow(row) || !row.env.stage)
+      return res.status(400).json({ error: 'Tabellen har ingen opsætning at bygge miljøet af. Brug «Brug dette» og vælg trinnet.' });
+    const orgId = tokenStore[fra.id]?.orgId || fra.orgId || null;
+    if (row.env.orgId && orgId && row.env.orgId !== orgId)
+      return res.status(400).json({ error: `Tabellen beskriver et miljø i en anden org (${row.env.orgId}).` });
+    if (all.some(c => c.id !== fra.id && !isDemo(c) && stageOf(c) && prefixOf(c) === t.prefix &&
+                      (orgId && c.orgId ? c.orgId === orgId : orgKeyOf(c) === orgKeyOf(fra))))
+      return res.status(400).json({ error: 'Miljøet findes allerede på denne pc.' });
+    const clientId = tr(req.body.clientId) || (fra.authType === 'oauth' ? fra.clientId : '');
+    const e = row.env;
+    const env = {
+      id: Date.now().toString(), name: tr(e.name), clientId, clientSecret: '', region: tr(e.region) || fra.region,
+      authType: 'oauth', tenant: tr(e.tenant) || fra.tenant || '', group: tr(e.group) || fra.group || '',
+      stage: tr(e.stage).toLowerCase(), prefix: t.prefix, orgLabel: tr(e.orgLabel), color: tr(e.color),
+      division: tr(e.division), deployPermission: tr(e.deployPermission), deployGroup: tr(e.deployGroup),
+      orgId: orgId || undefined, setupAt: row.at || null, setupPending: false,
+      takenPrefixes: tabeller.map(x => x.prefix).filter(p => p && p !== t.prefix).sort(),
+      pipelineId: (typeof row.pipelineId === 'string' && row.pipelineId) || fra.pipelineId || undefined
+    };
+    if (!env.name || !env.clientId)
+      return res.status(400).json({ error: 'Client ID til en PKCE-klient i org\'en skal udfyldes.' });
+    if (!STAGES.includes(env.stage)) adoptStages(row.stages);
+    if (!STAGES.includes(env.stage)) return res.status(400).json({ error: `Ukendt trin "${e.stage}" — tilføj det under Kunder → Trin først.` });
+    const fejl = envFieldError({ name: env.name, clientId: env.clientId, region: env.region, tenant: env.tenant,
+                                 group: env.group, prefix: env.prefix, orgLabel: env.orgLabel }, all);
+    if (fejl) return res.status(400).json({ error: fejl });
+    const clash = prefixClash(env, all);
+    if (clash) return res.status(400).json({ error: clash });
+    // Listen læses igen lige før den gemmes: adoptStages kan have ændret indstillinger.
+    const nu = loadCustomers();
+    nu.push(env);
+    saveCustomers(nu);
+    addLog('INFO', `Environment added from the ArchyGUI table ${t.name}: ${env.name} (${env.stage}) — log in to confirm`, env.name, 'CUSTOMER');
+    res.json({ ok: true, env: masked(env) });
+  } catch (err) {
+    res.status(500).json({ error: describeApiError(err) });
+  }
+});
+
 app.post('/api/setup/sync', async (req, res) => {
   try { res.json(await syncSetup(String(req.body?.envId || ''))); }
   catch (e) { res.status(500).json({ error: describeApiError(e) }); }

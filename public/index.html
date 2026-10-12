@@ -523,7 +523,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.48.3 · Archy GUI</div>
+    <div class="version" id="app-version">v1.48.4 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -2065,6 +2065,9 @@ const LANGS = {
     disc_added:'Tilføjet. Log ind på det for at bekræfte org\'en.',
     disc_clientid_ph:'Client ID (PKCE-klient i den org)',
     disc_add:'Tilføj',
+    disc_add_here:'Tilføj som nyt miljø',
+    tip_disc_add_here:'Tilføjer det miljø kortet beskriver som et ekstra miljø på denne pc, i samme org. Intet skrives i org\'en.',
+    disc_added_here:'Tilføjet som nyt miljø. Log ind på det for at bekræfte.',
     tip_disc_add:'Tilføjer miljøet på denne pc. Org-id\'et sættes med det samme, så login\'et afvises hvis du vælger en anden org.',
     disc_conflict_title:'Org\'en og denne pc er uenige:',
     disc_this_pc:'denne pc',
@@ -2898,6 +2901,9 @@ const LANGS = {
     disc_added:'Added. Log in to it to confirm the org.',
     disc_clientid_ph:'Client ID (PKCE client in that org)',
     disc_add:'Add',
+    disc_add_here:'Add as a new environment',
+    tip_disc_add_here:'Adds the environment the card describes as an extra environment on this PC, in the same org. Nothing is written to the org.',
+    disc_added_here:'Added as a new environment. Log in to it to confirm.',
     tip_disc_add:'Adds the environment on this PC. The org id is set right away, so the login is refused if you pick another org.',
     disc_conflict_title:'The org and this PC disagree:',
     disc_this_pc:'this PC',
@@ -3731,6 +3737,9 @@ const LANGS = {
     disc_added:'Ajouté. Connectez-vous pour confirmer l\'org.',
     disc_clientid_ph:'Client ID (client PKCE dans cette org)',
     disc_add:'Ajouter',
+    disc_add_here:'Ajouter comme nouvel environnement',
+    tip_disc_add_here:'Ajoute l\'environnement décrit par la carte comme environnement supplémentaire sur ce PC, dans la même org. Rien n\'est écrit dans l\'org.',
+    disc_added_here:'Ajouté comme nouvel environnement. Connectez-vous pour confirmer.',
     tip_disc_add:'Ajoute l\'environnement sur ce PC. L\'id de l\'org est fixé tout de suite, donc la connexion est refusée si vous choisissez une autre org.',
     disc_conflict_title:'L\'org et ce PC ne sont pas d\'accord :',
     disc_this_pc:'ce PC',
@@ -4564,6 +4573,9 @@ const LANGS = {
     disc_added:'Toegevoegd. Log erop in om de org te bevestigen.',
     disc_clientid_ph:'Client ID (PKCE-client in die org)',
     disc_add:'Toevoegen',
+    disc_add_here:'Toevoegen als nieuwe omgeving',
+    tip_disc_add_here:'Voegt de omgeving die de kaart beschrijft toe als extra omgeving op deze pc, in dezelfde org. Er wordt niets in de org geschreven.',
+    disc_added_here:'Toegevoegd als nieuwe omgeving. Log erop in om te bevestigen.',
     tip_disc_add:'Voegt de omgeving toe op deze pc. Het org-id wordt meteen gezet, zodat de login wordt geweigerd als je een andere org kiest.',
     disc_conflict_title:'De org en deze pc zijn het oneens:',
     disc_this_pc:'deze pc',
@@ -5397,6 +5409,9 @@ const LANGS = {
     disc_added:'Añadido. Inicie sesión en él para confirmar la org.',
     disc_clientid_ph:'Client ID (cliente PKCE en esa org)',
     disc_add:'Añadir',
+    disc_add_here:'Añadir como nuevo entorno',
+    tip_disc_add_here:'Añade el entorno que describe la tarjeta como entorno adicional en este PC, en la misma org. No se escribe nada en la org.',
+    disc_added_here:'Añadido como nuevo entorno. Inicie sesión en él para confirmar.',
     tip_disc_add:'Añade el entorno en este PC. El id de la org se fija de inmediato, así que el inicio de sesión se rechaza si elige otra org.',
     disc_conflict_title:'La org y este PC no coinciden:',
     disc_this_pc:'este PC',
@@ -10356,7 +10371,13 @@ function discoveryHtml(env) {
         ${s ? '' : `<select id="disc-stage-${escapeHtml(c.tableId)}" style="width:auto;padding:3px 6px">
              ${STAGES.map(x => `<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join('')}</select>`}
         <button class="btn btn-primary btn-sm" data-tip="tip_disc_use" onclick="discUse(${jsAttr(c.tableId)})">${t('disc_use')}</button>
-        <button class="btn btn-secondary btn-sm" data-tip="tip_disc_template" onclick="discOpenForm('template', ${jsAttr(c.tableId)})">${t('disc_template')}</button></div>`;
+        <button class="btn btn-secondary btn-sm" data-tip="tip_disc_template" onclick="discOpenForm('template', ${jsAttr(c.tableId)})">${t('disc_template')}</button>
+        ${s && s.stage ? (c.added
+          ? `<span style="color:var(--green)">✓ ${escapeHtml(t('disc_added_here'))}</span>
+             <button class="btn btn-primary btn-sm" onclick="oauthLogin(${jsAttr(c.added)})">${t('gd_login_btn')}</button>
+             <button class="btn btn-secondary btn-sm" onclick="openSetupGuide(${jsAttr(c.added)})">${t('gd_open_guide')}</button>`
+          : `${env.authType === 'oauth' ? '' : `<input id="disc-card-cid-${escapeHtml(c.tableId)}" placeholder="${escapeHtml(t('disc_clientid_ph'))}" maxlength="36" style="width:260px;padding:3px 6px" />`}
+             <button class="btn btn-secondary btn-sm" data-tip="tip_disc_add_here" onclick="discAddCard(${jsAttr(c.tableId)})">${t('disc_add_here')}</button>`) : ''}</div>`;
     html += `<div class="disc-card">${hoved}${af}${valg}</div>`;
   }
 
@@ -10505,6 +10526,19 @@ async function discAddSibling(i) {
   if (r.error) { guideResults.discover = { ok: false, msg: escapeHtml(r.error) }; renderGuide(guideEnvId); return; }
   e.added = r.env.id;
   await reloadCustomersQuiet();
+  renderGuide(guideEnvId);
+}
+
+async function discAddCard(tableId) {
+  const card = guideDisc?.cards?.find(c => c.tableId === tableId);
+  if (!card) return;
+  const clientId = (document.getElementById('disc-card-cid-' + tableId)?.value || '').trim();
+  const r = await postJson('/api/setup/add-card', { fromEnvId: guideEnvId, tableId, clientId });
+  if (r.error) { guideResults.discover = { ok: false, msg: escapeHtml(r.error) }; renderGuide(guideEnvId); return; }
+  card.added = r.env.id;
+  await reloadCustomersQuiet();
+  await reloadStages();
+  guideResults.discover = { ok: null, msg: escapeHtml(t('disc_choose')) };
   renderGuide(guideEnvId);
 }
 

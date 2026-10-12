@@ -110,7 +110,7 @@ const TJEKKER_SELV = ['/api/releases/rollback', '/api/releases/note'];
 // Opsætningsrækken skrives gennem writeSetupRow, som selv spørger prod-vagten.
 // Ruterne kan ikke stå foran vagten: miljøet de handler om, er ikke altid det
 // der skrives i (søskende i andre orgs), og læsningen skal virke uden login.
-const OPSAETNING = ['/api/setup/discover', '/api/setup/adopt', '/api/setup/add-sibling',
+const OPSAETNING = ['/api/setup/discover', '/api/setup/adopt', '/api/setup/add-sibling', '/api/setup/add-card',
                     '/api/setup/sync', '/api/setup/resolve'];
 
 test('hver skrivende rute står foran vagten', () => {
@@ -211,4 +211,11 @@ test('en rolles politikker bliver til rettighedsstrenge', () => {
   assert.deepEqual(s.rolePermissions(role),
     ['architect:flow:view', 'architect:flow:publish', 'routing:queue:*']);
   assert.deepEqual(s.rolePermissions(null), []);
+});
+
+test('et miljø tilføjet fra et kort skriver intet i org\'en', () => {
+  const fn = SERVER.slice(SERVER.indexOf("app.post('/api/setup/add-card'"), SERVER.indexOf("app.post('/api/setup/sync'"));
+  assert.ok(fn.length > 200, 'add-card findes ikke');
+  for (const skriv of ['putOrgManifestRow(', 'createOrgManifestTable(', 'writeSetupRow(', 'writeOrgManifestRow('])
+    assert.ok(!fn.includes(skriv), `add-card må ikke kalde ${skriv} — det er kun en lokal tilføjelse`);
 });
