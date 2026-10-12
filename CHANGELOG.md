@@ -5,6 +5,85 @@
 
 ---
 
+### v1.48.3
+---
+**🇩🇰 Dansk**
+
+- **Opsætningsrækken kan ses i loggen.** Når *ArchyGUI_Setup* skrives i org'ens tabel, står det nu i systemloggen under MANIFEST (første skrivning eller opdatering). Før blev en vellykket skrivning ikke nævnt.
+- **Org-navnet vises ved 🔌 Test af PKCE-miljøer.** Der stod `org: ?`, når Genesys ikke gav navnet med; nu bruges det fra login'et.
+
+**🇬🇧 English**
+- **The setup row shows in the log:** writing *ArchyGUI_Setup* to the org's table is logged under MANIFEST (first write or update).
+- **The org name shows for PKCE environments in 🔌 Test:** it said `org: ?` when Genesys left the name out; it now comes from the login.
+
+---
+
+### v1.48.2
+---
+**🇩🇰 Dansk**
+
+- **Genopbyg beholder pipelinens øvrige miljøer.** En genopbygget tabel fik før kun søskendelisten fra den pc, der genopbyggede. Nu hentes listerne fra de andre miljøers opsætningsrækker (dem der kan nås), så fx prod i en anden org ikke forsvinder fra listen.
+- **Genopbyg er hurtigere.** Rækkerne skrives fem ad gangen i stedet for én ad gangen.
+- **Pipeline åbner hurtigere.** *Delt manifest* læser miljøernes tabeller og opsætning side om side i stedet for efter hinanden.
+- **Nye trin fra org'en står i rullelisterne med det samme.** Siden genindlæses ikke længere.
+
+**🇬🇧 English**
+- **Rebuild keeps the pipeline's other environments:** the sibling lists of the other environments' setup rows (those that can be reached) are merged into the rebuilt table.
+- **Rebuild is faster:** rows are written five at a time.
+- **Pipeline opens faster:** the shared-manifest status and setup reads run side by side.
+- **New stages from the org show up in the dropdowns straight away,** without a page reload.
+
+---
+
+### v1.48.1
+---
+**🇩🇰 Dansk**
+
+- **En org der ikke kan nås, glemmer ikke.** Fjernes, omdøbes eller flyttes et miljø, skal søskendenes rækker glemme den gamle post. Den besked lå kun i hukommelsen og var væk, hvis serveren blev genstartet, før rækken var skrevet — eller hvis org'en ikke kunne nås. Nu står den på selve miljøet og slettes først, når rækken er skrevet.
+- **Mislykkede skrivninger kan ses.** Kunne opsætningsrækken ikke skrives i baggrunden, blev det kun logget. Nu står miljøet som *Opsætningen er ikke skrevet til org'en*, og det prøves igen ved næste login eller tjek.
+- **Log ind lige efter Tilføj.** Er et miljø fra pipelinens søskendeliste tilføjet i guiden (fx prod i en anden org), står **Log ind** ved siden af *Åbn guide*, så org-id'et kan bekræftes med det samme.
+
+**🇬🇧 English**
+- **An org that cannot be reached does not forget:** the note that a sibling row must drop an old entry is now stored on the environment instead of in memory, so it survives a restart and is cleared only once the row is written.
+- **Failed background writes are visible:** the environment is marked *setup not written to the org* and retried at the next login or check.
+- **Log in right after Add:** a sibling added from the guide gets a **Log in** button beside *Open guide*.
+
+---
+
+### v1.48.0
+---
+**🇩🇰 Dansk**
+
+- **📋 Guiden finder det der allerede er sat op.** Efter login ser opsætningsguiden efter ArchyGUI's egne tabeller i org'en og viser et kort pr. miljø: trin, navn, kunde, gruppe, præfiks og hvem der sidst rettede det. **Brug dette** tager miljøet i brug med opsætningen fra org'en og skriver intet. **Opret nyt ud fra dette** laver et nyt miljø i samme org med den fundne opsætning som skabelon — trin og præfiks vælger man selv, og et præfiks der allerede bruges i org'en, afvises. En tabel fra før denne version vises også; dér vælger man trinnet, for en tabel uden præfiks kan være både UAT og prod.
+
+- **Pipelinens miljøer i andre orgs.** Opsætningen nævner pipelinens øvrige miljøer, også dem i andre orgs. Logger man ind i test-org'en, foreslår guiden prod i prod-org'en, og **Tilføj** opretter det med org-id'et sat — så login'et afvises, hvis man vælger en forkert org på Genesys' side.
+
+- **Kun import/eksport.** Er der intet i org'en, er der to lige gode valg: **Kun import/eksport** og **Start en pipeline**. Et miljø uden trin er ikke med i nogen pipeline: ArchyGUI opretter ingen tabel og skriver intet i dets org, og advarslen om en manglende manifest-tabel efter en migrering er væk for de miljøer.
+
+- **Opsætningen står i org'en.** Manifest-tabellen har nu en række, `ArchyGUI_Setup`, der beskriver miljøet: navn, kunde, gruppe, trin, præfiks, farve, division, deploy-krav, region, org-id, et fast `pipelineId`, kundens trinliste, de præfikser org'en bruger, og søskendene. Ingen hemmeligheder — ingen secret, intet token, og Client ID kun for PKCE-klienter. Rækken skrives automatisk i alle pipelinens orgs, men i prod kun med et login der må deploye. Venter den, viser kortet *⚠ Opsætningen er ikke skrevet til org'en*. Tavlen, status og releases ser aldrig rækken.
+
+- **Org'en vinder.** Ved login, 🔌 Test og når Pipeline åbnes, hentes org'ens opsætning ind, og ændringerne vises én gang øverst på siden. En rettelse her på pc'en skrives straks til org'en. Har nogen ændret org'en, mens en rettelse herfra ventede, vælger man i guiden mellem *Brug org'ens* og *Behold denne pc's*. **Prod-vagten løsnes aldrig udefra:** org'en kan ikke flytte et prod-miljø til et andet trin eller ændre dets deploy-krav — det bliver en uenighed, og at tage org'ens kræver prod-login.
+
+- **Trin fra org'en lægges til.** Har en kunde et trin pc'en ikke kender (fx staging), lægges det ind på sin plads i listen. Der fjernes aldrig et trin.
+
+- **Søskendelisten mister ikke viden.** En pc med kun ét miljø tilføjet skriver ikke en tom liste ovenpå org'ens. Et miljø glemmes kun, når det forlader pipelinen — ikke når én pc sletter det fra sin egen liste.
+
+- **Miljøer uden præfiks tager ikke andres flows.** Var UAT uden præfiks tilføjet alene på en pc, troede den at `DEV_Betaling` var dens flow. Nu husker miljøet de præfikser org'en bruger — fundet ved opdagelsen og gemt i opsætningen — og holder dem ude, også når dev og test ikke er tilføjet.
+
+- **Genopbyg.** Er manifest-tabellen slettet, opretter **Genopbyg** (under *Delt manifest* og i guiden) den igen med opsætningen og en række pr. flow. Rækker der står, røres ikke. Historikken tages fra denne pc's lokale filer, hvor den findes; resten er et nulpunkt, og svaret siger hvor mange der fik historik med. En slettet tabel blev før husket i op til fem minutter — nu svarer status "ingen tabel" med det samme.
+
+**🇬🇧 English**
+- **📋 The guide finds what is already set up:** after login it lists ArchyGUI's tables in the org. **Use this** takes an environment into use from the org without writing; **Create new from this** uses it as a template.
+- **Environments in other orgs** in the pipeline (e.g. prod) are suggested and added with the org id set, so a wrong-org login is refused.
+- **Import/export only:** an environment without a stage gets no table, and nothing is written in its org.
+- **The setup lives in the org** in an `ArchyGUI_Setup` row of the manifest table — no secrets. It is written automatically in every org of the pipeline, in prod only with a deploy login.
+- **The org wins;** local changes are written straight away, and a disagreement is resolved in the guide. The prod guard is never loosened from outside.
+- **Stages from the org are added,** never removed. **The sibling list never loses knowledge** because one PC has fewer environments.
+- **Environments without a prefix no longer take flows** with a prefix the org uses.
+- **Rebuild** recreates a deleted manifest table with setup and one row per flow; history comes from this PC where it exists.
+
+---
+
 ### v1.47.5
 ---
 **🇩🇰 Dansk**
