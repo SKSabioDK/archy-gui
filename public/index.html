@@ -533,7 +533,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.48.10 · Archy GUI</div>
+    <div class="version" id="app-version">v1.48.11 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -2207,6 +2207,7 @@ const LANGS = {
     tree_logged_in_tip:'Logget ind',
     card_badge_demo:'🧪 Demo',
     pl_stale_summary:'⚠ {env}: {m} common module(s) er nyere end {n} flow(s) der bruger dem',
+    pl_mf_missing:'⚠ {env}: manifest-tabellen mangler i org\'en',
     pl_stale_checking:'Tjekker common modules…',
     pl_stale_failed:'{env}: common modules kunne ikke tjekkes',
     stale_checking:'Tjekker om common modules er nyere end de flows der bruger dem…',
@@ -3051,6 +3052,7 @@ const LANGS = {
     tree_logged_in_tip:'Logged in',
     card_badge_demo:'🧪 Demo',
     pl_stale_summary:'⚠ {env}: {m} common module(s) newer than {n} flow(s) that use them',
+    pl_mf_missing:'⚠ {env}: the manifest table is missing in the org',
     pl_stale_checking:'Checking common modules…',
     pl_stale_failed:'{env}: common modules could not be checked',
     stale_checking:'Checking whether common modules are newer than the flows that use them…',
@@ -3895,6 +3897,7 @@ const LANGS = {
     tree_logged_in_tip:'Connecté',
     card_badge_demo:'🧪 Démo',
     pl_stale_summary:'⚠ {env} : {m} common module(s) plus récent(s) que {n} flow(s) qui les utilisent',
+    pl_mf_missing:'⚠ {env} : la table du manifeste est absente de l\'org',
     pl_stale_checking:'Vérification des common modules…',
     pl_stale_failed:'{env} : impossible de vérifier les common modules',
     stale_checking:'Vérification : des common modules sont-ils plus récents que les flows qui les utilisent…',
@@ -4739,6 +4742,7 @@ const LANGS = {
     tree_logged_in_tip:'Ingelogd',
     card_badge_demo:'🧪 Demo',
     pl_stale_summary:'⚠ {env}: {m} common module(s) nieuwer dan {n} flow(s) die ze gebruiken',
+    pl_mf_missing:'⚠ {env}: de manifesttabel ontbreekt in de org',
     pl_stale_checking:'Common modules controleren…',
     pl_stale_failed:'{env}: common modules konden niet worden gecontroleerd',
     stale_checking:'Controleren of common modules nieuwer zijn dan de flows die ze gebruiken…',
@@ -5583,6 +5587,7 @@ const LANGS = {
     tree_logged_in_tip:'Sesión iniciada',
     card_badge_demo:'🧪 Demo',
     pl_stale_summary:'⚠ {env}: {m} common module(s) más recientes que {n} flow(s) que los usan',
+    pl_mf_missing:'⚠ {env}: falta la tabla del manifiesto en la org',
     pl_stale_checking:'Comprobando common modules…',
     pl_stale_failed:'{env}: no se pudieron comprobar los common modules',
     stale_checking:'Comprobando si hay common modules más recientes que los flows que los usan…',
@@ -10762,6 +10767,7 @@ async function loadPipeline() {
 // udgave. Miljøerne tjekkes samtidig, og tavlen tegnes igen når svarene er der.
 // envId -> { loading } | { error } | { modules: Map, flows: Map }
 let pipelineStale = {};
+let manifestMissing = [];   // miljøer i den viste gruppe hvis manifest-tabel mangler i org'en
 async function checkPipelineStale(data) {
   const envs = (data.environments || []).filter(e => !(customers.find(c => c.id === e.id) || {}).demo);
   for (const e of envs) pipelineStale[e.id] = { loading: true };
@@ -10785,6 +10791,10 @@ async function checkPipelineStale(data) {
 function pipelineStaleSummary(d) {
   const linjer = [];
   let venter = false;
+  for (const m of manifestMissing.filter(x => d.environments.some(e => e.id === x.id)))
+    linjer.push(`<div>${escapeHtml(t('pl_mf_missing').replace('{env}', m.name))}
+      <button class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 8px;margin-left:8px" data-tip="tip_mf_rebuild"
+        onclick="rebuildManifest(${jsAttr(m.id)})">${t('mf_rebuild')}</button></div>`);
   for (const e of d.environments) {
     const st = pipelineStale[e.id];
     if (!st) continue;
@@ -11862,6 +11872,12 @@ async function loadManifestStatus(synk = true) {
     .then(x => x.json()).catch(e => ({ error: e.message }));
   if (r.error) { card.style.display = 'none'; return; }
   card.style.display = 'block';
+  // Mangler et miljø sin tabel, siges det også lige over tavlen — kortet her
+  // står højere oppe på siden og overses let.
+  const mangler = r.environments.filter(e => !e.hasTable && !e.error && !e.demo && e.stage).map(e => ({ id: e.id, name: e.name }));
+  const aendret = JSON.stringify(mangler) !== JSON.stringify(manifestMissing);
+  manifestMissing = mangler;
+  if (aendret && pipelineData) renderPipeline();
   document.getElementById('mfStatus').innerHTML = r.environments.map(e => {
     const state = e.error
       ? `<span style="color:var(--red)">${escapeHtml(e.error)}</span>`

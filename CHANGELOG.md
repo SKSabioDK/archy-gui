@@ -5,6 +5,17 @@
 
 ---
 
+### v1.48.11
+---
+**🇩🇰 Dansk**
+
+- **En manglende manifest-tabel ses på tavlen.** Blev et miljøs tabel slettet, stod det kun i kortet *Delt manifest* øverst på Pipeline-siden, som let overses. Nu står der også en gul advarsel lige over tavlen — *⚠ Sabio APS: manifest-tabellen mangler i org'en* — med en **Genopbyg**-knap. Advarslen forsvinder, når tabellen er genopbygget.
+
+**🇬🇧 English**
+- **A missing manifest table shows on the board:** when an environment's table was deleted, it only showed in the *Shared manifest* card at the top of the Pipeline page, which is easy to miss. A yellow warning right above the board now says *⚠ Sabio APS: the manifest table is missing in the org* — with a **Rebuild** button. It disappears once the table is rebuilt.
+
+---
+
 ### v1.48.10
 ---
 **🇩🇰 Dansk**

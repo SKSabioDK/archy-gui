@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.48.10
+# Archy GUI — Flow Manager · v1.48.11
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -11,8 +11,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.48.10**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.48.10**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.48.11**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.48.11**.
 
 ---
 
@@ -249,7 +249,7 @@ Tabellen har to kolonner:
 
 **Org'en vinder.** Ved login, 🔌 Test og når Pipeline åbnes, hentes org'ens opsætning ind, og det der er ændret, vises én gang øverst på siden. En rettelse her på pc'en skrives derfor straks til org'en. Har nogen ændret org'ens række, mens en rettelse herfra ventede, vælger man i guiden hvem der har ret. **Prod-vagten løsnes aldrig udefra:** org'en kan ikke sætte et prod-miljø til et andet trin eller ændre dets deploy-krav — det bliver en uenighed, og at tage org'ens kræver prod-login. Trin org'en har og pc'en mangler (fx staging), lægges til listen; der fjernes aldrig nogen. Et miljø uden præfiks tager aldrig flows med et præfiks org'en bruger — heller ikke på en pc hvor dev og test ikke er tilføjet.
 
-**Genopbyg.** Er tabellen slettet, opretter **Genopbyg** (under *Delt manifest* og i guiden) den igen, skriver opsætningen og en række pr. flow i miljøet. Rækker der står, røres ikke. Hvad org'en indeholder nu, kan altid læses i Genesys; historikken — hvem forfremmede hvad hvorfra — tages fra denne pc's lokale filer, hvor den findes. Rækker uden historik er et nulpunkt, og svaret siger hvor mange der fik historik med.
+**Genopbyg.** Mangler et miljøs tabel, står det som en gul advarsel lige over tavlen på Pipeline — med en **Genopbyg**-knap. Er tabellen slettet, opretter **Genopbyg** (under *Delt manifest* og i guiden) den igen, skriver opsætningen og en række pr. flow i miljøet. Rækker der står, røres ikke. Hvad org'en indeholder nu, kan altid læses i Genesys; historikken — hvem forfremmede hvad hvorfra — tages fra denne pc's lokale filer, hvor den findes. Rækker uden historik er et nulpunkt, og svaret siger hvor mange der fik historik med.
 
 #### 🔀 På tværs af kunder
 Viser de flows der findes hos **flere kunder** — fx det samme common module i dev, uat og prod. Hver kunde vises med sin version, publiceringstidspunkt og om flowet er aktivt.
@@ -657,7 +657,7 @@ One row per flow. `Data` for `UAT_Ordreflow` looks like this:
 
 **The org wins.** At login, 🔌 Test and when Pipeline opens, the org's setup is read in, and what changed is shown once at the top of the page. A change made on this PC is therefore written to the org straight away. If someone changed the org's row while a change from here was waiting, you choose in the guide who is right. **The prod guard is never loosened from outside:** the org cannot move a prod environment to another stage or change its deploy requirements — that becomes a disagreement, and taking the org's version needs a prod login. Stages the org has and the PC lacks (e.g. staging) are added to the list; none are ever removed. An environment without a prefix never takes flows carrying a prefix the org uses — not even on a PC where dev and test have not been added.
 
-**Rebuild.** If the table was deleted, **Rebuild** (under *Shared manifest* and in the guide) creates it again and writes the setup and one row per flow in the environment. Rows that exist are left alone. What the org holds now can always be read from Genesys; the history — who promoted what from where — is taken from this PC's local files where it exists. Rows without history are a baseline, and the result says how many got history.
+**Rebuild.** If an environment's table is missing, a yellow warning right above the board on Pipeline says so — with a **Rebuild** button. If the table was deleted, **Rebuild** (under *Shared manifest* and in the guide) creates it again and writes the setup and one row per flow in the environment. Rows that exist are left alone. What the org holds now can always be read from Genesys; the history — who promoted what from where — is taken from this PC's local files where it exists. Rows without history are a baseline, and the result says how many got history.
 
 #### 🔀 Across customers
 Lists the flows that exist at **more than one customer** — for example the same common module in dev, uat and prod. Each customer is shown with its version, publish time and whether the flow is active.
