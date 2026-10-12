@@ -5,6 +5,36 @@
 
 ---
 
+### v1.48.9
+---
+**🇩🇰 Dansk**
+
+- **Samme standard på alle pc'er.** Kortet regnede et miljø for «gennemgået», så snart org'en kendte det, mens guiden selv viste 0 afkrydsede punkter — de to var uenige. Nu går begge kun ud fra guidens punkter: et miljø er gennemgået, når rettigheder, klient, division og manifest er kontrolleret mod org'en (eller afkrydset). Så ser alle pc'er, der forbinder til samme kunde, det samme, og man kan ikke springe en opsætning over uden at vælge *Vis ikke igen*.
+- **Guiden kører Tjek alt, når den åbnes**, og igen når et login lykkes. Det, der kan kontrolleres mod org'en, bliver krydset af uden at man skal trykke; det, der kræver login, siger det.
+- **Det sidste punkt, *Få flows ind i miljøet*, er valgfrit** og tæller ikke med i «x af y».
+
+**🇬🇧 English**
+- **The same standard on every PC:** the card counted an environment as «gone through» as soon as the org knew it, while the guide itself showed 0 ticked steps — the two disagreed. Both now go only by the guide's steps: an environment is gone through when permissions, client, division and manifest have been verified against the org (or ticked). So every PC that connects to the same customer sees the same, and a setup cannot be skipped without choosing *Do not show again*.
+- **The guide runs Check all when it opens,** and again when a login succeeds. What can be verified against the org is ticked without pressing anything; what needs a login says so.
+- **The last step, *Get flows into the environment*, is optional** and does not count towards «x of y».
+
+---
+
+### v1.48.8
+---
+**🇩🇰 Dansk**
+
+- **Slet-knappen er en skraldespand.** Et X ligner en luk-knap og blev let trykket ved en fejl; nu er det et skraldespandsikon (med bekræftelse som før). Intet slettes i Genesys.
+- **Opsætningsguiden er tydeligere.** Knappen på miljøkortet hedder **📋 Opsætning** i stedet for et lille ikon, og er fremhævet, indtil guiden er gennemgået. Kortet viser en linje: *Opsætningsguiden er ikke gennemgået (3 af 9)* eller *✓ Opsætningen er gennemgået*.
+- **Guiden tilbydes ved login.** Er guiden ikke gennemgået, dukker der en rude op, når man har logget ind eller testet forbindelsen: **Åbn guiden**, **Senere** eller **Vis ikke igen for dette miljø**. Ruden vises én gang pr. miljø pr. sidevisning. Et miljø regnes for gennemgået, når alle punkter er afkrydset, eller når org'en allerede kender det (koblet til sin tabel, eller valgt som kun import/eksport).
+
+**🇬🇧 English**
+- **The delete button is a trash can:** an X looks like a close button and was easy to hit by mistake; it is now a trash-can icon (with the same confirmation). Nothing is deleted in Genesys.
+- **The setup guide is clearer:** the button on the environment card reads **📋 Setup** instead of a small icon and is highlighted until the guide has been gone through. The card shows a line: *The setup guide has not been gone through (3 of 9)* or *✓ Setup gone through*.
+- **The guide is offered at login:** if it has not been gone through, a prompt appears after you log in or test the connection: **Open the guide**, **Later** or **Do not show again for this environment**. It shows once per environment per page view. An environment counts as gone through when every step is ticked, or when the org already knows it (linked to its table, or chosen as import/export only).
+
+---
+
 ### v1.48.7
 ---
 **🇩🇰 Dansk**
