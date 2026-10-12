@@ -5,6 +5,21 @@
 
 ---
 
+### v1.48.12
+---
+**🇩🇰 Dansk**
+
+- **Tavlen følger med de andre pc'er.** Mens Pipeline er åben, spørger programmet hvert minut til et fingeraftryk af manifest-tabellerne i den viste gruppe (kun nøgler og tidspunkter). Ændrer det sig — fx fordi en kollega har forfremmet et flow fra en anden pc — tegnes tavlen igen uden at blinke, og der står en note om det. Der spørges kun, mens Pipeline er åben og vinduet synligt, og ikke midt i en kontrol af indhold. Intervallet sættes med `pipelineRefreshSeconds` i `settings.json` (mindst 15; `0` slår det fra).
+- **Tavlen opdateres efter en migration.** Efter en migration på Migrer-siden var tavlen uændret, når man gik tilbage til Pipeline. Nu tegnes den igen, når man åbner den.
+- **Fra tavlen vises kun det valgte flow på Migrer.** *Hent hertil* og *Forfrem* åbnede Migrer med hele flowlisten. Nu er *Vis kun valgte* slået til, så kun det valgte flow står der; vil man migrere flere, slår man det fra. Vælger man en ny kilde, starter listen igen med alle flows.
+
+**🇬🇧 English**
+- **The board keeps up with the other PCs:** while Pipeline is open, the app asks once a minute for a fingerprint of the manifest tables in the group shown (only keys and timestamps). If it changes — say a colleague promoted a flow from another PC — the board redraws without flicker, with a note. It only asks while Pipeline is open and the window visible, and not in the middle of a content check. Set the interval with `pipelineRefreshSeconds` in `settings.json` (at least 15; `0` turns it off).
+- **The board refreshes after a migration:** after a migration on the Migrate page, the board was unchanged when you went back to Pipeline. It now redraws when you open it.
+- **From the board, Migrate shows only the chosen flow:** *Bring here* and *Promote* opened Migrate with the whole flow list. *Show selected only* is now on, so only the chosen flow is listed; turn it off to migrate more. Picking a new source starts with the full list again.
+
+---
+
 ### v1.48.11
 ---
 **🇩🇰 Dansk**

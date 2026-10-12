@@ -533,7 +533,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.48.11 · Archy GUI</div>
+    <div class="version" id="app-version">v1.48.12 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -2207,6 +2207,7 @@ const LANGS = {
     tree_logged_in_tip:'Logget ind',
     card_badge_demo:'🧪 Demo',
     pl_stale_summary:'⚠ {env}: {m} common module(s) er nyere end {n} flow(s) der bruger dem',
+    pl_refreshed:'Pipelinen er opdateret — manifestet blev ændret, fx af en kollega på en anden pc.',
     pl_mf_missing:'⚠ {env}: manifest-tabellen mangler i org\'en',
     pl_stale_checking:'Tjekker common modules…',
     pl_stale_failed:'{env}: common modules kunne ikke tjekkes',
@@ -3052,6 +3053,7 @@ const LANGS = {
     tree_logged_in_tip:'Logged in',
     card_badge_demo:'🧪 Demo',
     pl_stale_summary:'⚠ {env}: {m} common module(s) newer than {n} flow(s) that use them',
+    pl_refreshed:'The pipeline was refreshed — the manifest changed, e.g. by a colleague on another PC.',
     pl_mf_missing:'⚠ {env}: the manifest table is missing in the org',
     pl_stale_checking:'Checking common modules…',
     pl_stale_failed:'{env}: common modules could not be checked',
@@ -3897,6 +3899,7 @@ const LANGS = {
     tree_logged_in_tip:'Connecté',
     card_badge_demo:'🧪 Démo',
     pl_stale_summary:'⚠ {env} : {m} common module(s) plus récent(s) que {n} flow(s) qui les utilisent',
+    pl_refreshed:'Le pipeline a été actualisé — le manifeste a changé, par ex. par un collègue sur un autre PC.',
     pl_mf_missing:'⚠ {env} : la table du manifeste est absente de l\'org',
     pl_stale_checking:'Vérification des common modules…',
     pl_stale_failed:'{env} : impossible de vérifier les common modules',
@@ -4742,6 +4745,7 @@ const LANGS = {
     tree_logged_in_tip:'Ingelogd',
     card_badge_demo:'🧪 Demo',
     pl_stale_summary:'⚠ {env}: {m} common module(s) nieuwer dan {n} flow(s) die ze gebruiken',
+    pl_refreshed:'De pipeline is vernieuwd — het manifest is gewijzigd, bijvoorbeeld door een collega op een andere pc.',
     pl_mf_missing:'⚠ {env}: de manifesttabel ontbreekt in de org',
     pl_stale_checking:'Common modules controleren…',
     pl_stale_failed:'{env}: common modules konden niet worden gecontroleerd',
@@ -5587,6 +5591,7 @@ const LANGS = {
     tree_logged_in_tip:'Sesión iniciada',
     card_badge_demo:'🧪 Demo',
     pl_stale_summary:'⚠ {env}: {m} common module(s) más recientes que {n} flow(s) que los usan',
+    pl_refreshed:'El pipeline se ha actualizado — el manifiesto cambió, p. ej. por un compañero en otro PC.',
     pl_mf_missing:'⚠ {env}: falta la tabla del manifiesto en la org',
     pl_stale_checking:'Comprobando common modules…',
     pl_stale_failed:'{env}: no se pudieron comprobar los common modules',
@@ -5971,7 +5976,7 @@ function nav(el) {
   if (page === 'import') populateCustomerSelects(['im-customer']);
   if (page === 'files') loadFiles();
   if (page === 'cross') loadCross();
-  if (page === 'pipeline') pipelineInit();
+  if (page === 'pipeline') { pipelineInit(); if (pipelineDirty && pipelineData) { pipelineDirty = false; loadPipeline(true); } }
   if (page === 'dataactions') daInit();
   if (page === 'syslog') { populateSyslogCustomers(); loadLog(); loadLogStats(); }
   if (page === 'readme') loadReadme();
@@ -6472,6 +6477,8 @@ async function onMigrateSourceChange() {
   const id = document.getElementById('m-source').value;
   document.getElementById('m-flowCard').style.display = 'none';
   selectedMigrateFlows.clear();
+  // En ny kilde starter med hele listen; «Vis kun valgte» slås kun til af tavlen.
+  const kunValgte = document.getElementById('m-only-selected'); if (kunValgte) kunValgte.checked = false;
   updateMigrateBtn();
   updateMigrateAuthStatus();
   if (!id) return;
@@ -6743,6 +6750,7 @@ async function runMigration() {
       log(logBox, `  ✗ ${e.message}`, 'err'); failed++;
     }
   }
+  pipelineDirty = true;
   log(logBox, `\n${t('migration_done')} — ${ok} ${t('da_sum_ok')} · ${skipped} ${t('da_sum_skipped')} · ${failed} ${t('da_sum_failed')}`,
       failed ? 'err' : 'info');
 }
@@ -10738,17 +10746,21 @@ function onPipelineTenant() {
   document.getElementById('pl-group-wrap').style.display = groups.length > 1 ? '' : 'none';
 }
 
-async function loadPipeline() {
+// silent: tegner tavlen igen uden at blinke «henter…» — bruges når den følger med i baggrunden.
+async function loadPipeline(silent = false) {
   const tenant = document.getElementById('pl-tenant').value;
   const group  = document.getElementById('pl-group').value;
   if (!tenant || !group) return;
   setFocus(tenant, group);
   const board = document.getElementById('pipelineBoard');
-  document.getElementById('pl-filterCard').style.display = 'none';
-  board.innerHTML = `<div class="card" style="color:var(--muted);font-size:12px"><span class="spin"></span> ${t('pl_loading')}</div>`;
+  if (!silent) {
+    document.getElementById('pl-filterCard').style.display = 'none';
+    board.innerHTML = `<div class="card" style="color:var(--muted);font-size:12px"><span class="spin"></span> ${t('pl_loading')}</div>`;
+  }
   const r = await fetch(`/api/pipeline?tenant=${encodeURIComponent(tenant)}&group=${encodeURIComponent(group)}`)
     .then(x => x.json()).catch(e => ({ error: e.message }));
-  if (r.error) { board.innerHTML = `<div class="card" style="color:var(--red);font-size:13px">${escapeHtml(r.error)}</div>`; return; }
+  if (r.error) { if (!silent) board.innerHTML = `<div class="card" style="color:var(--red);font-size:13px">${escapeHtml(r.error)}</div>`; return; }
+  pipelineViewKey = tenant + '|' + group;
   // Hashene hører til den gruppe de blev målt i — miljø-id'erne er andre i den
   // næste. Uden nulstilling ville en ny gruppe arve en tilstand der ikke gælder.
   pipelineHashes = {};
@@ -10761,6 +10773,45 @@ async function loadPipeline() {
   loadManifestStatus();
   checkPipelineStale(r);
 }
+
+// ── Tavlen følger med ─────────────────────────────────────────────────────────
+// Arbejder flere pc'er på samme org, skal tavlen vise det de andre har gjort.
+// Med jævne mellemrum (serveren siger hvor ofte; som standard hvert minut)
+// spørges der til et fingeraftryk af manifest-tabellerne i den viste gruppe, og
+// ændrer det sig, tegnes tavlen igen. Kun mens Pipeline er åben og vinduet er
+// synligt, og ikke midt i en kontrol af indhold.
+let pipelineSig = null, pipelineSigKey = '', pipelineViewKey = '', pipelineDirty = false, pipelinePollTimer = null;
+
+function pipelinePollSchedule(sek) {
+  clearTimeout(pipelinePollTimer);
+  if (sek > 0) pipelinePollTimer = setTimeout(pipelinePoll, sek * 1000);
+}
+
+async function pipelinePoll() {
+  let neste = 60;
+  try {
+    const paaSiden = document.getElementById('page-pipeline')?.classList.contains('active') && document.visibilityState === 'visible';
+    const optaget = Object.keys(pipelineChecking || {}).length > 0;
+    if (paaSiden && pipelineData && pipelineViewKey && !optaget) {
+      const [tenant, group] = pipelineViewKey.split('|');
+      const r = await fetch(`/api/manifest/signature?tenant=${encodeURIComponent(tenant)}&group=${encodeURIComponent(group)}`)
+        .then(x => x.json()).catch(() => null);
+      if (r && r.ok) {
+        neste = r.intervalSeconds;
+        if (r.sig) {
+          const aendret = pipelineSig && pipelineSigKey === pipelineViewKey && r.sig !== pipelineSig;
+          pipelineSig = r.sig; pipelineSigKey = pipelineViewKey;
+          if (aendret) {
+            await loadPipeline(true);
+            showAlert('pipelineAlert', escapeHtml(t('pl_refreshed')), 'info');
+          }
+        }
+      }
+    }
+  } catch (_) { /* næste runde prøver igen */ }
+  pipelinePollSchedule(neste);
+}
+pipelinePollSchedule(20);
 
 // Samme tjek som i Flow Browser, for hvert miljø i gruppen: er et common
 // module publiceret efter de flows der bruger det, kører de på den gamle
@@ -11321,6 +11372,8 @@ async function promoteFromBoard(flowName, flowType, fromId, toId, confirmed = fa
   if (f) {
     selectedMigrateFlows.clear();
     selectedMigrateFlows.add(migrateKey(f));
+    // Fra tavlen: vis kun det valgte flow. Vil man migrere flere, slår man «Vis kun valgte» fra.
+    const kunValgte = document.getElementById('m-only-selected'); if (kunValgte) kunValgte.checked = true;
     applyMigrateFilter();
     updateMigrateBtn();
   }

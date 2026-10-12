@@ -3303,6 +3303,33 @@ app.get('/api/manifest/status', async (req, res) => {
   res.json({ ok: true, table: ORG_MANIFEST_BASE, environments: out });
 });
 
+// Et fingeraftryk af manifest-tabellerne i en pipeline-gruppe. Brugerfladen
+// spørger med jævne mellemrum og tegner tavlen igen, når det ændrer sig — så
+// man ser det en kollega på en anden pc har gjort. Kun nøgler og tidspunkter
+// indgår, ikke indholdet. Intervallet står i settings.json (pipelineRefreshSeconds,
+// 0 = slået fra).
+function manifestSignature(rows) {
+  if (!rows) return 'none';
+  const h = crypto.createHash('sha1');
+  for (const k of Object.keys(rows).sort()) {
+    const r = rows[k] || {};
+    h.update(`${k}|${r.at || ''}|${r.version ?? ''}|${r.publishedAt || ''}|${(r.releases || []).length}\n`);
+  }
+  return h.digest('hex').slice(0, 12);
+}
+
+app.get('/api/manifest/signature', async (req, res) => {
+  const { tenant, group } = req.query;
+  const envs = loadCustomers().filter(c => tenantOf(c) === tenant && groupOf(c) === group && stageOf(c));
+  const n = Number(loadSettings().pipelineRefreshSeconds);
+  const sek = Number.isFinite(n) ? (n === 0 ? 0 : Math.max(15, n)) : 60;
+  const dele = await Promise.all(envs.map(async c => {
+    try { return `${c.id}:${manifestSignature(await readOrgManifest(c))}`; }
+    catch (_) { return `${c.id}:?`; }       // ikke logget ind lige nu, eller ingen forbindelse
+  }));
+  res.json({ ok: true, sig: dele.length ? dele.join(';') : null, intervalSeconds: sek });
+});
+
 app.post('/api/manifest/create', async (req, res) => {
   const c = loadCustomers().find(x => x.id === req.body.envId);
   if (!c) return res.status(404).json({ error: 'Ukendt miljø' });
@@ -7612,6 +7639,7 @@ module.exports = {
   // manifest
   orgManifestKey, findManifestEntry, isFlowRowKey, onlyFlowRows, rebuiltManifestRow,
   // opsætningen i org'en
+  manifestSignature,
   SETUP_KEY, SETUP_SHARED, setupRowFor, setupChanges, sameSetup, mergeStages, applyOrgSetup,
   ensurePipelineIds, pipelinePeers, takenPrefixesFor, discoveryResult, sameSibling, cleanSibling, addForget, siblingsFromPeers,
   // common modules
