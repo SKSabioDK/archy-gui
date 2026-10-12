@@ -5,6 +5,17 @@
 
 ---
 
+### v1.48.10
+---
+**🇩🇰 Dansk**
+
+- **Manifest-tabellens beskrivelse er på engelsk.** Den står i kundens org, og alt andet vi skriver dér er på engelsk. Tabeller, der allerede er oprettet, beholder deres gamle beskrivelse; en ny eller genopbygget tabel får den engelske.
+
+**🇬🇧 English**
+- **The manifest table's description is in English:** it sits in the customer's org, where everything else we write is in English. Tables that already exist keep their old description; a new or rebuilt table gets the English one.
+
+---
+
 ### v1.48.9
 ---
 **🇩🇰 Dansk**

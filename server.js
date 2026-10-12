@@ -3107,7 +3107,8 @@ async function createOrgManifestTable(customer) {
   const { token, apiBase } = await getToken(customer);
   const body = {
     name: manifestTableName(customer),
-    description: 'ArchyGUI: hvad denne org indeholder, og hvornår det kom hertil. Skrives af ArchyGUI — ret ikke rækker i hånden.',
+    // Står i kundens org, så den er på engelsk som alt andet vi skriver dér.
+    description: 'ArchyGUI: what this org contains and when it arrived. Written by ArchyGUI — do not edit rows by hand.',
     schema: {
       $schema: 'http://json-schema.org/draft-04/schema#',
       title: manifestTableName(customer),
