@@ -59,7 +59,8 @@ function argumenter(kilde, fraParentes) {
 }
 
 // Kommentarlinjer ud, så en dansk kommentar inde i kaldet ikke tæller med.
-const udenKommentarer = (t) => t.split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
+// \r tælles ikke med af ".": med CRLF-linjeskift (Windows' checkout) slap hver kommentar igennem.
+const udenKommentarer = (t) => t.split(/\r?\n/).map(l => l.replace(/\/\/.*$/, '')).join('\n');
 
 function strengeI(tekst) {
   const ud = [];
