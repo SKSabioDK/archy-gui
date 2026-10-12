@@ -5,6 +5,23 @@
 
 ---
 
+### v1.48.2
+---
+**🇩🇰 Dansk**
+
+- **Genopbyg beholder pipelinens øvrige miljøer.** En genopbygget tabel fik før kun søskendelisten fra den pc, der genopbyggede. Nu hentes listerne fra de andre miljøers opsætningsrækker (dem der kan nås), så fx prod i en anden org ikke forsvinder fra listen.
+- **Genopbyg er hurtigere.** Rækkerne skrives fem ad gangen i stedet for én ad gangen.
+- **Pipeline åbner hurtigere.** *Delt manifest* læser miljøernes tabeller og opsætning side om side i stedet for efter hinanden.
+- **Nye trin fra org'en står i rullelisterne med det samme.** Siden genindlæses ikke længere.
+
+**🇬🇧 English**
+- **Rebuild keeps the pipeline's other environments:** the sibling lists of the other environments' setup rows (those that can be reached) are merged into the rebuilt table.
+- **Rebuild is faster:** rows are written five at a time.
+- **Pipeline opens faster:** the shared-manifest status and setup reads run side by side.
+- **New stages from the org show up in the dropdowns straight away,** without a page reload.
+
+---
+
 ### v1.48.1
 ---
 **🇩🇰 Dansk**

@@ -523,7 +523,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.48.1 · Archy GUI</div>
+    <div class="version" id="app-version">v1.48.2 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -10459,8 +10459,20 @@ async function discAdopt(body, efter = '') {
     guideResults.discover.msg += '<br>' + [...noter, efter].filter(Boolean).join('<br>');
     renderGuide(guideEnvId);
   }
-  // Nye trin fra org'en står først i rullelisterne efter en genindlæsning.
-  if ((r.stagesAdded || []).length) setTimeout(() => location.reload(), 3000);
+  // Nye trin fra org'en lægges i rullelisterne med det samme.
+  if ((r.stagesAdded || []).length) { await reloadStages(); renderGuide(guideEnvId); }
+}
+
+// Henter trinlisten fra serveren ind i det array resten af klienten holder på,
+// så rullelister, farver og sortering følger med uden genindlæsning.
+async function reloadStages() {
+  try {
+    const r = await fetch('/api/stages').then(x => x.json());
+    if (Array.isArray(r.stages) && r.stages.length) {
+      STAGES.splice(0, STAGES.length, ...r.stages);
+      if (typeof fillStages === 'function') fillStages();
+    }
+  } catch (_) {}
 }
 
 async function discUse(tableId) {
@@ -10516,6 +10528,7 @@ async function syncSetupFor(envId) {
   if ((r.applied || []).length) linjer.push(fillT('sync_applied', { env: env.name,
     list: r.applied.map(a => `${a.field}: ${a.from || '—'} → ${a.to || '—'}`).join(', ') }));
   if ((r.stagesAdded || []).length) linjer.push(fillT('msg_stages_added', { list: r.stagesAdded.join(', ') }));
+  if ((r.stagesAdded || []).length) await reloadStages();
   if ((r.applied || []).length || (r.stagesAdded || []).length) await refreshCustomers();
   return linjer;
 }
@@ -11725,9 +11738,10 @@ async function loadManifestStatus(synk = true) {
   // Org'ens opsætning hentes ind for hvert miljø med en tabel. Status tegnes
   // bagefter igen uden en ny runde, så det ikke kører i ring.
   if (!synk) return;
-  const linjer = [];
-  for (const e of r.environments.filter(x => x.hasTable && x.stage && !x.demo))
-    linjer.push(...((await syncSetupFor(e.id).catch(() => null)) || []));
+  // Ét kald pr. miljø med tabel — de kører side om side, ikke efter hinanden.
+  const svar = await Promise.all(r.environments.filter(x => x.hasTable && x.stage && !x.demo)
+    .map(e => syncSetupFor(e.id).catch(() => null)));
+  const linjer = svar.flatMap(x => x || []);
   if (linjer.length) { showSetupNotice(linjer); await loadManifestStatus(false); }
 }
 

@@ -3233,21 +3233,20 @@ app.get('/api/manifest/status', async (req, res) => {
   // Opsætningsrækken: skrevet og i trit, venter på at blive skrevet, eller
   // aldrig skrevet fra denne pc.
   const setupState = c => c.setupPending ? 'pending' : c.setupAt ? 'ok' : 'none';
-  for (const c of envs) {
-    if (isDemo(c)) {
-      out.push({ id: c.id, name: c.name, stage: stageOf(c), hasTable: true, setup: setupState(c),
-                 table: manifestTableName(c),
-                 rows: Object.keys(onlyFlowRows(demoManifest(c.id))).length, demo: true });
-      continue;
-    }
+  // Ét opslag pr. miljø, side om side — rækkefølgen bevares.
+  out.push(...await Promise.all(envs.map(async c => {
+    if (isDemo(c))
+      return { id: c.id, name: c.name, stage: stageOf(c), hasTable: true, setup: setupState(c),
+               table: manifestTableName(c),
+               rows: Object.keys(onlyFlowRows(demoManifest(c.id))).length, demo: true };
     try {
       const rows = await readOrgManifest(c);
-      out.push({ id: c.id, name: c.name, stage: stageOf(c), table: manifestTableName(c), setup: setupState(c),
-                 hasTable: rows !== null, rows: rows ? Object.keys(rows).length : 0 });
+      return { id: c.id, name: c.name, stage: stageOf(c), table: manifestTableName(c), setup: setupState(c),
+               hasTable: rows !== null, rows: rows ? Object.keys(rows).length : 0 };
     } catch (e) {
-      out.push({ id: c.id, name: c.name, stage: stageOf(c), table: manifestTableName(c), hasTable: false, error: describeApiError(e) });
+      return { id: c.id, name: c.name, stage: stageOf(c), table: manifestTableName(c), hasTable: false, error: describeApiError(e) };
     }
-  }
+  })));
   res.json({ ok: true, table: ORG_MANIFEST_BASE, environments: out });
 });
 
@@ -3548,6 +3547,26 @@ async function readSetupRow(env) {
   if (isSetupRow(row)) return row;
   addLog('WARN', `The setup row in ${manifestTableName(env)} (${env.name}) is not in ArchyGUI's format — ignored and rewritten`, env.name, 'MANIFEST');
   return null;
+}
+
+// Søskendelisten fra de andre miljøers rækker i pipelinen — de der kan nås nu.
+// Bruges når en tabel bygges op igen: den nye række kender ellers kun de
+// miljøer denne pc har, og et miljø i en anden org ville forsvinde fra listen.
+// Returnerer den række der står (eller en tom, hvis ingen), med listen udvidet.
+async function siblingsFromPeers(env, current) {
+  const andre = pipelinePeers(env, loadCustomers()).filter(c => c.id !== env.id && !isDemo(c));
+  const fundet = [];
+  await Promise.all(andre.map(async c => {
+    try {
+      const r = await readSetupRow(c);
+      if (isSetupRow(r)) fundet.push(...(r.siblings || []).map(cleanSibling).filter(Boolean));
+    } catch (_) { /* ingen forbindelse dér lige nu — de fletter sig ind ved næste sync */ }
+  }));
+  if (!fundet.length) return current;
+  const basis = isSetupRow(current) ? current : { kind: 'archygui-setup', env: {}, siblings: [] };
+  const siblings = [...(basis.siblings || [])];
+  for (const f of fundet) if (!siblings.some(x => sameSibling(x, f))) siblings.push(f);
+  return { ...basis, siblings };
 }
 
 // Skubber miljøets egen opsætning til org'en. Er org'ens række ændret siden vi
@@ -3993,6 +4012,10 @@ app.post('/api/manifest/rebuild', async (req, res) => {
     const lokal = loadManifest(), rels = loadReleases();
     const who = await whoAmI(env);
     let rows = 0, withHistory = 0, kept = 0;
+    // Rækkerne skrives nogle ad gangen: et kald pr. række er langsomt ved
+    // hundredvis af flows, men for mange på én gang rammer Genesys' grænse.
+    const BOLGE = 5;
+    const skriv = [];
     for (const f of flows) {
       const base = baseFlowName(stripEnvPrefix(f.name, env));
       const key = orgManifestKey(base, f.type);
@@ -4000,12 +4023,17 @@ app.post('/api/manifest/rebuild', async (req, res) => {
       const opslag = { targetOrgId: env.orgId || null, targetId: env.id, flowType: f.type };
       const entry = findManifestEntry(lokal, { ...opslag, flowName: base }) || findManifestEntry(lokal, { ...opslag, flowName: f.name });
       const mine = rels.filter(r => r.targetId === env.id && orgManifestKey(r.baseName, r.flowType) === key);
-      const row = rebuiltManifestRow(f, entry, mine);
-      await putOrgManifestRow(env, key, { ...row, by: who.by, bySource: who.bySource, at: Date.now() });
-      rows++;
-      if (row.history === 'local') withHistory++;
+      skriv.push({ key, row: rebuiltManifestRow(f, entry, mine) });
     }
-    const setup = await writeSetupRow(loadCustomers().find(c => c.id === env.id) || env, await readSetupRow(env));
+    for (let i = 0; i < skriv.length; i += BOLGE) {
+      await Promise.all(skriv.slice(i, i + BOLGE).map(({ key, row }) =>
+        putOrgManifestRow(env, key, { ...row, by: who.by, bySource: who.bySource, at: Date.now() })));
+    }
+    for (const { row } of skriv) { rows++; if (row.history === 'local') withHistory++; }
+    // Den nye tabel kender kun de søskende denne pc har. Pipelinens andre orgs
+    // har deres egen liste — den hentes ind, så intet af det org'en vidste går tabt.
+    const setup = await writeSetupRow(loadCustomers().find(c => c.id === env.id) || env,
+      await siblingsFromPeers(env, await readSetupRow(env)));
     addLog('SUCCESS', `Manifest rebuilt in ${env.name}: ${rows} row(s) written (${withHistory} with history from this PC), ` +
       `${kept} kept${created ? ', table created' : ''}`, env.name, 'MANIFEST');
     res.json({ ok: true, created, rows, withHistory, kept, partial: rows > withHistory, setup });
@@ -7465,7 +7493,7 @@ module.exports = {
   orgManifestKey, findManifestEntry, isFlowRowKey, onlyFlowRows, rebuiltManifestRow,
   // opsætningen i org'en
   SETUP_KEY, SETUP_SHARED, setupRowFor, setupChanges, sameSetup, mergeStages, applyOrgSetup,
-  ensurePipelineIds, pipelinePeers, takenPrefixesFor, discoveryResult, sameSibling, cleanSibling, addForget,
+  ensurePipelineIds, pipelinePeers, takenPrefixesFor, discoveryResult, sameSibling, cleanSibling, addForget, siblingsFromPeers,
   // common modules
   isBehindModule, staleModules,
   // Archy og fejltekster
