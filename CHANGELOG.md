@@ -5,6 +5,39 @@
 
 ---
 
+### v1.48.7
+---
+**🇩🇰 Dansk**
+
+- **Opsætningsguiden kan scrolles.** Vinduet havde ingen rullebjælke, så de nederste punkter (fra punkt 6 og ned) kunne ikke nås. Guiden scroller nu selv.
+
+**🇬🇧 English**
+- **The setup guide can be scrolled:** the window had no scrollbar, so the lower steps (from step 6 down) could not be reached. The guide now scrolls on its own.
+
+---
+
+### v1.48.6
+---
+**🇩🇰 Dansk**
+
+- **Login huskes over en genstart (30 minutter).** Et PKCE-login gemmes nu også i din egen brugermappe (`~/.archy-gui/session.json`), så en genstart af programmet inden for 30 minutter ikke kræver et nyt login med MFA. Fristen regnes fra login'et og forlænges ikke af brug — samme 30 minutter som deploy-retten i prod. Kun friske logins gemmes, og ved opstart hentes kun dem der passer til et miljø på denne pc og dets org; filen ryddes når de udløber. Skriv `"rememberLoginMinutes": 0` i `settings.json` for ikke at gemme noget; en anden værdi ændrer fristen. Før lå tokenet kun i hukommelsen.
+
+**🇬🇧 English**
+- **The login is remembered across a restart (30 minutes):** a PKCE login is now also kept in your own user folder (`~/.archy-gui/session.json`), so restarting the program within 30 minutes does not need a new login with MFA. The limit counts from the login and is not extended by use — the same 30 minutes as the deploy rights in prod. Only fresh logins are stored; at startup only those that fit an environment on this PC and its org are restored, and the file is cleared as they expire. Put `"rememberLoginMinutes": 0` in `settings.json` to keep nothing; another value changes the limit. Before, the token lived only in memory.
+
+---
+
+### v1.48.5
+---
+**🇩🇰 Dansk**
+
+- **Et koblet miljø kan ikke gøres om til et andet.** Når et miljø allerede er koblet til sin tabel (✓ *Det er dette miljø*), tilbød de andre kort stadig **Brug dette** og **Opret nyt ud fra dette**. Det gjorde det koblede miljø om til dev eller prod, så det skiftede frem og tilbage mellem de to. Nu viser de andre kort kun **Tilføj som nyt miljø**, som er hovedknappen, og serveren afviser de to andre valg for et koblet miljø.
+
+**🇬🇧 English**
+- **A linked environment can no longer be turned into another one:** once an environment is linked to its table, the other cards used to offer **Use this** and **Create new from this**, which turned the linked environment into dev or prod and made it flip between the two. The other cards now show only **Add as a new environment**, as the main button, and the server refuses the other two choices for a linked environment.
+
+---
+
 ### v1.48.4
 ---
 **🇩🇰 Dansk**
