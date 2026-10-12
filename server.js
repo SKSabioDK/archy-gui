@@ -3401,8 +3401,15 @@ function setupRowFor(env, all, { stages = STAGES, by = null, bySource = null, at
 }
 
 // Miljøer der har forladt en pipeline, og som søskendenes rækker skal glemme.
-// Nøglen er søskendens id; den tømmes når rækken er skrevet.
-const setupForget = {};
+// Listen står på selve miljøet (setupForget) og tømmes først når rækken er
+// skrevet — så en org der ikke kan nås nu, eller en server der genstartes
+// imens, stadig får besked næste gang man er logget ind dér.
+const FORGET_MAX = 20;
+function addForget(c, post) {
+  const liste = (Array.isArray(c.setupForget) ? c.setupForget : []).filter(x => !sameSibling(x, post));
+  liste.push(post);
+  c.setupForget = liste.slice(-FORGET_MAX);
+}
 
 // To rækker siger det samme, hvis kun hvem og hvornår er forskellige.
 const setupComparable = row => { const { by, bySource, at, ...rest } = row || {}; return JSON.stringify(rest); };
@@ -3520,19 +3527,17 @@ async function writeSetupRow(env, current) {
   if (blocked) { patchEnv(env.id, { setupPending: true }); return { ok: false, reason: blocked.code }; }
   const all = loadCustomers();
   const nu = all.find(c => c.id === env.id) || env;
-  const glem = setupForget[env.id] || [];
+  const glem = (Array.isArray(nu.setupForget) ? nu.setupForget : []).map(cleanSibling).filter(Boolean);
   const row = setupRowFor(nu, all, { previous: current, forget: glem });
   if (current && sameSetup(current, row)) {
-    patchEnv(env.id, { setupPending: false, setupAt: current.at || null });
-    delete setupForget[env.id];
+    patchEnv(env.id, { setupPending: false, setupAt: current.at || null, setupForget: undefined });
     return { ok: true, unchanged: true };
   }
   const who = await whoAmI(nu);
   row.by = who.by; row.bySource = who.bySource;
   const r = await putOrgManifestRow(nu, SETUP_KEY, row);
   if (!r.ok) return r;
-  patchEnv(env.id, { setupPending: false, setupAt: row.at });
-  delete setupForget[env.id];
+  patchEnv(env.id, { setupPending: false, setupAt: row.at, setupForget: undefined });
   return { ok: true, wrote: true };
 }
 
@@ -3618,7 +3623,10 @@ function setupInBackground(ids, why) {
         else if (!r.ok && r.reason !== 'no-table')
           addLog('INFO', `Setup row for ${env.name} not written yet (${r.reason || r.error}) — it is written at the next login or check`, env.name, 'MANIFEST');
       } catch (e) {
-        addLog('WARN', `Could not write the setup row for ${env.name}: ${describeApiError(e)}`, env.name, 'MANIFEST');
+        // Org'en kunne ikke nås (eller afviste skrivningen). Rækken bliver
+        // stående som ikke-skrevet og prøves igen ved næste login eller tjek.
+        patchEnv(id, { setupPending: true });
+        addLog('WARN', `Could not write the setup row for ${env.name}: ${describeApiError(e)} — tried again at the next login or check`, env.name, 'MANIFEST');
       }
     }
   });
@@ -3658,7 +3666,7 @@ function afterEnvChange(before, after, why) {
     const gammel = setupSibling(before);
     if (forladt || !sameSibling(gammel, setupSibling(nu)))
       for (const c of pipelinePeers(before, all)) if (c.id !== after.id)
-        (setupForget[c.id] ||= []).push(gammel);
+        { addForget(c, gammel); gem = true; }
   }
   if (gem) saveCustomers(all);
   setupInBackground([...ids], why);
@@ -7457,7 +7465,7 @@ module.exports = {
   orgManifestKey, findManifestEntry, isFlowRowKey, onlyFlowRows, rebuiltManifestRow,
   // opsætningen i org'en
   SETUP_KEY, SETUP_SHARED, setupRowFor, setupChanges, sameSetup, mergeStages, applyOrgSetup,
-  ensurePipelineIds, pipelinePeers, takenPrefixesFor, discoveryResult, sameSibling, cleanSibling,
+  ensurePipelineIds, pipelinePeers, takenPrefixesFor, discoveryResult, sameSibling, cleanSibling, addForget,
   // common modules
   isBehindModule, staleModules,
   // Archy og fejltekster

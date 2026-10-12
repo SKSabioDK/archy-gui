@@ -271,3 +271,26 @@ test('genopbygning uden historik er et nulpunkt — og siger det', () => {
   assert.equal(row.history, 'none');
   assert.equal(row.promotedFrom, undefined);
 });
+
+// ── Orgs der ikke kan nås ────────────────────────────────────────────────────
+
+test('et miljø der skal glemmes, huskes på miljøet til rækken er skrevet', () => {
+  const prod = { ...PROD };
+  const gammel = s.cleanSibling({ name: 'Kunde UAT', stage: 'uat', prefix: '', orgId: ORG_A, clientId: KLIENT });
+  s.addForget(prod, gammel);
+  assert.equal(prod.setupForget.length, 1);
+  // Samme post to gange bliver til én.
+  s.addForget(prod, gammel);
+  assert.equal(prod.setupForget.length, 1);
+  // Listen overlever en genstart: den er almindelige data, ingen hukommelse.
+  const genlaest = JSON.parse(JSON.stringify(prod));
+  const row = s.setupRowFor(genlaest, [genlaest], {
+    previous: { kind: 'archygui-setup', env: {}, siblings: [gammel] }, forget: genlaest.setupForget });
+  assert.ok(!row.siblings.some(x => s.sameSibling(x, gammel)), 'den glemte post er væk fra rækken');
+});
+
+test('listen over glemte miljøer vokser ikke ubegrænset', () => {
+  const env = { ...PROD };
+  for (let i = 0; i < 50; i++) s.addForget(env, { name: 'X' + i, stage: 'uat', prefix: 'P' + i + '_', orgId: ORG_A, clientId: KLIENT, region: '' });
+  assert.ok(env.setupForget.length <= 20);
+});

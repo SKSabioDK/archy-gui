@@ -523,7 +523,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.48.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.48.1 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -10367,6 +10367,7 @@ function discoveryHtml(env) {
       const hvor = [e.orgLabel, e.region, e.orgId ? e.orgId.slice(0, 8) + '…' : ''].filter(Boolean).join(' · ');
       const tilf = e.added
         ? `<span style="color:var(--green)">✓ ${escapeHtml(t('disc_added'))}</span>
+           <button class="btn btn-primary btn-sm" onclick="oauthLogin(${jsAttr(e.added)})">${t('gd_login_btn')}</button>
            <button class="btn btn-secondary btn-sm" onclick="openSetupGuide(${jsAttr(e.added)})">${t('gd_open_guide')}</button>`
         : `${e.clientId ? '' : `<input id="disc-sib-cid-${i}" placeholder="${escapeHtml(t('disc_clientid_ph'))}" maxlength="36" style="width:260px;padding:3px 6px" />`}
            <button class="btn btn-primary btn-sm" data-tip="tip_disc_add" onclick="discAddSibling(${i})">${t('disc_add')}</button>`;

@@ -5,6 +5,21 @@
 
 ---
 
+### v1.48.1
+---
+**🇩🇰 Dansk**
+
+- **En org der ikke kan nås, glemmer ikke.** Fjernes, omdøbes eller flyttes et miljø, skal søskendenes rækker glemme den gamle post. Den besked lå kun i hukommelsen og var væk, hvis serveren blev genstartet, før rækken var skrevet — eller hvis org'en ikke kunne nås. Nu står den på selve miljøet og slettes først, når rækken er skrevet.
+- **Mislykkede skrivninger kan ses.** Kunne opsætningsrækken ikke skrives i baggrunden, blev det kun logget. Nu står miljøet som *Opsætningen er ikke skrevet til org'en*, og det prøves igen ved næste login eller tjek.
+- **Log ind lige efter Tilføj.** Er et miljø fra pipelinens søskendeliste tilføjet i guiden (fx prod i en anden org), står **Log ind** ved siden af *Åbn guide*, så org-id'et kan bekræftes med det samme.
+
+**🇬🇧 English**
+- **An org that cannot be reached does not forget:** the note that a sibling row must drop an old entry is now stored on the environment instead of in memory, so it survives a restart and is cleared only once the row is written.
+- **Failed background writes are visible:** the environment is marked *setup not written to the org* and retried at the next login or check.
+- **Log in right after Add:** a sibling added from the guide gets a **Log in** button beside *Open guide*.
+
+---
+
 ### v1.48.0
 ---
 **🇩🇰 Dansk**
