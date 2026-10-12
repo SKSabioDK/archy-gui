@@ -5,6 +5,17 @@
 
 ---
 
+### v1.48.13
+---
+**🇩🇰 Dansk**
+
+- **Hent hertil kan udligne versionsnummeret.** Et flow, der hentes ned i dev, blev oprettet som v1.0, selv om det står på v5.0 i prod — og så får navnet ved næste forfremmelse en lav endelse. Dialogen for ⟵ Hent hertil tilbyder nu samme *udlign versionsnummeret* som ⟶ Forfrem, og den er slået til fra start. Står målet allerede højere, eller kræver udligningen mere end 25 ekstra publiceringer, siges det i stedet.
+
+**🇬🇧 English**
+- **Bring here can align the version number:** a flow brought down into dev was created as v1.0 even though it is v5.0 in prod — so its name got a low suffix at the next promotion. The ⟵ Bring here dialog now offers the same *align the version number* as ⟶ Promote, switched on from the start. If the target is already higher, or aligning would need more than 25 extra publishes, it says so instead.
+
+---
+
 ### v1.48.12
 ---
 **🇩🇰 Dansk**

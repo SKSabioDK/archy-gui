@@ -32,3 +32,10 @@ test('kortet regner ikke et miljø for gennemgået fordi org\'en kender det', ()
   assert.ok(!fn.includes('setupAt'), 'guideInfo må kun gå ud fra guidens punkter — ellers ser pc\'erne forskelligt');
   assert.ok(fn.includes('optional'), 'det valgfrie punkt skal ikke tælle med');
 });
+
+test('Hent hertil tilbyder versionsudligning, slået til fra start', () => {
+  const stykke = HTML.slice(HTML.indexOf('let alignHtml'), HTML.indexOf("const titel = { promote: 'act_promote_title'"));
+  assert.ok(stykke.length > 200, 'fandt ikke udligningen i boardAction');
+  assert.ok(stykke.includes("kind === 'pull_here'"), 'udligningen skal også gælde Hent hertil');
+  assert.ok(stykke.includes("kind === 'pull_here' ? ' checked'"), 'og være slået til fra start');
+});

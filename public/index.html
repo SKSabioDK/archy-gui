@@ -533,7 +533,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.48.12 · Archy GUI</div>
+    <div class="version" id="app-version">v1.48.13 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -11292,8 +11292,10 @@ async function boardAction(kind, key, i) {
 
   // Versionsudligning: hvad målet ender på efter forfremmelsen, og hvor mange
   // ekstra publiceringer der skal til for at nå kildens nummer.
+  // Også «Hent hertil»: et flow der oprettes i dev starter ellers på v1.0, mens det står på
+  // fx v5.0 i prod. Her er udligningen slået til fra start — målet er et tidligere trin.
   let alignHtml = '';
-  if (kind === 'promote') {
+  if (kind === 'promote' || kind === 'pull_here') {
     const maj = v => parseInt(String(v ?? '').split('.')[0], 10);
     const sV = maj(src.published), tV = c.missing ? 1 : maj(c.published) + 1;
     const max = K?.maxAlignPublishes || 25;
@@ -11301,7 +11303,7 @@ async function boardAction(kind, key, i) {
       const n = sV - tV;
       alignHtml = n > 0 && n <= max
         ? `<label style="display:flex;gap:8px;align-items:flex-start;margin-top:10px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer">
-             <input type="checkbox" id="act-align" style="width:auto;margin-top:3px" />
+             <input type="checkbox" id="act-align" style="width:auto;margin-top:3px"${kind === 'pull_here' ? ' checked' : ''} />
              <span>${fillT('act_align_offer', { to, s: 'v' + sV, t: 'v' + tV, n })}</span></label>`
         : n > max ? `<div style="margin-top:10px;font-size:12px;color:var(--muted)">🔢 ${fillT('act_align_too_many', { n, max })}</div>`
         : n < 0 ? `<div style="margin-top:10px;font-size:12px;color:var(--muted)">🔢 ${fillT('act_align_ahead', { to, t: 'v' + tV, s: 'v' + sV })}</div>`
