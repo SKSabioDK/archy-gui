@@ -5,6 +5,19 @@
 
 ---
 
+### v1.48.14
+---
+**🇩🇰 Dansk**
+
+- **Rettelse: en afhængighed blev publiceret under kildens navn.** Migrerer man et flow mellem to miljøer i samme org, hver med sit præfiks (dev `DEV_` og prod uden), og flowet har en manglende afhængighed — et bot flow eller et common module — blev afhængigheden migreret **uden** målets præfiks. Den blev dermed publiceret ovenpå kildens eget flow: prods `JO_Schedule_callback` fik en ny udgave (v2.0), og dev fik aldrig sin `DEV_`-udgave. Nu får afhængigheden målets præfiks og division, de ting den selv peger på (tabeller, common modules, bot flows) omskrives, og opslaget efter underafhængigheder søger under målets navne. Desuden afvises det helt, hvis en afhængighed i samme org ellers ville blive publiceret under sit eget navn.
+- **Bot flow-referencer omskrives.** Et flow, der kalder et bot flow, pegede stadig på kildens bot flow efter migreringen, mens tjekket ledte efter den præfikserede udgave. Referencen får nu målets præfiks, ligesom tabeller og common modules.
+
+**🇬🇧 English**
+- **Fix: a dependency was published under the source's name.** Migrating a flow between two environments in the same org, each with its own prefix (dev `DEV_`, prod none), when the flow had a missing dependency — a bot flow or a common module — the dependency was migrated **without** the target's prefix. It was therefore published over the source's own flow: prod's `JO_Schedule_callback` got a new version (v2.0), and dev never got its `DEV_` copy. The dependency now gets the target's prefix and division, what it points to (tables, common modules, bot flows) is rewritten, and the lookup of sub-dependencies searches under the target's names. A dependency in the same org that would otherwise be published under its own name is now refused outright.
+- **Bot flow references are rewritten:** a flow that calls a bot flow still pointed at the source's bot flow after migration, while the check looked for the prefixed one. The reference now gets the target's prefix, like tables and common modules.
+
+---
+
 ### v1.48.13
 ---
 **🇩🇰 Dansk**
