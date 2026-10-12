@@ -533,7 +533,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.48.9 · Archy GUI</div>
+    <div class="version" id="app-version">v1.48.14 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -2207,6 +2207,8 @@ const LANGS = {
     tree_logged_in_tip:'Logget ind',
     card_badge_demo:'🧪 Demo',
     pl_stale_summary:'⚠ {env}: {m} common module(s) er nyere end {n} flow(s) der bruger dem',
+    pl_refreshed:'Pipelinen er opdateret — manifestet blev ændret, fx af en kollega på en anden pc.',
+    pl_mf_missing:'⚠ {env}: manifest-tabellen mangler i org\'en',
     pl_stale_checking:'Tjekker common modules…',
     pl_stale_failed:'{env}: common modules kunne ikke tjekkes',
     stale_checking:'Tjekker om common modules er nyere end de flows der bruger dem…',
@@ -3051,6 +3053,8 @@ const LANGS = {
     tree_logged_in_tip:'Logged in',
     card_badge_demo:'🧪 Demo',
     pl_stale_summary:'⚠ {env}: {m} common module(s) newer than {n} flow(s) that use them',
+    pl_refreshed:'The pipeline was refreshed — the manifest changed, e.g. by a colleague on another PC.',
+    pl_mf_missing:'⚠ {env}: the manifest table is missing in the org',
     pl_stale_checking:'Checking common modules…',
     pl_stale_failed:'{env}: common modules could not be checked',
     stale_checking:'Checking whether common modules are newer than the flows that use them…',
@@ -3895,6 +3899,8 @@ const LANGS = {
     tree_logged_in_tip:'Connecté',
     card_badge_demo:'🧪 Démo',
     pl_stale_summary:'⚠ {env} : {m} common module(s) plus récent(s) que {n} flow(s) qui les utilisent',
+    pl_refreshed:'Le pipeline a été actualisé — le manifeste a changé, par ex. par un collègue sur un autre PC.',
+    pl_mf_missing:'⚠ {env} : la table du manifeste est absente de l\'org',
     pl_stale_checking:'Vérification des common modules…',
     pl_stale_failed:'{env} : impossible de vérifier les common modules',
     stale_checking:'Vérification : des common modules sont-ils plus récents que les flows qui les utilisent…',
@@ -4739,6 +4745,8 @@ const LANGS = {
     tree_logged_in_tip:'Ingelogd',
     card_badge_demo:'🧪 Demo',
     pl_stale_summary:'⚠ {env}: {m} common module(s) nieuwer dan {n} flow(s) die ze gebruiken',
+    pl_refreshed:'De pipeline is vernieuwd — het manifest is gewijzigd, bijvoorbeeld door een collega op een andere pc.',
+    pl_mf_missing:'⚠ {env}: de manifesttabel ontbreekt in de org',
     pl_stale_checking:'Common modules controleren…',
     pl_stale_failed:'{env}: common modules konden niet worden gecontroleerd',
     stale_checking:'Controleren of common modules nieuwer zijn dan de flows die ze gebruiken…',
@@ -5583,6 +5591,8 @@ const LANGS = {
     tree_logged_in_tip:'Sesión iniciada',
     card_badge_demo:'🧪 Demo',
     pl_stale_summary:'⚠ {env}: {m} common module(s) más recientes que {n} flow(s) que los usan',
+    pl_refreshed:'El pipeline se ha actualizado — el manifiesto cambió, p. ej. por un compañero en otro PC.',
+    pl_mf_missing:'⚠ {env}: falta la tabla del manifiesto en la org',
     pl_stale_checking:'Comprobando common modules…',
     pl_stale_failed:'{env}: no se pudieron comprobar los common modules',
     stale_checking:'Comprobando si hay common modules más recientes que los flows que los usan…',
@@ -5966,7 +5976,7 @@ function nav(el) {
   if (page === 'import') populateCustomerSelects(['im-customer']);
   if (page === 'files') loadFiles();
   if (page === 'cross') loadCross();
-  if (page === 'pipeline') pipelineInit();
+  if (page === 'pipeline') { pipelineInit(); if (pipelineDirty && pipelineData) { pipelineDirty = false; loadPipeline(true); } }
   if (page === 'dataactions') daInit();
   if (page === 'syslog') { populateSyslogCustomers(); loadLog(); loadLogStats(); }
   if (page === 'readme') loadReadme();
@@ -6467,6 +6477,8 @@ async function onMigrateSourceChange() {
   const id = document.getElementById('m-source').value;
   document.getElementById('m-flowCard').style.display = 'none';
   selectedMigrateFlows.clear();
+  // En ny kilde starter med hele listen; «Vis kun valgte» slås kun til af tavlen.
+  const kunValgte = document.getElementById('m-only-selected'); if (kunValgte) kunValgte.checked = false;
   updateMigrateBtn();
   updateMigrateAuthStatus();
   if (!id) return;
@@ -6738,6 +6750,7 @@ async function runMigration() {
       log(logBox, `  ✗ ${e.message}`, 'err'); failed++;
     }
   }
+  pipelineDirty = true;
   log(logBox, `\n${t('migration_done')} — ${ok} ${t('da_sum_ok')} · ${skipped} ${t('da_sum_skipped')} · ${failed} ${t('da_sum_failed')}`,
       failed ? 'err' : 'info');
 }
@@ -10733,17 +10746,21 @@ function onPipelineTenant() {
   document.getElementById('pl-group-wrap').style.display = groups.length > 1 ? '' : 'none';
 }
 
-async function loadPipeline() {
+// silent: tegner tavlen igen uden at blinke «henter…» — bruges når den følger med i baggrunden.
+async function loadPipeline(silent = false) {
   const tenant = document.getElementById('pl-tenant').value;
   const group  = document.getElementById('pl-group').value;
   if (!tenant || !group) return;
   setFocus(tenant, group);
   const board = document.getElementById('pipelineBoard');
-  document.getElementById('pl-filterCard').style.display = 'none';
-  board.innerHTML = `<div class="card" style="color:var(--muted);font-size:12px"><span class="spin"></span> ${t('pl_loading')}</div>`;
+  if (!silent) {
+    document.getElementById('pl-filterCard').style.display = 'none';
+    board.innerHTML = `<div class="card" style="color:var(--muted);font-size:12px"><span class="spin"></span> ${t('pl_loading')}</div>`;
+  }
   const r = await fetch(`/api/pipeline?tenant=${encodeURIComponent(tenant)}&group=${encodeURIComponent(group)}`)
     .then(x => x.json()).catch(e => ({ error: e.message }));
-  if (r.error) { board.innerHTML = `<div class="card" style="color:var(--red);font-size:13px">${escapeHtml(r.error)}</div>`; return; }
+  if (r.error) { if (!silent) board.innerHTML = `<div class="card" style="color:var(--red);font-size:13px">${escapeHtml(r.error)}</div>`; return; }
+  pipelineViewKey = tenant + '|' + group;
   // Hashene hører til den gruppe de blev målt i — miljø-id'erne er andre i den
   // næste. Uden nulstilling ville en ny gruppe arve en tilstand der ikke gælder.
   pipelineHashes = {};
@@ -10757,11 +10774,51 @@ async function loadPipeline() {
   checkPipelineStale(r);
 }
 
+// ── Tavlen følger med ─────────────────────────────────────────────────────────
+// Arbejder flere pc'er på samme org, skal tavlen vise det de andre har gjort.
+// Med jævne mellemrum (serveren siger hvor ofte; som standard hvert minut)
+// spørges der til et fingeraftryk af manifest-tabellerne i den viste gruppe, og
+// ændrer det sig, tegnes tavlen igen. Kun mens Pipeline er åben og vinduet er
+// synligt, og ikke midt i en kontrol af indhold.
+let pipelineSig = null, pipelineSigKey = '', pipelineViewKey = '', pipelineDirty = false, pipelinePollTimer = null;
+
+function pipelinePollSchedule(sek) {
+  clearTimeout(pipelinePollTimer);
+  if (sek > 0) pipelinePollTimer = setTimeout(pipelinePoll, sek * 1000);
+}
+
+async function pipelinePoll() {
+  let neste = 60;
+  try {
+    const paaSiden = document.getElementById('page-pipeline')?.classList.contains('active') && document.visibilityState === 'visible';
+    const optaget = Object.keys(pipelineChecking || {}).length > 0;
+    if (paaSiden && pipelineData && pipelineViewKey && !optaget) {
+      const [tenant, group] = pipelineViewKey.split('|');
+      const r = await fetch(`/api/manifest/signature?tenant=${encodeURIComponent(tenant)}&group=${encodeURIComponent(group)}`)
+        .then(x => x.json()).catch(() => null);
+      if (r && r.ok) {
+        neste = r.intervalSeconds;
+        if (r.sig) {
+          const aendret = pipelineSig && pipelineSigKey === pipelineViewKey && r.sig !== pipelineSig;
+          pipelineSig = r.sig; pipelineSigKey = pipelineViewKey;
+          if (aendret) {
+            await loadPipeline(true);
+            showAlert('pipelineAlert', escapeHtml(t('pl_refreshed')), 'info');
+          }
+        }
+      }
+    }
+  } catch (_) { /* næste runde prøver igen */ }
+  pipelinePollSchedule(neste);
+}
+pipelinePollSchedule(20);
+
 // Samme tjek som i Flow Browser, for hvert miljø i gruppen: er et common
 // module publiceret efter de flows der bruger det, kører de på den gamle
 // udgave. Miljøerne tjekkes samtidig, og tavlen tegnes igen når svarene er der.
 // envId -> { loading } | { error } | { modules: Map, flows: Map }
 let pipelineStale = {};
+let manifestMissing = [];   // miljøer i den viste gruppe hvis manifest-tabel mangler i org'en
 async function checkPipelineStale(data) {
   const envs = (data.environments || []).filter(e => !(customers.find(c => c.id === e.id) || {}).demo);
   for (const e of envs) pipelineStale[e.id] = { loading: true };
@@ -10785,6 +10842,10 @@ async function checkPipelineStale(data) {
 function pipelineStaleSummary(d) {
   const linjer = [];
   let venter = false;
+  for (const m of manifestMissing.filter(x => d.environments.some(e => e.id === x.id)))
+    linjer.push(`<div>${escapeHtml(t('pl_mf_missing').replace('{env}', m.name))}
+      <button class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 8px;margin-left:8px" data-tip="tip_mf_rebuild"
+        onclick="rebuildManifest(${jsAttr(m.id)})">${t('mf_rebuild')}</button></div>`);
   for (const e of d.environments) {
     const st = pipelineStale[e.id];
     if (!st) continue;
@@ -11231,8 +11292,10 @@ async function boardAction(kind, key, i) {
 
   // Versionsudligning: hvad målet ender på efter forfremmelsen, og hvor mange
   // ekstra publiceringer der skal til for at nå kildens nummer.
+  // Også «Hent hertil»: et flow der oprettes i dev starter ellers på v1.0, mens det står på
+  // fx v5.0 i prod. Her er udligningen slået til fra start — målet er et tidligere trin.
   let alignHtml = '';
-  if (kind === 'promote') {
+  if (kind === 'promote' || kind === 'pull_here') {
     const maj = v => parseInt(String(v ?? '').split('.')[0], 10);
     const sV = maj(src.published), tV = c.missing ? 1 : maj(c.published) + 1;
     const max = K?.maxAlignPublishes || 25;
@@ -11240,7 +11303,7 @@ async function boardAction(kind, key, i) {
       const n = sV - tV;
       alignHtml = n > 0 && n <= max
         ? `<label style="display:flex;gap:8px;align-items:flex-start;margin-top:10px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer">
-             <input type="checkbox" id="act-align" style="width:auto;margin-top:3px" />
+             <input type="checkbox" id="act-align" style="width:auto;margin-top:3px"${kind === 'pull_here' ? ' checked' : ''} />
              <span>${fillT('act_align_offer', { to, s: 'v' + sV, t: 'v' + tV, n })}</span></label>`
         : n > max ? `<div style="margin-top:10px;font-size:12px;color:var(--muted)">🔢 ${fillT('act_align_too_many', { n, max })}</div>`
         : n < 0 ? `<div style="margin-top:10px;font-size:12px;color:var(--muted)">🔢 ${fillT('act_align_ahead', { to, t: 'v' + tV, s: 'v' + sV })}</div>`
@@ -11311,6 +11374,8 @@ async function promoteFromBoard(flowName, flowType, fromId, toId, confirmed = fa
   if (f) {
     selectedMigrateFlows.clear();
     selectedMigrateFlows.add(migrateKey(f));
+    // Fra tavlen: vis kun det valgte flow. Vil man migrere flere, slår man «Vis kun valgte» fra.
+    const kunValgte = document.getElementById('m-only-selected'); if (kunValgte) kunValgte.checked = true;
     applyMigrateFilter();
     updateMigrateBtn();
   }
@@ -11862,6 +11927,12 @@ async function loadManifestStatus(synk = true) {
     .then(x => x.json()).catch(e => ({ error: e.message }));
   if (r.error) { card.style.display = 'none'; return; }
   card.style.display = 'block';
+  // Mangler et miljø sin tabel, siges det også lige over tavlen — kortet her
+  // står højere oppe på siden og overses let.
+  const mangler = r.environments.filter(e => !e.hasTable && !e.error && !e.demo && e.stage).map(e => ({ id: e.id, name: e.name }));
+  const aendret = JSON.stringify(mangler) !== JSON.stringify(manifestMissing);
+  manifestMissing = mangler;
+  if (aendret && pipelineData) renderPipeline();
   document.getElementById('mfStatus').innerHTML = r.environments.map(e => {
     const state = e.error
       ? `<span style="color:var(--red)">${escapeHtml(e.error)}</span>`

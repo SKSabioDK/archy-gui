@@ -18,7 +18,8 @@ test('slet-knappen på miljøkortet er et skraldespandsikon med en tekst til sk�
 
 test('guidens tekster findes på alle fem sprog', () => {
   const nøgler = ['btn_guide', 'card_guide_todo', 'card_guide_done',
-                  'guide_prompt_text', 'guide_prompt_open', 'guide_prompt_later', 'guide_prompt_never'];
+                  'guide_prompt_text', 'guide_prompt_open', 'guide_prompt_later', 'guide_prompt_never',
+                  'pl_mf_missing', 'gd_optional'];
   for (const k of nøgler) {
     const n = HTML.split('\n').filter(l => l.startsWith(`    ${k}:`)).length;
     assert.equal(n, 5, `${k} skal stå på da, en, fr, nl og es — fandt ${n}`);
@@ -30,4 +31,11 @@ test('kortet regner ikke et miljø for gennemgået fordi org\'en kender det', ()
   assert.ok(fn.length > 100, 'fandt ikke guideInfo');
   assert.ok(!fn.includes('setupAt'), 'guideInfo må kun gå ud fra guidens punkter — ellers ser pc\'erne forskelligt');
   assert.ok(fn.includes('optional'), 'det valgfrie punkt skal ikke tælle med');
+});
+
+test('Hent hertil tilbyder versionsudligning, slået til fra start', () => {
+  const stykke = HTML.slice(HTML.indexOf('let alignHtml'), HTML.indexOf("const titel = { promote: 'act_promote_title'"));
+  assert.ok(stykke.length > 200, 'fandt ikke udligningen i boardAction');
+  assert.ok(stykke.includes("kind === 'pull_here'"), 'udligningen skal også gælde Hent hertil');
+  assert.ok(stykke.includes("kind === 'pull_here' ? ' checked'"), 'og være slået til fra start');
 });

@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.48.9
+# Archy GUI — Flow Manager · v1.48.14
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -11,8 +11,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.48.9**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.48.9**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.48.14**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.48.14**.
 
 ---
 
@@ -165,7 +165,7 @@ Hver celle viser flowets **navn i netop det miljø**, dets publicerede udgave og
 
 *⟶ Forfrem til et prod der er 9 udgaver foran: dialogen siger hvad der sker, advarer om at rettelser i prod går tabt, og at versionen ikke kan udlignes.*
 
-**Versionsudligning.** Hver publicering giver én ny udgave, og tælleren er pr. org — så efter en forfremmelse står målet typisk lavere end kilden (dev v10 → test v3). Dialogen for ⟶ Forfrem regner ud hvad målet ender på, og tilbyder at **udligne**: målet publiceres det antal ekstra gange der mangler, med samme indhold, så det står på kildens nummer. Samme valg findes på *Migrer Flow* som *Udlign versionsnummer med kilden*, når handlingen er publish. Står målet allerede højere — som et prod der er løbet foran — kan det ikke tælles ned, og det siges. Højst 25 ekstra publiceringer pr. flow.
+**Versionsudligning.** Hver publicering giver én ny udgave, og tælleren er pr. org — så efter en forfremmelse står målet typisk lavere end kilden (dev v10 → test v3). Dialogen for ⟶ Forfrem og ⟵ Hent hertil regner ud hvad målet ender på, og tilbyder at **udligne** (ved *Hent hertil* er det slået til fra start, så et flow der hentes ned i dev, ikke starter på v1.0 når det står på v5.0 i prod): målet publiceres det antal ekstra gange der mangler, med samme indhold, så det står på kildens nummer. Samme valg findes på *Migrer Flow* som *Udlign versionsnummer med kilden*, når handlingen er publish. Står målet allerede højere — som et prod der er løbet foran — kan det ikke tælles ned, og det siges. Højst 25 ekstra publiceringer pr. flow.
 
 **Common modules tjekkes også på tavlen.** Når den er hentet, tjekkes hvert miljø i gruppen: øverst står fx *⚠ Sabio APS - PROD: 2 common module(s) er nyere end 1 flow(s) der bruger dem*, modulets celle er mærket *⚠ N flow(s) ikke genpubliceret* med en gul 🔁, og flowets celle *⚠ ældre end …*. Kan et miljø ikke tjekkes — fx prod uden login — siges det.
 
@@ -249,7 +249,9 @@ Tabellen har to kolonner:
 
 **Org'en vinder.** Ved login, 🔌 Test og når Pipeline åbnes, hentes org'ens opsætning ind, og det der er ændret, vises én gang øverst på siden. En rettelse her på pc'en skrives derfor straks til org'en. Har nogen ændret org'ens række, mens en rettelse herfra ventede, vælger man i guiden hvem der har ret. **Prod-vagten løsnes aldrig udefra:** org'en kan ikke sætte et prod-miljø til et andet trin eller ændre dets deploy-krav — det bliver en uenighed, og at tage org'ens kræver prod-login. Trin org'en har og pc'en mangler (fx staging), lægges til listen; der fjernes aldrig nogen. Et miljø uden præfiks tager aldrig flows med et præfiks org'en bruger — heller ikke på en pc hvor dev og test ikke er tilføjet.
 
-**Genopbyg.** Er tabellen slettet, opretter **Genopbyg** (under *Delt manifest* og i guiden) den igen, skriver opsætningen og en række pr. flow i miljøet. Rækker der står, røres ikke. Hvad org'en indeholder nu, kan altid læses i Genesys; historikken — hvem forfremmede hvad hvorfra — tages fra denne pc's lokale filer, hvor den findes. Rækker uden historik er et nulpunkt, og svaret siger hvor mange der fik historik med.
+**Tavlen følger med.** Mens Pipeline er åben, spørger programmet hvert minut til et fingeraftryk af manifest-tabellerne i den viste gruppe, og ændrer det sig — fx fordi en kollega på en anden pc har forfremmet et flow — tegnes tavlen igen af sig selv. Det samme sker, når man vender tilbage til Pipeline efter en migration. Intervallet sættes med `pipelineRefreshSeconds` i `settings.json` (mindst 15; `0` slår det fra). **Fra tavlen til Migrer** (*Hent hertil*, *Forfrem*) vises kun det valgte flow; vil man migrere flere, slår man *Vis kun valgte* fra.
+
+**Genopbyg.** Mangler et miljøs tabel, står det som en gul advarsel lige over tavlen på Pipeline — med en **Genopbyg**-knap. Er tabellen slettet, opretter **Genopbyg** (under *Delt manifest* og i guiden) den igen, skriver opsætningen og en række pr. flow i miljøet. Rækker der står, røres ikke. Hvad org'en indeholder nu, kan altid læses i Genesys; historikken — hvem forfremmede hvad hvorfra — tages fra denne pc's lokale filer, hvor den findes. Rækker uden historik er et nulpunkt, og svaret siger hvor mange der fik historik med.
 
 #### 🔀 På tværs af kunder
 Viser de flows der findes hos **flere kunder** — fx det samme common module i dev, uat og prod. Hver kunde vises med sin version, publiceringstidspunkt og om flowet er aktivt.
@@ -422,7 +424,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-284 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+292 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -573,7 +575,7 @@ Each cell shows the flow's **name in that environment**, its published version a
 
 *⟶ Promote to a prod that is 9 versions ahead: the dialog says what happens, warns that edits in prod are lost, and that the version cannot be aligned.*
 
-**Version alignment.** Each publish creates one new version, and the counter is per org — so after a promotion the target is usually lower than the source (dev v10 → test v3). The ⟶ Promote dialog works out where the target will end up and offers to **align**: the target is published the missing number of extra times, with the same content, so it matches the source number. The same choice is on *Migrate Flow* as *Align version number with the source* when the action is publish. If the target is already higher — like a prod that ran ahead — it cannot count down, and the dialog says so. At most 25 extra publishes per flow.
+**Version alignment.** Each publish creates one new version, and the counter is per org — so after a promotion the target is usually lower than the source (dev v10 → test v3). The ⟶ Promote and ⟵ Bring here dialogs work out where the target will end up and offer to **align** (for *Bring here* it is switched on from the start, so a flow brought down into dev does not start at v1.0 when it is v5.0 in prod): the target is published the missing number of extra times, with the same content, so it matches the source number. The same choice is on *Migrate Flow* as *Align version number with the source* when the action is publish. If the target is already higher — like a prod that ran ahead — it cannot count down, and the dialog says so. At most 25 extra publishes per flow.
 
 **Common modules are checked on the board too.** Once it is fetched, every environment in the group is checked: the top reads e.g. *⚠ Sabio APS - PROD: 2 common module(s) newer than 1 flow(s) that use them*, the module's cell is marked *⚠ N flow(s) not republished* with a yellow 🔁, and the flow's cell *⚠ older than …*. An environment that cannot be checked — prod without a login, say — is named.
 
@@ -657,7 +659,9 @@ One row per flow. `Data` for `UAT_Ordreflow` looks like this:
 
 **The org wins.** At login, 🔌 Test and when Pipeline opens, the org's setup is read in, and what changed is shown once at the top of the page. A change made on this PC is therefore written to the org straight away. If someone changed the org's row while a change from here was waiting, you choose in the guide who is right. **The prod guard is never loosened from outside:** the org cannot move a prod environment to another stage or change its deploy requirements — that becomes a disagreement, and taking the org's version needs a prod login. Stages the org has and the PC lacks (e.g. staging) are added to the list; none are ever removed. An environment without a prefix never takes flows carrying a prefix the org uses — not even on a PC where dev and test have not been added.
 
-**Rebuild.** If the table was deleted, **Rebuild** (under *Shared manifest* and in the guide) creates it again and writes the setup and one row per flow in the environment. Rows that exist are left alone. What the org holds now can always be read from Genesys; the history — who promoted what from where — is taken from this PC's local files where it exists. Rows without history are a baseline, and the result says how many got history.
+**The board keeps up.** While Pipeline is open, the app asks once a minute for a fingerprint of the manifest tables in the group shown, and if it changes — say a colleague on another PC promoted a flow — the board redraws by itself. The same happens when you return to Pipeline after a migration. The interval is set with `pipelineRefreshSeconds` in `settings.json` (at least 15; `0` turns it off). **From the board to Migrate** (*Bring here*, *Promote*) only the chosen flow is shown; to migrate more, turn *Show selected only* off.
+
+**Rebuild.** If an environment's table is missing, a yellow warning right above the board on Pipeline says so — with a **Rebuild** button. If the table was deleted, **Rebuild** (under *Shared manifest* and in the guide) creates it again and writes the setup and one row per flow in the environment. Rows that exist are left alone. What the org holds now can always be read from Genesys; the history — who promoted what from where — is taken from this PC's local files where it exists. Rows without history are a baseline, and the result says how many got history.
 
 #### 🔀 Across customers
 Lists the flows that exist at **more than one customer** — for example the same common module in dev, uat and prod. Each customer is shown with its version, publish time and whether the flow is active.
@@ -830,7 +834,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-284 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+292 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 

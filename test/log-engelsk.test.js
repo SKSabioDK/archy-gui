@@ -157,3 +157,12 @@ test('kontrol: scanneren læser faktisk addLog-kald', () => {
   while ((i = SERVER.indexOf('addLog(', i)) !== -1) { n++; i += 7; }
   assert.ok(n > 80, `fandt kun ${n} addLog-kald — scanneren er gået i stå`);
 });
+
+// Det vi opretter i kundens org, skal være på engelsk — også beskrivelsen af tabellen.
+test('manifest-tabellens beskrivelse i org\'en er på engelsk', () => {
+  const fn = funktionskrop('createOrgManifestTable');
+  assert.ok(fn, 'fandt ikke createOrgManifestTable');
+  const m = fn.match(/description:\s*'([^']*)'/);
+  assert.ok(m, 'fandt ikke beskrivelsen');
+  assert.equal(erDansk(m[1]), false, `dansk beskrivelse i kundens org: ${m[1]}`);
+});

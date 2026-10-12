@@ -5,6 +5,67 @@
 
 ---
 
+### v1.48.14
+---
+**🇩🇰 Dansk**
+
+- **Rettelse: en afhængighed blev publiceret under kildens navn.** Migrerer man et flow mellem to miljøer i samme org, hver med sit præfiks (dev `DEV_` og prod uden), og flowet har en manglende afhængighed — et bot flow eller et common module — blev afhængigheden migreret **uden** målets præfiks. Den blev dermed publiceret ovenpå kildens eget flow: prods `JO_Schedule_callback` fik en ny udgave (v2.0), og dev fik aldrig sin `DEV_`-udgave. Nu får afhængigheden målets præfiks og division, de ting den selv peger på (tabeller, common modules, bot flows) omskrives, og opslaget efter underafhængigheder søger under målets navne. Desuden afvises det helt, hvis en afhængighed i samme org ellers ville blive publiceret under sit eget navn.
+- **Bot flow-referencer omskrives.** Et flow, der kalder et bot flow, pegede stadig på kildens bot flow efter migreringen, mens tjekket ledte efter den præfikserede udgave. Referencen får nu målets præfiks, ligesom tabeller og common modules.
+
+**🇬🇧 English**
+- **Fix: a dependency was published under the source's name.** Migrating a flow between two environments in the same org, each with its own prefix (dev `DEV_`, prod none), when the flow had a missing dependency — a bot flow or a common module — the dependency was migrated **without** the target's prefix. It was therefore published over the source's own flow: prod's `JO_Schedule_callback` got a new version (v2.0), and dev never got its `DEV_` copy. The dependency now gets the target's prefix and division, what it points to (tables, common modules, bot flows) is rewritten, and the lookup of sub-dependencies searches under the target's names. A dependency in the same org that would otherwise be published under its own name is now refused outright.
+- **Bot flow references are rewritten:** a flow that calls a bot flow still pointed at the source's bot flow after migration, while the check looked for the prefixed one. The reference now gets the target's prefix, like tables and common modules.
+
+---
+
+### v1.48.13
+---
+**🇩🇰 Dansk**
+
+- **Hent hertil kan udligne versionsnummeret.** Et flow, der hentes ned i dev, blev oprettet som v1.0, selv om det står på v5.0 i prod — og så får navnet ved næste forfremmelse en lav endelse. Dialogen for ⟵ Hent hertil tilbyder nu samme *udlign versionsnummeret* som ⟶ Forfrem, og den er slået til fra start. Står målet allerede højere, eller kræver udligningen mere end 25 ekstra publiceringer, siges det i stedet.
+
+**🇬🇧 English**
+- **Bring here can align the version number:** a flow brought down into dev was created as v1.0 even though it is v5.0 in prod — so its name got a low suffix at the next promotion. The ⟵ Bring here dialog now offers the same *align the version number* as ⟶ Promote, switched on from the start. If the target is already higher, or aligning would need more than 25 extra publishes, it says so instead.
+
+---
+
+### v1.48.12
+---
+**🇩🇰 Dansk**
+
+- **Tavlen følger med de andre pc'er.** Mens Pipeline er åben, spørger programmet hvert minut til et fingeraftryk af manifest-tabellerne i den viste gruppe (kun nøgler og tidspunkter). Ændrer det sig — fx fordi en kollega har forfremmet et flow fra en anden pc — tegnes tavlen igen uden at blinke, og der står en note om det. Der spørges kun, mens Pipeline er åben og vinduet synligt, og ikke midt i en kontrol af indhold. Intervallet sættes med `pipelineRefreshSeconds` i `settings.json` (mindst 15; `0` slår det fra).
+- **Tavlen opdateres efter en migration.** Efter en migration på Migrer-siden var tavlen uændret, når man gik tilbage til Pipeline. Nu tegnes den igen, når man åbner den.
+- **Fra tavlen vises kun det valgte flow på Migrer.** *Hent hertil* og *Forfrem* åbnede Migrer med hele flowlisten. Nu er *Vis kun valgte* slået til, så kun det valgte flow står der; vil man migrere flere, slår man det fra. Vælger man en ny kilde, starter listen igen med alle flows.
+
+**🇬🇧 English**
+- **The board keeps up with the other PCs:** while Pipeline is open, the app asks once a minute for a fingerprint of the manifest tables in the group shown (only keys and timestamps). If it changes — say a colleague promoted a flow from another PC — the board redraws without flicker, with a note. It only asks while Pipeline is open and the window visible, and not in the middle of a content check. Set the interval with `pipelineRefreshSeconds` in `settings.json` (at least 15; `0` turns it off).
+- **The board refreshes after a migration:** after a migration on the Migrate page, the board was unchanged when you went back to Pipeline. It now redraws when you open it.
+- **From the board, Migrate shows only the chosen flow:** *Bring here* and *Promote* opened Migrate with the whole flow list. *Show selected only* is now on, so only the chosen flow is listed; turn it off to migrate more. Picking a new source starts with the full list again.
+
+---
+
+### v1.48.11
+---
+**🇩🇰 Dansk**
+
+- **En manglende manifest-tabel ses på tavlen.** Blev et miljøs tabel slettet, stod det kun i kortet *Delt manifest* øverst på Pipeline-siden, som let overses. Nu står der også en gul advarsel lige over tavlen — *⚠ Sabio APS: manifest-tabellen mangler i org'en* — med en **Genopbyg**-knap. Advarslen forsvinder, når tabellen er genopbygget.
+
+**🇬🇧 English**
+- **A missing manifest table shows on the board:** when an environment's table was deleted, it only showed in the *Shared manifest* card at the top of the Pipeline page, which is easy to miss. A yellow warning right above the board now says *⚠ Sabio APS: the manifest table is missing in the org* — with a **Rebuild** button. It disappears once the table is rebuilt.
+
+---
+
+### v1.48.10
+---
+**🇩🇰 Dansk**
+
+- **Manifest-tabellens beskrivelse er på engelsk.** Den står i kundens org, og alt andet vi skriver dér er på engelsk. Tabeller, der allerede er oprettet, beholder deres gamle beskrivelse; en ny eller genopbygget tabel får den engelske.
+
+**🇬🇧 English**
+- **The manifest table's description is in English:** it sits in the customer's org, where everything else we write is in English. Tables that already exist keep their old description; a new or rebuilt table gets the English one.
+
+---
+
 ### v1.48.9
 ---
 **🇩🇰 Dansk**

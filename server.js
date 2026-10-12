@@ -567,7 +567,7 @@ function prefixDependenciesInYaml(yaml, source, target) {
   if (prefixOf(source) === prefixOf(target)) return { yaml: String(yaml), changed: [] };
   const changed = [];
   let out = String(yaml);
-  for (const tag of ['dataTable', 'commonModule']) {
+  for (const tag of ['dataTable', 'commonModule', 'botFlow']) {
     // INDRYKNING KRÆVES. På indrykning 0 er 'commonModule:' ikke en reference
     // til et andet modul — det er flowets EGEN type, og linjen under er dets
     // navnefelt. Uden kravet blev
@@ -581,6 +581,8 @@ function prefixDependenciesInYaml(yaml, source, target) {
     const re = new RegExp(`(^[ \\t]+${tag}:[ \\t]*\\r?\\n[ \\t]+)([^\\r\\n:]+)(:)`, 'gm');
     out = out.replace(re, (hele, hoved, navn, hale) => {
       const rent = navn.trim();
+      // «botFlow:» kan også stå som flowets eget felt; nøgler som name/lit er ikke et flownavn.
+      if (/^(name|lit|id|description)$/.test(rent)) return hele;
       const ny = withEnvPrefix(stripEnvPrefix(rent, source), target);
       if (ny === rent) return hele;
       if (!changed.includes(`${rent} → ${ny}`)) changed.push(`${rent} → ${ny}`);
@@ -3107,7 +3109,8 @@ async function createOrgManifestTable(customer) {
   const { token, apiBase } = await getToken(customer);
   const body = {
     name: manifestTableName(customer),
-    description: 'ArchyGUI: hvad denne org indeholder, og hvornår det kom hertil. Skrives af ArchyGUI — ret ikke rækker i hånden.',
+    // Står i kundens org, så den er på engelsk som alt andet vi skriver dér.
+    description: 'ArchyGUI: what this org contains and when it arrived. Written by ArchyGUI — do not edit rows by hand.',
     schema: {
       $schema: 'http://json-schema.org/draft-04/schema#',
       title: manifestTableName(customer),
@@ -3300,6 +3303,33 @@ app.get('/api/manifest/status', async (req, res) => {
     }
   })));
   res.json({ ok: true, table: ORG_MANIFEST_BASE, environments: out });
+});
+
+// Et fingeraftryk af manifest-tabellerne i en pipeline-gruppe. Brugerfladen
+// spørger med jævne mellemrum og tegner tavlen igen, når det ændrer sig — så
+// man ser det en kollega på en anden pc har gjort. Kun nøgler og tidspunkter
+// indgår, ikke indholdet. Intervallet står i settings.json (pipelineRefreshSeconds,
+// 0 = slået fra).
+function manifestSignature(rows) {
+  if (!rows) return 'none';
+  const h = crypto.createHash('sha1');
+  for (const k of Object.keys(rows).sort()) {
+    const r = rows[k] || {};
+    h.update(`${k}|${r.at || ''}|${r.version ?? ''}|${r.publishedAt || ''}|${(r.releases || []).length}\n`);
+  }
+  return h.digest('hex').slice(0, 12);
+}
+
+app.get('/api/manifest/signature', async (req, res) => {
+  const { tenant, group } = req.query;
+  const envs = loadCustomers().filter(c => tenantOf(c) === tenant && groupOf(c) === group && stageOf(c));
+  const n = Number(loadSettings().pipelineRefreshSeconds);
+  const sek = Number.isFinite(n) ? (n === 0 ? 0 : Math.max(15, n)) : 60;
+  const dele = await Promise.all(envs.map(async c => {
+    try { return `${c.id}:${manifestSignature(await readOrgManifest(c))}`; }
+    catch (_) { return `${c.id}:?`; }       // ikke logget ind lige nu, eller ingen forbindelse
+  }));
+  res.json({ ok: true, sig: dele.length ? dele.join(';') : null, intervalSeconds: sek });
 });
 
 app.post('/api/manifest/create', async (req, res) => {
@@ -6767,14 +6797,17 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
     // tomme mængde betød "alt mangler" — så oprettede vi tabeller og data
     // actions i mål-org'en som allerede lå der. Et udløbet token eller en
     // manglende rettighed var nok: opslaget svarer 401 og kaster.
+    // Bærer typen miljøets præfiks, er det DET navn der skal findes — ellers
+    // ser en tabel i prod (samme org) ud som om den allerede var i dev.
+    const wanted = names.map(n => depNameIn(kind, n, target, source));
     let existing;
-    try { existing = await lookupExisting(kind, names, tgtToken, tgtBase); }
+    try { existing = await lookupExisting(kind, wanted, tgtToken, tgtBase); }
     catch (e) {
       const besked = `Could not look up ${kind} in "${target.name}": ${describeApiError(e)}`;
       trail.push(`✗ ${besked}`);
       return { ok: false, error: besked };
     }
-    const missing = names.filter(n => !existing.has(n));
+    const missing = names.filter((n, i) => !existing.has(wanted[i]));
     if (!missing.length) continue;
 
     const { token: srcToken, apiBase: srcBase } = await getToken(source);
@@ -6820,15 +6853,16 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
     if (!names.length) continue;
     // Samme som ovenfor: fejler opslaget, ved vi ikke om flowet er der, og så
     // migrerer vi ikke oveni i blinde.
+    const wanted = names.map(n => depNameIn(kind, n, target, source));
     let existing;
-    try { existing = await lookupExisting(kind, names, tgtToken, tgtBase); }
+    try { existing = await lookupExisting(kind, wanted, tgtToken, tgtBase); }
     catch (e) {
       const besked = `Could not look up ${kind} in "${target.name}": ${describeApiError(e)}`;
       trail.push(`✗ ${besked}`);
       return { ok: false, error: besked };
     }
-    for (const n of names) {
-      if (existing.has(n)) continue;
+    for (const [i, n] of names.entries()) {
+      if (existing.has(wanted[i])) continue;
       const { token: srcToken, apiBase: srcBase } = await getToken(source);
       const fr = await axios.get(`${srcBase}/api/v2/flows`, {
         headers: { Authorization: `Bearer ${srcToken}` }, params: { pageSize: 100, name: n }
@@ -6841,14 +6875,41 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
     }
   }
 
+  // Samme omskrivning som for selve flowet: målets præfiks på navnet og på det
+  // flowet peger på, og målets division. Uden den blev afhængigheden publiceret
+  // under KILDENS navn — og bor kilde og mål i samme org (dev og prod med hvert
+  // sit præfiks), er det kildens eget flow der fik en ny udgave.
+  const nyName = targetFlowName(flowName, source, target);
+  if (orgKeyOf(source) === orgKeyOf(target) && nyName === flowName) {
+    const besked = `"${flowName}" would be published over the source flow itself: ${source.name} and ${target.name} share an org and the name would not change`;
+    trail.push(`✗ ${besked}`);
+    addLog('ERROR', `Flow dependency refused: ${besked}`, target.name, 'MIGRATE');
+    return { ok: false, error: besked };
+  }
+  let importFile = filePath;
+  const nyDivision = divisionOf(target);
+  if (prefixOf(source) !== prefixOf(target) || divisionOf(source) !== nyDivision) {
+    let yaml = fs.readFileSync(filePath, 'utf8');
+    yaml = setFlowDivisionInYaml(yaml, nyDivision);
+    if (nyName !== flowName) yaml = renameFlowInYaml(yaml, nyName);
+    const pre = prefixDependenciesInYaml(yaml, source, target);
+    yaml = pre.yaml;
+    for (const omskrevet of pre.changed) addLog('INFO', `Reference rewritten: ${omskrevet}`, target.name, 'MIGRATE');
+    if (nyName !== flowName) addLog('INFO', `Renamed for the target environment: "${flowName}" → "${nyName}"`, target.name, 'MIGRATE');
+    importFile = path.join(path.dirname(filePath), `.import-${sanitizeName(target.name)}-${path.basename(filePath)}`);
+    fs.writeFileSync(importFile, yaml, 'utf8');
+  }
+
   // Publicér — et modul skal være publiceret for at kunne refereres af et flow
   try {
-    await runArchy(`publish --file ${archyArg(filePath, 'File path')}`, target);
-    addLog('SUCCESS', `Flow dependency "${flowName}" (${flowType}) migrated to ${target.name}`, target.name, 'MIGRATE');
+    await runArchy(`publish --file ${archyArg(importFile, 'File path')}`, target);
+    addLog('SUCCESS', `Flow dependency "${nyName}" (${flowType}) migrated to ${target.name}`, target.name, 'MIGRATE');
     return { ok: true };
   } catch (e) {
     if (/already exists/i.test(e.message || '')) return { ok: true, skipped: 'exists' };
     return { ok: false, error: e.message };
+  } finally {
+    if (importFile !== filePath) { try { fs.unlinkSync(importFile); } catch (_) {} }
   }
 }
 
@@ -7611,6 +7672,7 @@ module.exports = {
   // manifest
   orgManifestKey, findManifestEntry, isFlowRowKey, onlyFlowRows, rebuiltManifestRow,
   // opsætningen i org'en
+  manifestSignature,
   SETUP_KEY, SETUP_SHARED, setupRowFor, setupChanges, sameSetup, mergeStages, applyOrgSetup,
   ensurePipelineIds, pipelinePeers, takenPrefixesFor, discoveryResult, sameSibling, cleanSibling, addForget, siblingsFromPeers,
   // common modules
