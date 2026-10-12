@@ -523,7 +523,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.48.4 · Archy GUI</div>
+    <div class="version" id="app-version">v1.48.6 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -10357,6 +10357,9 @@ function discoveryHtml(env) {
     ? fillT('disc_found', { org: d.orgName || d.orgId || '?', n: d.cards.length })
     : fillT('disc_none', { org: d.orgName || d.orgId || '?' })}</div>`;
 
+  // Er dette miljø allerede koblet til en tabel, kan et andet kort ikke gøres til
+  // dette miljø — det ville omdøbe det koblede miljø. Så kan man kun tilføje.
+  const erKoblet = d.cards.some(c => c.self);
   for (const c of d.cards) {
     const s = c.setup;
     const hoved = s
@@ -10368,16 +10371,16 @@ function discoveryHtml(env) {
     else if (c.self) valg = `<div style="color:var(--green);margin-top:4px">✓ ${escapeHtml(t('disc_self'))}</div>`;
     else if (c.localId) valg = `<div style="margin-top:4px">${fillT('disc_local', { name: (customers.find(x => x.id === c.localId) || {}).name || c.localId })}</div>`;
     else valg = `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px">
-        ${s ? '' : `<select id="disc-stage-${escapeHtml(c.tableId)}" style="width:auto;padding:3px 6px">
+        ${erKoblet ? '' : `${s ? '' : `<select id="disc-stage-${escapeHtml(c.tableId)}" style="width:auto;padding:3px 6px">
              ${STAGES.map(x => `<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join('')}</select>`}
         <button class="btn btn-primary btn-sm" data-tip="tip_disc_use" onclick="discUse(${jsAttr(c.tableId)})">${t('disc_use')}</button>
-        <button class="btn btn-secondary btn-sm" data-tip="tip_disc_template" onclick="discOpenForm('template', ${jsAttr(c.tableId)})">${t('disc_template')}</button>
+        <button class="btn btn-secondary btn-sm" data-tip="tip_disc_template" onclick="discOpenForm('template', ${jsAttr(c.tableId)})">${t('disc_template')}</button>`}
         ${s && s.stage ? (c.added
           ? `<span style="color:var(--green)">✓ ${escapeHtml(t('disc_added_here'))}</span>
              <button class="btn btn-primary btn-sm" onclick="oauthLogin(${jsAttr(c.added)})">${t('gd_login_btn')}</button>
              <button class="btn btn-secondary btn-sm" onclick="openSetupGuide(${jsAttr(c.added)})">${t('gd_open_guide')}</button>`
           : `${env.authType === 'oauth' ? '' : `<input id="disc-card-cid-${escapeHtml(c.tableId)}" placeholder="${escapeHtml(t('disc_clientid_ph'))}" maxlength="36" style="width:260px;padding:3px 6px" />`}
-             <button class="btn btn-secondary btn-sm" data-tip="tip_disc_add_here" onclick="discAddCard(${jsAttr(c.tableId)})">${t('disc_add_here')}</button>`) : ''}</div>`;
+             <button class="btn ${erKoblet ? 'btn-primary' : 'btn-secondary'} btn-sm" data-tip="tip_disc_add_here" onclick="discAddCard(${jsAttr(c.tableId)})">${t('disc_add_here')}</button>`) : ''}</div>`;
     html += `<div class="disc-card">${hoved}${af}${valg}</div>`;
   }
 

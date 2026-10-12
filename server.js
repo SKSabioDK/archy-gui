@@ -29,8 +29,59 @@ if (!fs.existsSync(FLOWS_DIR)) fs.mkdirSync(FLOWS_DIR, { recursive: true });
 
 // ── OAuth / PKCE stores ───────────────────────────────────────────────────────
 
-// In-memory token store — lost on server restart (by design: no secrets on disk)
-const tokenStore = {}; // { [customerId]: { token, expiresAt } }
+// Login-tokens. Står i hukommelsen; et login der er under SESSION_WINDOW gammelt
+// gemmes også i brugerens egen mappe, så en genstart af programmet ikke kræver
+// et nyt login med MFA. Hvert login har sin egen frist fra det tidspunkt det
+// blev foretaget (loginAt) — den forlænges ikke af at programmet bruges.
+const tokenStore = new Proxy({}, {
+  set(t, k, v) { t[k] = v; scheduleSessionSave(); return true; },
+  deleteProperty(t, k) { const had = k in t; delete t[k]; if (had) scheduleSessionSave(); return true; }
+}); // { [customerId]: { token, expiresAt, orgId, orgName, loginAt, deploy? } }
+
+// Hvor længe et login huskes over en genstart. Samme tid som prod-vinduet.
+// Sættes til 0 med rememberLoginMinutes i settings.json for ikke at gemme noget.
+const SESSION_DIR  = process.env.ARCHY_SESSION_DIR || path.join(os.homedir(), '.archy-gui');
+const SESSION_FILE = path.join(SESSION_DIR, 'session.json');
+function sessionWindowMs() {
+  const m = Number(loadSettings().rememberLoginMinutes);
+  return (Number.isFinite(m) && m >= 0 ? m : 30) * 60 * 1000;
+}
+let _sessionPersist = false;      // slået til når programmet kører som server (ikke i tests)
+const setSessionPersist = on => { _sessionPersist = on; };
+let _sessionTimer = null;
+function scheduleSessionSave() {
+  if (!_sessionPersist || _sessionTimer) return;
+  _sessionTimer = setTimeout(() => { _sessionTimer = null; saveSessions(); }, 400);
+  if (_sessionTimer.unref) _sessionTimer.unref();
+}
+// Kun friske logins skrives, og kun dem med kendt login-tidspunkt. Er der intet
+// at huske, slettes filen — så ligger der ikke gamle tokens.
+function saveSessions() {
+  if (!_sessionPersist) return;
+  try {
+    const nu = Date.now(), win = sessionWindowMs(), ud = {};
+    for (const [id, st] of Object.entries(tokenStore))
+      if (win > 0 && st && st.token && st.loginAt && nu - st.loginAt < win && nu < st.expiresAt) ud[id] = st;
+    if (!Object.keys(ud).length) { try { fs.unlinkSync(SESSION_FILE); } catch (_) {} return; }
+    fs.mkdirSync(SESSION_DIR, { recursive: true, mode: 0o700 });
+    fs.writeFileSync(SESSION_FILE, JSON.stringify(ud), { mode: 0o600 });
+  } catch (_) { /* kan ikke skrives — så må man logge ind igen efter en genstart */ }
+}
+// Ved opstart: hent de logins der stadig er friske, og kun dem der passer til et
+// miljø på denne pc (samme org som miljøet). Resten slettes.
+function loadSessions(customers) {
+  let gemt = {};
+  try { gemt = JSON.parse(fs.readFileSync(SESSION_FILE, 'utf8')); } catch (_) { return 0; }
+  const nu = Date.now(), win = sessionWindowMs();
+  let n = 0;
+  for (const [id, st] of Object.entries(gemt || {})) {
+    const c = customers.find(x => x.id === id);
+    if (!c || c.authType !== 'oauth' || !st || !st.token || !st.loginAt || !st.orgId) continue;
+    if (win <= 0 || nu - st.loginAt >= win || nu >= st.expiresAt || wrongOrg(c, st.orgId)) continue;
+    tokenStore[id] = st; n++;
+  }
+  return n;
+}
 const pkceStore  = {}; // { [customerId]: { verifier } }  — temporary during login flow
 
 function base64url(buf) {
@@ -1981,7 +2032,7 @@ app.get('/auth/callback', async (req, res) => {
     }
 
     const expiresAt = Date.now() + ((expires_in || 86400) * 1000) - 60000;
-    tokenStore[customer.id] = { token: access_token, expiresAt, orgId: org.id, orgName: org.name || '' };
+    tokenStore[customer.id] = { token: access_token, expiresAt, orgId: org.id, orgName: org.name || '', loginAt: Date.now() };
     delete _whoCache[customer.id];
     // Manifest-tabellens id er slået op med det forrige login — måske i en anden org.
     delete _mfTableCache[customer.id];
@@ -1997,6 +2048,7 @@ app.get('/auth/callback', async (req, res) => {
       try { d = await checkDeployRights(customer); }
       catch (e) { d = { ok: false, who: '?', missing: [{ kind: 'lookup', value: describeApiError(e) }], checkedAt: Date.now() }; }
       tokenStore[customer.id].deploy = d;
+      scheduleSessionSave();
       addLog(d.ok ? 'SUCCESS' : 'WARN',
         `Prod deploy rights for ${customer.name}: ${d.who} ${d.ok ? 'allowed' : 'denied — missing ' + d.missing.map(missingLog).join(', ')}`,
         customer.name, 'SECURITY');
@@ -3791,6 +3843,12 @@ app.post('/api/setup/adopt', async (req, res) => {
     return res.json({ ok: true, env: masked(ud) });
   }
   if (!['use', 'template', 'pipeline'].includes(mode)) return res.status(400).json({ error: `Ukendt valg "${mode}"` });
+  // Et miljø der allerede er koblet til en tabel, gøres ikke om til et andet:
+  // det ville omdøbe det og flytte det til et andet trin. Vil man have flere
+  // miljøer i org'en, tilføjes de (add-card), og vil man bygge et nyt, opretter
+  // man et nyt miljø først.
+  if (stageOf(env) && env.setupAt)
+    return res.status(400).json({ error: `"${env.name}" er allerede koblet til sin tabel. Brug «Tilføj som nyt miljø» for at få et af de andre miljøer på denne pc.` });
 
   // Tabellerne læses igen her — klienten vælger kun HVILKEN.
   let tabeller;
@@ -7512,6 +7570,11 @@ const HOST = process.env.HOST || '127.0.0.1';
 // testene — må den hverken lytte på porten eller sætte et døgn-interval i gang;
 // så ville `node --test` aldrig afslutte af sig selv.
 if (require.main === module) {
+  _sessionPersist = true;
+  const huskede = loadSessions(loadCustomers());
+  saveSessions();      // rydder det der er udløbet
+  setInterval(saveSessions, 60 * 1000).unref();
+  if (huskede) setTimeout(() => addLog('INFO', `${huskede} login(s) from the last session restored — no new login needed`, null, 'SYSTEM'), 0);
   app.listen(PORT, HOST, () => {
     console.log(`Archy GUI running on http://${HOST === '127.0.0.1' ? 'localhost' : HOST}:${PORT}`);
     addLog('INFO', `Archy GUI started on ${HOST}:${PORT}`, null, 'SYSTEM');
@@ -7526,7 +7589,7 @@ if (require.main === module) {
 // især haft mindst én fejl der nåede ud til brugeren, og de er samtidig de
 // eneste der kan efterprøves uden en rigtig org. Se test/*.test.js.
 module.exports = {
-  app, tokenStore, getToken,
+  app, tokenStore, getToken, loadSessions, saveSessions, setSessionPersist, SESSION_FILE,
   // konventioner
   STAGES, VERSION_SUFFIX, stageListError, alignmentPlan, MAX_ALIGN_PUBLISHES, prefixRenamePlan,
   // navne og versioner
