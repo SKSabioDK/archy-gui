@@ -533,7 +533,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.55.2 · Archy GUI</div>
+    <div class="version" id="app-version">v1.55.3 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1762,6 +1762,9 @@ const LANGS = {
     dp_unplaced:'{n} uden plads',
     dp_new_int:'Opret en aktiv integration med navnet {name} i Genesys, med credential, og lav forslaget igen.',
     dp_actions:'actions',
+    dp_action_one:'action',
+    dp_inactive_one:'{n} inaktiv integration foreslås aldrig',
+    pc_ok_one:'{n} afhængighed er i orden.',
     dp_none:'Der er ingen data actions at placere.',
     dp_note_cred:'Grænsen pr. integration er det tal du har indtastet; Archy kender den ikke. Credentials på integrationerne tjekkes ikke.',
     dp_s_new:'Ny',
@@ -2744,6 +2747,9 @@ const LANGS = {
     dp_unplaced:'{n} without room',
     dp_new_int:'Create an active integration named {name} in Genesys, with a credential, and make the proposal again.',
     dp_actions:'actions',
+    dp_action_one:'action',
+    dp_inactive_one:'{n} inactive integration is never proposed',
+    pc_ok_one:'{n} dependency is in order.',
     dp_none:'There are no data actions to place.',
     dp_note_cred:'The limit per integration is the number you entered; Archy does not know it. Credentials on the integrations are not checked.',
     dp_s_new:'New',
@@ -3726,6 +3732,9 @@ const LANGS = {
     dp_unplaced:'{n} sans place',
     dp_new_int:'Créez dans Genesys une intégration active nommée {name}, avec un credential, puis refaites la proposition.',
     dp_actions:'actions',
+    dp_action_one:'action',
+    dp_inactive_one:'{n} intégration inactive n\'est jamais proposée',
+    pc_ok_one:'{n} dépendance est en ordre.',
     dp_none:'Aucune data action à placer.',
     dp_note_cred:'La limite par intégration est le nombre saisi ; Archy ne la connaît pas. Les credentials des intégrations ne sont pas vérifiés.',
     dp_s_new:'Nouvelle',
@@ -4708,6 +4717,9 @@ const LANGS = {
     dp_unplaced:'{n} zonder ruimte',
     dp_new_int:'Maak in Genesys een actieve integratie met de naam {name} aan, met een credential, en maak het voorstel opnieuw.',
     dp_actions:'actions',
+    dp_action_one:'action',
+    dp_inactive_one:'{n} inactieve integratie wordt nooit voorgesteld',
+    pc_ok_one:'{n} afhankelijkheid is in orde.',
     dp_none:'Er zijn geen data actions om te plaatsen.',
     dp_note_cred:'De grens per integratie is het getal dat je hebt ingevoerd; Archy kent hem niet. Credentials van de integraties worden niet gecontroleerd.',
     dp_s_new:'Nieuw',
@@ -5690,6 +5702,9 @@ const LANGS = {
     dp_unplaced:'{n} sin sitio',
     dp_new_int:'Cree en Genesys una integración activa llamada {name}, con credencial, y haga la propuesta de nuevo.',
     dp_actions:'acciones',
+    dp_action_one:'acción',
+    dp_inactive_one:'Nunca se propone {n} integración inactiva',
+    pc_ok_one:'{n} dependencia está en orden.',
     dp_none:'No hay data actions que colocar.',
     dp_note_cred:'El límite por integración es el número que ha introducido; Archy no lo conoce. No se comprueban las credenciales de las integraciones.',
     dp_s_new:'Nueva',
@@ -10957,7 +10972,7 @@ function dpRender() {
     const hint = p.unplaced && p.unplaced.reason === 'no-integration' && !x.chosen
       ? `<div style="font-size:11px;color:var(--red);margin-top:4px">${escapeHtml(t('dp_new_int').replace('{name}', p.unplaced.suggestedName))}</div>` : '';
     return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-top:1px solid var(--border);font-size:13px">
-      <div style="flex:1.1;min-width:0"><div>${escapeHtml(p.integrationName)}</div><div style="font-size:11px;color:var(--muted)">${p.count} ${t('dp_actions')}</div></div>
+      <div style="flex:1.1;min-width:0"><div>${escapeHtml(p.integrationName)}</div><div style="font-size:11px;color:var(--muted)">${p.count} ${t(p.count === 1 ? 'dp_action_one' : 'dp_actions')}</div></div>
       <div style="flex:1.6;min-width:0">${sel}<div style="font-size:11px;color:var(--muted);margin-top:4px">${escapeHtml(where)}</div>${hint}</div>
       <div style="width:110px;text-align:right">${pill(st.cls, t(st.key))}</div></div>`;
   };
@@ -10975,7 +10990,7 @@ function dpRender() {
       ${dpBusy ? `<button class="btn btn-secondary btn-sm" onclick="dpStop = true">${t('dp_stop')}</button>` : ''}
       <button class="btn btn-primary btn-sm" onclick="dpMigrate()">${t('dp_migrate')} (${String(dpMigrationList().length)})</button></div>` +
     sec(t('dp_sec_ints')) + active.map(intRow).join('') +
-    (inactive.length ? `<div style="font-size:11px;color:var(--muted);margin-top:8px">${escapeHtml(t('dp_inactive').replace('{n}', String(inactive.length)))}: ${escapeHtml(inactive.map(i => i.name).join(', '))}</div>` : '') +
+    (inactive.length ? `<div style="font-size:11px;color:var(--muted);margin-top:8px">${escapeHtml(t(inactive.length === 1 ? 'dp_inactive_one' : 'dp_inactive').replace('{n}', String(inactive.length)))}: ${escapeHtml(inactive.map(i => i.name).join(', '))}</div>` : '') +
     sec(t('dp_sec_groups')) +
     (d.placements.length ? d.placements.map(groupRow).join('') : `<div style="font-size:12px;color:var(--muted)">${t('dp_none')}</div>`) +
     (d.manual.length ? sec(t('dp_sec_manual')) + d.manual.map(m =>
@@ -12660,7 +12675,7 @@ function precheckHtml(v) {
   }).join('');
   if (v.warnings.length) h += sec('muted', 'pc_s_warn') + v.warnings.map(x => line(x, 'muted', t(PC_CODE_KEY[x.code] || 'pc_c_manual'))).join('');
   h += `<div style="font-size:12px;color:var(--${v.blockers.length ? 'red' : 'green'});margin-top:14px;font-weight:600">${escapeHtml(t(v.canPromote ? 'pc_can' : 'pc_cannot'))}</div>`;
-  h += `<div style="font-size:11px;color:var(--muted);margin-top:4px">${escapeHtml(t('pc_ok_n').replace('{n}', String(v.ok)))}</div>`;
+  h += `<div style="font-size:11px;color:var(--muted);margin-top:4px">${escapeHtml(t(v.ok === 1 ? 'pc_ok_one' : 'pc_ok_n').replace('{n}', String(v.ok)))}</div>`;
   return h;
 }
 

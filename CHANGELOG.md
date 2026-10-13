@@ -5,6 +5,19 @@
 
 ---
 
+### v1.55.3
+---
+**🇩🇰 Dansk**
+
+- **Rettelse: ental i teksterne.** Setup-forslaget skrev "1 actions" ved en gruppe med én action og "1 inaktive integrationer" for én inaktiv integration, og pipeline-tjekket skrev "1 afhængigheder er i orden". Nu står der ental, når tallet er 1, på alle fem sprog.
+- Billederne af Setup-forslag i README er taget igen.
+
+**🇬🇧 English**
+- **Fix: singular in the texts.** The setup proposal wrote "1 actions" for a group with one action and "1 inactive integrations" for one inactive integration, and the pre-promotion check wrote "1 dependencies are in order". The singular is now used when the number is 1, in all five languages.
+- The Setup proposal images in the README have been retaken.
+
+---
+
 ### v1.55.2
 ---
 **🇩🇰 Dansk**
