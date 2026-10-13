@@ -1706,6 +1706,7 @@ const PROD_WRITE_ROUTES = {
   '/api/flows/migrate-dependency': 'targetId',
   '/api/actions/migrate':         'targetId',
   '/api/datatables/migrate':      'targetId',
+  '/api/data-actions/map':        'targetId',
   '/api/prompts/migrate':         'targetId',
   '/api/surveyforms/migrate':     'targetId',
   '/api/divisions/create':        'targetId',
@@ -5935,9 +5936,12 @@ async function loadDataActionMap(source, target) {
   return mergeDaEntries(local, org);
 }
 
-async function saveDataActionMap(source, target, entries) {
+// replace: entries ER hele listen for org-parret (fra totaltjekket, hvor man
+// også kan fjerne et valg). Ellers flettes de ind i det der er gemt.
+async function saveDataActionMap(source, target, entries, opts = {}) {
   const k = await daOrgKeys(source, target);
-  const all = mergeDaEntries(await loadDataActionMap(source, target), entries);
+  const all = opts.replace ? mergeDaEntries([], entries)
+                           : mergeDaEntries(await loadDataActionMap(source, target), entries);
   // Et løst miljø (intet trin) får ikke skrevet noget i sin org.
   if (stageOf(target)) {
     try {
@@ -5956,6 +5960,148 @@ async function saveDataActionMap(source, target, entries) {
   fs.writeFileSync(DA_MAP_FILE, JSON.stringify(local, null, 2));
   return { where: 'local', count: all.length };
 }
+
+// ── Totaltjek af data actions mellem to orgs ─────────────────────────────────
+
+// Hver data action i kilden, sat op mod målet. Samme afgørelse som for et enkelt
+// flow (exact / mapped / choose / absent), her for hele orgen. Ren, så den kan
+// prøves uden en org.
+function compareDataActionSets(srcActions, tgtActions, saved) {
+  const cls = classifyDataActionRefs(
+    srcActions.map(a => ({ category: a.category, name: a.name })), tgtActions, saved);
+  return srcActions.map((a, i) => ({
+    id: a.id, name: a.name, category: a.category,
+    // Id'et på den action i målet kilden er sat op mod — til kontrakt-sammenligningen.
+    targetId: (tgtActions.find(t => daSame(t, cls[i].status === 'mapped' ? cls[i].mappedTo : a)) || {}).id || null,
+    integrationName: a.integrationName || '', integrationType: a.integrationType || '',
+    status: cls[i].status === 'exact' ? 'same' : cls[i].status,
+    candidates: cls[i].candidates || [], mappedTo: cls[i].mappedTo || null,
+    // En Function Data Action kan ikke oprettes herfra: mangler den, er det manuelt.
+    fda: a.integrationType === FUNCTION_INTEGRATION
+  }));
+}
+
+function summarizeDataActionRows(rows) {
+  const n = s => rows.filter(r => r.status === s).length;
+  return {
+    total: rows.length, same: n('same'), mapped: n('mapped'), choose: n('choose'), absent: n('absent'),
+    // FDA'er der hverken findes eller er peget over på en der gør.
+    fdaMissing: rows.filter(r => r.fda && (r.status === 'choose' || r.status === 'absent')).length
+  };
+}
+
+// Et schemas felter: navn → type og om de er påkrævet.
+function schemaFields(schema) {
+  const props = (schema && schema.properties) || {};
+  const req = (schema && schema.required) || [];
+  const out = {};
+  for (const [name, def] of Object.entries(props)) {
+    const t = def && def.type;
+    out[name] = { type: typeof t === 'string' ? t : JSON.stringify(t || ''), required: req.includes(name) };
+  }
+  return out;
+}
+
+// Forskellen på to actions' kontrakter, set fra kilden: hvad kilden har som
+// målet ikke har, hvad målet har ekstra, og felter hvor typen eller kravet er
+// et andet. En action kan hedde det samme og alligevel ikke passe til flowet.
+function compareContracts(srcAction, tgtAction) {
+  const diffs = [];
+  for (const [side, key] of [['input', 'inputSchema'], ['output', 'successSchema']]) {
+    const a = schemaFields(srcAction && srcAction.contract && srcAction.contract[side] && srcAction.contract[side][key]);
+    const b = schemaFields(tgtAction && tgtAction.contract && tgtAction.contract[side] && tgtAction.contract[side][key]);
+    for (const name of Object.keys(a)) {
+      if (!(name in b)) diffs.push({ side, kind: 'missing-in-target', name });
+      else if (a[name].type !== b[name].type) diffs.push({ side, kind: 'type', name, from: a[name].type, to: b[name].type });
+      else if (a[name].required !== b[name].required) diffs.push({ side, kind: 'required', name, from: a[name].required, to: b[name].required });
+    }
+    for (const name of Object.keys(b)) if (!(name in a)) diffs.push({ side, kind: 'extra-in-target', name });
+  }
+  return { same: diffs.length === 0, diffs };
+}
+
+// Alle data actions i en org med integrationens navn og type.
+async function listDataActionsFull(customer) {
+  const { token, apiBase } = await getToken(customer);
+  const H = { headers: { Authorization: `Bearer ${token}` } };
+  const ints = {};
+  for (let p = 1; ; p++) {
+    const r = await axios.get(`${apiBase}/api/v2/integrations`, { ...H, params: { pageSize: 100, pageNumber: p } });
+    const e = r.data.entities || [];
+    for (const i of e) ints[i.id] = { name: i.name, type: i.integrationType?.id || '' };
+    if (e.length < 100) break;
+  }
+  return (await listDataActions(token, apiBase)).map(a => ({
+    ...a, integrationName: (ints[a.integrationId] || {}).name || a.category || '',
+    integrationType: (ints[a.integrationId] || {}).type || ''
+  }));
+}
+
+app.post('/api/data-actions/compare', async (req, res) => {
+  const { sourceId, targetId } = req.body || {};
+  const source = loadCustomers().find(c => c.id === sourceId);
+  const target = loadCustomers().find(c => c.id === targetId);
+  if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
+  if (source.id === target.id) return res.status(400).json({ error: 'Kilde og mål er det samme miljø.' });
+  // To miljøer i samme org har de samme data actions. Der er intet at sammenligne.
+  if (orgKeyOf(source) === orgKeyOf(target)) return res.json({ ok: true, sameOrg: true });
+  try {
+    const [src, tgt, saved] = await Promise.all([
+      listDataActionsFull(source), listDataActionsFull(target), loadDataActionMap(source, target)]);
+    const rows = compareDataActionSets(src, tgt, saved);
+    addLog('INFO', `Data action check ${source.name} → ${target.name}: ${rows.length} compared`, source.name, 'MIGRATE');
+    res.json({ ok: true, rows, summary: summarizeDataActionRows(rows), saved,
+               targetActions: tgt.map(a => ({ category: a.category, name: a.name })) });
+  } catch (e) {
+    res.status(500).json({ error: describeApiError(e) });
+  }
+});
+
+// Sammenligner kontrakterne for op til 20 par ad gangen — klienten tager dem i
+// bidder, så en stor org ikke holder forbindelsen oppe i minutter.
+app.post('/api/data-actions/contracts', async (req, res) => {
+  const { sourceId, targetId, pairs } = req.body || {};
+  const source = loadCustomers().find(c => c.id === sourceId);
+  const target = loadCustomers().find(c => c.id === targetId);
+  if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
+  if (!Array.isArray(pairs) || !pairs.length || pairs.length > 20)
+    return res.status(400).json({ error: 'Send mellem 1 og 20 par.' });
+  try {
+    const { token: st, apiBase: sb } = await getToken(source);
+    const { token: tt, apiBase: tb } = await getToken(target);
+    const get = (base, token, id) => axios.get(`${base}/api/v2/integrations/actions/${encodeURIComponent(id)}`,
+      { headers: { Authorization: `Bearer ${token}` }, params: { expand: 'contract' } }).then(r => r.data);
+    const results = [];
+    for (const p of pairs) {
+      try {
+        const [a, b] = await Promise.all([get(sb, st, p.source), get(tb, tt, p.target)]);
+        results.push({ source: p.source, target: p.target, ...compareContracts(a, b) });
+      } catch (e) {
+        results.push({ source: p.source, target: p.target, error: describeApiError(e) });
+      }
+    }
+    res.json({ ok: true, results });
+  } catch (e) {
+    res.status(500).json({ error: describeApiError(e) });
+  }
+});
+
+// Gemmer hele listen af valg for et org-par — også en fjernelse. Skriver i
+// mål-org'ens manifest, så den står i prod-vagten.
+app.post('/api/data-actions/map', async (req, res) => {
+  const { sourceId, targetId, entries } = req.body || {};
+  const source = loadCustomers().find(c => c.id === sourceId);
+  const target = loadCustomers().find(c => c.id === targetId);
+  if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
+  if (!Array.isArray(entries) || entries.length > 5000) return res.status(400).json({ error: 'Ugyldig liste.' });
+  try {
+    const r = await saveDataActionMap(source, target, entries.filter(validDaEntry), { replace: true });
+    addLog('INFO', `Data action choices for ${source.name} → ${target.name} saved: ${r.count} (${r.where === 'org' ? 'in the target manifest' : 'locally'})`, target.name, 'MIGRATE');
+    res.json({ ok: true, ...r });
+  } catch (e) {
+    res.status(500).json({ error: describeApiError(e) });
+  }
+});
 
 // ── User prompts ──────────────────────────────────────────────────────────────
 
@@ -7927,6 +8073,7 @@ module.exports = {
   missingFunctionActions, FUNCTION_INTEGRATION,
   // data actions i flowet
   scanDataActionRefs, classifyDataActionRefs, applyDataActionMap, mergeDaEntries, validDaEntry,
+  compareDataActionSets, summarizeDataActionRows, compareContracts,
   // miljøer og præfikser
   prefixOf, orgKeyOf, rememberOrgId, wrongOrg, clientPinsOrg, orgOwnedElsewhere, belongsToEnv, stripEnvPrefix, withEnvPrefix, depNameIn,
   targetFlowName, prefixDependenciesInYaml, divisionOf,

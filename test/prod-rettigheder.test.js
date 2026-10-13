@@ -102,7 +102,7 @@ const SKRIVER_IKKE_TIL_ORG = new Set([
   '/api/customers/:id/prefix-check', '/api/stages', '/api/prefix/plan',
   '/api/demo/promote', '/api/demo/publish', '/api/demo/create', '/api/demo/reset', '/api/demo',
   '/api/releases/diff', '/api/releases/notes', '/api/flows/dependents',
-  '/api/flows/cross-hash', '/api/flows/compare',
+  '/api/flows/cross-hash', '/api/flows/compare', '/api/data-actions/compare', '/api/data-actions/contracts',
   '/api/export', '/api/export-all', '/api/export-all/cancel/:jobId', '/api/validate-yaml',
   '/api/logs/clear', '/api/files/cleanup'
 ]);

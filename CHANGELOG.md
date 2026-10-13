@@ -5,6 +5,25 @@
 
 ---
 
+### v1.51.0
+---
+**🇩🇰 Dansk**
+
+- **Ny fane Totaltjek på Migrér ressourcer.** Sætter hver data action i kilden op mod mål-org'en, på kategori og navn, og tæller dem: *matcher*, *gemt valg*, *skal vælges* (samme navn under en anden kategori), *mangler* og *FDA mangler*. Et klik på et tal filtrerer listen, og der kan søges.
+- **Kortlægning direkte i listen.** Hver række kan pege på den action i målet, den skal bruge; *Brug forslag* tager alle rækker med præcis én kandidat. **Gem kortlægning** gemmer hele org-parrets valg — også en fjernelse, så et gemt valg endelig kan fjernes igen. Det er den samme kortlægning som listen i flowet bruger (v1.50.0).
+- **Tjek kontrakter.** For de actions der matcher, hentes input- og output-skemaet fra begge sider, og forskellene vises: felter der mangler i målet, felter der er ekstra, en anden type eller et andet krav. En action kan hedde det samme og alligevel ikke passe til flowet. Tages 20 par ad gangen med fremgang.
+- Ligger kilde og mål i samme org, er der intet at sammenligne, og fanen siger det.
+- Actions der mangler, migreres stadig på fanen Data Actions — vælg mål-integration dér.
+
+**🇬🇧 English**
+- **New Full check tab on Migrate resources.** Sets every data action in the source against the target org, by category and name, and counts them: *match*, *saved choice*, *to choose* (same name under another category), *missing* and *FDA missing*. A click on a number filters the list, and it can be searched.
+- **Mapping straight in the list.** Each row can point at the action in the target it should use; *Use suggestions* takes every row with exactly one candidate. **Save mapping** saves the whole org pair's choices — including a removal, so a saved choice can finally be removed again. It is the same mapping the list in the flow uses (v1.50.0).
+- **Check contracts.** For the actions that match, the input and output schema are fetched from both sides and the differences are shown: fields missing in the target, extra fields, another type or another requirement. An action can have the same name and still not fit the flow. Done 20 pairs at a time with progress.
+- If the source and target are in the same org there is nothing to compare, and the tab says so.
+- Actions that are missing are still migrated on the Data Actions tab — pick the target integration there.
+
+---
+
 ### v1.50.0
 ---
 **🇩🇰 Dansk**

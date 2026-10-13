@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.50.0
+# Archy GUI — Flow Manager · v1.51.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -11,8 +11,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.50.0**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.50.0**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.51.0**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.51.0**.
 
 ---
 
@@ -318,6 +318,8 @@ Siden migrerer det der ikke er flows mellem to orgs, fordelt på tre faner: **Da
 >
 > Mål-integrationen matches på navn, ellers på integrationstype hvis der kun er én kandidat. Er der flere mulige, skal du selv vælge — og migreringen kan ikke startes før du har gjort det.
 
+**Fanen Totaltjek** sætter hver data action i kilden op mod mål-org'en, på kategori og navn, så man kan afklare navnene før man migrerer flows. Et klik på et tal filtrerer listen: *matcher*, *gemt valg*, *skal vælges* (samme navn under en anden kategori), *mangler* og *FDA mangler* (en Function Data Action kan ikke oprettes herfra). Til hver række kan man pege den over på den action i målet, den skal bruge — *Brug forslag* tager alle rækker med præcis én kandidat — og **Gem kortlægning** gemmer det, eller fjerner et gemt valg, for hele org-parret. Det er den samme kortlægning som listen i flowet bruger. **Tjek kontrakter** henter input- og output-skemaet fra begge sider for dem der matcher og viser felter der mangler, er ekstra eller har en anden type eller et andet krav — en action kan hedde det samme og alligevel ikke passe til flowet; det tager 20 par ad gangen, så en stor org kan tage et øjeblik. Ligger de to miljøer i samme org, er der intet at sammenligne, og fanen siger det. Actions der mangler, migreres stadig på fanen Data Actions.
+
 **Fanen User Prompts** migrerer user prompts mellem orgs. Både TTS-teksten og indtalt lyd kopieres — prompts med lyd er markeret 🔊 i listen.
 
 **Fanen Data Tabeller** migrerer DataTable-*strukturer* mellem orgs: vælg kilde- og mål-org, markér tabellerne, klik **⚡ Migrér valgte**. Kun kolonnedefinitionen kopieres — **rækkerne følger ikke med**. Findes kildens division i mål-org'en, oprettes tabellen der; ellers havner den i standarddivisionen, og loggen siger det.
@@ -428,7 +430,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-312 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+320 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -732,6 +734,8 @@ This page migrates everything that is not a flow between two orgs, across three 
 >
 > The target integration is matched by name, or by integration type when only one candidate exists. If several are possible you must choose yourself — and migration is blocked until you do.
 
+**The Full check tab** sets every data action in the source against the target org, by category and name, so the names can be sorted out before flows are migrated. A click on a number filters the list: *match*, *saved choice*, *to choose* (same name under another category), *missing* and *FDA missing* (a Function Data Action cannot be created from here). On each row you can point it at the action in the target it should use — *Use suggestions* takes every row with exactly one candidate — and **Save mapping** saves it, or removes a saved choice, for the whole org pair. It is the same mapping the list in the flow uses. **Check contracts** fetches the input and output schema from both sides for those that match and shows fields that are missing, extra or have another type or requirement — an action can have the same name and still not fit the flow; it takes 20 pairs at a time, so a large org can take a moment. If the two environments are in the same org there is nothing to compare, and the tab says so. Actions that are missing are still migrated on the Data Actions tab.
+
 **The User Prompts tab** migrates user prompts between orgs. Both the TTS text and any recorded audio are copied — prompts with audio are marked 🔊 in the list.
 
 **The Data Tables tab** migrates DataTable *structures* between orgs: pick source and target org, select the tables, click **⚡ Migrate selected**. Only the column definition is copied — **rows do not come along**. If the source division exists in the target org the table is created there; otherwise it lands in the default division and the log says so.
@@ -842,7 +846,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-312 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+320 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 
