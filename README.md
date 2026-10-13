@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.51.0
+# Archy GUI — Flow Manager · v1.51.1
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -11,8 +11,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.51.0**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.51.0**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.51.1**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.51.1**.
 
 ---
 
@@ -330,6 +330,8 @@ Der kopieres navn, kategori, input/output-schema, request-config (URL, metode, h
 
 ![Migrér ressourcer — Data Actions](docs/data-actions.png)
 
+> **Kategorien følger mål-integrationen.** En migreret action oprettes med mål-integrationens navn som kategori — det er den et flow slår den op på — og ikke med kildens kategori. Kan navnet ikke læses, beholdes kildens. Loggen siger det, når kategorien ændres.
+>
 > **Bemærk:** Kategori-navne skal matche mellem orgs. Hvis kilden bruger `Genesys Cloud Data Actions - QM` men målet kun har `Genesys Cloud Data Actions`, skal du enten omdøbe integrationen i mål-org'en eller justere YAML'en før import.
 
 #### 🧙 Flow Builder · Beta
@@ -430,7 +432,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-320 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+323 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -746,6 +748,8 @@ Name, category, input/output schema, request config (URL, method, headers) and t
 
 ![Migrate resources — Data Actions](docs/data-actions.png)
 
+> **The category follows the target integration.** A migrated action is created with the target integration's name as its category — that is what a flow looks it up by — and not with the source's category. If the name cannot be read, the source's is kept. The log says so when the category changes.
+>
 > **Note:** Category names must match between orgs. If the source uses `Genesys Cloud Data Actions - QM` but the target only has `Genesys Cloud Data Actions`, either rename the integration in the target org or adjust the category in your YAML before importing.
 
 #### 🧙 Flow Builder · Beta
@@ -846,7 +850,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-320 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+323 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 

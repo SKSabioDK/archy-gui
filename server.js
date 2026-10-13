@@ -2590,6 +2590,12 @@ app.get('/api/customers/:id/integrations', async (req, res) => {
   }
 });
 
+// Kategorien en migreret action oprettes med: målintegrationens navn. Kan det
+// ikke læses, beholdes kildens — som før.
+function actionCategoryFor(sourceCategory, targetIntegrationName) {
+  return String(targetIntegrationName || '').trim() || sourceCategory;
+}
+
 // Migrate a Data Action from source org to target org
 app.post('/api/actions/migrate', async (req, res) => {
   const { sourceId, targetId, actionId, targetIntegrationId } = req.body;
@@ -2632,6 +2638,17 @@ app.post('/api/actions/migrate', async (req, res) => {
 
     // 3. Resolve integration in target org
     let integrationId = targetIntegrationId;
+    let integrationName = '';
+    if (integrationId) {
+      // Kategorien skal være målintegrationens navn, så vi skal bruge navnet.
+      try {
+        const ir = await axios.get(`${tgtBase}/api/v2/integrations/${encodeURIComponent(integrationId)}`,
+          { headers: { Authorization: `Bearer ${tgtToken}` } });
+        integrationName = ir.data.name || '';
+      } catch (e) {
+        addLog('WARN', `Could not read the target integration ${integrationId}: ${describeApiError(e)} — keeping the source category`, target.name, 'MIGRATE');
+      }
+    }
     if (!integrationId) {
       const srcIntName = published.integration?.name || '';
       const intRes = await axios.get(`${tgtBase}/api/v2/integrations`, {
@@ -2663,6 +2680,7 @@ app.post('/api/actions/migrate', async (req, res) => {
           source.name, 'MIGRATE');
       }
       integrationId = match.id;
+      integrationName = match.name || '';
     }
 
     // 4. Create new action shell in target
@@ -2683,11 +2701,18 @@ app.post('/api/actions/migrate', async (req, res) => {
     if (!config.request.requestType)        config.request.requestType        = 'GET';
     if (!config.request.requestUrlTemplate) config.request.requestUrlTemplate = '';
 
+    // En actions kategori er integrationens navn: det er den et flow slår den
+    // op på. Beholdt vi kildens kategori, kunne en action i en integration der
+    // hedder noget andet i målet blive stående under et navn flowet ikke finder.
+    const category = actionCategoryFor(published.category, integrationName);
+    if (category !== published.category)
+      addLog('INFO', `Category of "${published.name}": "${published.category}" → "${category}" (the target integration's name)`, source.name, 'MIGRATE');
+
     const createRes = await axios.post(
       `${tgtBase}/api/v2/integrations/actions`,
       {
         name:         published.name,
-        category:     published.category,
+        category,
         integrationId,
         contract,
         config
@@ -8073,7 +8098,7 @@ module.exports = {
   missingFunctionActions, FUNCTION_INTEGRATION,
   // data actions i flowet
   scanDataActionRefs, classifyDataActionRefs, applyDataActionMap, mergeDaEntries, validDaEntry,
-  compareDataActionSets, summarizeDataActionRows, compareContracts,
+  compareDataActionSets, summarizeDataActionRows, compareContracts, actionCategoryFor,
   // miljøer og præfikser
   prefixOf, orgKeyOf, rememberOrgId, wrongOrg, clientPinsOrg, orgOwnedElsewhere, belongsToEnv, stripEnvPrefix, withEnvPrefix, depNameIn,
   targetFlowName, prefixDependenciesInYaml, divisionOf,

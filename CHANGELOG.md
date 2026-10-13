@@ -5,6 +5,17 @@
 
 ---
 
+### v1.51.1
+---
+**🇩🇰 Dansk**
+
+- **Rettelse: en migreret data action får målintegrationens navn som kategori.** `Migrér` oprettede actionen med kildens kategori, uanset hvilken integration den blev lagt i. Hedder integrationen noget andet i målet — fx `Genesys Cloud Data Actions - Flows` i prod og `Test - Genesys Cloud Data Actions` i test — stod actionen under en kategori, flowet ikke finder. Kategorien er integrationens navn, og den bruges nu, både når man selv har valgt mål-integration og når den findes automatisk. Kan navnet ikke læses, beholdes kildens kategori som før, og loggen siger det, når kategorien ændres.
+
+**🇬🇧 English**
+- **Fix: a migrated data action gets the target integration's name as its category.** Migrating created the action with the source's category, whichever integration it was put in. If the integration has a different name in the target — say `Genesys Cloud Data Actions - Flows` in prod and `Test - Genesys Cloud Data Actions` in test — the action sat under a category the flow cannot find. The category is the integration's name, and that is now used, both when the target integration is chosen by hand and when it is found automatically. If the name cannot be read, the source's category is kept as before, and the log says so when the category changes.
+
+---
+
 ### v1.51.0
 ---
 **🇩🇰 Dansk**
