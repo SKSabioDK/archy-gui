@@ -5,6 +5,25 @@
 
 ---
 
+### v1.52.0
+---
+**🇩🇰 Dansk**
+
+- **Ny fane Setup-forslag på Migrér ressourcer.** Foreslår hvilke integrationer i mål-org'en de data actions, der mangler, skal ligge i — til de kunder, hvor kilden har få integrationer og målet mange. Man angiver, hvor mange actions en integration højst rummer (Archy kender grænsen ikke; tallet huskes i browseren), og forslaget fordeler actions'ene på de **aktive** integrationer af samme type, hvor der er plads. En kildeintegrations actions holdes samlet, helst i en integration med samme navn, ellers deles de. Inaktive integrationer foreslås aldrig.
+- **Kapacitetsbjælker.** For hver integration i målet ses det, der findes, og det, der kommer til, med farve når den er næsten fuld eller over grænsen. En gruppe kan flyttes til en anden integration, og bjælkerne følger med.
+- **Det der ikke kan placeres, siges højt:** findes ingen aktiv integration af typen, står der hvad den skal hedde (fx `Genesys Cloud Data Actions - Emails`); er de fulde, står der hvor mange der er uden plads. Function Data Actions og actions under en anden kategori er ikke med, men tælles.
+- **Eksport til kunden.** Til Excel (CSV med dansk adskillelse og BOM) eller en printvenlig side (Ctrl+P giver PDF). Kun navne og tal — ingen id'er, tokens eller secrets.
+- Fanen migrerer ikke noget og tjekker ikke credentials; migreringen sker stadig på fanen Data Actions.
+
+**🇬🇧 English**
+- **New Setup proposal tab on Migrate resources.** Proposes which integrations in the target org the missing data actions should live in — for customers where the source has few integrations and the target many. You enter how many actions an integration holds at most (Archy does not know the limit; the number is remembered in the browser), and the proposal spreads the actions over the **active** integrations of the same type that have room. A source integration's actions are kept together, preferably in an integration with the same name, otherwise they are split. Inactive integrations are never proposed.
+- **Capacity bars.** For each integration in the target you see what is there and what is coming, coloured when it is nearly full or over the limit. A group can be moved to another integration and the bars follow.
+- **What cannot be placed is said out loud:** if there is no active integration of the type, it says what it should be called (say `Genesys Cloud Data Actions - Emails`); if they are full, it says how many are without room. Function Data Actions and actions under another category are not included, but are counted.
+- **Export to the customer.** To Excel (CSV with semicolons and a BOM) or a printable page (Ctrl+P gives PDF). Names and numbers only — no ids, tokens or secrets.
+- The tab migrates nothing and does not check credentials; migrating is still done on the Data Actions tab.
+
+---
+
 ### v1.51.1
 ---
 **🇩🇰 Dansk**

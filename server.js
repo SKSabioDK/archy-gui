@@ -6045,22 +6045,129 @@ function compareContracts(srcAction, tgtAction) {
   return { same: diffs.length === 0, diffs };
 }
 
+// Alle integrationer i en org, med om de er aktive. En inaktiv integration kan
+// ikke bruges: en action i den kører ikke.
+async function listIntegrations(customer) {
+  const { token, apiBase } = await getToken(customer);
+  const out = [];
+  for (let p = 1; ; p++) {
+    const r = await axios.get(`${apiBase}/api/v2/integrations`, {
+      headers: { Authorization: `Bearer ${token}` }, params: { pageSize: 100, pageNumber: p } });
+    const e = r.data.entities || [];
+    for (const i of e) out.push({
+      id: i.id, name: i.name, type: i.integrationType?.id || '',
+      active: (i.reportedState?.code || '') === 'ACTIVE'
+    });
+    if (e.length < 100) break;
+  }
+  return out;
+}
+
 // Alle data actions i en org med integrationens navn og type.
 async function listDataActionsFull(customer) {
   const { token, apiBase } = await getToken(customer);
-  const H = { headers: { Authorization: `Bearer ${token}` } };
   const ints = {};
-  for (let p = 1; ; p++) {
-    const r = await axios.get(`${apiBase}/api/v2/integrations`, { ...H, params: { pageSize: 100, pageNumber: p } });
-    const e = r.data.entities || [];
-    for (const i of e) ints[i.id] = { name: i.name, type: i.integrationType?.id || '' };
-    if (e.length < 100) break;
-  }
+  for (const i of await listIntegrations(customer)) ints[i.id] = i;
   return (await listDataActions(token, apiBase)).map(a => ({
     ...a, integrationName: (ints[a.integrationId] || {}).name || a.category || '',
     integrationType: (ints[a.integrationId] || {}).type || ''
   }));
 }
+
+// ── Setup-forslag: hvor skal de nye data actions hen? ────────────────────────
+//
+// En integration rummer kun et vist antal actions. Hos en kunde var prod delt
+// ud på mange integrationer, og test på få, så "samme integration som i test"
+// findes ikke eller er fuld. Forslaget fordeler de actions der mangler i målet
+// på de aktive integrationer af samme type, med plads, og holder en
+// integrations actions samlet hvor det kan lade sig gøre.
+//
+//   todo         — [{ id, name, category, integrationName, integrationType }]
+//   integrations — målets: [{ id, name, type, active, existing }]
+//   capacity     — hvor mange actions en integration højst rummer
+//
+// Ren funktion, så den kan prøves uden en org.
+function planDataActionPlacement(todo, integrations, capacity) {
+  const cap = Math.max(1, parseInt(capacity, 10) || 100);
+  const free = new Map(integrations.map(i => [i.id, Math.max(0, cap - (i.existing || 0))]));
+  const groups = new Map();
+  for (const a of todo) {
+    const k = a.integrationType + '\u0001' + a.integrationName;
+    if (!groups.has(k)) groups.set(k, { integrationName: a.integrationName, integrationType: a.integrationType, actions: [] });
+    groups.get(k).actions.push({ id: a.id, name: a.name, category: a.category });
+  }
+  const placements = [];
+  // Store grupper først: de har sværest ved at finde plads samlet.
+  for (const g of [...groups.values()].sort((a, b) => b.actions.length - a.actions.length || a.integrationName.localeCompare(b.integrationName))) {
+    const eligible = integrations.filter(i => i.active && i.type === g.integrationType)
+      .sort((a, b) => (b.name === g.integrationName) - (a.name === g.integrationName)
+                    || free.get(b.id) - free.get(a.id) || a.name.localeCompare(b.name));
+    const size = g.actions.length;
+    const allocations = [];
+    let rest = g.actions.slice();
+    const whole = eligible.find(i => free.get(i.id) >= size);
+    if (whole) {
+      allocations.push({ integrationId: whole.id, integrationName: whole.name, actions: rest });
+      free.set(whole.id, free.get(whole.id) - size);
+      rest = [];
+    } else {
+      for (const i of [...eligible].sort((a, b) => free.get(b.id) - free.get(a.id) || a.name.localeCompare(b.name))) {
+        if (!rest.length) break;
+        const take = Math.min(free.get(i.id), rest.length);
+        if (take <= 0) continue;
+        allocations.push({ integrationId: i.id, integrationName: i.name, actions: rest.slice(0, take) });
+        free.set(i.id, free.get(i.id) - take);
+        rest = rest.slice(take);
+      }
+    }
+    placements.push({
+      integrationName: g.integrationName, integrationType: g.integrationType, count: size, allocations,
+      // Det der ikke kunne placeres: enten findes ingen aktiv integration af typen, eller de er fulde.
+      unplaced: rest.length ? { count: rest.length, actions: rest, reason: eligible.length ? 'no-capacity' : 'no-integration',
+                                suggestedName: g.integrationName } : null
+    });
+  }
+  const planned = new Map();
+  for (const p of placements) for (const a of p.allocations) planned.set(a.integrationId, (planned.get(a.integrationId) || 0) + a.actions.length);
+  return {
+    capacity: cap, placements,
+    integrations: integrations.map(i => ({ ...i, planned: planned.get(i.id) || 0, capacity: cap }))
+  };
+}
+
+app.post('/api/data-actions/plan', async (req, res) => {
+  const { sourceId, targetId, capacity } = req.body || {};
+  const source = loadCustomers().find(c => c.id === sourceId);
+  const target = loadCustomers().find(c => c.id === targetId);
+  if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
+  if (source.id === target.id) return res.status(400).json({ error: 'Kilde og mål er det samme miljø.' });
+  if (orgKeyOf(source) === orgKeyOf(target)) return res.json({ ok: true, sameOrg: true });
+  try {
+    const [src, tgt, tgtInts, saved] = await Promise.all([
+      listDataActionsFull(source), listDataActionsFull(target), listIntegrations(target), loadDataActionMap(source, target)]);
+    const rows = compareDataActionSets(src, tgt, saved);
+    // Kun det der mangler helt og kan oprettes herfra. Samme navn under en anden
+    // kategori er et valg (totaltjekket), og en FDA kan ikke oprettes herfra.
+    const todo = rows.filter(r => r.status === 'absent' && !r.fda);
+    const existing = {};
+    for (const a of tgt) existing[a.integrationId] = (existing[a.integrationId] || 0) + 1;
+    const plan = planDataActionPlacement(todo, tgtInts
+      .filter(i => i.type !== FUNCTION_INTEGRATION && /data-actions$|rest-actions$/.test(i.type))
+      .map(i => ({ ...i, existing: existing[i.id] || 0 })), capacity);
+    addLog('INFO', `Data action setup proposal ${source.name} → ${target.name}: ${todo.length} to place`, source.name, 'MIGRATE');
+    res.json({
+      ok: true, ...plan,
+      summary: { toPlace: todo.length, choose: rows.filter(r => r.status === 'choose').length,
+                 fdaMissing: rows.filter(r => r.fda && (r.status === 'absent' || r.status === 'choose')).length,
+                 alreadyThere: rows.filter(r => r.status === 'same' || r.status === 'mapped').length },
+      manual: rows.filter(r => r.fda && (r.status === 'absent' || r.status === 'choose'))
+                  .map(r => ({ name: r.name, category: r.category, integrationName: r.integrationName })),
+      choose: rows.filter(r => r.status === 'choose').map(r => ({ name: r.name, category: r.category, candidates: r.candidates }))
+    });
+  } catch (e) {
+    res.status(500).json({ error: describeApiError(e) });
+  }
+});
 
 app.post('/api/data-actions/compare', async (req, res) => {
   const { sourceId, targetId } = req.body || {};
@@ -8098,7 +8205,7 @@ module.exports = {
   missingFunctionActions, FUNCTION_INTEGRATION,
   // data actions i flowet
   scanDataActionRefs, classifyDataActionRefs, applyDataActionMap, mergeDaEntries, validDaEntry,
-  compareDataActionSets, summarizeDataActionRows, compareContracts, actionCategoryFor,
+  compareDataActionSets, summarizeDataActionRows, compareContracts, actionCategoryFor, planDataActionPlacement,
   // miljøer og præfikser
   prefixOf, orgKeyOf, rememberOrgId, wrongOrg, clientPinsOrg, orgOwnedElsewhere, belongsToEnv, stripEnvPrefix, withEnvPrefix, depNameIn,
   targetFlowName, prefixDependenciesInYaml, divisionOf,

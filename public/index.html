@@ -533,7 +533,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.51.1 · Archy GUI</div>
+    <div class="version" id="app-version">v1.52.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -975,6 +975,7 @@
         <div class="da-tab" id="da-tab-tables" onclick="daSetTab('tables')" data-i18n="da_tab_tables">Data Tabeller</div>
         <div class="da-tab" id="da-tab-prompts" onclick="daSetTab('prompts')" data-i18n="da_tab_prompts">User Prompts</div>
         <div class="da-tab" id="da-tab-check" onclick="daSetTab('check')" data-i18n="da_tab_check">Totaltjek</div>
+        <div class="da-tab" id="da-tab-plan" onclick="daSetTab('plan')" data-i18n="da_tab_plan">Setup-forslag</div>
       </div>
 
       <div class="card">
@@ -1068,6 +1069,18 @@
         <div style="font-size:12px;color:var(--muted);margin-bottom:12px" data-i18n="dc_intro">Sætter hver data action i kilden op mod mål-org'en.</div>
         <datalist id="dc-dl"></datalist>
         <div id="dc-body"></div>
+      </div>
+      <div class="card" id="da-plan-card" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap">
+          <div class="card-title" style="margin:0" data-i18n="dp_title">SETUP-FORSLAG FOR DATA ACTIONS</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <label style="margin:0;font-size:12px;color:var(--muted)" data-i18n="dp_cap_label">Højst pr. integration</label>
+            <input id="dp-cap" type="number" min="1" value="100" style="width:80px"/>
+            <button class="btn btn-primary btn-sm" onclick="dpRun()" data-i18n="dp_run">Lav forslag</button>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px" data-i18n="dp_intro">Foreslår hvilke integrationer i mål-org'en de nye data actions skal ligge i.</div>
+        <div id="dp-body"></div>
       </div>
       <div id="da-log" class="card" style="display:none">
         <div class="card-title" data-i18n="da_log_title">MIGRERINGS LOG</div>
@@ -1722,6 +1735,51 @@ const LANGS = {
     dc_fda_manual:'Function Data Action: skal oprettes manuelt i målet.',
     dc_more:'Viser de første {n}. Brug søgning eller et filter for at se resten.',
     dc_migrate_note:'Actions der mangler, migreres på fanen Data Actions.',
+    da_tab_plan:'Setup-forslag',
+    dp_title:'SETUP-FORSLAG FOR DATA ACTIONS',
+    dp_intro:'Foreslår hvilke integrationer i mål-org\'en de data actions, der mangler, skal ligge i — ud fra hvor der er plads. Flyt rundt på forslaget, og eksportér det til kunden.',
+    dp_cap_label:'Højst pr. integration',
+    dp_run:'Lav forslag',
+    dp_t_place:'Skal placeres',
+    dp_t_choose:'Skal vælges',
+    dp_t_fda:'FDA manuelt',
+    dp_t_there:'Findes allerede',
+    dp_export_csv:'Eksportér til Excel',
+    dp_export_print:'Printvenlig side',
+    dp_sec_ints:'INTEGRATIONER I MÅL-ORG\'EN',
+    dp_sec_groups:'FORSLAG PR. KILDEGRUPPE',
+    dp_sec_manual:'FUNCTION DATA ACTIONS — OPRETTES MANUELT',
+    dp_inactive:'{n} inaktive integrationer foreslås aldrig',
+    dp_st_ok:'plads',
+    dp_st_near:'næsten fuld',
+    dp_st_over:'over grænsen',
+    dp_g_whole:'samlet',
+    dp_g_split:'delt',
+    dp_g_nointeg:'mangler integration',
+    dp_g_nocap:'ikke plads',
+    dp_g_chosen:'valgt',
+    dp_auto:'Forslag',
+    dp_unplaced:'{n} uden plads',
+    dp_new_int:'Opret en aktiv integration med navnet {name} i Genesys, med credential, og lav forslaget igen.',
+    dp_actions:'actions',
+    dp_none:'Der er ingen data actions at placere.',
+    dp_note_cred:'Grænsen pr. integration er det tal du har indtastet; Archy kender den ikke. Credentials på integrationerne tjekkes ikke.',
+    dp_s_new:'Ny',
+    dp_s_nointeg:'Mangler integration i målet',
+    dp_s_nocap:'Ikke plads',
+    dp_s_fda:'Function Data Action: oprettes manuelt',
+    dp_s_choose:'Findes under en anden kategori: vælg i totaltjekket',
+    dp_h_srcint:'Kilde-integration',
+    dp_h_action:'Data action',
+    dp_h_srccat:'Kategori i kilden',
+    dp_h_tgtint:'Mål-integration',
+    dp_h_status:'Status',
+    dp_h_int:'Integration',
+    dp_h_existing:'Findes',
+    dp_h_new:'Nye',
+    dp_h_after:'Efter',
+    dp_h_cap:'Grænse',
+    dp_print_hint:'Tryk Ctrl+P for at udskrive eller gemme som PDF.',
     dep_btn_migrate:'Migrér valgte og fortsæt',
     dep_can_migrate:'KAN MIGRERES NU',
     dep_manual:'SKAL OPRETTES MANUELT',
@@ -2247,7 +2305,7 @@ const LANGS = {
     help_flows:'Hent, søg og filtrér miljøets flows. Deler flere miljøer org\'en, vises kun dette miljøs egne.\n• Filtrér på **flowtype** — listen fyldes ud fra de typer miljøet faktisk har.\n• **Publicér** sætter en allerede migreret kladde i drift uden at hente noget fra kilden igen. Er det et common module, tilbydes du bagefter at genpublicere de flows der bruger det.\n• **Common modules tjekkes** hver gang listen hentes: er et modul publiceret **efter** et flow der bruger det, kører flowet stadig på den gamle udgave. Det står i et gult felt med en knap der genpublicerer dem, og rækkerne er mærket ⚠.\n• **🔁 Brugere** på et common module viser alle de flows der bruger det.\n• **⇄ Sammenlign** mod en anden org sammenligner **indholdet**, ikke versionsnumrene.\n• **📌 Sæt nulpunkt** noterer hvad org\'en indeholder nu, så værktøjet bagefter kan fange at nogen har publiceret direkte — også for flows det aldrig selv har migreret.',
     help_cross:'Viser de flows der findes hos **flere kunder** — fx det samme common module hos ti kunder.\n• Oversigten bygger på ét kald pr. kunde og er derfor hurtig.\n• **⇄ Sammenlign indhold** eksporterer flowet fra hver kunde og sammenligner hashen. Det tager tid, så det køres kun for den række du beder om.\n• Kunne en org ikke læses, siges det — der står **aldrig** "identisk" hvis vi mangler svar fra nogen.',
     help_migrate:'Eksport fra én org og import direkte til en anden. Kører i to faser.\n• **Tjek** — flowet eksporteres, og mål-org\'en undersøges for alt det refererer til. Der skrives intet endnu.\n• **Import** — først efter dit valg. Mangler noget, kan tabeller, data actions og common modules migreres med inden flowet.\n• Har målet et **præfiks** eller en anden **division**, omdøbes flowet og dets referencer undervejs.\n• **Import handling** vælges efter målet: alt andet end prod publiceres som standard, så det er i drift med det samme. Prod lægges som kladde du selv publicerer.\n• Skrivning til **prod** kræver dit prod-login med rettigheden — du bliver tilbudt at logge ind hvis det mangler.\n• Migreres et **common module**, tilbydes du at genpublicere de flows i målet der bruger det.\n• Køer, skills, wrap-up-koder og scripts skal oprettes manuelt — de kan ikke migreres.\n• Bruger flowet en **Function Data Action**, der mangler i målet, **blokeres** forfremmelsen, til den er oprettet i Genesys. Tryk **Tjek igen**, når den findes.\n• Hedder en **data action** noget andet i målet — fx en anden integration — vises flowets data actions, og du vælger hvilken i målet de skal pege på. Valget gemmes til næste gang.',
-    help_dataactions:'Migrerer det der ikke er flows: **Data Actions**, **Data Tabeller** og **User Prompts**.\n• Data Actions hører til en integration. Vælg kilde-integration, så vises kun actions derfra, og grupperingen bevares i målet.\n• Data Tabeller migrerer **strukturen** — kolonnerne. Rækkerne følger ikke med.\n• User Prompts tager både TTS-teksten og indtalt lyd med. Prompts med lyd er markeret 🔊.\n• **Function Data Actions kan ikke migreres** — deres URL er et id på en function der kun findes i kilde-org\'en.\n• Fanen **Totaltjek** sætter hver data action i kilden op mod mål-org\'en på kategori og navn: *matcher*, *gemt valg*, *skal vælges*, *mangler* og *FDA mangler*. Her kan du pege en action over på den, den hedder i målet, gemme eller fjerne valget, og tjekke at kontrakterne (input og output) stemmer.',
+    help_dataactions:'Migrerer det der ikke er flows: **Data Actions**, **Data Tabeller** og **User Prompts**.\n• Data Actions hører til en integration. Vælg kilde-integration, så vises kun actions derfra, og grupperingen bevares i målet.\n• Data Tabeller migrerer **strukturen** — kolonnerne. Rækkerne følger ikke med.\n• User Prompts tager både TTS-teksten og indtalt lyd med. Prompts med lyd er markeret 🔊.\n• **Function Data Actions kan ikke migreres** — deres URL er et id på en function der kun findes i kilde-org\'en.\n• Fanen **Totaltjek** sætter hver data action i kilden op mod mål-org\'en på kategori og navn: *matcher*, *gemt valg*, *skal vælges*, *mangler* og *FDA mangler*. Her kan du pege en action over på den, den hedder i målet, gemme eller fjerne valget, og tjekke at kontrakterne (input og output) stemmer.\n• Fanen **Setup-forslag** foreslår hvilke aktive integrationer i målet de data actions, der mangler, skal ligge i, ud fra hvor der er plads (du angiver grænsen pr. integration). En kildeintegrations actions holdes samlet, hvor det kan lade sig gøre. Gruppen kan flyttes, og forslaget kan eksporteres til Excel eller en printvenlig side til kunden.',
     help_export:'Eksporterer flows til YAML-filer på denne maskine.\n• Vælg miljø — listen over dets flows vises med det samme. Deler flere miljøer org\'en, vises kun dette miljøs egne.\n• Skriv for at filtrere. `*` viser alle, og en stjerne inde i teksten er et jokertegn: `DEV_*log` finder DEV_Create Logitems.\n• Typen sættes automatisk når du vælger flowet.\n• **Export Alle Flows** henter hele miljøet med en fremgangsindikator og kan afbrydes undervejs.\n• Filerne lander under `flows/<miljø>/` og bruges også af migrering og sammenligning.',
     help_import:'Opret, opdater eller publicér et flow ud fra YAML.\n• Indsæt teksten, upload en fil eller træk den ind.\n• **🔍 Valider YAML** tjekker syntaksen i browseren uden at kalde noget.\n• **🌐 Tjek mod org** slår op om division, køer, tabeller, data actions og prompts findes i målet — **inden** du importerer.\n• **Import handling** vælger om flowet oprettes, opdateres eller oprettes og publiceres.\n• Publicerer du et **common module**, tilbydes du bagefter at genpublicere de flows der bruger det.\n• Import til **prod** kræver dit prod-login med rettigheden.',
     wiz_beta_note:'Beta — tjek altid YAML\'en med 🔍 Valider YAML og 🌐 Tjek mod org før du importerer.',
@@ -2624,6 +2682,51 @@ const LANGS = {
     dc_fda_manual:'Function Data Action: must be created by hand in the target.',
     dc_more:'Showing the first {n}. Use search or a filter to see the rest.',
     dc_migrate_note:'Actions that are missing are migrated on the Data Actions tab.',
+    da_tab_plan:'Setup proposal',
+    dp_title:'SETUP PROPOSAL FOR DATA ACTIONS',
+    dp_intro:'Proposes which integrations in the target org the missing data actions should live in, based on where there is room. Move things around in the proposal, and export it to the customer.',
+    dp_cap_label:'Max per integration',
+    dp_run:'Make proposal',
+    dp_t_place:'To place',
+    dp_t_choose:'To choose',
+    dp_t_fda:'FDA by hand',
+    dp_t_there:'Already there',
+    dp_export_csv:'Export to Excel',
+    dp_export_print:'Printable page',
+    dp_sec_ints:'INTEGRATIONS IN THE TARGET ORG',
+    dp_sec_groups:'PROPOSAL PER SOURCE GROUP',
+    dp_sec_manual:'FUNCTION DATA ACTIONS — CREATED BY HAND',
+    dp_inactive:'{n} inactive integrations are never proposed',
+    dp_st_ok:'room',
+    dp_st_near:'nearly full',
+    dp_st_over:'over the limit',
+    dp_g_whole:'together',
+    dp_g_split:'split',
+    dp_g_nointeg:'no integration',
+    dp_g_nocap:'no room',
+    dp_g_chosen:'chosen',
+    dp_auto:'Proposal',
+    dp_unplaced:'{n} without room',
+    dp_new_int:'Create an active integration named {name} in Genesys, with a credential, and make the proposal again.',
+    dp_actions:'actions',
+    dp_none:'There are no data actions to place.',
+    dp_note_cred:'The limit per integration is the number you entered; Archy does not know it. Credentials on the integrations are not checked.',
+    dp_s_new:'New',
+    dp_s_nointeg:'No integration in the target',
+    dp_s_nocap:'No room',
+    dp_s_fda:'Function Data Action: created by hand',
+    dp_s_choose:'Exists under another category: choose in the full check',
+    dp_h_srcint:'Source integration',
+    dp_h_action:'Data action',
+    dp_h_srccat:'Category in the source',
+    dp_h_tgtint:'Target integration',
+    dp_h_status:'Status',
+    dp_h_int:'Integration',
+    dp_h_existing:'Existing',
+    dp_h_new:'New',
+    dp_h_after:'After',
+    dp_h_cap:'Limit',
+    dp_print_hint:'Press Ctrl+P to print or save as PDF.',
     dep_btn_migrate:'Migrate selected and continue',
     dep_can_migrate:'CAN BE MIGRATED NOW',
     dep_manual:'MUST BE CREATED MANUALLY',
@@ -3149,7 +3252,7 @@ const LANGS = {
     help_flows:'Fetch, search and filter the environment\'s flows. When several environments share an org, only this environment\'s own are shown.\n• Filter by **flow type** — the list is populated from the types the environment actually has.\n• **Publish** puts an already-migrated draft live without fetching anything from the source again. For a common module, you are then offered to republish the flows that use it.\n• **Common modules are checked** every time the list is fetched: if a module was published **after** a flow that uses it, the flow still runs the old version. This is shown in a yellow box with a button to republish them, and the rows are marked ⚠.\n• **🔁 Users** on a common module lists every flow that uses it.\n• **⇄ Compare** against another org compares **content**, not version numbers.\n• **📌 Set baseline** records what the org holds now, so the tool can later catch someone publishing directly — even for flows it never migrated itself.',
     help_cross:'Shows the flows that exist at **more than one customer** — the same common module at ten customers, say.\n• The overview rests on one call per customer and is therefore quick.\n• **⇄ Compare content** exports the flow from each customer and compares the hash. That takes time, so it runs only for the row you ask for.\n• If an org could not be read, it says so — it **never** reports "identical" when an answer is missing.',
     help_migrate:'Export from one org and import straight into another, in two phases.\n• **Check** — the flow is exported and the target org is examined for everything it references. Nothing is written yet.\n• **Import** — only after your choice. If something is missing, tables, data actions and common modules can be migrated before the flow.\n• If the target has a **prefix** or a different **division**, the flow and its references are renamed on the way.\n• **Import action** follows the target: anything but prod is published by default so it is live at once. Prod is left as a draft for you to publish.\n• Writing to **prod** requires your prod login with the permission — you are offered to log in if it is missing.\n• When a **common module** is migrated, you are offered to republish the flows in the target that use it.\n• Queues, skills, wrap-up codes and scripts must be created manually — they cannot be migrated.\n• If the flow uses a **Function Data Action** that is missing in the target, the promotion is **blocked** until it has been created in Genesys. Press **Check again** once it exists.\n• If a **data action** has a different name in the target — say another integration — the flow\'s data actions are listed and you choose which one in the target they should point at. The choice is saved for next time.',
-    help_dataactions:'Migrates what is not a flow: **Data Actions**, **Data Tables** and **User Prompts**.\n• Data Actions belong to an integration. Pick the source integration and only its actions are shown, so the grouping is kept in the target.\n• Data Tables migrate the **structure** — the columns. The rows do not come along.\n• User Prompts bring both the TTS text and recorded audio. Prompts with audio are marked 🔊.\n• **Function Data Actions cannot be migrated** — their URL is an id for a function that exists only in the source org.\n• The **Full check** tab sets every data action in the source against the target org by category and name: *match*, *saved choice*, *to choose*, *missing* and *FDA missing*. Here you can point an action at the one it is called in the target, save or remove the choice, and check that the contracts (input and output) agree.',
+    help_dataactions:'Migrates what is not a flow: **Data Actions**, **Data Tables** and **User Prompts**.\n• Data Actions belong to an integration. Pick the source integration and only its actions are shown, so the grouping is kept in the target.\n• Data Tables migrate the **structure** — the columns. The rows do not come along.\n• User Prompts bring both the TTS text and recorded audio. Prompts with audio are marked 🔊.\n• **Function Data Actions cannot be migrated** — their URL is an id for a function that exists only in the source org.\n• The **Full check** tab sets every data action in the source against the target org by category and name: *match*, *saved choice*, *to choose*, *missing* and *FDA missing*. Here you can point an action at the one it is called in the target, save or remove the choice, and check that the contracts (input and output) agree.\n• The **Setup proposal** tab proposes which active integrations in the target the missing data actions should live in, based on where there is room (you enter the limit per integration). A source integration\'s actions are kept together where possible. A group can be moved, and the proposal exported to Excel or a printable page for the customer.',
     help_export:'Exports flows to YAML files on this machine.\n• Choose an environment — its flows are listed at once. When several environments share an org, only this one\'s own are shown.\n• Type to filter. `*` shows all, and a star inside the text is a wildcard: `DEV_*log` finds DEV_Create Logitems.\n• The type is set automatically when you pick the flow.\n• **Export All Flows** fetches the whole environment with a progress indicator and can be cancelled.\n• Files land under `flows/<environment>/` and are also used by migration and comparison.',
     help_import:'Create, update or publish a flow from YAML.\n• Paste the text, upload a file or drag it in.\n• **🔍 Validate YAML** checks the syntax in the browser without calling anything.\n• **🌐 Check against org** looks up whether division, queues, tables, data actions and prompts exist in the target — **before** you import.\n• **Import action** chooses whether the flow is created, updated, or created and published.\n• When you publish a **common module**, you are then offered to republish the flows that use it.\n• Importing to **prod** requires your prod login with the permission.',
     wiz_beta_note:'Beta — always check the YAML with 🔍 Validate YAML and 🌐 Check against org before importing.',
@@ -3526,6 +3629,51 @@ const LANGS = {
     dc_fda_manual:'Function Data Action : à créer manuellement dans la cible.',
     dc_more:'Affichage des {n} premières. Utilisez la recherche ou un filtre pour voir le reste.',
     dc_migrate_note:'Les actions manquantes se migrent dans l\'onglet Data Actions.',
+    da_tab_plan:'Proposition de setup',
+    dp_title:'PROPOSITION DE SETUP DES DATA ACTIONS',
+    dp_intro:'Propose dans quelles intégrations de l\'org cible placer les data actions manquantes, selon la place disponible. Déplacez des éléments dans la proposition et exportez-la pour le client.',
+    dp_cap_label:'Maximum par intégration',
+    dp_run:'Faire une proposition',
+    dp_t_place:'À placer',
+    dp_t_choose:'À choisir',
+    dp_t_fda:'FDA à la main',
+    dp_t_there:'Déjà présentes',
+    dp_export_csv:'Exporter vers Excel',
+    dp_export_print:'Page imprimable',
+    dp_sec_ints:'INTÉGRATIONS DE L\'ORG CIBLE',
+    dp_sec_groups:'PROPOSITION PAR GROUPE SOURCE',
+    dp_sec_manual:'FUNCTION DATA ACTIONS — À CRÉER MANUELLEMENT',
+    dp_inactive:'{n} intégrations inactives ne sont jamais proposées',
+    dp_st_ok:'place',
+    dp_st_near:'presque pleine',
+    dp_st_over:'limite dépassée',
+    dp_g_whole:'ensemble',
+    dp_g_split:'réparti',
+    dp_g_nointeg:'pas d\'intégration',
+    dp_g_nocap:'pas de place',
+    dp_g_chosen:'choisi',
+    dp_auto:'Proposition',
+    dp_unplaced:'{n} sans place',
+    dp_new_int:'Créez dans Genesys une intégration active nommée {name}, avec un credential, puis refaites la proposition.',
+    dp_actions:'actions',
+    dp_none:'Aucune data action à placer.',
+    dp_note_cred:'La limite par intégration est le nombre saisi ; Archy ne la connaît pas. Les credentials des intégrations ne sont pas vérifiés.',
+    dp_s_new:'Nouvelle',
+    dp_s_nointeg:'Pas d\'intégration dans la cible',
+    dp_s_nocap:'Pas de place',
+    dp_s_fda:'Function Data Action : à créer à la main',
+    dp_s_choose:'Existe sous une autre catégorie : choisir dans le contrôle complet',
+    dp_h_srcint:'Intégration source',
+    dp_h_action:'Data action',
+    dp_h_srccat:'Catégorie dans la source',
+    dp_h_tgtint:'Intégration cible',
+    dp_h_status:'Statut',
+    dp_h_int:'Intégration',
+    dp_h_existing:'Existantes',
+    dp_h_new:'Nouvelles',
+    dp_h_after:'Après',
+    dp_h_cap:'Limite',
+    dp_print_hint:'Appuyez sur Ctrl+P pour imprimer ou enregistrer en PDF.',
     dep_btn_migrate:'Migrer la sélection et continuer',
     dep_can_migrate:'PEUT ÊTRE MIGRÉ MAINTENANT',
     dep_manual:'À CRÉER MANUELLEMENT',
@@ -4051,7 +4199,7 @@ const LANGS = {
     help_flows:'Récupérer, chercher et filtrer les flows de l\'environnement. Si plusieurs environnements partagent une org, seuls les siens sont affichés.\n• Filtrez par **type de flow** — la liste reprend les types réellement présents.\n• **Publier** met en service un brouillon déjà migré. Pour un common module, on vous propose ensuite de republier les flows qui l\'utilisent.\n• **Les common modules sont vérifiés** à chaque chargement : un module publié **après** un flow qui l\'utilise signifie que le flow tourne encore sur l\'ancienne version. C\'est signalé dans un encadré jaune avec un bouton pour les republier, et les lignes sont marquées ⚠.\n• **🔁 Utilisateurs** sur un common module liste tous les flows qui l\'utilisent.\n• **⇄ Comparer** avec une autre org compare le **contenu**, pas les numéros de version.\n• **📌 Point zéro** enregistre l\'état actuel de l\'org, pour repérer ensuite les publications directes.',
     help_cross:'Montre les flows présents chez **plusieurs clients** — par exemple le même common module chez dix clients.\n• La vue repose sur un appel par client et est donc rapide.\n• **⇄ Comparer le contenu** exporte le flow chez chaque client et compare l\'empreinte. C\'est long, donc réservé à la ligne demandée.\n• Si une org n\'a pas pu être lue, c\'est dit — il n\'affiche **jamais** « identique » quand une réponse manque.',
     help_migrate:'Export depuis une org et import direct dans une autre, en deux phases.\n• **Vérification** — le flow est exporté et l\'org cible examinée pour tout ce qu\'il référence. Rien n\'est encore écrit.\n• **Import** — seulement après votre choix. S\'il manque quelque chose, tables, data actions et common modules peuvent être migrés avant le flow.\n• Si la cible a un **préfixe** ou une autre **division**, le flow et ses références sont renommés au passage.\n• **Action d\'import** selon la cible : tout sauf prod est publié par défaut. Prod reste en brouillon, à publier vous-même.\n• Écrire en **prod** exige votre connexion prod avec la permission — on vous propose de vous connecter si elle manque.\n• Si un **common module** est migré, on vous propose de republier les flows de la cible qui l\'utilisent.\n• Files, skills, codes de wrap-up et scripts doivent être créés manuellement.\n• Si le flow utilise une **Function Data Action** absente de la cible, la promotion est **bloquée** tant qu\'elle n\'est pas créée dans Genesys. Appuyez sur **Revérifier** une fois qu\'elle existe.\n• Si une **data action** porte un autre nom dans la cible — par exemple une autre intégration — les data actions du flow sont listées et vous choisissez celle de la cible vers laquelle elles pointent. Le choix est mémorisé pour la prochaine fois.',
-    help_dataactions:'Migre ce qui n\'est pas un flow : **Data Actions**, **tables de données** et **prompts utilisateur**.\n• Les Data Actions appartiennent à une intégration. Choisissez l\'intégration source : seules ses actions sont affichées et le regroupement est conservé.\n• Les tables de données migrent la **structure** — les colonnes. Les lignes ne suivent pas.\n• Les prompts emportent le texte TTS et l\'audio enregistré. Ceux avec audio sont marqués 🔊.\n• **Les Function Data Actions ne peuvent pas être migrées** — leur URL est l\'id d\'une fonction qui n\'existe que dans l\'org source.\n• L\'onglet **Contrôle complet** compare chaque data action de la source à l\'org cible par catégorie et nom : *identiques*, *choix enregistré*, *à choisir*, *manquantes* et *FDA manquantes*. Vous pouvez y faire pointer une action vers son nom dans la cible, enregistrer ou retirer le choix, et vérifier que les contrats (entrée et sortie) concordent.',
+    help_dataactions:'Migre ce qui n\'est pas un flow : **Data Actions**, **tables de données** et **prompts utilisateur**.\n• Les Data Actions appartiennent à une intégration. Choisissez l\'intégration source : seules ses actions sont affichées et le regroupement est conservé.\n• Les tables de données migrent la **structure** — les colonnes. Les lignes ne suivent pas.\n• Les prompts emportent le texte TTS et l\'audio enregistré. Ceux avec audio sont marqués 🔊.\n• **Les Function Data Actions ne peuvent pas être migrées** — leur URL est l\'id d\'une fonction qui n\'existe que dans l\'org source.\n• L\'onglet **Contrôle complet** compare chaque data action de la source à l\'org cible par catégorie et nom : *identiques*, *choix enregistré*, *à choisir*, *manquantes* et *FDA manquantes*. Vous pouvez y faire pointer une action vers son nom dans la cible, enregistrer ou retirer le choix, et vérifier que les contrats (entrée et sortie) concordent.\n• L\'onglet **Proposition de setup** propose dans quelles intégrations actives de la cible placer les data actions manquantes, selon la place disponible (vous indiquez la limite par intégration). Les actions d\'une intégration source restent ensemble quand c\'est possible. Un groupe peut être déplacé, et la proposition exportée vers Excel ou en page imprimable pour le client.',
     help_export:'Exporte les flows en fichiers YAML sur cette machine.\n• Choisissez un environnement — ses flows sont listés aussitôt. Si plusieurs environnements partagent une org, seuls les siens sont affichés.\n• Tapez pour filtrer. `*` affiche tout, et une étoile dans le texte est un joker : `DEV_*log` trouve DEV_Create Logitems.\n• Le type est défini automatiquement quand vous choisissez le flow.\n• **Exporter tous les flows** récupère tout l\'environnement avec une progression et peut être interrompu.\n• Les fichiers arrivent sous `flows/<environnement>/` et servent aussi à la migration et à la comparaison.',
     help_import:'Créer, mettre à jour ou publier un flow à partir de YAML.\n• Collez le texte, téléversez un fichier ou glissez-le.\n• **🔍 Valider YAML** vérifie la syntaxe dans le navigateur sans rien appeler.\n• **🌐 Vérifier dans l\'org** contrôle que division, files, tables, data actions et prompts existent dans la cible — **avant** l\'import.\n• **Action d\'import** choisit de créer, mettre à jour, ou créer et publier.\n• Si vous publiez un **common module**, on vous propose ensuite de republier les flows qui l\'utilisent.\n• Importer en **prod** exige votre connexion prod avec la permission.',
     wiz_beta_note:'Bêta — vérifiez toujours le YAML avec 🔍 Valider YAML et 🌐 Vérifier dans l\'org avant d\'importer.',
@@ -4428,6 +4576,51 @@ const LANGS = {
     dc_fda_manual:'Function Data Action: handmatig aanmaken in het doel.',
     dc_more:'De eerste {n} worden getoond. Gebruik zoeken of een filter voor de rest.',
     dc_migrate_note:'Ontbrekende acties migreer je op het tabblad Data Actions.',
+    da_tab_plan:'Setupvoorstel',
+    dp_title:'SETUPVOORSTEL VOOR DATA ACTIONS',
+    dp_intro:'Stelt voor in welke integraties van de doel-org de ontbrekende data actions komen, op basis van waar ruimte is. Schuif in het voorstel en exporteer het voor de klant.',
+    dp_cap_label:'Maximaal per integratie',
+    dp_run:'Voorstel maken',
+    dp_t_place:'Te plaatsen',
+    dp_t_choose:'Te kiezen',
+    dp_t_fda:'FDA handmatig',
+    dp_t_there:'Bestaan al',
+    dp_export_csv:'Exporteren naar Excel',
+    dp_export_print:'Afdrukbare pagina',
+    dp_sec_ints:'INTEGRATIES IN DE DOEL-ORG',
+    dp_sec_groups:'VOORSTEL PER BRONGROEP',
+    dp_sec_manual:'FUNCTION DATA ACTIONS — HANDMATIG AANMAKEN',
+    dp_inactive:'{n} inactieve integraties worden nooit voorgesteld',
+    dp_st_ok:'ruimte',
+    dp_st_near:'bijna vol',
+    dp_st_over:'over de grens',
+    dp_g_whole:'samen',
+    dp_g_split:'gesplitst',
+    dp_g_nointeg:'geen integratie',
+    dp_g_nocap:'geen ruimte',
+    dp_g_chosen:'gekozen',
+    dp_auto:'Voorstel',
+    dp_unplaced:'{n} zonder ruimte',
+    dp_new_int:'Maak in Genesys een actieve integratie met de naam {name} aan, met een credential, en maak het voorstel opnieuw.',
+    dp_actions:'actions',
+    dp_none:'Er zijn geen data actions om te plaatsen.',
+    dp_note_cred:'De grens per integratie is het getal dat je hebt ingevoerd; Archy kent hem niet. Credentials van de integraties worden niet gecontroleerd.',
+    dp_s_new:'Nieuw',
+    dp_s_nointeg:'Geen integratie in het doel',
+    dp_s_nocap:'Geen ruimte',
+    dp_s_fda:'Function Data Action: handmatig aanmaken',
+    dp_s_choose:'Bestaat onder een andere categorie: kies in de volledige controle',
+    dp_h_srcint:'Broneintegratie',
+    dp_h_action:'Data action',
+    dp_h_srccat:'Categorie in de bron',
+    dp_h_tgtint:'Doelintegratie',
+    dp_h_status:'Status',
+    dp_h_int:'Integratie',
+    dp_h_existing:'Bestaand',
+    dp_h_new:'Nieuw',
+    dp_h_after:'Daarna',
+    dp_h_cap:'Grens',
+    dp_print_hint:'Druk op Ctrl+P om af te drukken of als PDF op te slaan.',
     dep_btn_migrate:'Migreer selectie en ga door',
     dep_can_migrate:'KAN NU GEMIGREERD WORDEN',
     dep_manual:'MOET HANDMATIG WORDEN AANGEMAAKT',
@@ -4953,7 +5146,7 @@ const LANGS = {
     help_flows:'Flows van de omgeving ophalen, zoeken en filteren. Delen meerdere omgevingen een org, dan worden alleen de eigen getoond.\n• Filter op **flowtype** — de lijst wordt gevuld met de types die de omgeving echt heeft.\n• **Publiceren** zet een al gemigreerd concept live. Bij een common module krijg je daarna aangeboden de flows die hem gebruiken opnieuw te publiceren.\n• **Common modules worden gecontroleerd** bij elke keer ophalen: is een module **na** een flow die hem gebruikt gepubliceerd, dan draait die flow nog op de oude versie. Dat staat in een geel vak met een knap om ze opnieuw te publiceren, en de rijen zijn gemarkeerd met ⚠.\n• **🔁 Gebruikers** op een common module toont alle flows die hem gebruiken.\n• **⇄ Vergelijken** met een andere org vergelijkt de **inhoud**, niet de versienummers.\n• **📌 Nulpunt** legt vast wat de org nu bevat, zodat directe publicaties later opvallen.',
     help_cross:'Toont de flows die bij **meerdere klanten** bestaan — bijvoorbeeld dezelfde common module bij tien klanten.\n• Het overzicht steunt op één aanroep per klant en is dus snel.\n• **⇄ Inhoud vergelijken** exporteert de flow bij elke klant en vergelijkt de hash. Dat kost tijd, dus alleen voor de rij die je vraagt.\n• Kon een org niet gelezen worden, dan wordt dat gezegd — er staat **nooit** "identiek" als een antwoord ontbreekt.',
     help_migrate:'Export uit één org en import direct in een andere, in twee fasen.\n• **Controle** — de flow wordt geëxporteerd en de doel-org onderzocht op alles waarnaar hij verwijst. Er wordt nog niets geschreven.\n• **Import** — pas na jouw keuze. Ontbreekt er iets, dan kunnen tabellen, data actions en common modules eerst mee.\n• Heeft het doel een **voorvoegsel** of een andere **divisie**, dan worden de flow en zijn verwijzingen onderweg hernoemd.\n• **Importactie** volgt het doel: alles behalve prod wordt standaard gepubliceerd. Prod blijft een concept dat je zelf publiceert.\n• Schrijven naar **prod** vereist je prod-login met de permissie — je krijgt aangeboden in te loggen als die ontbreekt.\n• Wordt een **common module** gemigreerd, dan krijg je aangeboden de flows in het doel die hem gebruiken opnieuw te publiceren.\n• Wachtrijen, skills, wrap-up-codes en scripts moeten handmatig worden aangemaakt.\n• Gebruikt de flow een **Function Data Action** die in het doel ontbreekt, dan wordt de promotie **geblokkeerd** tot ze in Genesys is aangemaakt. Druk op **Opnieuw controleren** zodra ze bestaat.\n• Heet een **data action** in het doel anders — bijvoorbeeld een andere integratie — dan worden de data actions van de flow getoond en kies je naar welke in het doel ze verwijzen. De keuze wordt bewaard voor de volgende keer.',
-    help_dataactions:'Migreert wat geen flow is: **Data Actions**, **datatables** en **user prompts**.\n• Data Actions horen bij een integratie. Kies de bronintegratie en alleen die acties worden getoond, zodat de groepering in het doel blijft.\n• Datatables migreren de **structuur** — de kolommen. De rijen gaan niet mee.\n• User prompts nemen zowel de TTS-tekst als opgenomen audio mee. Prompts met audio zijn gemarkeerd met 🔊.\n• **Function Data Actions kunnen niet gemigreerd worden** — hun URL is een id van een functie die alleen in de bronorg bestaat.\n• Het tabblad **Volledige controle** zet elke data action in de bron naast de doel-org op categorie en naam: *gelijk*, *bewaarde keuze*, *te kiezen*, *ontbreekt* en *FDA ontbreekt*. Hier verwijs je een actie naar de naam in het doel, bewaar of verwijder je de keuze en controleer je of de contracten (invoer en uitvoer) kloppen.',
+    help_dataactions:'Migreert wat geen flow is: **Data Actions**, **datatables** en **user prompts**.\n• Data Actions horen bij een integratie. Kies de bronintegratie en alleen die acties worden getoond, zodat de groepering in het doel blijft.\n• Datatables migreren de **structuur** — de kolommen. De rijen gaan niet mee.\n• User prompts nemen zowel de TTS-tekst als opgenomen audio mee. Prompts met audio zijn gemarkeerd met 🔊.\n• **Function Data Actions kunnen niet gemigreerd worden** — hun URL is een id van een functie die alleen in de bronorg bestaat.\n• Het tabblad **Volledige controle** zet elke data action in de bron naast de doel-org op categorie en naam: *gelijk*, *bewaarde keuze*, *te kiezen*, *ontbreekt* en *FDA ontbreekt*. Hier verwijs je een actie naar de naam in het doel, bewaar of verwijder je de keuze en controleer je of de contracten (invoer en uitvoer) kloppen.\n• Het tabblad **Setupvoorstel** stelt voor in welke actieve integraties van het doel de ontbrekende data actions komen, op basis van waar ruimte is (je voert de grens per integratie in). De actions van een bronintegratie blijven waar mogelijk samen. Een groep kan worden verplaatst en het voorstel kan naar Excel of een afdrukbare pagina voor de klant worden geëxporteerd.',
     help_export:'Exporteert flows naar YAML-bestanden op deze machine.\n• Kies een omgeving — de flows worden meteen getoond. Delen meerdere omgevingen een org, dan alleen de eigen.\n• Typ om te filteren. `*` toont alles, en een ster in de tekst is een jokerteken: `DEV_*log` vindt DEV_Create Logitems.\n• Het type wordt automatisch gezet als je de flow kiest.\n• **Alle flows exporteren** haalt de hele omgeving op met voortgang en kan worden afgebroken.\n• Bestanden komen in `flows/<omgeving>/` en worden ook gebruikt voor migratie en vergelijking.',
     help_import:'Een flow aanmaken, bijwerken of publiceren vanuit YAML.\n• Plak de tekst, upload een bestand of sleep het erin.\n• **🔍 YAML valideren** controleert de syntaxis in de browser zonder iets aan te roepen.\n• **🌐 Controleren tegen org** kijkt of divisie, wachtrijen, tabellen, data actions en prompts in het doel bestaan — **voordat** je importeert.\n• **Importactie** kiest aanmaken, bijwerken, of aanmaken en publiceren.\n• Publiceer je een **common module**, dan krijg je daarna aangeboden de flows die hem gebruiken opnieuw te publiceren.\n• Importeren naar **prod** vereist je prod-login met de permissie.',
     wiz_beta_note:'Bèta — controleer de YAML altijd met 🔍 YAML valideren en 🌐 Controleren tegen org voordat je importeert.',
@@ -5330,6 +5523,51 @@ const LANGS = {
     dc_fda_manual:'Function Data Action: debe crearse a mano en el destino.',
     dc_more:'Se muestran las primeras {n}. Use la búsqueda o un filtro para ver el resto.',
     dc_migrate_note:'Las acciones que faltan se migran en la pestaña Data Actions.',
+    da_tab_plan:'Propuesta de setup',
+    dp_title:'PROPUESTA DE SETUP DE DATA ACTIONS',
+    dp_intro:'Propone en qué integraciones de la org de destino deben ir las data actions que faltan, según dónde haya sitio. Mueva cosas en la propuesta y expórtela para el cliente.',
+    dp_cap_label:'Máximo por integración',
+    dp_run:'Hacer propuesta',
+    dp_t_place:'Por colocar',
+    dp_t_choose:'Por elegir',
+    dp_t_fda:'FDA a mano',
+    dp_t_there:'Ya existen',
+    dp_export_csv:'Exportar a Excel',
+    dp_export_print:'Página imprimible',
+    dp_sec_ints:'INTEGRACIONES EN LA ORG DE DESTINO',
+    dp_sec_groups:'PROPUESTA POR GRUPO DE ORIGEN',
+    dp_sec_manual:'FUNCTION DATA ACTIONS — SE CREAN A MANO',
+    dp_inactive:'Nunca se proponen {n} integraciones inactivas',
+    dp_st_ok:'hay sitio',
+    dp_st_near:'casi llena',
+    dp_st_over:'sobre el límite',
+    dp_g_whole:'juntas',
+    dp_g_split:'repartidas',
+    dp_g_nointeg:'sin integración',
+    dp_g_nocap:'sin sitio',
+    dp_g_chosen:'elegido',
+    dp_auto:'Propuesta',
+    dp_unplaced:'{n} sin sitio',
+    dp_new_int:'Cree en Genesys una integración activa llamada {name}, con credencial, y haga la propuesta de nuevo.',
+    dp_actions:'acciones',
+    dp_none:'No hay data actions que colocar.',
+    dp_note_cred:'El límite por integración es el número que ha introducido; Archy no lo conoce. No se comprueban las credenciales de las integraciones.',
+    dp_s_new:'Nueva',
+    dp_s_nointeg:'Sin integración en el destino',
+    dp_s_nocap:'Sin sitio',
+    dp_s_fda:'Function Data Action: se crea a mano',
+    dp_s_choose:'Existe en otra categoría: elegir en la comprobación total',
+    dp_h_srcint:'Integración de origen',
+    dp_h_action:'Data action',
+    dp_h_srccat:'Categoría en el origen',
+    dp_h_tgtint:'Integración de destino',
+    dp_h_status:'Estado',
+    dp_h_int:'Integración',
+    dp_h_existing:'Existentes',
+    dp_h_new:'Nuevas',
+    dp_h_after:'Después',
+    dp_h_cap:'Límite',
+    dp_print_hint:'Pulse Ctrl+P para imprimir o guardar como PDF.',
     dep_btn_migrate:'Migrar seleccionados y continuar',
     dep_can_migrate:'SE PUEDE MIGRAR AHORA',
     dep_manual:'DEBE CREARSE MANUALMENTE',
@@ -5855,7 +6093,7 @@ const LANGS = {
     help_flows:'Obtener, buscar y filtrar los flows del entorno. Si varios entornos comparten una org, solo se muestran los propios.\n• Filtre por **tipo de flow** — la lista se llena con los tipos que el entorno tiene realmente.\n• **Publicar** pone en producción un borrador ya migrado. Si es un common module, se le ofrece después volver a publicar los flows que lo usan.\n• **Los common modules se comprueban** cada vez que se carga la lista: si un módulo se publicó **después** de un flow que lo usa, el flow sigue con la versión antigua. Se indica en un recuadro amarillo con un botón para volver a publicarlos, y las filas se marcan con ⚠.\n• **🔁 Usuarios** en un common module lista todos los flows que lo usan.\n• **⇄ Comparar** con otra org compara el **contenido**, no los números de versión.\n• **📌 Punto cero** registra lo que contiene la org ahora, para detectar después publicaciones directas.',
     help_cross:'Muestra los flows presentes en **varios clientes**, por ejemplo el mismo common module en diez clientes.\n• La vista se basa en una llamada por cliente, así que es rápida.\n• **⇄ Comparar contenido** exporta el flow de cada cliente y compara el hash. Lleva tiempo, así que solo se hace en la fila que pida.\n• Si una org no se pudo leer, se dice: **nunca** informa «idéntico» cuando falta una respuesta.',
     help_migrate:'Exportación desde una org e importación directa en otra, en dos fases.\n• **Comprobación** — se exporta el flow y se examina la org de destino por todo lo que referencia. Aún no se escribe nada.\n• **Importación** — solo tras su elección. Si falta algo, tablas, data actions y common modules pueden migrarse antes del flow.\n• Si el destino tiene un **prefijo** u otra **división**, el flow y sus referencias se renombran por el camino.\n• **Acción de importación** según el destino: todo salvo prod se publica por defecto. Prod queda como borrador que publica usted.\n• Escribir en **prod** exige su inicio de sesión de prod con el permiso — se le ofrece iniciar sesión si falta.\n• Si se migra un **common module**, se le ofrece volver a publicar los flows del destino que lo usan.\n• Colas, skills, códigos de wrap-up y scripts deben crearse manualmente.\n• Si el flow usa una **Function Data Action** que falta en el destino, la promoción queda **bloqueada** hasta que se cree en Genesys. Pulse **Comprobar de nuevo** cuando exista.\n• Si una **data action** tiene otro nombre en el destino — por ejemplo otra integración — se listan las data actions del flow y usted elige a cuál del destino apuntan. La elección se guarda para la próxima vez.',
-    help_dataactions:'Migra lo que no es un flow: **Data Actions**, **tablas de datos** y **prompts de usuario**.\n• Las Data Actions pertenecen a una integración. Elija la integración de origen y solo se mostrarán sus acciones, conservando la agrupación.\n• Las tablas de datos migran la **estructura**: las columnas. Las filas no se llevan.\n• Los prompts llevan tanto el texto TTS como el audio grabado. Los que tienen audio están marcados con 🔊.\n• **Las Function Data Actions no se pueden migrar**: su URL es un id de una función que solo existe en la org de origen.\n• La pestaña **Comprobación total** compara cada data action del origen con la org de destino por categoría y nombre: *coinciden*, *elección guardada*, *por elegir*, *faltan* y *FDA que faltan*. Aquí puede apuntar una acción al nombre que tiene en el destino, guardar o quitar la elección y comprobar que los contratos (entrada y salida) coinciden.',
+    help_dataactions:'Migra lo que no es un flow: **Data Actions**, **tablas de datos** y **prompts de usuario**.\n• Las Data Actions pertenecen a una integración. Elija la integración de origen y solo se mostrarán sus acciones, conservando la agrupación.\n• Las tablas de datos migran la **estructura**: las columnas. Las filas no se llevan.\n• Los prompts llevan tanto el texto TTS como el audio grabado. Los que tienen audio están marcados con 🔊.\n• **Las Function Data Actions no se pueden migrar**: su URL es un id de una función que solo existe en la org de origen.\n• La pestaña **Comprobación total** compara cada data action del origen con la org de destino por categoría y nombre: *coinciden*, *elección guardada*, *por elegir*, *faltan* y *FDA que faltan*. Aquí puede apuntar una acción al nombre que tiene en el destino, guardar o quitar la elección y comprobar que los contratos (entrada y salida) coinciden.\n• La pestaña **Propuesta de setup** propone en qué integraciones activas del destino deben ir las data actions que faltan, según dónde haya sitio (usted indica el límite por integración). Las acciones de una integración de origen se mantienen juntas cuando es posible. Un grupo se puede mover y la propuesta se exporta a Excel o a una página imprimible para el cliente.',
     help_export:'Exporta flows a archivos YAML en esta máquina.\n• Elija un entorno — sus flows se listan al instante. Si varios entornos comparten una org, solo se muestran los propios.\n• Escriba para filtrar. `*` muestra todos, y un asterisco dentro del texto es un comodín: `DEV_*log` encuentra DEV_Create Logitems.\n• El tipo se fija automáticamente al elegir el flow.\n• **Exportar todos los flows** obtiene todo el entorno con progreso y se puede cancelar.\n• Los archivos quedan en `flows/<entorno>/` y también se usan en migración y comparación.',
     help_import:'Crear, actualizar o publicar un flow a partir de YAML.\n• Pegue el texto, suba un archivo o arrástrelo.\n• **🔍 Validar YAML** comprueba la sintaxis en el navegador sin llamar a nada.\n• **🌐 Comprobar en la org** mira si división, colas, tablas, data actions y prompts existen en el destino — **antes** de importar.\n• **Acción de importación** elige crear, actualizar, o crear y publicar.\n• Si publica un **common module**, se le ofrece después volver a publicar los flows que lo usan.\n• Importar a **prod** exige su inicio de sesión de prod con el permiso.',
     wiz_beta_note:'Beta — compruebe siempre el YAML con 🔍 Validar YAML y 🌐 Comprobar en la org antes de importar.',
@@ -10183,6 +10421,9 @@ function daSetTab(tab) {
   document.getElementById('da-tab-prompts').classList.toggle('active', tab === 'prompts');
   document.getElementById('da-tab-check').classList.toggle('active',   tab === 'check');
   document.getElementById('da-check-card').style.display = tab === 'check' ? 'block' : 'none';
+  document.getElementById('da-tab-plan').classList.toggle('active', tab === 'plan');
+  document.getElementById('da-plan-card').style.display = tab === 'plan' ? 'block' : 'none';
+  if (tab === 'plan') { try { const c = localStorage.getItem('archy.dpCapacity'); if (c) document.getElementById('dp-cap').value = c; } catch (_) {} }
   // Integrationsvælgerne giver kun mening for actions
   const io = document.getElementById('da-actions-only');
   if (io) io.style.display = tab === 'actions' ? '' : 'none';
@@ -10368,6 +10609,177 @@ async function dcContractsRun() {
     for (const x of r.results) dcContracts[x.source] = x;
   }
   dcRender();
+}
+
+// ── Setup-forslag: hvor skal de nye data actions hen? ────────────────────────
+// Forslaget kommer fra serveren; her kan man flytte en gruppe til en anden
+// integration og se kapaciteten ændre sig, og så eksportere det til kunden.
+let dpData = null, dpOverrides = {};
+const dpKey = p => p.integrationType + '\u0001' + p.integrationName;
+
+function dpMsg(html) { document.getElementById('dp-body').innerHTML = html; }
+
+async function dpRun() {
+  const sourceId = document.getElementById('da-source').value;
+  const targetId = document.getElementById('da-target').value;
+  if (!sourceId || !targetId) return dpMsg(dcNote('yellow', t('dc_pick_both')));
+  if (sourceId === targetId) return dpMsg(dcNote('yellow', t('da_err_same')));
+  const capacity = parseInt(document.getElementById('dp-cap').value, 10) || 100;
+  try { localStorage.setItem('archy.dpCapacity', String(capacity)); } catch (_) {}
+  dpMsg(`<div style="color:var(--muted);font-size:12px"><span class="spin"></span> ${t('dc_running')}</div>`);
+  let r;
+  try {
+    r = await fetch('/api/data-actions/plan', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sourceId, targetId, capacity }) }).then(x => x.json());
+  } catch (e) { r = { error: e.message }; }
+  if (r.error) return dpMsg(dcNote('red', r.error));
+  if (r.sameOrg) return dpMsg(dcNote('yellow', t('dc_same_org')));
+  dpData = r; dpOverrides = {};
+  dpData.srcName = (customers.find(c => c.id === sourceId) || {}).name || '';
+  dpData.tgtName = (customers.find(c => c.id === targetId) || {}).name || '';
+  dpRender();
+}
+
+function dpSetOverride(i, v) {
+  const k = dpKey(dpData.placements[i]);
+  if (v) dpOverrides[k] = v; else delete dpOverrides[k];
+  dpRender();
+}
+
+// Hvor en gruppes actions ender: brugerens valg, ellers forslaget.
+function dpAllocs(p) {
+  const o = dpOverrides[dpKey(p)];
+  if (o) {
+    const i = dpData.integrations.find(x => x.id === o);
+    return { allocs: [{ integrationId: o, integrationName: i ? i.name : '', count: p.count }], unplaced: 0, chosen: true };
+  }
+  return { allocs: p.allocations.map(a => ({ integrationId: a.integrationId, integrationName: a.integrationName, count: a.actions.length })),
+           unplaced: p.unplaced ? p.unplaced.count : 0, chosen: false };
+}
+
+function dpPlannedByIntegration() {
+  const m = {};
+  for (const p of dpData.placements) for (const a of dpAllocs(p).allocs) m[a.integrationId] = (m[a.integrationId] || 0) + a.count;
+  return m;
+}
+
+function dpStatusOf(p) {
+  const x = dpAllocs(p);
+  if (x.chosen) return { key: 'dp_g_chosen', cls: 'ac' };
+  if (x.unplaced) return { key: p.unplaced.reason === 'no-integration' ? 'dp_g_nointeg' : 'dp_g_nocap', cls: 'er' };
+  return x.allocs.length > 1 ? { key: 'dp_g_split', cls: 'wa' } : { key: 'dp_g_whole', cls: 'ok' };
+}
+
+function dpRender() {
+  const d = dpData;
+  if (!d) return;
+  const planned = dpPlannedByIntegration();
+  const BG = { ok: 'rgba(46,204,113,.15)', wa: 'rgba(241,196,15,.18)', er: 'rgba(231,76,60,.15)', ac: 'rgba(52,152,219,.15)' };
+  const pill = (cls, text) => `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:${BG[cls]};white-space:nowrap">${escapeHtml(text)}</span>`;
+  const sec = txt => `<div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--muted);margin:18px 0 8px">${escapeHtml(txt)}</div>`;
+  const active = d.integrations.filter(i => i.active).sort((a, b) => a.name.localeCompare(b.name));
+  const inactive = d.integrations.filter(i => !i.active);
+  const sm = d.summary;
+
+  const intRow = i => {
+    const pl = planned[i.id] || 0, tot = i.existing + pl, cap = d.capacity;
+    const pe = Math.min(100, i.existing / cap * 100), pp = Math.min(100 - pe, pl / cap * 100);
+    const cls = tot > cap ? 'er' : tot >= cap * 0.9 ? 'wa' : 'ok';
+    const label = tot > cap ? 'dp_st_over' : tot >= cap * 0.9 ? 'dp_st_near' : 'dp_st_ok';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--border);font-size:13px">
+      <div style="flex:1.2;min-width:0;overflow:hidden;text-overflow:ellipsis">${escapeHtml(i.name)}</div>
+      <div style="flex:1.4;height:8px;border-radius:4px;background:var(--border);display:flex;overflow:hidden">
+        <i style="display:block;width:${pe}%;background:var(--muted)"></i><i style="display:block;width:${pp}%;background:var(--${cls === 'er' ? 'red' : 'accent'})"></i></div>
+      <div style="width:90px;text-align:right;font-family:var(--mono);font-size:12px">${tot} / ${cap}</div>
+      <div style="width:96px;text-align:right">${pill(cls, t(label))}</div></div>`;
+  };
+
+  const groupRow = (p, idx) => {
+    const x = dpAllocs(p), st = dpStatusOf(p);
+    const eligible = active.filter(i => i.type === p.integrationType);
+    const where = x.allocs.map(a => `${a.integrationName} (${a.count})`).join(', ') +
+      (x.unplaced ? (x.allocs.length ? ', ' : '') + t('dp_unplaced').replace('{n}', String(x.unplaced)) : '');
+    const sel = `<select style="width:100%" onchange="dpSetOverride(${idx}, this.value)"><option value="">${t('dp_auto')}</option>` +
+      eligible.map(i => `<option value="${escapeHtml(i.id)}"${dpOverrides[dpKey(p)] === i.id ? ' selected' : ''}>${escapeHtml(i.name)}</option>`).join('') + `</select>`;
+    const hint = p.unplaced && p.unplaced.reason === 'no-integration' && !x.chosen
+      ? `<div style="font-size:11px;color:var(--red);margin-top:4px">${escapeHtml(t('dp_new_int').replace('{name}', p.unplaced.suggestedName))}</div>` : '';
+    return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-top:1px solid var(--border);font-size:13px">
+      <div style="flex:1.1;min-width:0"><div>${escapeHtml(p.integrationName)}</div><div style="font-size:11px;color:var(--muted)">${p.count} ${t('dp_actions')}</div></div>
+      <div style="flex:1.6;min-width:0">${sel}<div style="font-size:11px;color:var(--muted);margin-top:4px">${escapeHtml(where)}</div>${hint}</div>
+      <div style="width:110px;text-align:right">${pill(st.cls, t(st.key))}</div></div>`;
+  };
+
+  dpMsg(
+    `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">` +
+      [[sm.toPlace, 'dp_t_place', '--text'], [sm.choose, 'dp_t_choose', '--yellow'], [sm.fdaMissing, 'dp_t_fda', '--red'], [sm.alreadyThere, 'dp_t_there', '--green']]
+        .map(([n, k, c]) => `<div style="flex:1;min-width:110px;padding:8px 12px;border-radius:8px;border:1px solid var(--border)">
+          <div style="font-size:11px;color:var(--muted)">${t(k)}</div><div style="font-size:20px;font-weight:700;color:var(${c})">${String(n)}</div></div>`).join('') +
+    `</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin:8px 0">
+      <button class="btn btn-secondary btn-sm" onclick="dpExportCsv()">${t('dp_export_csv')}</button>
+      <button class="btn btn-secondary btn-sm" onclick="dpExportPrint()">${t('dp_export_print')}</button></div>` +
+    sec(t('dp_sec_ints')) + active.map(intRow).join('') +
+    (inactive.length ? `<div style="font-size:11px;color:var(--muted);margin-top:8px">${escapeHtml(t('dp_inactive').replace('{n}', String(inactive.length)))}: ${escapeHtml(inactive.map(i => i.name).join(', '))}</div>` : '') +
+    sec(t('dp_sec_groups')) +
+    (d.placements.length ? d.placements.map(groupRow).join('') : `<div style="font-size:12px;color:var(--muted)">${t('dp_none')}</div>`) +
+    (d.manual.length ? sec(t('dp_sec_manual')) + d.manual.map(m =>
+      `<div style="display:flex;gap:10px;padding:6px 0;border-top:1px solid var(--border);font-size:13px"><span style="font-family:var(--mono);font-size:12px;flex:1">${escapeHtml(m.name)}</span><span style="color:var(--muted);font-size:11px">${escapeHtml(m.integrationName)}</span></div>`).join('') : '') +
+    `<div style="font-size:11px;color:var(--muted);margin-top:14px">${t('dp_note_cred')}</div>`);
+}
+
+// Eksport til kunden: kun navne og tal. Ingen id'er, tokens eller secrets.
+function dpRows() {
+  const d = dpData, planned = dpPlannedByIntegration(), out = { actions: [], ints: [] };
+  for (const p of d.placements) {
+    const o = dpOverrides[dpKey(p)];
+    if (o) {
+      const i = d.integrations.find(x => x.id === o);
+      for (const a of p.allocations.flatMap(z => z.actions).concat(p.unplaced ? p.unplaced.actions : []))
+        out.actions.push([p.integrationName, a.name, a.category, i ? i.name : '', t('dp_s_new')]);
+      continue;
+    }
+    for (const al of p.allocations) for (const a of al.actions)
+      out.actions.push([p.integrationName, a.name, a.category, al.integrationName, t('dp_s_new')]);
+    if (p.unplaced) for (const a of p.unplaced.actions)
+      out.actions.push([p.integrationName, a.name, a.category, '', t(p.unplaced.reason === 'no-integration' ? 'dp_s_nointeg' : 'dp_s_nocap')]);
+  }
+  for (const m of d.manual) out.actions.push([m.integrationName, m.name, m.category, '', t('dp_s_fda')]);
+  for (const c of d.choose) out.actions.push(['', c.name, c.category, '', t('dp_s_choose')]);
+  for (const i of d.integrations.filter(x => x.active))
+    out.ints.push([i.name, String(i.existing), String(planned[i.id] || 0), String(i.existing + (planned[i.id] || 0)), String(d.capacity)]);
+  return out;
+}
+
+function dpExportCsv() {
+  const q = v => '"' + String(v).replace(/"/g, '""') + '"';
+  const r = dpRows();
+  const lines = [[t('dp_h_srcint'), t('dp_h_action'), t('dp_h_srccat'), t('dp_h_tgtint'), t('dp_h_status')].map(q).join(';')]
+    .concat(r.actions.map(x => x.map(q).join(';')), [''],
+      [t('dp_h_int'), t('dp_h_existing'), t('dp_h_new'), t('dp_h_after'), t('dp_h_cap')].map(q).join(';'),
+      ...r.ints.map(x => x.map(q).join(';')));
+  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'data-action-setup.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function dpExportPrint() {
+  const r = dpRows(), d = dpData, E = escapeHtml;
+  const tbl = (head, rows) => `<table><thead><tr>${head.map(h => `<th>${E(h)}</th>`).join('')}</tr></thead><tbody>` +
+    rows.map(x => `<tr>${x.map(c => `<td>${E(c)}</td>`).join('')}</tr>`).join('') + `</tbody></table>`;
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${E(t('dp_title'))}</title><style>
+    body{font:13px/1.5 system-ui,sans-serif;margin:32px;color:#111} h1{font-size:20px} h2{font-size:14px;margin:24px 0 6px}
+    table{border-collapse:collapse;width:100%} th,td{border:1px solid #bbb;padding:4px 8px;text-align:left;font-size:12px} th{background:#eee}
+    .m{color:#555;font-size:12px}</style></head><body>
+    <h1>${E(t('dp_title'))}</h1><div class="m">${E(d.srcName)} → ${E(d.tgtName)} · ${E(new Date().toLocaleDateString())} · ${E(t('dp_cap_label'))}: ${d.capacity}</div>
+    <h2>${E(t('dp_sec_ints'))}</h2>${tbl([t('dp_h_int'), t('dp_h_existing'), t('dp_h_new'), t('dp_h_after'), t('dp_h_cap')], r.ints)}
+    <h2>${E(t('dp_sec_groups'))}</h2>${tbl([t('dp_h_srcint'), t('dp_h_action'), t('dp_h_srccat'), t('dp_h_tgtint'), t('dp_h_status')], r.actions)}
+    <p class="m">${E(t('dp_print_hint'))}</p></body></html>`;
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+  window.open(url, '_blank');
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 function daSourceChanged() {
