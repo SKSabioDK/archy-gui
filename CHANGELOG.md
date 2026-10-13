@@ -5,6 +5,19 @@
 
 ---
 
+### v1.55.1
+---
+**🇩🇰 Dansk**
+
+- **Skærmbillederne i README er lavet om.** Den engelske del brugte danske skærmbilleder. Der er nu et sæt på dansk og et på engelsk (`docs/*.da.png` og `docs/*.en.png`) med temaet *Sabio Dark*, taget af den aktuelle version, så de også viser fanerne Totaltjek og Setup-forslag og knappen ✔ Tjek. Åbningsbilledet er flyttet ned i hver sprogs egen del.
+- Ingen kodeændringer.
+
+**🇬🇧 English**
+- **The README screenshots have been redone.** The English part used Danish screenshots. There is now one set in Danish and one in English (`docs/*.da.png` and `docs/*.en.png`) in the *Sabio Dark* theme, taken from the current version, so they also show the Full check and Setup proposal tabs and the ✔ Check button. The opening image has moved down into each language's own part.
+- No code changes.
+
+---
+
 ### v1.55.0
 ---
 **🇩🇰 Dansk**

@@ -1,18 +1,13 @@
-# Archy GUI — Flow Manager · v1.55.0
+# Archy GUI — Flow Manager · v1.55.1
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
-
-![Pipeline med Demo 2](docs/pipeline-demo2.png)
-
-*Pipeline med Demo 2 — det man ser når programmet åbnes. Miljøerne står som kolonner i trin-rækkefølge, flowene som rækker.*
-*Pipeline with Demo 2 — what you see when the app opens. The environments are columns in stage order, the flows are rows.*
 
 ---
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.55.0**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.55.0**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.55.1**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.55.1**.
 
 ---
 
@@ -20,6 +15,10 @@ All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is 
 ## 🇩🇰 Dansk
 
 Et grafisk interface til [Archy](https://help.mypurecloud.com/articles/archy/) med multi-kunde support, flow-migration, Data Action migration og OAuth PKCE login.
+
+![Pipeline med Demo 2](docs/pipeline-demo2.da.png)
+
+*Pipeline med Demo 2 — det man ser når programmet åbnes. Miljøerne står som kolonner i trin-rækkefølge, flowene som rækker.*
 
 ### Krav
 - **Node.js 18+**
@@ -74,7 +73,7 @@ Nye miljøer oprettes altid med **🌐 OAuth (PKCE)**: du logger ind i Genesys s
 
 **Kun import/eksport.** Et miljø uden trin er ikke med i nogen pipeline. Det kan importere og eksportere flows som alle andre, men ArchyGUI opretter ingen tabel og skriver intet i dets org.
 
-<img src="docs/setup-guide.png" alt="Opsætningsguiden for Sabio APS" width="560">
+<img src="docs/setup-guide.da.png" alt="Opsætningsguiden for Sabio APS" width="560">
 
 **Log ind hvor du står.** Mangler et miljø login, kommer der en bjælke øverst med en **Log ind**-knap — på alle sider, ikke kun Kunder — og siden hentes igen bagefter. 🔒 ved miljøet i sidebjælken logger også ind; 🟢 når man er logget ind. Hold musen over 🟢 — eller se login-mærket på kortet — for at se hvilken org man er logget ind i.
 
@@ -161,7 +160,7 @@ Hver celle viser flowets **navn i netop det miljø**, dets publicerede udgave og
 
 **Hver knap siger hvad den gør, før den gør det.** ⟶ Forfrem, ⟵ Hent hertil, ⟵ Hent tilbage, ↩ og ▲ Publicér (demo) åbner en dialog med flowet, fra- og til-miljøet, hvad der sker trin for trin, og hvad man skal passe på: at målet er prod, at målet er publiceret uden om pipelinen eller er flere udgaver foran — så de ændringer går tabt — eller at ⇄ Tjek indhold har fundet en forskel. Man vælger **Udfør** eller **Annullér**. **? Knapperne** i tavlens værktøjslinje forklarer alle knapper.
 
-![Bekræftelse før en forfremmelse](docs/pipeline-confirm.png)
+![Bekræftelse før en forfremmelse](docs/pipeline-confirm.da.png)
 
 *⟶ Forfrem til et prod der er 9 udgaver foran: dialogen siger hvad der sker, advarer om at rettelser i prod går tabt, og at versionen ikke kan udlignes.*
 
@@ -334,7 +333,7 @@ Siden migrerer det der ikke er flows mellem to orgs, fordelt på tre faner: **Da
 
 Der kopieres navn, kategori, input/output-schema, request-config (URL, metode, headers) samt request- og success-templates. Templates hentes fra kilden og indsættes direkte i den nye action, så den ikke refererer tilbage til kilde-orgen.
 
-![Migrér ressourcer — Data Actions](docs/data-actions.png)
+![Migrér ressourcer — Data Actions](docs/data-actions.da.png)
 
 > **Kategorien følger mål-integrationen.** En migreret action oprettes med mål-integrationens navn som kategori — det er den et flow slår den op på — og ikke med kildens kategori. Kan navnet ikke læses, beholdes kildens. Loggen siger det, når kategorien ændres.
 >
@@ -363,7 +362,7 @@ Alle handlinger logges i realtid. Filtrer på tidsrum, niveau, handling, kunde o
 
 **Selve logteksten er altid engelsk**, uanset hvilket sprog brugerfladen står på. Kolonneoverskrifter og filtre følger sproget; linjerne gør ikke. Loggen bliver kopieret ind i en sag og læst af folk der ikke nødvendigvis kører programmet i samme sprog som den der lavede migreringen.
 
-![Systemlog](docs/systemlog.png)
+![Systemlog](docs/systemlog.da.png)
 
 ---
 
@@ -459,6 +458,10 @@ Testene ligger i `test/` og kræver ingen pakker ud over Node selv (`node --test
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
 
+![Pipeline with Demo 2](docs/pipeline-demo2.en.png)
+
+*Pipeline with Demo 2 — what you see when the app opens. The environments are columns in stage order, the flows are rows.*
+
 > The current version and every change are in [CHANGELOG.md](CHANGELOG.md) — see the top of this page.
 
 ### Requirements
@@ -506,7 +509,7 @@ New environments are always created with **🌐 OAuth (PKCE)**: you log in to Ge
 
 **Import/export only.** An environment without a stage is not part of any pipeline. It imports and exports flows like any other, but ArchyGUI creates no table and writes nothing in its org.
 
-<img src="docs/setup-guide.png" alt="The setup guide for Sabio APS" width="560">
+<img src="docs/setup-guide.en.png" alt="The setup guide for Sabio APS" width="560">
 
 **Log in where you are.** When an environment needs a login, a bar with a **Log in** button appears at the top — on every page, not only Customers — and the page reloads afterwards. 🔒 next to the environment in the sidebar logs in too; 🟢 once logged in. Hover 🟢 — or look at the login badge on the card — to see which org you are logged into.
 
@@ -585,7 +588,7 @@ Each cell shows the flow's **name in that environment**, its published version a
 
 **Every button says what it does before it does it.** ⟶ Promote, ⟵ Pull here, ⟵ Pull back, ↩ and ▲ Publish (demo) open a dialog with the flow, source and target, what happens step by step, and what to watch out for: the target is prod, the target was published outside the pipeline or is versions ahead — so those changes are lost — or ⇄ Check content found a difference. You choose to go ahead or **Cancel**. **? Buttons** in the board toolbar explains every button.
 
-![Confirmation before a promotion](docs/pipeline-confirm.png)
+![Confirmation before a promotion](docs/pipeline-confirm.en.png)
 
 *⟶ Promote to a prod that is 9 versions ahead: the dialog says what happens, warns that edits in prod are lost, and that the version cannot be aligned.*
 
@@ -758,7 +761,7 @@ This page migrates everything that is not a flow between two orgs, across three 
 
 Name, category, input/output schema, request config (URL, method, headers) and the request/success templates are copied. Templates are fetched from the source and inlined into the new action, so it never references the source org.
 
-![Migrate resources — Data Actions](docs/data-actions.png)
+![Migrate resources — Data Actions](docs/data-actions.en.png)
 
 > **The category follows the target integration.** A migrated action is created with the target integration's name as its category — that is what a flow looks it up by — and not with the source's category. If the name cannot be read, the source's is kept. The log says so when the category changes.
 >
@@ -785,7 +788,7 @@ All actions logged in real time. Filter by time span, level, action type, custom
 
 **SECURITY** shows prod logins, who did or did not get deploy rights and why, and every rejected attempt to write to prod.
 
-![System Log](docs/systemlog.png)
+![System Log](docs/systemlog.en.png)
 
 **The log text itself is always English**, whatever language the interface is set to. Column headers and filters follow the language; the lines do not. The log gets pasted into a ticket and read by people who do not necessarily run the app in the same language as whoever ran the migration.
 
