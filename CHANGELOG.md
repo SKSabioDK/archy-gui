@@ -5,6 +5,19 @@
 
 ---
 
+### v1.55.2
+---
+**🇩🇰 Dansk**
+
+- **Skærmbilleder af Totaltjek og Setup-forslag i README**, på dansk og engelsk med temaet *Sabio Dark*. De to faner kræver to forskellige orgs, så billederne er taget med **opdigtede data**: det er appens rigtige brugerflade, men svarene er beregnet af appens egne funktioner på en opdigtet test- og prod-org (Demo A/S), ikke hentet fra en kunde. Det står under hvert billede.
+- Ingen kodeændringer.
+
+**🇬🇧 English**
+- **Screenshots of the Full check and the Setup proposal in the README**, in Danish and English with the *Sabio Dark* theme. The two tabs need two different orgs, so the screenshots were taken with **invented data**: it is the app's real UI, but the answers are computed by the app's own functions on an invented test and prod org (Demo A/S), not fetched from a customer. It says so under each image.
+- No code changes.
+
+---
+
 ### v1.55.1
 ---
 **🇩🇰 Dansk**
