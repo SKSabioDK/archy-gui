@@ -72,3 +72,25 @@ test('ingenting at placere giver et tomt forslag', () => {
   assert.deepEqual(p.placements, []);
   assert.equal(p.integrations[0].planned, 0);
 });
+
+// ── Migrér efter planen ──────────────────────────────────────────────────────
+
+const fs = require('fs');
+const path = require('path');
+const SERVER = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+const HTML = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+
+test('forslaget sender de gemte valg med, så klienten kan flette de nye ind', () => {
+  const rute = SERVER.slice(SERVER.indexOf("app.post('/api/data-actions/plan'"));
+  assert.match(rute.slice(0, 3500), /ok: true, \.\.\.plan, saved/);
+});
+
+test('migrér efter planen bruger den eksisterende rute med den planlagte integration', () => {
+  const fn = HTML.slice(HTML.indexOf('async function dpMigrate()'), HTML.indexOf('function dpSetOverride'));
+  assert.match(fn, /\/api\/actions\/migrate/);
+  assert.match(fn, /targetIntegrationId: x\.integrationId/);
+  // Det der ikke kunne placeres, springes over, og brugeren bekræfter først.
+  assert.match(fn, /confirm\(msg\)/);
+  // Kortlægningen gemmes først efter at actions er oprettet.
+  assert.ok(fn.indexOf('/api/actions/migrate') < fn.indexOf('/api/data-actions/map'));
+});

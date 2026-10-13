@@ -5,6 +5,21 @@
 
 ---
 
+### v1.53.0
+---
+**🇩🇰 Dansk**
+
+- **Migrér efter planen.** Setup-forslaget kan nu køres: knappen opretter de actions, forslaget har placeret, i de foreslåede integrationer — én ad gangen, med mål-integrationen valgt for hver. Der bekræftes først, med antal og de integrationer der ender over grænsen. Man kan **stoppe** undervejs (det oprettede bliver stående), og loggen viser hver action. Er målet prod, spørges der som ved en forfremmelse, og prod-vagten kræver login. Det der ikke kunne placeres, springes over.
+- **Kortlægningen huskes.** Flowene peger på kildens kategori og navn. Efter migreringen gemmes hvor hver action havnede (kan slås fra), så listen i flowet finder dem i den nye integration uden at man vælger igen. Forslaget tælles derefter igen, så bjælkerne viser det der nu findes.
+- Forslaget sender nu også de gemte valg med, så de nye kan flettes ind uden at overskrive de gamle.
+
+**🇬🇧 English**
+- **Migrate by the plan.** The setup proposal can now be run: the button creates the actions the proposal has placed, in the proposed integrations — one at a time, with the target integration chosen for each. It confirms first, with the count and the integrations that end up over the limit. You can **stop** along the way (what has been created stays), and the log shows every action. If the target is prod, you are asked as for a promotion, and the prod guard requires a login. What could not be placed is skipped.
+- **The mapping is remembered.** Flows point at the source's category and name. After the migration, where each action ended up is saved (can be switched off), so the list in the flow finds them in the new integration without choosing again. The proposal is then counted again, so the bars show what exists now.
+- The proposal now also sends the saved choices, so the new ones can be merged in without overwriting the old ones.
+
+---
+
 ### v1.52.0
 ---
 **🇩🇰 Dansk**

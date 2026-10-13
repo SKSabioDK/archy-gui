@@ -6156,7 +6156,7 @@ app.post('/api/data-actions/plan', async (req, res) => {
       .map(i => ({ ...i, existing: existing[i.id] || 0 })), capacity);
     addLog('INFO', `Data action setup proposal ${source.name} → ${target.name}: ${todo.length} to place`, source.name, 'MIGRATE');
     res.json({
-      ok: true, ...plan,
+      ok: true, ...plan, saved,
       summary: { toPlace: todo.length, choose: rows.filter(r => r.status === 'choose').length,
                  fdaMissing: rows.filter(r => r.fda && (r.status === 'absent' || r.status === 'choose')).length,
                  alreadyThere: rows.filter(r => r.status === 'same' || r.status === 'mapped').length },

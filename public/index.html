@@ -533,7 +533,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.52.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.53.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1780,6 +1780,15 @@ const LANGS = {
     dp_h_after:'Efter',
     dp_h_cap:'Grænse',
     dp_print_hint:'Tryk Ctrl+P for at udskrive eller gemme som PDF.',
+    dp_migrate:'Migrér efter planen',
+    dp_confirm:'Opret {n} data actions i {k} integrationer i {target}, som foreslået?',
+    dp_confirm_over:'Over den angivne grænse: {names}. Genesys kan afvise dem.',
+    dp_stop:'Stop',
+    dp_stopped:'Stoppet. Det der er oprettet, bliver stående.',
+    dp_remember_map:'Husk hvor de havner',
+    dp_none_to_migrate:'Der er ingen actions at migrere efter planen.',
+    dp_map_saved:'Kortlægningen er gemt: flowene finder actions i deres nye integration.',
+    dp_map_err:'Kunne ikke gemme kortlægningen',
     dep_btn_migrate:'Migrér valgte og fortsæt',
     dep_can_migrate:'KAN MIGRERES NU',
     dep_manual:'SKAL OPRETTES MANUELT',
@@ -2727,6 +2736,15 @@ const LANGS = {
     dp_h_after:'After',
     dp_h_cap:'Limit',
     dp_print_hint:'Press Ctrl+P to print or save as PDF.',
+    dp_migrate:'Migrate by the plan',
+    dp_confirm:'Create {n} data actions in {k} integrations in {target}, as proposed?',
+    dp_confirm_over:'Over the stated limit: {names}. Genesys may refuse them.',
+    dp_stop:'Stop',
+    dp_stopped:'Stopped. What has been created stays.',
+    dp_remember_map:'Remember where they end up',
+    dp_none_to_migrate:'There are no actions to migrate by the plan.',
+    dp_map_saved:'The mapping is saved: flows find the actions in their new integration.',
+    dp_map_err:'Could not save the mapping',
     dep_btn_migrate:'Migrate selected and continue',
     dep_can_migrate:'CAN BE MIGRATED NOW',
     dep_manual:'MUST BE CREATED MANUALLY',
@@ -3674,6 +3692,15 @@ const LANGS = {
     dp_h_after:'Après',
     dp_h_cap:'Limite',
     dp_print_hint:'Appuyez sur Ctrl+P pour imprimer ou enregistrer en PDF.',
+    dp_migrate:'Migrer selon le plan',
+    dp_confirm:'Créer {n} data actions dans {k} intégrations de {target}, comme proposé ?',
+    dp_confirm_over:'Au-dessus de la limite indiquée : {names}. Genesys peut les refuser.',
+    dp_stop:'Arrêter',
+    dp_stopped:'Arrêté. Ce qui est créé reste.',
+    dp_remember_map:'Mémoriser où elles arrivent',
+    dp_none_to_migrate:'Aucune action à migrer selon le plan.',
+    dp_map_saved:'La correspondance est enregistrée : les flows trouvent les actions dans leur nouvelle intégration.',
+    dp_map_err:'Impossible d\'enregistrer la correspondance',
     dep_btn_migrate:'Migrer la sélection et continuer',
     dep_can_migrate:'PEUT ÊTRE MIGRÉ MAINTENANT',
     dep_manual:'À CRÉER MANUELLEMENT',
@@ -4621,6 +4648,15 @@ const LANGS = {
     dp_h_after:'Daarna',
     dp_h_cap:'Grens',
     dp_print_hint:'Druk op Ctrl+P om af te drukken of als PDF op te slaan.',
+    dp_migrate:'Migreren volgens het plan',
+    dp_confirm:'Maak {n} data actions aan in {k} integraties in {target}, zoals voorgesteld?',
+    dp_confirm_over:'Boven de opgegeven grens: {names}. Genesys kan ze weigeren.',
+    dp_stop:'Stoppen',
+    dp_stopped:'Gestopt. Wat is aangemaakt, blijft staan.',
+    dp_remember_map:'Onthoud waar ze terechtkomen',
+    dp_none_to_migrate:'Er zijn geen actions om volgens het plan te migreren.',
+    dp_map_saved:'De koppeling is opgeslagen: flows vinden de actions in hun nieuwe integratie.',
+    dp_map_err:'Koppeling kon niet worden opgeslagen',
     dep_btn_migrate:'Migreer selectie en ga door',
     dep_can_migrate:'KAN NU GEMIGREERD WORDEN',
     dep_manual:'MOET HANDMATIG WORDEN AANGEMAAKT',
@@ -5568,6 +5604,15 @@ const LANGS = {
     dp_h_after:'Después',
     dp_h_cap:'Límite',
     dp_print_hint:'Pulse Ctrl+P para imprimir o guardar como PDF.',
+    dp_migrate:'Migrar según el plan',
+    dp_confirm:'¿Crear {n} data actions en {k} integraciones de {target}, como se propone?',
+    dp_confirm_over:'Sobre el límite indicado: {names}. Genesys puede rechazarlas.',
+    dp_stop:'Detener',
+    dp_stopped:'Detenido. Lo creado se queda.',
+    dp_remember_map:'Recordar dónde acaban',
+    dp_none_to_migrate:'No hay acciones que migrar según el plan.',
+    dp_map_saved:'La correspondencia está guardada: los flows encuentran las acciones en su nueva integración.',
+    dp_map_err:'No se pudo guardar la correspondencia',
     dep_btn_migrate:'Migrar seleccionados y continuar',
     dep_can_migrate:'SE PUEDE MIGRAR AHORA',
     dep_manual:'DEBE CREARSE MANUALMENTE',
@@ -10640,6 +10685,84 @@ async function dpRun() {
   dpRender();
 }
 
+// Hvad "Migrér efter planen" vil oprette, og hvor: forslaget, eller brugerens
+// valg for en gruppe. Det der ikke kunne placeres, er ikke med.
+function dpMigrationList() {
+  const out = [];
+  for (const p of dpData.placements) {
+    const o = dpOverrides[dpKey(p)];
+    if (o) {
+      const i = dpData.integrations.find(x => x.id === o);
+      for (const a of p.allocations.flatMap(z => z.actions).concat(p.unplaced ? p.unplaced.actions : []))
+        out.push({ action: a, integrationId: o, integrationName: i ? i.name : '' });
+      continue;
+    }
+    for (const al of p.allocations) for (const a of al.actions)
+      out.push({ action: a, integrationId: al.integrationId, integrationName: al.integrationName });
+  }
+  return out;
+}
+
+let dpBusy = false, dpStop = false, dpRemember = true;
+
+async function dpMigrate() {
+  if (dpBusy) return;
+  const sourceId = document.getElementById('da-source').value;
+  const targetId = document.getElementById('da-target').value;
+  const list = dpMigrationList();
+  if (!list.length) return alert(t('dp_none_to_migrate'));
+
+  // Hvor mange der ender i hver integration, og hvilke der så er over grænsen.
+  const per = {};
+  for (const x of list) per[x.integrationId] = (per[x.integrationId] || 0) + 1;
+  const over = dpData.integrations.filter(i => per[i.id] && i.existing + per[i.id] > dpData.capacity).map(i => i.name);
+  const tgt = customers.find(c => c.id === targetId);
+  let msg = t('dp_confirm').replace('{n}', String(list.length)).replace('{k}', String(Object.keys(per).length)).replace('{target}', (tgt && tgt.name) || '');
+  if (over.length) msg += '\n\n' + t('dp_confirm_over').replace('{names}', over.join(', '));
+  if (String(tgt && tgt.stage || '').toLowerCase() === 'prod') msg += '\n\n' + t('pl_prod_warn');
+  if (!confirm(msg)) return;
+
+  dpBusy = true; dpStop = false;
+  dpRender();          // viser Stop-knappen
+  const logCard = document.getElementById('da-log'), logBox = document.getElementById('da-logbox');
+  logCard.style.display = 'block'; logBox.innerHTML = '';
+  log(logBox, `${dpData.srcName}  ⟶  ${dpData.tgtName}`, 'info');
+  let ok = 0, skipped = 0, failed = 0;
+  const migrated = [];     // til kortlægningen bagefter
+  for (const x of list) {
+    if (dpStop) { log(logBox, `\n⊘ ${t('dp_stopped')}`, 'info'); break; }
+    log(logBox, `\n⟶ ${t('da_migrating')}: ${x.action.name}  →  ${x.integrationName}`, 'info');
+    try {
+      const data = await fetch('/api/actions/migrate', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceId, targetId, actionId: x.action.id, targetIntegrationId: x.integrationId }) }).then(r => r.json());
+      if (data.error === 'already_exists') { log(logBox, `  ⚠ ${t('da_exists')}`, 'info'); skipped++; }
+      else if (data.error) { log(logBox, `  ✗ ${data.error}`, 'err'); failed++; }
+      else { log(logBox, `  ✓ ${t('da_created')}`, 'ok'); ok++; migrated.push(x); }
+    } catch (e) { log(logBox, `  ✗ ${e.message}`, 'err'); failed++; }
+  }
+
+  // Flowene peger på kildens kategori og navn. Husk hvor de er havnet, så
+  // listen i flowet finder dem uden at man skal vælge igen.
+  if (dpRemember && migrated.length) {
+    const key = x => x.category + '\u0001' + x.name;
+    const map = new Map((dpData.saved || []).map(e => [key(e.from), e]));
+    for (const x of migrated) {
+      const from = { category: x.action.category, name: x.action.name };
+      if (from.category === x.integrationName) continue;        // samme kategori: intet at huske
+      map.set(key(from), { from, to: { category: x.integrationName, name: x.action.name } });
+    }
+    try {
+      const r = await fetch('/api/data-actions/map', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceId, targetId, entries: [...map.values()] }) }).then(z => z.json());
+      log(logBox, r.error ? `\n✗ ${t('dp_map_err')}: ${r.error}` : `\n✓ ${t('dp_map_saved')}`, r.error ? 'err' : 'ok');
+    } catch (e) { log(logBox, `\n✗ ${t('dp_map_err')}: ${e.message}`, 'err'); }
+  }
+  log(logBox, `\n── ${t('da_done')} ── ${ok} ${t('da_sum_ok')} · ${skipped} ${t('da_sum_skipped')} · ${failed} ${t('da_sum_failed')}`,
+      failed ? 'err' : 'info');
+  dpBusy = false;
+  await dpRun();      // tæl igen: bjælkerne skal vise det der nu findes
+}
+
 function dpSetOverride(i, v) {
   const k = dpKey(dpData.placements[i]);
   if (v) dpOverrides[k] = v; else delete dpOverrides[k];
@@ -10715,9 +10838,12 @@ function dpRender() {
         .map(([n, k, c]) => `<div style="flex:1;min-width:110px;padding:8px 12px;border-radius:8px;border:1px solid var(--border)">
           <div style="font-size:11px;color:var(--muted)">${t(k)}</div><div style="font-size:20px;font-weight:700;color:var(${c})">${String(n)}</div></div>`).join('') +
     `</div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin:8px 0">
+    <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;margin:8px 0;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin:0 8px 0 0"><input type="checkbox" ${dpRemember ? 'checked' : ''} onchange="dpRemember = this.checked" style="width:auto">${t('dp_remember_map')}</label>
       <button class="btn btn-secondary btn-sm" onclick="dpExportCsv()">${t('dp_export_csv')}</button>
-      <button class="btn btn-secondary btn-sm" onclick="dpExportPrint()">${t('dp_export_print')}</button></div>` +
+      <button class="btn btn-secondary btn-sm" onclick="dpExportPrint()">${t('dp_export_print')}</button>
+      ${dpBusy ? `<button class="btn btn-secondary btn-sm" onclick="dpStop = true">${t('dp_stop')}</button>` : ''}
+      <button class="btn btn-primary btn-sm" onclick="dpMigrate()">${t('dp_migrate')} (${String(dpMigrationList().length)})</button></div>` +
     sec(t('dp_sec_ints')) + active.map(intRow).join('') +
     (inactive.length ? `<div style="font-size:11px;color:var(--muted);margin-top:8px">${escapeHtml(t('dp_inactive').replace('{n}', String(inactive.length)))}: ${escapeHtml(inactive.map(i => i.name).join(', '))}</div>` : '') +
     sec(t('dp_sec_groups')) +
