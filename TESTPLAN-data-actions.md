@@ -1,12 +1,14 @@
-# Testplan: data actions, setup-forslag og pipeline-tjek (v1.49–v1.54)
+# Testplan: data actions, setup-forslag, pipeline-tjek og FDA-mærke (v1.49–v1.55)
+
+> 🇬🇧 English version: [TESTPLAN-data-actions.en.md](TESTPLAN-data-actions.en.md)
 
 Formålet er at afprøve det, der er bygget og enhedstestet, men aldrig kørt mod to rigtige orgs. Rækkefølgen er lagt, så alt der kun læser, kommer først, og alt der skriver, kun rammer en **test-org** (aldrig prod).
 
 ## Før du starter
 
 - **To forskellige Genesys-orgs** i Archy, i samme kunde og gruppe: **A** (kilde, fx test) og **B** (mål, en test- eller sandbox-org). Ikke Sabios fælles org, og ikke prod som mål i første omgang.
-- Archy GUI på **v1.54.1** eller nyere (versionen står nederst i sidebaren). Genstart efter opdatering.
-- Rettigheder på begge orgs' klienter: `integrations:integration:view`, `integrations:action:view`, `architect:dependencyTracking:view`. På **B** desuden `integrations:action:add` (til test 3 og 6).
+- Archy GUI på **v1.55.0** eller nyere (versionen står nederst i sidebaren). Genstart efter opdatering.
+- Rettigheder på begge orgs' klienter: `integrations:integration:view`, `integrations:action:view`, `architect:dependencyTracking:view`. På **B** desuden `integrations:action:add` (til test 4 og 6).
 - Et par **harmløse** data actions i A, som kan oprettes i B og slettes igen (fx tre simple Web Services-actions).
 - Et flow i A, der bruger mindst én data action, helst én hvis navn findes under en **anden kategori** i B. Et flow med en **Function Data Action** til test 7.
 - Notér hvor du kigger efter fejl: **Systemlog** i Archy (kategorien MIGRATE).
@@ -57,6 +59,22 @@ Hvis noget ikke passer: skriv navnet på action'en og hvad du forventede.
 | En data action under en anden kategori står under *skal afklares* med kandidaten | ☐ |
 | Ingenting er ændret i B bagefter (kig i B's Architect og Integrations) | ☐ |
 | Samme flow bagefter via **⟶ Forfrem**: dialogen viser det samme som rapporten | ☐ |
+
+### Test 3b: FDA-mærke på tavlen (læsning)
+
+*Pipeline → vis gruppen. Brug et flow, der **direkte** bruger en Function Data Action i A (publiceret), og som ikke findes som FDA i B. Mærkerne kommer i baggrunden, få sekunder efter at tavlen er tegnet.*
+
+| Forventet | Tjek |
+|---|---|
+| Flowet i A's kolonne har et gult **⚙ FDA**; tooltip nævner FDA'ens navn | ☐ |
+| Samme flow i B's kolonne har et rødt **✗ FDA mangler her**; tooltip nævner navnet | ☐ |
+| Et flow **uden** FDA har ingen af mærkerne | ☐ |
+| Opret en function med samme navn i B, vent et par minutter, og tryk Pipeline igen: det røde mærke er væk (gult står i A og B) | ☐ |
+| Tavlen blev ikke mærkbart langsommere at åbne (mærkerne dukker op bagefter) | ☐ |
+| **? Knapperne** nævner mærkerne | ☐ |
+| ⟶ Forfrem af flowet med rødt mærke viser samme blokering som ✔ Tjek (test 3a) | ☐ |
+
+> Afhængighedssporingen kender kun den **publicerede** udgave og kan være få minutter bagud. Mangler mærket lige efter en publicering, så vent og prøv igen, før du melder det som fejl. Et flow, der bruger en FDA **gennem et common module**, får ikke selv mærket; modulet gør.
 
 ---
 
@@ -141,5 +159,6 @@ Skriv kun til prod, når del 2 er gennemført rent.
 
 - Credentials på integrationerne tjekkes ikke. En action i en integration uden gyldig credential kan oprettes, men kører ikke.
 - Grænsen pr. integration er et tal, du taster. Archy kender den ikke.
-- Tavlen viser ikke et FDA-mærke. Det er planlagt, men ikke bygget.
+- FDA-mærket på tavlen følger ikke en FDA gennem et common module, og kender kun den publicerede udgave.
+- Mærket er kun set med simulerede data og mod en org uden brugte FDA'er. Test 3b er første gang, det ses med en rigtig, brugt FDA.
 - Actions, der mangler, migreres også på fanen *Data Actions*; *Migrér efter planen* er den nye vej.
