@@ -77,3 +77,22 @@ test('en action uden kontrakt giver ikke en fejl', () => {
   assert.equal(s.compareContracts({}, {}).same, true);
   assert.equal(s.compareContracts(null, undefined).same, true);
 });
+
+// ── Indbyggede actions ───────────────────────────────────────────────────────
+// Fundet ved at køre funktionerne på Sabios rigtige data: tre af de 68 actions er
+// Genesys' egne ("static_…"), og dem kan man hverken oprette eller migrere.
+
+test('en indbygget action der mangler i målet, er ikke en mangel', () => {
+  const src = [{ id: 'static_-_PureCloud-Get-User-Presence_-_x', name: 'Get User Presence', category: 'Genesys Cloud Data Actions', integrationType: 'purecloud-data-actions' },
+               { id: 'custom_-_1', name: 'Mine', category: 'Genesys Cloud Data Actions', integrationType: 'purecloud-data-actions' }];
+  const rows = s.compareDataActionSets(src, [], []);
+  assert.deepEqual(rows.map(r => r.name), ['Mine']);
+  assert.equal(s.summarizeDataActionRows(rows).absent, 1);
+});
+
+test('en indbygget action der findes i målet, tælles som matchende', () => {
+  const src = [{ id: 'static_-_PureCloud-Get-User-Presence_-_x', name: 'Get User Presence', category: 'Genesys Cloud Data Actions', integrationType: 'purecloud-data-actions' }];
+  const rows = s.compareDataActionSets(src, [{ category: 'Genesys Cloud Data Actions', name: 'Get User Presence' }], []);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].status, 'same');
+});

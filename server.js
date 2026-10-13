@@ -5991,10 +5991,16 @@ async function saveDataActionMap(source, target, entries, opts = {}) {
 // Hver data action i kilden, sat op mod målet. Samme afgørelse som for et enkelt
 // flow (exact / mapped / choose / absent), her for hele orgen. Ren, så den kan
 // prøves uden en org.
+// Genesys' indbyggede actions (id'et starter med "static_") findes i hver orgs
+// Genesys Cloud Data Actions og kan hverken oprettes eller migreres. Findes de
+// ikke i målet, er det ikke en mangel vi kan rette, så de er ikke med.
+const isBuiltInAction = a => String((a && a.id) || '').startsWith('static_');
+
 function compareDataActionSets(srcActions, tgtActions, saved) {
   const cls = classifyDataActionRefs(
     srcActions.map(a => ({ category: a.category, name: a.name })), tgtActions, saved);
-  return srcActions.map((a, i) => ({
+  return srcActions.map((a, i) => ({ a, i })).filter(({ a, i }) =>
+    !(isBuiltInAction(a) && cls[i].status !== 'exact' && cls[i].status !== 'mapped')).map(({ a, i }) => ({
     id: a.id, name: a.name, category: a.category,
     // Id'et på den action i målet kilden er sat op mod — til kontrakt-sammenligningen.
     targetId: (tgtActions.find(t => daSame(t, cls[i].status === 'mapped' ? cls[i].mappedTo : a)) || {}).id || null,

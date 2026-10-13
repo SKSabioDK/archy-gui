@@ -5,6 +5,17 @@
 
 ---
 
+### v1.54.1
+---
+**🇩🇰 Dansk**
+
+- **Rettelse: Genesys' indbyggede actions foreslås ikke længere oprettet.** Fundet ved at køre totaltjek og setup-forslag på Sabios rigtige data: tre af de 68 actions er indbyggede (id'et begynder med `static_`, fx *Get User Presence*). De findes i hver orgs Genesys Cloud Data Actions og kan hverken oprettes eller migreres, men blev talt som *mangler* og foreslået placeret i et nyt mål. De er nu ikke med, når de mangler i målet; findes de, tælles de som matchende.
+
+**🇬🇧 English**
+- **Fix: Genesys' built-in actions are no longer proposed for creation.** Found by running the full check and the setup proposal on Sabio's real data: three of the 68 actions are built in (the id starts with `static_`, e.g. *Get User Presence*). They exist in every org's Genesys Cloud Data Actions and can be neither created nor migrated, yet they were counted as *missing* and proposed for placement in a new target. They are now left out when missing in the target; if they exist, they count as matching.
+
+---
+
 ### v1.54.0
 ---
 **🇩🇰 Dansk**
