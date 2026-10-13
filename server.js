@@ -4820,13 +4820,13 @@ async function dependentsOf(env, moduleName) {
 // publicering, men de flows der bruger modulet har brugt det længe — de står
 // der allerede. Kun flows der hører til MILJØET tages med: i en præfikset org
 // bruger TEST_-flowene TEST_-modulet, og dev's flows er ikke vores sag her.
-async function consumerIds(env, moduleId) {
+async function consumerIds(env, moduleId, objectType = 'COMMONMODULEFLOW') {
   const { token, apiBase } = await getToken(env);
   const ids = new Set();
   for (let page = 1; page < 50; page++) {
     const r = await axios.get(`${apiBase}/api/v2/architect/dependencytracking/consumingresources`, {
       headers: { Authorization: `Bearer ${token}` },
-      params: { id: moduleId, objectType: 'COMMONMODULEFLOW', pageSize: 100, pageNumber: page }
+      params: { id: moduleId, objectType, pageSize: 100, pageNumber: page }
     });
     const e = r.data.entities || [];
     for (const x of e) ids.add(x.id);
@@ -4885,6 +4885,49 @@ async function staleModules(env) {
   }
   return out.sort((a, b) => a.module.localeCompare(b.module));
 }
+
+// Hvilke flows bruger en Function Data Action. Genesys' afhængighedssporing kan
+// svare på det for én action ad gangen, og der er få FDA'er, så det er billigt.
+// Ren sammenlægning, så den kan prøves uden en org: actionNames er FDA'ernes
+// navne, idsByAction hvilke flow-id'er hver af dem bruges i.
+function groupFdaConsumers(actionNames, idsByAction) {
+  const flows = {};
+  actionNames.forEach((name, i) => {
+    for (const id of (idsByAction[i] || [])) {
+      if (!flows[id]) flows[id] = [];
+      if (!flows[id].includes(name)) flows[id].push(name);
+    }
+  });
+  for (const id of Object.keys(flows)) flows[id].sort((a, b) => a.localeCompare(b));
+  return flows;
+}
+
+async function fdaUsage(env) {
+  if (isDemo(env)) return { names: [], flows: {} };
+  const { token, apiBase } = await getToken(env);
+  const fdaInts = new Set((await listIntegrations(env)).filter(i => i.type === FUNCTION_INTEGRATION).map(i => i.id));
+  if (!fdaInts.size) return { names: [], flows: {} };
+  const actions = (await listDataActions(token, apiBase)).filter(a => fdaInts.has(a.integrationId));
+  const idsByAction = [];
+  // Fire ad gangen, som ved common modules.
+  for (let i = 0; i < actions.length; i += 4) {
+    const part = await Promise.all(actions.slice(i, i + 4).map(a => consumerIds(env, a.id, 'DATAACTION')));
+    part.forEach((ids, k) => { idsByAction[i + k] = [...ids]; });
+  }
+  const names = actions.map(a => a.name);
+  return { names: [...new Set(names)], flows: groupFdaConsumers(names, idsByAction) };
+}
+
+app.get('/api/customers/:id/fda-usage', async (req, res) => {
+  const env = loadCustomers().find(c => c.id === req.params.id);
+  if (!env) return res.status(404).json({ error: 'Not found' });
+  try {
+    res.json({ ok: true, ...(await fdaUsage(env)) });
+  } catch (e) {
+    addLog('WARN', `Could not look up the Function Data Action usage in ${env.name}: ${describeApiError(e)}`, env.name, 'MIGRATE');
+    res.status(500).json({ error: describeApiError(e) });
+  }
+});
 
 app.get('/api/customers/:id/stale-modules', async (req, res) => {
   const env = loadCustomers().find(c => c.id === req.params.id);
@@ -8271,7 +8314,7 @@ module.exports = {
   // data actions i flowet
   scanDataActionRefs, classifyDataActionRefs, applyDataActionMap, mergeDaEntries, validDaEntry,
   compareDataActionSets, summarizeDataActionRows, compareContracts, actionCategoryFor, planDataActionPlacement,
-  buildMigrationVerdict,
+  buildMigrationVerdict, groupFdaConsumers,
   // miljøer og præfikser
   prefixOf, orgKeyOf, rememberOrgId, wrongOrg, clientPinsOrg, orgOwnedElsewhere, belongsToEnv, stripEnvPrefix, withEnvPrefix, depNameIn,
   targetFlowName, prefixDependenciesInYaml, divisionOf,

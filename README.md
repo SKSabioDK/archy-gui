@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.54.1
+# Archy GUI — Flow Manager · v1.55.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -11,8 +11,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.54.1**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.54.1**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.55.0**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.55.0**.
 
 ---
 
@@ -178,6 +178,8 @@ Tallet sættes kun når flowet forlader **gruppens første trin**. Videre fra te
 **Ændrer man præfikset** på et miljø, viser værktøjet en plan før det gemmer: hvilke **flows**, **datatabeller** og hvilken **manifest-tabel** der skal have nyt navn, fx `UAT_Betaling` → `Betaling`. Man fjerner flueben ved det der ikke skal med, og trykker *Omdøb og gem*. Navnene ændres via Genesys' API — ikke via Archy, som finder flows på navnet og ville lave et nyt ved siden af — så flowene beholder deres id, alle udgaver får det nye navn, og det der peger på dem, virker videre. Et navn der allerede findes, springes over. Fejler én omdøbning, rulles de andre tilbage, og præfikset ændres ikke. Common modules og bots er markeret: de kaldes ved navn i eksporteret YAML, så gemte filer og andre værktøjer skal rettes i hånden.
 
 **Vejen tilbage.** Findes flowet kun senere i kæden — fx alt hvad der ligger i prod, når dev lige er sat op — får cellen en **⟵ Hent hertil**-knap der henter det fra det nærmeste senere trin. Har miljøet et præfiks, får flowet det på undervejs: `Bank bot` fra prod bliver til `DEV_Bank bot`. Datatabeller behandles på samme måde.
+
+**⚙ FDA** og **✗ FDA mangler her** viser Function Data Actions på tavlen, så man ser dem, før man forfremmer. Et flow der bruger en Function Data Action, får et gult *⚙ FDA* med navnene som tooltip. Bruger flowet i miljøet til venstre en, som ikke findes i dette miljø, står der et rødt *✗ FDA mangler her* — og forfremmelsen er blokeret, til den er oprettet i Genesys. Oplysningerne kommer i baggrunden fra Genesys' afhængighedssporing, ét opslag pr. Function Data Action, og tavlen tegnes igen, når de er der. Sporingen kender kun den **publicerede** udgave og kan være få minutter bagud efter en publicering. Et flow der kun bruger en FDA gennem et common module, får ikke mærket — modulet gør.
 
 **✔ Tjek** står ved ⟶ Forfrem og kører første fase af en forfremmelse — eksporterer flowet fra kilden og undersøger alt det refererer til i målet — men importerer intet og skriver intet i mål-org'en. Svaret er en rapport i tre grupper: det der **blokerer** forfremmelsen (en Function Data Action der ikke findes i målet, eller en data action der hverken findes i kilden eller målet), det der **skal afklares** (en data action der findes under en anden kategori i målet — vælges ved forfremmelsen eller i Totaltjek), og det der **håndteres undervejs eller i hånden** (tabeller og actions der kan migreres med, køer og andet der skal oprettes i målet). Tjekket bruger den samme undersøgelse som forfremmelsen, så de to aldrig er uenige; blokeringerne er de samme som stopper selve forfremmelsen. Tjekket er ikke et krav: man kan forfremme uden at have kørt det. Det virker ikke på demo-miljøer.
 
@@ -436,7 +438,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-344 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+349 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -600,6 +602,8 @@ The number is only set when the flow leaves **the group's first stage**. Onward 
 **Changing an environment's prefix** shows a plan before saving: which **flows**, **data tables** and which **manifest table** get a new name, e.g. `UAT_Betaling` → `Betaling`. Untick what should stay, and press *Rename and save*. Names are changed through the Genesys API — not through Archy, which finds flows by name and would create a new one beside it — so flows keep their id, every version gets the new name, and whatever points to them keeps working. A name that already exists is skipped. If one rename fails, the others are rolled back and the prefix is not changed. Common modules and bots are marked: they are called by name in exported YAML, so saved files and other tools must be fixed by hand.
 
 **The way back.** If the flow exists only later in the chain — everything sitting in prod, say, when dev has just been set up — the cell gets a **⟵ Bring here** button that fetches it from the nearest later stage. If the environment has a prefix, the flow gets it on the way: `Bank bot` from prod becomes `DEV_Bank bot`. Datatables are handled the same way.
+
+**⚙ FDA** and **✗ FDA missing here** show Function Data Actions on the board, so you see them before promoting. A flow that uses a Function Data Action gets a yellow *⚙ FDA* with the names as a tooltip. If the flow in the environment to the left uses one that does not exist in this environment, a red *✗ FDA missing here* appears — and the promotion is blocked until it has been created in Genesys. The information comes in the background from Genesys' dependency tracking, one lookup per Function Data Action, and the board is redrawn when it is there. The tracking only knows the **published** version and can lag a few minutes after a publish. A flow that uses an FDA only through a common module does not get the marker — the module does.
 
 **✔ Check** sits next to ⟶ Promote and runs the first phase of a promotion — exports the flow from the source and examines everything it references in the target — but imports nothing and writes nothing in the target org. The answer is a report in three groups: what **blocks** the promotion (a Function Data Action that does not exist in the target, or a data action that exists in neither the source nor the target), what **must be decided** (a data action that exists under another category in the target — chosen at promotion or in the Full check), and what is **handled along the way or by hand** (tables and actions that can be migrated along, queues and other things to create in the target). The check uses the same examination as the promotion, so the two are never in disagreement; the blockers are the same ones that stop the promotion itself. The check is not a requirement: you can promote without having run it. It does not work on demo environments.
 
@@ -858,7 +862,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-344 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+349 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 

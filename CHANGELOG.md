@@ -5,6 +5,25 @@
 
 ---
 
+### v1.55.0
+---
+**🇩🇰 Dansk**
+
+- **Tavlen viser Function Data Actions.** Et flow der bruger en, får et gult **⚙ FDA** (navnene som tooltip). Bruger flowet i miljøet til venstre en, som ikke findes i dette miljø, står der et rødt **✗ FDA mangler her**: forfremmelsen er blokeret, til den er oprettet i Genesys (samme spærring som siden v1.49.0, nu synlig på forhånd).
+- **Hentes i baggrunden.** Fra Genesys' afhængighedssporing, ét opslag pr. Function Data Action (fire ad gangen), og tavlen tegnes igen, når svarene er der. Sporingen svarer med én post pr. flowudgave, så sammenlægningen er på flow-id. Ny rute `GET /api/customers/:id/fda-usage`.
+- Afprøvet mod Sabios rigtige org (read-only): ruten finder de fire Function Data Actions; ingen flows bruger dem dér, så et positivt fund er kun set på en demo-tavle med simulerede data.
+- Sporingen kender kun den publicerede udgave og kan være få minutter bagud. Et flow der bruger en FDA gennem et common module, får ikke selv mærket — modulet gør.
+- Knappen er med i tavlens knap-forklaring.
+
+**🇬🇧 English**
+- **The board shows Function Data Actions.** A flow that uses one gets a yellow **⚙ FDA** (the names as a tooltip). If the flow in the environment to the left uses one that does not exist in this environment, a red **✗ FDA missing here** appears: the promotion is blocked until it has been created in Genesys (the same block as since v1.49.0, now visible in advance).
+- **Fetched in the background.** From Genesys' dependency tracking, one lookup per Function Data Action (four at a time), and the board is redrawn when the answers are there. The tracking answers with one entry per flow version, so the merge is on flow id. New route `GET /api/customers/:id/fda-usage`.
+- Tried against Sabio's real org (read-only): the route finds the four Function Data Actions; no flows use them there, so a positive hit has only been seen on a demo board with simulated data.
+- The tracking only knows the published version and can lag a few minutes. A flow that uses an FDA through a common module does not get the marker itself — the module does.
+- The marker is in the board's button help.
+
+---
+
 ### v1.54.1
 ---
 **🇩🇰 Dansk**
