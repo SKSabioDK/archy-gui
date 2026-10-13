@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.48.14
+# Archy GUI — Flow Manager · v1.54.1
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -11,8 +11,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.48.14**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.48.14**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.54.1**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.54.1**.
 
 ---
 
@@ -179,6 +179,8 @@ Tallet sættes kun når flowet forlader **gruppens første trin**. Videre fra te
 
 **Vejen tilbage.** Findes flowet kun senere i kæden — fx alt hvad der ligger i prod, når dev lige er sat op — får cellen en **⟵ Hent hertil**-knap der henter det fra det nærmeste senere trin. Har miljøet et præfiks, får flowet det på undervejs: `Bank bot` fra prod bliver til `DEV_Bank bot`. Datatabeller behandles på samme måde.
 
+**✔ Tjek** står ved ⟶ Forfrem og kører første fase af en forfremmelse — eksporterer flowet fra kilden og undersøger alt det refererer til i målet — men importerer intet og skriver intet i mål-org'en. Svaret er en rapport i tre grupper: det der **blokerer** forfremmelsen (en Function Data Action der ikke findes i målet, eller en data action der hverken findes i kilden eller målet), det der **skal afklares** (en data action der findes under en anden kategori i målet — vælges ved forfremmelsen eller i Totaltjek), og det der **håndteres undervejs eller i hånden** (tabeller og actions der kan migreres med, køer og andet der skal oprettes i målet). Tjekket bruger den samme undersøgelse som forfremmelsen, så de to aldrig er uenige; blokeringerne er de samme som stopper selve forfremmelsen. Tjekket er ikke et krav: man kan forfremme uden at have kørt det. Det virker ikke på demo-miljøer.
+
 **⇄ Tjek indhold** eksporterer flowet fra hvert miljø og sammenligner hashen — det eneste der kan afgøre om to miljøer er ens. Afviger de, kommer der en **⟵ Hent tilbage**-knap den anden vej, så man kan hente virkeligheden ned og se hvad der blev lavet.
 
 #### 📝 Release notes og rollback
@@ -276,6 +278,10 @@ Mangler der noget, åbnes en dialog med to sektioner:
 
 Common modules migreres med samme maskineri som flows, og deres **egne** afhængigheder tages først — rekursivt, nedefra og op. Et modul der selv bruger femten tabeller får dem alle med.
 
+> **Function Data Actions blokerer.** Bruger flowet en Function Data Action, der findes i kilden men ikke i målet, kan den ikke oprettes herfra, og forfremmelsen **standses**: dialogen viser den i rødt med en **tjekliste til kopiering**, og de to knapper *Fortsæt uden* og *Migrér valgte* er skjult. Opret den i Genesys i mål-org'en, og tryk **Tjek igen**; først når den findes, kan flowet forfremmes. Spærringen står også i selve importen, så den ikke kan springes over. Det holder versionsnummer og tjek i takt, i stedet for at man retter bagefter direkte i Genesys.
+
+> **Data actions får målets navne.** Et flow peger på en data action med **kategori** (integrationens navn) og **navn**. Hedder de noget andet i mål-org'en — fx *Test - Genesys Cloud Data Actions* i test og *Genesys Cloud Data Actions - Flows* i prod — fejler importen, selv om navnet findes. Archy slår derfor begge dele op i målet, og findes en af dem ikke præcist, åbnes en liste over flowets data actions: *samme* (findes), *gemt valg*, *vælg* (samme navn under en anden kategori — vælg hvilken) og *findes ikke* (peg den over på en eksisterende, eller lad den blive migreret i næste trin). Referencen i flowet skrives om på den side-kopi der importeres; kildens egen kopi røres ikke. Valgene gemmes pr. org-par — i mål-org'ens manifest-tabel hvis den har en, ellers i `.data-action-map.json` — og gemmes først efter en vellykket import, så de bruges automatisk næste gang. Vil du ikke have dem gemt, fjern kryds i *Husk mine valg*. Et gemt valg kan ikke fjernes fra brugerfladen endnu.
+
 Du kan vælge **Migrér valgte og fortsæt**, **Fortsæt uden** (flowet importeres selvom noget mangler — det fejler typisk i Architect bagefter) eller **Spring flowet over**.
 
 > **Skills der slås op dynamisk kan ikke tjekkes.** Bruger flowet `FindSkill(Task.Skills)`, afgøres skillet først når flowet kører. Dialogen siger det, men du må selv kontrollere at skillene findes i mål-org'en. Det samme gælder en bruger eller kø der er givet som udtryk (`targetUser: exp: Task.bruger`) — findes den ikke, går opkaldet ad flowets fejlvej, ikke importen.
@@ -314,6 +320,10 @@ Siden migrerer det der ikke er flows mellem to orgs, fordelt på tre faner: **Da
 >
 > Mål-integrationen matches på navn, ellers på integrationstype hvis der kun er én kandidat. Er der flere mulige, skal du selv vælge — og migreringen kan ikke startes før du har gjort det.
 
+**Fanen Totaltjek** sætter hver data action i kilden op mod mål-org'en, på kategori og navn, så man kan afklare navnene før man migrerer flows. Et klik på et tal filtrerer listen: *matcher*, *gemt valg*, *skal vælges* (samme navn under en anden kategori), *mangler* og *FDA mangler* (en Function Data Action kan ikke oprettes herfra). Til hver række kan man pege den over på den action i målet, den skal bruge — *Brug forslag* tager alle rækker med præcis én kandidat — og **Gem kortlægning** gemmer det, eller fjerner et gemt valg, for hele org-parret. Det er den samme kortlægning som listen i flowet bruger. **Tjek kontrakter** henter input- og output-skemaet fra begge sider for dem der matcher og viser felter der mangler, er ekstra eller har en anden type eller et andet krav — en action kan hedde det samme og alligevel ikke passe til flowet; det tager 20 par ad gangen, så en stor org kan tage et øjeblik. Ligger de to miljøer i samme org, er der intet at sammenligne, og fanen siger det. Genesys' egne indbyggede actions (id'et begynder med `static_`) er ikke med, når de mangler i målet — de kan hverken oprettes eller migreres. Actions der mangler, migreres stadig på fanen Data Actions.
+
+**Fanen Setup-forslag** foreslår, hvilke integrationer i mål-org'en de data actions, der mangler, skal ligge i. Det er til dét tilfælde, hvor kilden har få integrationer og målet mange — og hvor en integration kun rummer et vist antal actions. Man angiver grænsen pr. integration (Archy kender den ikke; tallet huskes i browseren), og forslaget sætter de actions, der mangler helt og kan oprettes herfra, ind i de **aktive** integrationer af samme type, hvor der er plads. En kildeintegrations actions holdes samlet, hvis de er der plads til — helst i en integration med samme navn — ellers deles de. Inaktive integrationer foreslås aldrig, og findes der ingen aktiv integration af typen, siger forslaget hvad den skal hedde. Kapacitetsbjælkerne viser det, der findes, og det, der kommer til; en gruppe kan flyttes til en anden integration, og bjælkerne følger med. Function Data Actions og actions under en anden kategori er ikke med, men tælles og vises som *FDA manuelt* og *Skal vælges*. Forslaget kan eksporteres til **Excel** (CSV) eller en **printvenlig side** (Ctrl+P giver PDF) til samtalen med kunden; det indeholder kun navne og tal. **Migrér efter planen** opretter de actions, forslaget har placeret, i de foreslåede integrationer — én ad gangen, med mål-integrationen valgt for hver. Man bekræfter først (med antal og evt. integrationer over grænsen), kan stoppe undervejs, og loggen viser hver action. Er målet prod, spørges der som ved en forfremmelse, og prod-login kræves. Det der ikke kunne placeres, springes over. Bagefter huskes, hvor actions'ene endte (*Husk hvor de havner*, slået til fra start): flowene peger på kildens kategori og navn, så kortlægningen gør, at listen i flowet finder dem i den nye integration uden at man vælger igen. Forslaget tælles derefter igen. Fanen tjekker ikke credentials.
+
 **Fanen User Prompts** migrerer user prompts mellem orgs. Både TTS-teksten og indtalt lyd kopieres — prompts med lyd er markeret 🔊 i listen.
 
 **Fanen Data Tabeller** migrerer DataTable-*strukturer* mellem orgs: vælg kilde- og mål-org, markér tabellerne, klik **⚡ Migrér valgte**. Kun kolonnedefinitionen kopieres — **rækkerne følger ikke med**. Findes kildens division i mål-org'en, oprettes tabellen der; ellers havner den i standarddivisionen, og loggen siger det.
@@ -324,6 +334,8 @@ Der kopieres navn, kategori, input/output-schema, request-config (URL, metode, h
 
 ![Migrér ressourcer — Data Actions](docs/data-actions.png)
 
+> **Kategorien følger mål-integrationen.** En migreret action oprettes med mål-integrationens navn som kategori — det er den et flow slår den op på — og ikke med kildens kategori. Kan navnet ikke læses, beholdes kildens. Loggen siger det, når kategorien ændres.
+>
 > **Bemærk:** Kategori-navne skal matche mellem orgs. Hvis kilden bruger `Genesys Cloud Data Actions - QM` men målet kun har `Genesys Cloud Data Actions`, skal du enten omdøbe integrationen i mål-org'en eller justere YAML'en før import.
 
 #### 🧙 Flow Builder · Beta
@@ -424,7 +436,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-292 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+344 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -589,6 +601,8 @@ The number is only set when the flow leaves **the group's first stage**. Onward 
 
 **The way back.** If the flow exists only later in the chain — everything sitting in prod, say, when dev has just been set up — the cell gets a **⟵ Bring here** button that fetches it from the nearest later stage. If the environment has a prefix, the flow gets it on the way: `Bank bot` from prod becomes `DEV_Bank bot`. Datatables are handled the same way.
 
+**✔ Check** sits next to ⟶ Promote and runs the first phase of a promotion — exports the flow from the source and examines everything it references in the target — but imports nothing and writes nothing in the target org. The answer is a report in three groups: what **blocks** the promotion (a Function Data Action that does not exist in the target, or a data action that exists in neither the source nor the target), what **must be decided** (a data action that exists under another category in the target — chosen at promotion or in the Full check), and what is **handled along the way or by hand** (tables and actions that can be migrated along, queues and other things to create in the target). The check uses the same examination as the promotion, so the two are never in disagreement; the blockers are the same ones that stop the promotion itself. The check is not a requirement: you can promote without having run it. It does not work on demo environments.
+
 **⇄ Check content** exports the flow from each environment and compares the hash — the only thing that can decide whether two environments are the same. If they differ, a **⟵ Pull back** button appears going the other way, so you can bring reality down and see what was done.
 
 #### 📝 Release notes and rollback
@@ -686,6 +700,10 @@ If anything is missing, a dialog opens with two sections:
 
 Common modules are migrated with the same machinery as flows, and their **own** dependencies are handled first — recursively, bottom-up. A module that itself uses fifteen tables brings all of them along.
 
+> **Function Data Actions block.** If the flow uses a Function Data Action that exists in the source but not in the target, it cannot be created from here and the promotion is **stopped**: the dialog shows it in red with a **checklist to copy**, and the *Continue anyway* and *Migrate selected* buttons are hidden. Create it in Genesys in the target org and press **Check again**; only once it exists can the flow be promoted. The block is also in the import itself, so it cannot be skipped. This keeps the version number and the check in step, instead of fixing things afterwards directly in Genesys.
+
+> **Data actions get the target's names.** A flow points at a data action by **category** (the integration's name) and **name**. If they are named differently in the target org — say *Test - Genesys Cloud Data Actions* in test and *Genesys Cloud Data Actions - Flows* in prod — the import fails even though the name exists. Archy therefore looks up both in the target, and if either is not an exact match, a list of the flow's data actions opens: *same* (exists), *saved*, *choose* (same name under another category — pick which) and *not found* (point it at an existing one, or let it be migrated in the next step). The reference in the flow is rewritten in the side copy that is imported; the source's own copy is never touched. Choices are saved per org pair — in the target org's manifest table if it has one, otherwise in `.data-action-map.json` — and only after a successful import, so they are applied automatically next time. To keep them from being saved, untick *Remember my choices*. A saved choice cannot be removed from the UI yet.
+
 You can choose **Migrate selected and continue**, **Continue anyway** (the flow is imported even though something is missing — it will usually fail in Architect afterwards) or **Skip this flow**.
 
 > **Dynamically resolved skills cannot be checked.** When a flow uses `FindSkill(Task.Skills)` the skill is decided at runtime. The dialog says so, but you have to verify yourself that the skills exist in the target org. The same goes for a user or queue given as an expression (`targetUser: exp: Task.user`) — if it does not exist, the call takes the flow's failure path rather than failing the import.
@@ -724,6 +742,10 @@ This page migrates everything that is not a flow between two orgs, across three 
 >
 > The target integration is matched by name, or by integration type when only one candidate exists. If several are possible you must choose yourself — and migration is blocked until you do.
 
+**The Full check tab** sets every data action in the source against the target org, by category and name, so the names can be sorted out before flows are migrated. A click on a number filters the list: *match*, *saved choice*, *to choose* (same name under another category), *missing* and *FDA missing* (a Function Data Action cannot be created from here). On each row you can point it at the action in the target it should use — *Use suggestions* takes every row with exactly one candidate — and **Save mapping** saves it, or removes a saved choice, for the whole org pair. It is the same mapping the list in the flow uses. **Check contracts** fetches the input and output schema from both sides for those that match and shows fields that are missing, extra or have another type or requirement — an action can have the same name and still not fit the flow; it takes 20 pairs at a time, so a large org can take a moment. If the two environments are in the same org there is nothing to compare, and the tab says so. Genesys' own built-in actions (the id starts with `static_`) are left out when they are missing in the target — they can be neither created nor migrated. Actions that are missing are still migrated on the Data Actions tab.
+
+**The Setup proposal tab** proposes which integrations in the target org the missing data actions should live in. It is for the case where the source has few integrations and the target many — and an integration holds only a certain number of actions. You enter the limit per integration (Archy does not know it; the number is remembered in the browser), and the proposal puts the actions that are missing entirely and can be created from here into the **active** integrations of the same type that have room. A source integration's actions are kept together if there is room — preferably in an integration with the same name — otherwise they are split. Inactive integrations are never proposed, and if there is no active integration of the type, the proposal says what it should be called. The capacity bars show what is there and what is coming; a group can be moved to another integration and the bars follow. Function Data Actions and actions under another category are not included, but are counted and shown as *FDA by hand* and *To choose*. The proposal can be exported to **Excel** (CSV) or a **printable page** (Ctrl+P gives PDF) for the talk with the customer; it contains only names and numbers. **Migrate by the plan** creates the actions the proposal has placed, in the proposed integrations — one at a time, with the target integration chosen for each. You confirm first (with the count and any integrations over the limit), can stop along the way, and the log shows every action. If the target is prod, you are asked as for a promotion, and a prod login is required. What could not be placed is skipped. Afterwards where the actions ended up is remembered (*Remember where they end up*, on from the start): flows point at the source's category and name, so the mapping lets the list in the flow find them in the new integration without choosing again. The proposal is then counted again. The tab does not check credentials.
+
 **The User Prompts tab** migrates user prompts between orgs. Both the TTS text and any recorded audio are copied — prompts with audio are marked 🔊 in the list.
 
 **The Data Tables tab** migrates DataTable *structures* between orgs: pick source and target org, select the tables, click **⚡ Migrate selected**. Only the column definition is copied — **rows do not come along**. If the source division exists in the target org the table is created there; otherwise it lands in the default division and the log says so.
@@ -734,6 +756,8 @@ Name, category, input/output schema, request config (URL, method, headers) and t
 
 ![Migrate resources — Data Actions](docs/data-actions.png)
 
+> **The category follows the target integration.** A migrated action is created with the target integration's name as its category — that is what a flow looks it up by — and not with the source's category. If the name cannot be read, the source's is kept. The log says so when the category changes.
+>
 > **Note:** Category names must match between orgs. If the source uses `Genesys Cloud Data Actions - QM` but the target only has `Genesys Cloud Data Actions`, either rename the integration in the target org or adjust the category in your YAML before importing.
 
 #### 🧙 Flow Builder · Beta
@@ -834,7 +858,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-292 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+344 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 

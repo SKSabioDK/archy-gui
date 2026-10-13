@@ -5,6 +5,132 @@
 
 ---
 
+### v1.54.1
+---
+**🇩🇰 Dansk**
+
+- **Rettelse: Genesys' indbyggede actions foreslås ikke længere oprettet.** Fundet ved at køre totaltjek og setup-forslag på Sabios rigtige data: tre af de 68 actions er indbyggede (id'et begynder med `static_`, fx *Get User Presence*). De findes i hver orgs Genesys Cloud Data Actions og kan hverken oprettes eller migreres, men blev talt som *mangler* og foreslået placeret i et nyt mål. De er nu ikke med, når de mangler i målet; findes de, tælles de som matchende.
+
+**🇬🇧 English**
+- **Fix: Genesys' built-in actions are no longer proposed for creation.** Found by running the full check and the setup proposal on Sabio's real data: three of the 68 actions are built in (the id starts with `static_`, e.g. *Get User Presence*). They exist in every org's Genesys Cloud Data Actions and can be neither created nor migrated, yet they were counted as *missing* and proposed for placement in a new target. They are now left out when missing in the target; if they exist, they count as matching.
+
+---
+
+### v1.54.0
+---
+**🇩🇰 Dansk**
+
+- **Ny knap ✔ Tjek ved ⟶ Forfrem på tavlen.** Kører første fase af en forfremmelse — eksporterer flowet fra kilden og undersøger alt det refererer til i målet — men importerer intet og skriver intet i mål-org'en. Rapporten har tre grupper: **blokerer** (en Function Data Action der mangler i målet, en data action der hverken findes i kilden eller målet), **skal afklares** (en data action under en anden kategori i målet, med kandidaterne) og **håndteres undervejs eller i hånden** (det der kan migreres med, og det der skal oprettes i målet). Til sidst står det, om flowet kan forfremmes, og hvor mange afhængigheder der er i orden.
+- **Samme undersøgelse som forfremmelsen.** Vagterne (gruppen, prod-reglerne, "ikke publiceret i kilden") og selve analysen er skilt ud i fælles funktioner, som både forfremmelsens første fase og tjekket bruger. Så kan de to ikke blive uenige om, hvad der står i vejen.
+- Tjekket er ikke et krav: man kan forfremme uden at have kørt det, og blokeringerne er de samme, som stopper selve forfremmelsen. Det virker ikke på demo-miljøer. Knappen er også med i tavlens knap-forklaring.
+
+**🇬🇧 English**
+- **New ✔ Check button next to ⟶ Promote on the board.** Runs the first phase of a promotion — exports the flow from the source and examines everything it references in the target — but imports nothing and writes nothing in the target org. The report has three groups: **blocks** (a Function Data Action missing in the target, a data action that exists in neither the source nor the target), **must be decided** (a data action under another category in the target, with the candidates) and **handled along the way or by hand** (what can be migrated along, and what must be created in the target). It ends by saying whether the flow can be promoted and how many dependencies are in order.
+- **The same examination as the promotion.** The guards (the group, the prod rules, "not published in the source") and the analysis itself are split out into shared functions that both the first phase of a promotion and the check use. So the two cannot disagree about what is in the way.
+- The check is not a requirement: you can promote without having run it, and the blockers are the same ones that stop the promotion itself. It does not work on demo environments. The button is also in the board's button help.
+
+---
+
+### v1.53.0
+---
+**🇩🇰 Dansk**
+
+- **Migrér efter planen.** Setup-forslaget kan nu køres: knappen opretter de actions, forslaget har placeret, i de foreslåede integrationer — én ad gangen, med mål-integrationen valgt for hver. Der bekræftes først, med antal og de integrationer der ender over grænsen. Man kan **stoppe** undervejs (det oprettede bliver stående), og loggen viser hver action. Er målet prod, spørges der som ved en forfremmelse, og prod-vagten kræver login. Det der ikke kunne placeres, springes over.
+- **Kortlægningen huskes.** Flowene peger på kildens kategori og navn. Efter migreringen gemmes hvor hver action havnede (kan slås fra), så listen i flowet finder dem i den nye integration uden at man vælger igen. Forslaget tælles derefter igen, så bjælkerne viser det der nu findes.
+- Forslaget sender nu også de gemte valg med, så de nye kan flettes ind uden at overskrive de gamle.
+
+**🇬🇧 English**
+- **Migrate by the plan.** The setup proposal can now be run: the button creates the actions the proposal has placed, in the proposed integrations — one at a time, with the target integration chosen for each. It confirms first, with the count and the integrations that end up over the limit. You can **stop** along the way (what has been created stays), and the log shows every action. If the target is prod, you are asked as for a promotion, and the prod guard requires a login. What could not be placed is skipped.
+- **The mapping is remembered.** Flows point at the source's category and name. After the migration, where each action ended up is saved (can be switched off), so the list in the flow finds them in the new integration without choosing again. The proposal is then counted again, so the bars show what exists now.
+- The proposal now also sends the saved choices, so the new ones can be merged in without overwriting the old ones.
+
+---
+
+### v1.52.0
+---
+**🇩🇰 Dansk**
+
+- **Ny fane Setup-forslag på Migrér ressourcer.** Foreslår hvilke integrationer i mål-org'en de data actions, der mangler, skal ligge i — til de kunder, hvor kilden har få integrationer og målet mange. Man angiver, hvor mange actions en integration højst rummer (Archy kender grænsen ikke; tallet huskes i browseren), og forslaget fordeler actions'ene på de **aktive** integrationer af samme type, hvor der er plads. En kildeintegrations actions holdes samlet, helst i en integration med samme navn, ellers deles de. Inaktive integrationer foreslås aldrig.
+- **Kapacitetsbjælker.** For hver integration i målet ses det, der findes, og det, der kommer til, med farve når den er næsten fuld eller over grænsen. En gruppe kan flyttes til en anden integration, og bjælkerne følger med.
+- **Det der ikke kan placeres, siges højt:** findes ingen aktiv integration af typen, står der hvad den skal hedde (fx `Genesys Cloud Data Actions - Emails`); er de fulde, står der hvor mange der er uden plads. Function Data Actions og actions under en anden kategori er ikke med, men tælles.
+- **Eksport til kunden.** Til Excel (CSV med dansk adskillelse og BOM) eller en printvenlig side (Ctrl+P giver PDF). Kun navne og tal — ingen id'er, tokens eller secrets.
+- Fanen migrerer ikke noget og tjekker ikke credentials; migreringen sker stadig på fanen Data Actions.
+
+**🇬🇧 English**
+- **New Setup proposal tab on Migrate resources.** Proposes which integrations in the target org the missing data actions should live in — for customers where the source has few integrations and the target many. You enter how many actions an integration holds at most (Archy does not know the limit; the number is remembered in the browser), and the proposal spreads the actions over the **active** integrations of the same type that have room. A source integration's actions are kept together, preferably in an integration with the same name, otherwise they are split. Inactive integrations are never proposed.
+- **Capacity bars.** For each integration in the target you see what is there and what is coming, coloured when it is nearly full or over the limit. A group can be moved to another integration and the bars follow.
+- **What cannot be placed is said out loud:** if there is no active integration of the type, it says what it should be called (say `Genesys Cloud Data Actions - Emails`); if they are full, it says how many are without room. Function Data Actions and actions under another category are not included, but are counted.
+- **Export to the customer.** To Excel (CSV with semicolons and a BOM) or a printable page (Ctrl+P gives PDF). Names and numbers only — no ids, tokens or secrets.
+- The tab migrates nothing and does not check credentials; migrating is still done on the Data Actions tab.
+
+---
+
+### v1.51.1
+---
+**🇩🇰 Dansk**
+
+- **Rettelse: en migreret data action får målintegrationens navn som kategori.** `Migrér` oprettede actionen med kildens kategori, uanset hvilken integration den blev lagt i. Hedder integrationen noget andet i målet — fx `Genesys Cloud Data Actions - Flows` i prod og `Test - Genesys Cloud Data Actions` i test — stod actionen under en kategori, flowet ikke finder. Kategorien er integrationens navn, og den bruges nu, både når man selv har valgt mål-integration og når den findes automatisk. Kan navnet ikke læses, beholdes kildens kategori som før, og loggen siger det, når kategorien ændres.
+
+**🇬🇧 English**
+- **Fix: a migrated data action gets the target integration's name as its category.** Migrating created the action with the source's category, whichever integration it was put in. If the integration has a different name in the target — say `Genesys Cloud Data Actions - Flows` in prod and `Test - Genesys Cloud Data Actions` in test — the action sat under a category the flow cannot find. The category is the integration's name, and that is now used, both when the target integration is chosen by hand and when it is found automatically. If the name cannot be read, the source's category is kept as before, and the log says so when the category changes.
+
+---
+
+### v1.51.0
+---
+**🇩🇰 Dansk**
+
+- **Ny fane Totaltjek på Migrér ressourcer.** Sætter hver data action i kilden op mod mål-org'en, på kategori og navn, og tæller dem: *matcher*, *gemt valg*, *skal vælges* (samme navn under en anden kategori), *mangler* og *FDA mangler*. Et klik på et tal filtrerer listen, og der kan søges.
+- **Kortlægning direkte i listen.** Hver række kan pege på den action i målet, den skal bruge; *Brug forslag* tager alle rækker med præcis én kandidat. **Gem kortlægning** gemmer hele org-parrets valg — også en fjernelse, så et gemt valg endelig kan fjernes igen. Det er den samme kortlægning som listen i flowet bruger (v1.50.0).
+- **Tjek kontrakter.** For de actions der matcher, hentes input- og output-skemaet fra begge sider, og forskellene vises: felter der mangler i målet, felter der er ekstra, en anden type eller et andet krav. En action kan hedde det samme og alligevel ikke passe til flowet. Tages 20 par ad gangen med fremgang.
+- Ligger kilde og mål i samme org, er der intet at sammenligne, og fanen siger det.
+- Actions der mangler, migreres stadig på fanen Data Actions — vælg mål-integration dér.
+
+**🇬🇧 English**
+- **New Full check tab on Migrate resources.** Sets every data action in the source against the target org, by category and name, and counts them: *match*, *saved choice*, *to choose* (same name under another category), *missing* and *FDA missing*. A click on a number filters the list, and it can be searched.
+- **Mapping straight in the list.** Each row can point at the action in the target it should use; *Use suggestions* takes every row with exactly one candidate. **Save mapping** saves the whole org pair's choices — including a removal, so a saved choice can finally be removed again. It is the same mapping the list in the flow uses (v1.50.0).
+- **Check contracts.** For the actions that match, the input and output schema are fetched from both sides and the differences are shown: fields missing in the target, extra fields, another type or another requirement. An action can have the same name and still not fit the flow. Done 20 pairs at a time with progress.
+- If the source and target are in the same org there is nothing to compare, and the tab says so.
+- Actions that are missing are still migrated on the Data Actions tab — pick the target integration there.
+
+---
+
+### v1.50.0
+---
+**🇩🇰 Dansk**
+
+- **Flowets data actions slås op med kategori og navn.** Et flow peger på en data action med integrationens kategori og navnet. Før blev kun navnet tjekket, så en action med samme navn under en anden kategori — fx `Test - Genesys Cloud Data Actions` i test og `Genesys Cloud Data Actions - Flows` i prod — så ud til at findes, mens importen fejlede. Nu sammenlignes begge dele med mål-org'en.
+- **Liste over flowets data actions, når navnene ikke passer.** Findes en reference ikke præcist i målet, åbnes en liste med status pr. data action: *samme*, *gemt valg*, *vælg* (samme navn under en anden kategori) og *findes ikke*. Man peger hver over på den action i målet, den skal bruge, eller lader den være. Referencen skrives om i den side-kopi der importeres — kildens egen kopi røres ikke — og skrives med i release-noten.
+- **Valgene huskes.** De gemmes pr. kilde-org og mål-org, i mål-org'ens manifest-tabel hvis den har en (så de andre pc'er ser dem), ellers i `.data-action-map.json`. De gemmes først efter en vellykket import og bruges automatisk næste gang. *Husk mine valg* kan slås fra.
+- **En Function Data Action, der er peget over på en eksisterende i målet, blokerer ikke** (v1.49.0-spærringen ser på det valg, der faktisk importeres).
+- Endnu ikke med: et gemt valg kan ikke fjernes fra brugerfladen, og totaltjekket mellem to orgs kommer i et senere trin.
+
+**🇬🇧 English**
+- **A flow's data actions are looked up by category and name.** A flow points at a data action by the integration's category and the name. Only the name used to be checked, so an action with the same name under another category — say `Test - Genesys Cloud Data Actions` in test and `Genesys Cloud Data Actions - Flows` in prod — appeared to exist while the import failed. Both are now compared with the target org.
+- **A list of the flow's data actions when the names do not match.** If a reference does not exist exactly in the target, a list opens with a status per data action: *same*, *saved*, *choose* (same name under another category) and *not found*. You point each at the action in the target it should use, or leave it. The reference is rewritten in the side copy that is imported — the source's own copy is never touched — and is included in the release note.
+- **The choices are remembered.** They are saved per source org and target org, in the target org's manifest table if it has one (so the other PCs see them), otherwise in `.data-action-map.json`. They are saved only after a successful import and applied automatically next time. *Remember my choices* can be switched off.
+- **A Function Data Action pointed at an existing one in the target does not block** (the v1.49.0 block looks at the choice that is actually imported).
+- Not included yet: a saved choice cannot be removed from the UI, and the full check between two orgs comes in a later step.
+
+---
+
+### v1.49.0
+---
+**🇩🇰 Dansk**
+
+- **En manglende Function Data Action standser forfremmelsen.** En Function Data Action kan ikke oprettes via API'et og kan ikke flyttes mellem orgs. Bruger et flow en, som findes i kilden men ikke i målet, kunne flowet før blive importeret alligevel via *Fortsæt uden* — og så rettede man det bagefter direkte i Genesys, hvilket bringer versionsnummer og tjek ude af trit. Nu viser dialogen den i rødt som **blokerende**, med en **tjekliste til kopiering**, og *Fortsæt uden* og *Migrér valgte og fortsæt* er skjult. Man kan **springe flowet over** eller oprette Function Data Action'en i Genesys og trykke **Tjek igen**.
+- **Spærringen står også i selve importen.** Commit afviser flowet (409, `fda-missing`) før der skrives noget, hvis en Function Data Action mangler i målet — også hvis klienten springer dialogen over. Kan målet eller kilden ikke slås op, standses flowet ikke på et gæt, men der skrives en advarsel i systemloggen.
+- Kun en Function Data Action der kan påvises i kilden, blokerer. Et navn kilden ikke kender, er stadig bare "findes ikke i kilden".
+- Tavlens FDA-mærke (hvilke flows bruger en FDA) er ikke med endnu.
+
+**🇬🇧 English**
+- **A missing Function Data Action stops the promotion.** A Function Data Action cannot be created through the API and cannot be moved between orgs. If a flow uses one that exists in the source but not in the target, the flow could previously still be imported through *Continue anyway* — and fixed afterwards directly in Genesys, which puts the version number and the check out of step. The dialog now shows it in red as **blocking**, with a **checklist to copy**, and *Continue anyway* and *Migrate selected and continue* are hidden. You can **skip the flow**, or create the Function Data Action in Genesys and press **Check again**.
+- **The block is also in the import itself.** Commit refuses the flow (409, `fda-missing`) before anything is written if a Function Data Action is missing in the target — even if the client skips the dialog. If the target or source cannot be looked up, the flow is not stopped on a guess; a warning is written to the system log.
+- Only a Function Data Action that can be shown to exist in the source blocks. A name the source does not know remains a plain "does not exist in the source".
+- The board's FDA marker (which flows use an FDA) is not included yet.
+
+---
+
 ### v1.48.14
 ---
 **🇩🇰 Dansk**
