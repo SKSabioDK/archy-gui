@@ -5,6 +5,45 @@
 
 ---
 
+### v1.55.3
+---
+**🇩🇰 Dansk**
+
+- **Rettelse: ental i teksterne.** Setup-forslaget skrev "1 actions" ved en gruppe med én action og "1 inaktive integrationer" for én inaktiv integration, og pipeline-tjekket skrev "1 afhængigheder er i orden". Nu står der ental, når tallet er 1, på alle fem sprog.
+- Billederne af Setup-forslag i README er taget igen.
+
+**🇬🇧 English**
+- **Fix: singular in the texts.** The setup proposal wrote "1 actions" for a group with one action and "1 inactive integrations" for one inactive integration, and the pre-promotion check wrote "1 dependencies are in order". The singular is now used when the number is 1, in all five languages.
+- The Setup proposal images in the README have been retaken.
+
+---
+
+### v1.55.2
+---
+**🇩🇰 Dansk**
+
+- **Skærmbilleder af Totaltjek og Setup-forslag i README**, på dansk og engelsk med temaet *Sabio Dark*. De to faner kræver to forskellige orgs, så billederne er taget med **opdigtede data**: det er appens rigtige brugerflade, men svarene er beregnet af appens egne funktioner på en opdigtet test- og prod-org (Demo A/S), ikke hentet fra en kunde. Det står under hvert billede.
+- Ingen kodeændringer.
+
+**🇬🇧 English**
+- **Screenshots of the Full check and the Setup proposal in the README**, in Danish and English with the *Sabio Dark* theme. The two tabs need two different orgs, so the screenshots were taken with **invented data**: it is the app's real UI, but the answers are computed by the app's own functions on an invented test and prod org (Demo A/S), not fetched from a customer. It says so under each image.
+- No code changes.
+
+---
+
+### v1.55.1
+---
+**🇩🇰 Dansk**
+
+- **Skærmbillederne i README er lavet om.** Den engelske del brugte danske skærmbilleder. Der er nu et sæt på dansk og et på engelsk (`docs/*.da.png` og `docs/*.en.png`) med temaet *Sabio Dark*, taget af den aktuelle version, så de også viser fanerne Totaltjek og Setup-forslag og knappen ✔ Tjek. Åbningsbilledet er flyttet ned i hver sprogs egen del.
+- Ingen kodeændringer.
+
+**🇬🇧 English**
+- **The README screenshots have been redone.** The English part used Danish screenshots. There is now one set in Danish and one in English (`docs/*.da.png` and `docs/*.en.png`) in the *Sabio Dark* theme, taken from the current version, so they also show the Full check and Setup proposal tabs and the ✔ Check button. The opening image has moved down into each language's own part.
+- No code changes.
+
+---
+
 ### v1.55.0
 ---
 **🇩🇰 Dansk**

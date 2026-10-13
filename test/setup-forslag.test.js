@@ -94,3 +94,13 @@ test('migrér efter planen bruger den eksisterende rute med den planlagte integr
   // Kortlægningen gemmes først efter at actions er oprettet.
   assert.ok(fn.indexOf('/api/actions/migrate') < fn.indexOf('/api/data-actions/map'));
 });
+
+test('tal i tekst: ental hvor tallet er 1', () => {
+  const HTML2 = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  assert.match(HTML2, /p\.count === 1 \? 'dp_action_one' : 'dp_actions'/);
+  assert.match(HTML2, /inactive\.length === 1 \? 'dp_inactive_one' : 'dp_inactive'/);
+  assert.match(HTML2, /v\.ok === 1 \? 'pc_ok_one' : 'pc_ok_n'/);
+  // Hvert sprog har ental-teksterne.
+  for (const k of ['dp_action_one', 'dp_inactive_one', 'pc_ok_one'])
+    assert.equal((HTML2.match(new RegExp('^ *' + k + ':', 'gm')) || []).length, 5, k);
+});

@@ -1,18 +1,13 @@
-# Archy GUI — Flow Manager · v1.55.0
+# Archy GUI — Flow Manager · v1.55.3
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
-
-![Pipeline med Demo 2](docs/pipeline-demo2.png)
-
-*Pipeline med Demo 2 — det man ser når programmet åbnes. Miljøerne står som kolonner i trin-rækkefølge, flowene som rækker.*
-*Pipeline with Demo 2 — what you see when the app opens. The environments are columns in stage order, the flows are rows.*
 
 ---
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.55.0**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.55.0**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.55.3**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.55.3**.
 
 ---
 
@@ -20,6 +15,10 @@ All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is 
 ## 🇩🇰 Dansk
 
 Et grafisk interface til [Archy](https://help.mypurecloud.com/articles/archy/) med multi-kunde support, flow-migration, Data Action migration og OAuth PKCE login.
+
+![Pipeline med Demo 2](docs/pipeline-demo2.da.png)
+
+*Pipeline med Demo 2 — det man ser når programmet åbnes. Miljøerne står som kolonner i trin-rækkefølge, flowene som rækker.*
 
 ### Krav
 - **Node.js 18+**
@@ -74,7 +73,7 @@ Nye miljøer oprettes altid med **🌐 OAuth (PKCE)**: du logger ind i Genesys s
 
 **Kun import/eksport.** Et miljø uden trin er ikke med i nogen pipeline. Det kan importere og eksportere flows som alle andre, men ArchyGUI opretter ingen tabel og skriver intet i dets org.
 
-<img src="docs/setup-guide.png" alt="Opsætningsguiden for Sabio APS" width="560">
+<img src="docs/setup-guide.da.png" alt="Opsætningsguiden for Sabio APS" width="560">
 
 **Log ind hvor du står.** Mangler et miljø login, kommer der en bjælke øverst med en **Log ind**-knap — på alle sider, ikke kun Kunder — og siden hentes igen bagefter. 🔒 ved miljøet i sidebjælken logger også ind; 🟢 når man er logget ind. Hold musen over 🟢 — eller se login-mærket på kortet — for at se hvilken org man er logget ind i.
 
@@ -161,7 +160,7 @@ Hver celle viser flowets **navn i netop det miljø**, dets publicerede udgave og
 
 **Hver knap siger hvad den gør, før den gør det.** ⟶ Forfrem, ⟵ Hent hertil, ⟵ Hent tilbage, ↩ og ▲ Publicér (demo) åbner en dialog med flowet, fra- og til-miljøet, hvad der sker trin for trin, og hvad man skal passe på: at målet er prod, at målet er publiceret uden om pipelinen eller er flere udgaver foran — så de ændringer går tabt — eller at ⇄ Tjek indhold har fundet en forskel. Man vælger **Udfør** eller **Annullér**. **? Knapperne** i tavlens værktøjslinje forklarer alle knapper.
 
-![Bekræftelse før en forfremmelse](docs/pipeline-confirm.png)
+![Bekræftelse før en forfremmelse](docs/pipeline-confirm.da.png)
 
 *⟶ Forfrem til et prod der er 9 udgaver foran: dialogen siger hvad der sker, advarer om at rettelser i prod går tabt, og at versionen ikke kan udlignes.*
 
@@ -324,7 +323,15 @@ Siden migrerer det der ikke er flows mellem to orgs, fordelt på tre faner: **Da
 
 **Fanen Totaltjek** sætter hver data action i kilden op mod mål-org'en, på kategori og navn, så man kan afklare navnene før man migrerer flows. Et klik på et tal filtrerer listen: *matcher*, *gemt valg*, *skal vælges* (samme navn under en anden kategori), *mangler* og *FDA mangler* (en Function Data Action kan ikke oprettes herfra). Til hver række kan man pege den over på den action i målet, den skal bruge — *Brug forslag* tager alle rækker med præcis én kandidat — og **Gem kortlægning** gemmer det, eller fjerner et gemt valg, for hele org-parret. Det er den samme kortlægning som listen i flowet bruger. **Tjek kontrakter** henter input- og output-skemaet fra begge sider for dem der matcher og viser felter der mangler, er ekstra eller har en anden type eller et andet krav — en action kan hedde det samme og alligevel ikke passe til flowet; det tager 20 par ad gangen, så en stor org kan tage et øjeblik. Ligger de to miljøer i samme org, er der intet at sammenligne, og fanen siger det. Genesys' egne indbyggede actions (id'et begynder med `static_`) er ikke med, når de mangler i målet — de kan hverken oprettes eller migreres. Actions der mangler, migreres stadig på fanen Data Actions.
 
+![Totaltjek af data actions](docs/totaltjek.da.png)
+
+*Eksempel med opdigtede data (Demo A/S — TEST til PROD): billedet viser appens rigtige brugerflade, men svarene er beregnet af appens egne funktioner på en opdigtet org, ikke hentet fra en kunde. Faneblade kræver to forskellige orgs.*
+
 **Fanen Setup-forslag** foreslår, hvilke integrationer i mål-org'en de data actions, der mangler, skal ligge i. Det er til dét tilfælde, hvor kilden har få integrationer og målet mange — og hvor en integration kun rummer et vist antal actions. Man angiver grænsen pr. integration (Archy kender den ikke; tallet huskes i browseren), og forslaget sætter de actions, der mangler helt og kan oprettes herfra, ind i de **aktive** integrationer af samme type, hvor der er plads. En kildeintegrations actions holdes samlet, hvis de er der plads til — helst i en integration med samme navn — ellers deles de. Inaktive integrationer foreslås aldrig, og findes der ingen aktiv integration af typen, siger forslaget hvad den skal hedde. Kapacitetsbjælkerne viser det, der findes, og det, der kommer til; en gruppe kan flyttes til en anden integration, og bjælkerne følger med. Function Data Actions og actions under en anden kategori er ikke med, men tælles og vises som *FDA manuelt* og *Skal vælges*. Forslaget kan eksporteres til **Excel** (CSV) eller en **printvenlig side** (Ctrl+P giver PDF) til samtalen med kunden; det indeholder kun navne og tal. **Migrér efter planen** opretter de actions, forslaget har placeret, i de foreslåede integrationer — én ad gangen, med mål-integrationen valgt for hver. Man bekræfter først (med antal og evt. integrationer over grænsen), kan stoppe undervejs, og loggen viser hver action. Er målet prod, spørges der som ved en forfremmelse, og prod-login kræves. Det der ikke kunne placeres, springes over. Bagefter huskes, hvor actions'ene endte (*Husk hvor de havner*, slået til fra start): flowene peger på kildens kategori og navn, så kortlægningen gør, at listen i flowet finder dem i den nye integration uden at man vælger igen. Forslaget tælles derefter igen. Fanen tjekker ikke credentials.
+
+![Setup-forslag for data actions](docs/setup-forslag.da.png)
+
+*Eksempel med opdigtede data (Demo A/S — TEST til PROD): billedet viser appens rigtige brugerflade, men svarene er beregnet af appens egne funktioner på en opdigtet org, ikke hentet fra en kunde. Faneblade kræver to forskellige orgs.*
 
 **Fanen User Prompts** migrerer user prompts mellem orgs. Både TTS-teksten og indtalt lyd kopieres — prompts med lyd er markeret 🔊 i listen.
 
@@ -334,7 +341,7 @@ Siden migrerer det der ikke er flows mellem to orgs, fordelt på tre faner: **Da
 
 Der kopieres navn, kategori, input/output-schema, request-config (URL, metode, headers) samt request- og success-templates. Templates hentes fra kilden og indsættes direkte i den nye action, så den ikke refererer tilbage til kilde-orgen.
 
-![Migrér ressourcer — Data Actions](docs/data-actions.png)
+![Migrér ressourcer — Data Actions](docs/data-actions.da.png)
 
 > **Kategorien følger mål-integrationen.** En migreret action oprettes med mål-integrationens navn som kategori — det er den et flow slår den op på — og ikke med kildens kategori. Kan navnet ikke læses, beholdes kildens. Loggen siger det, når kategorien ændres.
 >
@@ -363,7 +370,7 @@ Alle handlinger logges i realtid. Filtrer på tidsrum, niveau, handling, kunde o
 
 **Selve logteksten er altid engelsk**, uanset hvilket sprog brugerfladen står på. Kolonneoverskrifter og filtre følger sproget; linjerne gør ikke. Loggen bliver kopieret ind i en sag og læst af folk der ikke nødvendigvis kører programmet i samme sprog som den der lavede migreringen.
 
-![Systemlog](docs/systemlog.png)
+![Systemlog](docs/systemlog.da.png)
 
 ---
 
@@ -438,7 +445,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-349 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+350 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -458,6 +465,10 @@ Testene ligger i `test/` og kræver ingen pakker ud over Node selv (`node --test
 ## 🇬🇧 English
 
 A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) with multi-customer support, flow migration, Data Action migration, and OAuth PKCE login.
+
+![Pipeline with Demo 2](docs/pipeline-demo2.en.png)
+
+*Pipeline with Demo 2 — what you see when the app opens. The environments are columns in stage order, the flows are rows.*
 
 > The current version and every change are in [CHANGELOG.md](CHANGELOG.md) — see the top of this page.
 
@@ -506,7 +517,7 @@ New environments are always created with **🌐 OAuth (PKCE)**: you log in to Ge
 
 **Import/export only.** An environment without a stage is not part of any pipeline. It imports and exports flows like any other, but ArchyGUI creates no table and writes nothing in its org.
 
-<img src="docs/setup-guide.png" alt="The setup guide for Sabio APS" width="560">
+<img src="docs/setup-guide.en.png" alt="The setup guide for Sabio APS" width="560">
 
 **Log in where you are.** When an environment needs a login, a bar with a **Log in** button appears at the top — on every page, not only Customers — and the page reloads afterwards. 🔒 next to the environment in the sidebar logs in too; 🟢 once logged in. Hover 🟢 — or look at the login badge on the card — to see which org you are logged into.
 
@@ -585,7 +596,7 @@ Each cell shows the flow's **name in that environment**, its published version a
 
 **Every button says what it does before it does it.** ⟶ Promote, ⟵ Pull here, ⟵ Pull back, ↩ and ▲ Publish (demo) open a dialog with the flow, source and target, what happens step by step, and what to watch out for: the target is prod, the target was published outside the pipeline or is versions ahead — so those changes are lost — or ⇄ Check content found a difference. You choose to go ahead or **Cancel**. **? Buttons** in the board toolbar explains every button.
 
-![Confirmation before a promotion](docs/pipeline-confirm.png)
+![Confirmation before a promotion](docs/pipeline-confirm.en.png)
 
 *⟶ Promote to a prod that is 9 versions ahead: the dialog says what happens, warns that edits in prod are lost, and that the version cannot be aligned.*
 
@@ -748,7 +759,15 @@ This page migrates everything that is not a flow between two orgs, across three 
 
 **The Full check tab** sets every data action in the source against the target org, by category and name, so the names can be sorted out before flows are migrated. A click on a number filters the list: *match*, *saved choice*, *to choose* (same name under another category), *missing* and *FDA missing* (a Function Data Action cannot be created from here). On each row you can point it at the action in the target it should use — *Use suggestions* takes every row with exactly one candidate — and **Save mapping** saves it, or removes a saved choice, for the whole org pair. It is the same mapping the list in the flow uses. **Check contracts** fetches the input and output schema from both sides for those that match and shows fields that are missing, extra or have another type or requirement — an action can have the same name and still not fit the flow; it takes 20 pairs at a time, so a large org can take a moment. If the two environments are in the same org there is nothing to compare, and the tab says so. Genesys' own built-in actions (the id starts with `static_`) are left out when they are missing in the target — they can be neither created nor migrated. Actions that are missing are still migrated on the Data Actions tab.
 
+![Full check of data actions](docs/totaltjek.en.png)
+
+*Example with invented data (Demo A/S — TEST to PROD): the image shows the app's real UI, but the answers are computed by the app's own functions on an invented org, not fetched from a customer. These tabs need two different orgs.*
+
 **The Setup proposal tab** proposes which integrations in the target org the missing data actions should live in. It is for the case where the source has few integrations and the target many — and an integration holds only a certain number of actions. You enter the limit per integration (Archy does not know it; the number is remembered in the browser), and the proposal puts the actions that are missing entirely and can be created from here into the **active** integrations of the same type that have room. A source integration's actions are kept together if there is room — preferably in an integration with the same name — otherwise they are split. Inactive integrations are never proposed, and if there is no active integration of the type, the proposal says what it should be called. The capacity bars show what is there and what is coming; a group can be moved to another integration and the bars follow. Function Data Actions and actions under another category are not included, but are counted and shown as *FDA by hand* and *To choose*. The proposal can be exported to **Excel** (CSV) or a **printable page** (Ctrl+P gives PDF) for the talk with the customer; it contains only names and numbers. **Migrate by the plan** creates the actions the proposal has placed, in the proposed integrations — one at a time, with the target integration chosen for each. You confirm first (with the count and any integrations over the limit), can stop along the way, and the log shows every action. If the target is prod, you are asked as for a promotion, and a prod login is required. What could not be placed is skipped. Afterwards where the actions ended up is remembered (*Remember where they end up*, on from the start): flows point at the source's category and name, so the mapping lets the list in the flow find them in the new integration without choosing again. The proposal is then counted again. The tab does not check credentials.
+
+![Setup proposal for data actions](docs/setup-forslag.en.png)
+
+*Example with invented data (Demo A/S — TEST to PROD): the image shows the app's real UI, but the answers are computed by the app's own functions on an invented org, not fetched from a customer. These tabs need two different orgs.*
 
 **The User Prompts tab** migrates user prompts between orgs. Both the TTS text and any recorded audio are copied — prompts with audio are marked 🔊 in the list.
 
@@ -758,7 +777,7 @@ This page migrates everything that is not a flow between two orgs, across three 
 
 Name, category, input/output schema, request config (URL, method, headers) and the request/success templates are copied. Templates are fetched from the source and inlined into the new action, so it never references the source org.
 
-![Migrate resources — Data Actions](docs/data-actions.png)
+![Migrate resources — Data Actions](docs/data-actions.en.png)
 
 > **The category follows the target integration.** A migrated action is created with the target integration's name as its category — that is what a flow looks it up by — and not with the source's category. If the name cannot be read, the source's is kept. The log says so when the category changes.
 >
@@ -785,7 +804,7 @@ All actions logged in real time. Filter by time span, level, action type, custom
 
 **SECURITY** shows prod logins, who did or did not get deploy rights and why, and every rejected attempt to write to prod.
 
-![System Log](docs/systemlog.png)
+![System Log](docs/systemlog.en.png)
 
 **The log text itself is always English**, whatever language the interface is set to. Column headers and filters follow the language; the lines do not. The log gets pasted into a ticket and read by people who do not necessarily run the app in the same language as whoever ran the migration.
 
@@ -862,7 +881,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-349 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+350 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 
