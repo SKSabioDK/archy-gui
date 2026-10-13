@@ -5774,6 +5774,49 @@ async function lookupExisting(kind, names, token, apiBase) {
   return found;
 }
 
+// ── Function Data Actions ─────────────────────────────────────────────────────
+
+const FUNCTION_INTEGRATION = 'function-data-actions';
+
+// En Function Data Action kan ikke oprettes via API'et: dens skabelon er et id
+// på en function i kildens org. Mangler den i målet, kan flowet ikke forfremmes
+// — og forfremmes det alligevel, ender versionsnummeret og tjekket i Genesys
+// ude af trit, når man retter det bagefter direkte i org'en.
+//
+// Ren afgørelse, så den kan prøves uden en org: hvilke af de manglende navne er
+// FDA'er i kilden? Et navn kilden ikke kender, er ikke en FDA vi kan påvise.
+function missingFunctionActions(missingNames, sourceActions, integrationTypes) {
+  return missingNames.filter(n => {
+    const hit = (sourceActions || []).find(a => a.name === n);
+    return !!hit && (integrationTypes || {})[hit.integrationId] === FUNCTION_INTEGRATION;
+  });
+}
+
+// De Function Data Actions flowet bruger, som ikke findes i målet.
+async function functionActionsMissingInTarget(source, target, yaml) {
+  const names = scanYamlDependencies(yaml).dataaction;
+  if (!names.length) return [];
+  const { token: tt, apiBase: tb } = await getToken(target);
+  const existing = await lookupExisting('dataaction', names, tt, tb);
+  const missing = names.filter(n => !existing.has(n));
+  if (!missing.length) return [];
+
+  const { token: st, apiBase: sb } = await getToken(source);
+  const SH = { headers: { Authorization: `Bearer ${st}` } };
+  let actions = [], page = 1;
+  for (;;) {
+    const r = await axios.get(`${sb}/api/v2/integrations/actions`, { ...SH, params: { pageSize: 100, pageNumber: page } });
+    const e = r.data.entities || [];
+    actions = actions.concat(e);
+    if (e.length < 100) break;
+    page++;
+  }
+  const types = {};
+  const ri = await axios.get(`${sb}/api/v2/integrations`, { ...SH, params: { pageSize: 200 } });
+  for (const i of ri.data.entities || []) types[i.id] = i.integrationType?.id || '';
+  return missingFunctionActions(missing, actions, types);
+}
+
 // ── User prompts ──────────────────────────────────────────────────────────────
 
 // Migrerer én user prompt med alle dens sprogressourcer.
@@ -7160,6 +7203,7 @@ app.post('/api/migrate/prepare', async (req, res) => {
         else if (srcInts[hit.integrationId] === 'function-data-actions') {
           r.manualReason = 'function';   // functionen kan ikke oprettes via API
           r.integrationType = 'function-data-actions';
+          r.blocking = true;             // flowet kan ikke forfremmes før den findes i målet
         } else { r.canMigrate = true; r.sourceRefId = hit.id; r.integrationType = srcInts[hit.integrationId] || ''; }
       } else if (FLOW_KINDS.has(r.kind)) {
         const hit = srcFlows.find(f => f.name === r.name);
@@ -7219,6 +7263,24 @@ app.post('/api/migrate/commit', async (req, res) => {
   const resolved = path.resolve(filePath || '');
   if (!insideFlowsDir(resolved) || !fs.existsSync(resolved)) {
     return res.status(400).json({ error: 'Ugyldig filsti' });
+  }
+
+  // Hård port: en Function Data Action der mangler i målet, kan ikke oprettes
+  // herfra. Commit er den der skriver, så vagten står her og ikke kun i
+  // dialogen. Kan vi ikke slå det op, standser vi ikke på et gæt.
+  let fdaMangler = [];
+  try {
+    fdaMangler = await functionActionsMissingInTarget(source, target, fs.readFileSync(resolved, 'utf8'));
+  } catch (e) {
+    addLog('WARN', `Could not check Function Data Actions for "${flowName}": ${describeApiError(e)}`, target.name, 'MIGRATE');
+  }
+  if (fdaMangler.length) {
+    addLog('WARN', `Migration blocked (fda-missing): "${flowName}" needs ${fdaMangler.join(', ')} in ${target.name}`, target.name, 'MIGRATE');
+    return res.status(409).json({
+      code: 'fda-missing', missing: fdaMangler,
+      error: `${fdaMangler.length === 1 ? 'Function Data Action' : 'Function Data Actions'} "${fdaMangler.join('", "')}" ` +
+             `findes ikke i ${target.name} og kan ikke oprettes herfra. Opret ${fdaMangler.length === 1 ? 'den' : 'dem'} i Genesys og forfrem derefter igen.`
+    });
   }
 
   try {
@@ -7660,6 +7722,8 @@ module.exports = {
   lineDiff, releaseDiff, rollbackCandidate, releasesFor, releaseNoteMarkdown, flowHasDraft,
   compactRelease, trimOrgReleases, mergeReleases, ORG_RELEASES_MAX,
   parseFlowFileName, versionLabel, sanitizeName, normType,
+  // function data actions
+  missingFunctionActions, FUNCTION_INTEGRATION,
   // miljøer og præfikser
   prefixOf, orgKeyOf, rememberOrgId, wrongOrg, clientPinsOrg, orgOwnedElsewhere, belongsToEnv, stripEnvPrefix, withEnvPrefix, depNameIn,
   targetFlowName, prefixDependenciesInYaml, divisionOf,

@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.48.14
+# Archy GUI — Flow Manager · v1.49.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -11,8 +11,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.48.14**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.48.14**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.49.0**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.49.0**.
 
 ---
 
@@ -276,6 +276,8 @@ Mangler der noget, åbnes en dialog med to sektioner:
 
 Common modules migreres med samme maskineri som flows, og deres **egne** afhængigheder tages først — rekursivt, nedefra og op. Et modul der selv bruger femten tabeller får dem alle med.
 
+> **Function Data Actions blokerer.** Bruger flowet en Function Data Action, der findes i kilden men ikke i målet, kan den ikke oprettes herfra, og forfremmelsen **standses**: dialogen viser den i rødt med en **tjekliste til kopiering**, og de to knapper *Fortsæt uden* og *Migrér valgte* er skjult. Opret den i Genesys i mål-org'en, og tryk **Tjek igen**; først når den findes, kan flowet forfremmes. Spærringen står også i selve importen, så den ikke kan springes over. Det holder versionsnummer og tjek i takt, i stedet for at man retter bagefter direkte i Genesys.
+
 Du kan vælge **Migrér valgte og fortsæt**, **Fortsæt uden** (flowet importeres selvom noget mangler — det fejler typisk i Architect bagefter) eller **Spring flowet over**.
 
 > **Skills der slås op dynamisk kan ikke tjekkes.** Bruger flowet `FindSkill(Task.Skills)`, afgøres skillet først når flowet kører. Dialogen siger det, men du må selv kontrollere at skillene findes i mål-org'en. Det samme gælder en bruger eller kø der er givet som udtryk (`targetUser: exp: Task.bruger`) — findes den ikke, går opkaldet ad flowets fejlvej, ikke importen.
@@ -424,7 +426,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-292 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+297 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -686,6 +688,8 @@ If anything is missing, a dialog opens with two sections:
 
 Common modules are migrated with the same machinery as flows, and their **own** dependencies are handled first — recursively, bottom-up. A module that itself uses fifteen tables brings all of them along.
 
+> **Function Data Actions block.** If the flow uses a Function Data Action that exists in the source but not in the target, it cannot be created from here and the promotion is **stopped**: the dialog shows it in red with a **checklist to copy**, and the *Continue anyway* and *Migrate selected* buttons are hidden. Create it in Genesys in the target org and press **Check again**; only once it exists can the flow be promoted. The block is also in the import itself, so it cannot be skipped. This keeps the version number and the check in step, instead of fixing things afterwards directly in Genesys.
+
 You can choose **Migrate selected and continue**, **Continue anyway** (the flow is imported even though something is missing — it will usually fail in Architect afterwards) or **Skip this flow**.
 
 > **Dynamically resolved skills cannot be checked.** When a flow uses `FindSkill(Task.Skills)` the skill is decided at runtime. The dialog says so, but you have to verify yourself that the skills exist in the target org. The same goes for a user or queue given as an expression (`targetUser: exp: Task.user`) — if it does not exist, the call takes the flow's failure path rather than failing the import.
@@ -834,7 +838,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-292 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+297 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 

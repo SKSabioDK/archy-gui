@@ -5,6 +5,23 @@
 
 ---
 
+### v1.49.0
+---
+**🇩🇰 Dansk**
+
+- **En manglende Function Data Action standser forfremmelsen.** En Function Data Action kan ikke oprettes via API'et og kan ikke flyttes mellem orgs. Bruger et flow en, som findes i kilden men ikke i målet, kunne flowet før blive importeret alligevel via *Fortsæt uden* — og så rettede man det bagefter direkte i Genesys, hvilket bringer versionsnummer og tjek ude af trit. Nu viser dialogen den i rødt som **blokerende**, med en **tjekliste til kopiering**, og *Fortsæt uden* og *Migrér valgte og fortsæt* er skjult. Man kan **springe flowet over** eller oprette Function Data Action'en i Genesys og trykke **Tjek igen**.
+- **Spærringen står også i selve importen.** Commit afviser flowet (409, `fda-missing`) før der skrives noget, hvis en Function Data Action mangler i målet — også hvis klienten springer dialogen over. Kan målet eller kilden ikke slås op, standses flowet ikke på et gæt, men der skrives en advarsel i systemloggen.
+- Kun en Function Data Action der kan påvises i kilden, blokerer. Et navn kilden ikke kender, er stadig bare "findes ikke i kilden".
+- Tavlens FDA-mærke (hvilke flows bruger en FDA) er ikke med endnu.
+
+**🇬🇧 English**
+- **A missing Function Data Action stops the promotion.** A Function Data Action cannot be created through the API and cannot be moved between orgs. If a flow uses one that exists in the source but not in the target, the flow could previously still be imported through *Continue anyway* — and fixed afterwards directly in Genesys, which puts the version number and the check out of step. The dialog now shows it in red as **blocking**, with a **checklist to copy**, and *Continue anyway* and *Migrate selected and continue* are hidden. You can **skip the flow**, or create the Function Data Action in Genesys and press **Check again**.
+- **The block is also in the import itself.** Commit refuses the flow (409, `fda-missing`) before anything is written if a Function Data Action is missing in the target — even if the client skips the dialog. If the target or source cannot be looked up, the flow is not stopped on a guess; a warning is written to the system log.
+- Only a Function Data Action that can be shown to exist in the source blocks. A name the source does not know remains a plain "does not exist in the source".
+- The board's FDA marker (which flows use an FDA) is not included yet.
+
+---
+
 ### v1.48.14
 ---
 **🇩🇰 Dansk**
