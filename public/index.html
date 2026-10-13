@@ -533,7 +533,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.54.1 · Archy GUI</div>
+    <div class="version" id="app-version">v1.55.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -2142,6 +2142,12 @@ const LANGS = {
     pc_ok_n:'{n} afhængigheder er i orden.',
     plb_precheck_btn:'✔ Tjek',
     plb_precheck:'Kører første fase af en forfremmelse — eksporterer flowet og undersøger målet — men importerer intet. Viser hvad der blokerer, hvad der skal afklares, og hvad der håndteres undervejs.',
+    fda_badge:'FDA',
+    fda_badge_title:'Bruger Function Data Action: {names}. Den kan ikke migreres og skal oprettes i målet.',
+    fda_missing:'FDA mangler her',
+    fda_missing_title:'Flowet i miljøet til venstre bruger {names}, som ikke findes her. Opret den i Genesys, før flowet forfremmes hertil.',
+    plb_fda_btn:'⚙ FDA / ✗ FDA mangler her',
+    plb_fda:'⚙ FDA: flowet bruger en Function Data Action. ✗ FDA mangler her: flowet i miljøet til venstre bruger en, som ikke findes i dette miljø, og forfremmelsen er blokeret, til den er oprettet. Kommer fra Genesys\' afhængighedssporing, der kun kender den publicerede udgave og kan være få minutter bagud.',
     plb_rollback_btn:'↩',
     plb_rollback:'Ruller seneste forfremmelse til dette miljø tilbage til udgaven før.',
     plb_republish_btn:'🔁 Brugere',
@@ -3118,6 +3124,12 @@ const LANGS = {
     pc_ok_n:'{n} dependencies are in order.',
     plb_precheck_btn:'✔ Check',
     plb_precheck:'Runs the first phase of a promotion — exports the flow and examines the target — but imports nothing. Shows what blocks, what must be decided, and what is handled along the way.',
+    fda_badge:'FDA',
+    fda_badge_title:'Uses Function Data Action: {names}. It cannot be migrated and must be created in the target.',
+    fda_missing:'FDA missing here',
+    fda_missing_title:'The flow in the environment to the left uses {names}, which does not exist here. Create it in Genesys before promoting the flow here.',
+    plb_fda_btn:'⚙ FDA / ✗ FDA missing here',
+    plb_fda:'⚙ FDA: the flow uses a Function Data Action. ✗ FDA missing here: the flow in the environment to the left uses one that does not exist in this environment, and the promotion is blocked until it is created. Comes from Genesys\' dependency tracking, which only knows the published version and can lag by a few minutes.',
     plb_rollback_btn:'↩',
     plb_rollback:'Rolls the latest promotion into this environment back to the version before.',
     plb_republish_btn:'🔁 Users',
@@ -4094,6 +4106,12 @@ const LANGS = {
     pc_ok_n:'{n} dépendances sont en ordre.',
     plb_precheck_btn:'✔ Vérifier',
     plb_precheck:'Lance la première phase d\'une promotion — exporte le flow et examine la cible — sans rien importer. Montre ce qui bloque, ce qu\'il faut décider et ce qui est traité en route.',
+    fda_badge:'FDA',
+    fda_badge_title:'Utilise la Function Data Action : {names}. Elle ne peut pas être migrée et doit être créée dans la cible.',
+    fda_missing:'FDA absente ici',
+    fda_missing_title:'Le flow de l\'environnement de gauche utilise {names}, qui n\'existe pas ici. Créez-la dans Genesys avant de promouvoir le flow ici.',
+    plb_fda_btn:'⚙ FDA / ✗ FDA absente ici',
+    plb_fda:'⚙ FDA : le flow utilise une Function Data Action. ✗ FDA absente ici : le flow de l\'environnement de gauche en utilise une qui n\'existe pas dans cet environnement, et la promotion est bloquée tant qu\'elle n\'est pas créée. Vient du suivi des dépendances de Genesys, qui ne connaît que la version publiée et peut avoir quelques minutes de retard.',
     plb_rollback_btn:'↩',
     plb_rollback:'Annule la dernière promotion vers cet environnement et revient à la version précédente.',
     plb_republish_btn:'🔁 Utilisateurs',
@@ -5070,6 +5088,12 @@ const LANGS = {
     pc_ok_n:'{n} afhankelijkheden zijn in orde.',
     plb_precheck_btn:'✔ Controleren',
     plb_precheck:'Voert de eerste fase van een promotie uit — exporteert de flow en onderzoekt het doel — maar importeert niets. Toont wat blokkeert, wat moet worden beslist en wat onderweg wordt afgehandeld.',
+    fda_badge:'FDA',
+    fda_badge_title:'Gebruikt Function Data Action: {names}. Ze kan niet worden gemigreerd en moet in het doel worden aangemaakt.',
+    fda_missing:'FDA ontbreekt hier',
+    fda_missing_title:'De flow in de omgeving links gebruikt {names}, die hier niet bestaat. Maak ze in Genesys aan voordat je de flow hierheen promoveert.',
+    plb_fda_btn:'⚙ FDA / ✗ FDA ontbreekt hier',
+    plb_fda:'⚙ FDA: de flow gebruikt een Function Data Action. ✗ FDA ontbreekt hier: de flow in de omgeving links gebruikt er een die in deze omgeving niet bestaat, en de promotie is geblokkeerd tot ze is aangemaakt. Komt uit de afhankelijkheidstracering van Genesys, die alleen de gepubliceerde versie kent en enkele minuten achter kan lopen.',
     plb_rollback_btn:'↩',
     plb_rollback:'Draait de laatste promotie naar deze omgeving terug naar de vorige versie.',
     plb_republish_btn:'🔁 Gebruikers',
@@ -6046,6 +6070,12 @@ const LANGS = {
     pc_ok_n:'{n} dependencias están en orden.',
     plb_precheck_btn:'✔ Comprobar',
     plb_precheck:'Ejecuta la primera fase de una promoción — exporta el flow y examina el destino — pero no importa nada. Muestra qué bloquea, qué hay que decidir y qué se trata por el camino.',
+    fda_badge:'FDA',
+    fda_badge_title:'Usa la Function Data Action: {names}. No se puede migrar y debe crearse en el destino.',
+    fda_missing:'FDA falta aquí',
+    fda_missing_title:'El flow del entorno de la izquierda usa {names}, que no existe aquí. Créela en Genesys antes de promover el flow aquí.',
+    plb_fda_btn:'⚙ FDA / ✗ FDA falta aquí',
+    plb_fda:'⚙ FDA: el flow usa una Function Data Action. ✗ FDA falta aquí: el flow del entorno de la izquierda usa una que no existe en este entorno, y la promoción queda bloqueada hasta que se cree. Viene del seguimiento de dependencias de Genesys, que solo conoce la versión publicada y puede ir unos minutos retrasado.',
     plb_rollback_btn:'↩',
     plb_rollback:'Revierte la última promoción a este entorno a la versión anterior.',
     plb_republish_btn:'🔁 Usuarios',
@@ -12014,11 +12044,13 @@ async function loadPipeline(silent = false) {
   pipelineChecking = {};
   pipelineData = r;
   pipelineStale = {};
+  pipelineFda = {};
   fillPipelineTypes();
   document.getElementById('pl-filterCard').style.display = 'block';
   renderPipeline();
   loadManifestStatus();
   checkPipelineStale(r);
+  checkPipelineFda(r);
 }
 
 // ── Tavlen følger med ─────────────────────────────────────────────────────────
@@ -12084,6 +12116,42 @@ async function checkPipelineStale(data) {
     pipelineStale[e.id] = { modules, flows };
   }));
   if (pipelineData === data) renderPipeline();
+}
+
+// Hvilke flows bruger en Function Data Action, pr. miljø. De kan ikke migreres,
+// så de skal ses på tavlen, før man forfremmer. Kommer i baggrunden, som tjekket
+// af common modules, og tavlen tegnes igen når svarene er der.
+// envId -> { loading } | { error } | { names: Set, flows: { flowId: [navne] } }
+let pipelineFda = {};
+async function checkPipelineFda(data) {
+  const envs = (data.environments || []).filter(e => !(customers.find(c => c.id === e.id) || {}).demo);
+  for (const e of envs) pipelineFda[e.id] = { loading: true };
+  await Promise.all(envs.map(async e => {
+    const r = await fetch(`/api/customers/${encodeURIComponent(e.id)}/fda-usage`)
+      .then(x => x.json()).catch(err => ({ error: err.message }));
+    if (pipelineData !== data) return;          // der er skiftet gruppe imens
+    pipelineFda[e.id] = r.error ? { error: r.error } : { names: new Set(r.names || []), flows: r.flows || {} };
+  }));
+  if (pipelineData === data) renderPipeline();
+}
+
+// Mærket i én celle: flowet bruger en Function Data Action, og — hvis cellen til
+// venstre har den — om den findes i dette miljø. Mangler den, kan flowet ikke
+// forfremmes hertil.
+function pipelineFdaCell(c, prev) {
+  if (c.missing || c.unknown) return '';
+  const own = pipelineFda[c.envId];
+  const names = (own && own.flows && own.flows[c.flowId]) || [];
+  const linje = (col, txt, tip) => `<div style="margin-top:3px;font-size:9px;color:var(--${col})" title="${escapeHtml(tip)}">${escapeHtml(txt)}</div>`;
+  let out = '';
+  if (names.length) out += linje('yellow', '⚙ ' + t('fda_badge'), t('fda_badge_title').replace('{names}', names.join(', ')));
+  const src = prev && !prev.missing && !prev.unknown ? pipelineFda[prev.envId] : null;
+  const srcNames = (src && src.flows && src.flows[prev.flowId]) || [];
+  if (srcNames.length && own && own.names) {
+    const mangler = srcNames.filter(n => !own.names.has(n));
+    if (mangler.length) out += linje('red', '✗ ' + t('fda_missing'), t('fda_missing_title').replace('{names}', mangler.join(', ')));
+  }
+  return out;
 }
 
 function pipelineStaleSummary(d) {
@@ -12376,7 +12444,7 @@ function renderPipeline() {
 
     return `<td style="padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:top;${colStyle(d.environments[i], i)}">
         ${ownName}<span style="color:${colour};font-family:var(--mono);font-size:12px"
-          title="${t('pl_published_title')}">${body}</span>${when}${notPromoted}${changed}${inverted}${laterOnly}${pipelineStaleCell(c)}${btn}${chk}${pull}${rollback}${brugere}${pub}${notes}</td>`;
+          title="${t('pl_published_title')}">${body}</span>${when}${notPromoted}${changed}${pipelineFdaCell(c, prev)}${inverted}${laterOnly}${pipelineStaleCell(c)}${btn}${chk}${pull}${rollback}${brugere}${pub}${notes}</td>`;
   };
 
   // Miljøerne grupperes under den fysiske org. Har en kunde fire miljøer der
@@ -12618,7 +12686,7 @@ async function boardPrecheck(btn, key, i) {
 
 // Forklaring af alle knapper på tavlen — samme dialog, kun til læsning.
 function showBoardButtonsHelp() {
-  const linjer = ['promote', 'precheck', 'pull_here', 'pull_back', 'check', 'rollback', 'republish', 'notes', 'demo_publish']
+  const linjer = ['promote', 'precheck', 'fda', 'pull_here', 'pull_back', 'check', 'rollback', 'republish', 'notes', 'demo_publish']
     .map(k => `<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">
       <span style="font-family:var(--mono);white-space:nowrap;min-width:120px">${escapeHtml(t('plb_' + k + '_btn'))}</span>
       <span>${escapeHtml(t('plb_' + k))}</span></div>`).join('');
