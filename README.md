@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.49.0
+# Archy GUI — Flow Manager · v1.50.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -11,8 +11,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.49.0**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.49.0**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.50.0**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.50.0**.
 
 ---
 
@@ -278,6 +278,8 @@ Common modules migreres med samme maskineri som flows, og deres **egne** afhæng
 
 > **Function Data Actions blokerer.** Bruger flowet en Function Data Action, der findes i kilden men ikke i målet, kan den ikke oprettes herfra, og forfremmelsen **standses**: dialogen viser den i rødt med en **tjekliste til kopiering**, og de to knapper *Fortsæt uden* og *Migrér valgte* er skjult. Opret den i Genesys i mål-org'en, og tryk **Tjek igen**; først når den findes, kan flowet forfremmes. Spærringen står også i selve importen, så den ikke kan springes over. Det holder versionsnummer og tjek i takt, i stedet for at man retter bagefter direkte i Genesys.
 
+> **Data actions får målets navne.** Et flow peger på en data action med **kategori** (integrationens navn) og **navn**. Hedder de noget andet i mål-org'en — fx *Test - Genesys Cloud Data Actions* i test og *Genesys Cloud Data Actions - Flows* i prod — fejler importen, selv om navnet findes. Archy slår derfor begge dele op i målet, og findes en af dem ikke præcist, åbnes en liste over flowets data actions: *samme* (findes), *gemt valg*, *vælg* (samme navn under en anden kategori — vælg hvilken) og *findes ikke* (peg den over på en eksisterende, eller lad den blive migreret i næste trin). Referencen i flowet skrives om på den side-kopi der importeres; kildens egen kopi røres ikke. Valgene gemmes pr. org-par — i mål-org'ens manifest-tabel hvis den har en, ellers i `.data-action-map.json` — og gemmes først efter en vellykket import, så de bruges automatisk næste gang. Vil du ikke have dem gemt, fjern kryds i *Husk mine valg*. Et gemt valg kan ikke fjernes fra brugerfladen endnu.
+
 Du kan vælge **Migrér valgte og fortsæt**, **Fortsæt uden** (flowet importeres selvom noget mangler — det fejler typisk i Architect bagefter) eller **Spring flowet over**.
 
 > **Skills der slås op dynamisk kan ikke tjekkes.** Bruger flowet `FindSkill(Task.Skills)`, afgøres skillet først når flowet kører. Dialogen siger det, men du må selv kontrollere at skillene findes i mål-org'en. Det samme gælder en bruger eller kø der er givet som udtryk (`targetUser: exp: Task.bruger`) — findes den ikke, går opkaldet ad flowets fejlvej, ikke importen.
@@ -426,7 +428,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-297 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+312 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -690,6 +692,8 @@ Common modules are migrated with the same machinery as flows, and their **own** 
 
 > **Function Data Actions block.** If the flow uses a Function Data Action that exists in the source but not in the target, it cannot be created from here and the promotion is **stopped**: the dialog shows it in red with a **checklist to copy**, and the *Continue anyway* and *Migrate selected* buttons are hidden. Create it in Genesys in the target org and press **Check again**; only once it exists can the flow be promoted. The block is also in the import itself, so it cannot be skipped. This keeps the version number and the check in step, instead of fixing things afterwards directly in Genesys.
 
+> **Data actions get the target's names.** A flow points at a data action by **category** (the integration's name) and **name**. If they are named differently in the target org — say *Test - Genesys Cloud Data Actions* in test and *Genesys Cloud Data Actions - Flows* in prod — the import fails even though the name exists. Archy therefore looks up both in the target, and if either is not an exact match, a list of the flow's data actions opens: *same* (exists), *saved*, *choose* (same name under another category — pick which) and *not found* (point it at an existing one, or let it be migrated in the next step). The reference in the flow is rewritten in the side copy that is imported; the source's own copy is never touched. Choices are saved per org pair — in the target org's manifest table if it has one, otherwise in `.data-action-map.json` — and only after a successful import, so they are applied automatically next time. To keep them from being saved, untick *Remember my choices*. A saved choice cannot be removed from the UI yet.
+
 You can choose **Migrate selected and continue**, **Continue anyway** (the flow is imported even though something is missing — it will usually fail in Architect afterwards) or **Skip this flow**.
 
 > **Dynamically resolved skills cannot be checked.** When a flow uses `FindSkill(Task.Skills)` the skill is decided at runtime. The dialog says so, but you have to verify yourself that the skills exist in the target org. The same goes for a user or queue given as an expression (`targetUser: exp: Task.user`) — if it does not exist, the call takes the flow's failure path rather than failing the import.
@@ -838,7 +842,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-297 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+312 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 

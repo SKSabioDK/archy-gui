@@ -533,7 +533,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.49.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.50.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1270,6 +1270,23 @@
     </div>
   </div>
 </div>
+<div class="wiz-overlay" id="dam-overlay">
+  <div class="wiz-modal" style="width:780px">
+    <div style="padding:20px 24px 0">
+      <div style="font-size:16px;font-weight:700" data-i18n="dam_title">Data actions i flowet</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px" id="dam-flowname"></div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px" data-i18n="dam_sub">Sådan hedder de i mål-org'en. Dit valg gemmes til næste migrering.</div>
+    </div>
+    <div style="padding:16px 24px;overflow-y:auto;flex:1" id="dam-body"></div>
+    <datalist id="dam-dl"></datalist>
+    <div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);flex:1"><input type="checkbox" id="dam-remember" checked style="width:auto"><span data-i18n="dam_remember">Husk mine valg til næste migrering</span></label>
+      <span id="dam-err" style="font-size:12px;color:var(--red)"></span>
+      <button class="btn btn-secondary btn-sm" onclick="damResolve('cancel')" data-i18n="dep_btn_cancel">Spring flowet over</button>
+      <button class="btn btn-primary btn-sm" onclick="damResolve('ok')" data-i18n="dam_continue">Fortsæt</button>
+    </div>
+  </div>
+</div>
 <!-- Release notes: historikken for ét flow i ét miljø, eller en hel gruppe -->
 <div class="wiz-overlay" id="rel-overlay">
   <div class="wiz-modal" style="width:860px;max-width:calc(100vw - 32px)">
@@ -1645,6 +1662,22 @@ const LANGS = {
     dep_fda_copy:'Kopiér tjekliste',
     dep_fda_copied:'Tjekliste kopieret',
     dep_fda_checklist:'Opret disse Function Data Actions i {target}, så de svarer til dem i {source}:',
+    dam_title:'Data actions i flowet',
+    dam_sub:'Sådan hedder de i mål-org\'en. Dit valg gemmes til næste migrering.',
+    dam_col_action:'Data action i flowet',
+    dam_col_target:'I mål-org\'en',
+    dam_st_exact:'samme',
+    dam_st_mapped:'gemt valg',
+    dam_st_choose:'vælg',
+    dam_st_absent:'findes ikke',
+    dam_pick:'Vælg action…',
+    dam_keep:'Behold som den er',
+    dam_search:'Vælg en eksisterende action i målet (valgfrit)',
+    dam_hint_absent:'En action der ikke findes i målet, tilbydes migreret i næste trin — medmindre du peger den over på en eksisterende her.',
+    dam_remember:'Husk mine valg til næste migrering',
+    dam_continue:'Fortsæt',
+    dam_err_pick:'Vælg en action, eller Behold som den er, på de gule rækker.',
+    dam_err_unknown:'En valgt action findes ikke i mål-org\'en.',
     dep_btn_migrate:'Migrér valgte og fortsæt',
     dep_can_migrate:'KAN MIGRERES NU',
     dep_manual:'SKAL OPRETTES MANUELT',
@@ -2169,7 +2202,7 @@ const LANGS = {
     help_pipeline:'Flows som rækker, gruppens miljøer som kolonner i trin-rækkefølge.\n• Versionstallene kan **ikke** sammenlignes på tværs — de tælles pr. org. Brug **⇄ Tjek indhold**, som er det eneste der afgør om to miljøer er ens.\n• **Grøn** betyder publiceret ad den rigtige vej. **Rød** betyder enten publiceret uden om pipelinen, eller flere udgaver end trinnet før.\n• **Hver knap viser først hvad der sker** — flow, fra og til, og advarsler om prod eller ændringer der går tabt — og du kan annullere. **? Knapperne** forklarer dem alle.\n• **Udlign versionsnummer**: ved ⟶ Forfrem kan målet publiceres de ekstra gange der mangler, så det står på kildens nummer (fx dev v10 → test v10). Det kan ikke tælle ned.\n• **⟶ Forfrem** flytter ét trin ad gangen. Kun en publiceret udgave kan forfremmes — en kladde er ikke testet. Til prod kræves dit prod-login.\n• **⟵ Hent hertil** henter et flow ned fra et senere trin, fx når dev lige er sat op.\n• **↩** ruller seneste forfremmelse tilbage, og **📝** viser release notes.\n• Forfremmes eller rulles et **common module** tilbage, tilbydes du at genpublicere de flows i miljøet der bruger det. **🔁** gør det samme når modulet er rettet direkte i Architect. Er et modul publiceret efter flows der bruger det, står det øverst på tavlen, cellerne er mærket ⚠, og 🔁 er gul.\n• **Delt manifest** lægger historikken i org\'en, så flere kan arbejde på samme kunde uden at se hver sin sandhed.',
     help_flows:'Hent, søg og filtrér miljøets flows. Deler flere miljøer org\'en, vises kun dette miljøs egne.\n• Filtrér på **flowtype** — listen fyldes ud fra de typer miljøet faktisk har.\n• **Publicér** sætter en allerede migreret kladde i drift uden at hente noget fra kilden igen. Er det et common module, tilbydes du bagefter at genpublicere de flows der bruger det.\n• **Common modules tjekkes** hver gang listen hentes: er et modul publiceret **efter** et flow der bruger det, kører flowet stadig på den gamle udgave. Det står i et gult felt med en knap der genpublicerer dem, og rækkerne er mærket ⚠.\n• **🔁 Brugere** på et common module viser alle de flows der bruger det.\n• **⇄ Sammenlign** mod en anden org sammenligner **indholdet**, ikke versionsnumrene.\n• **📌 Sæt nulpunkt** noterer hvad org\'en indeholder nu, så værktøjet bagefter kan fange at nogen har publiceret direkte — også for flows det aldrig selv har migreret.',
     help_cross:'Viser de flows der findes hos **flere kunder** — fx det samme common module hos ti kunder.\n• Oversigten bygger på ét kald pr. kunde og er derfor hurtig.\n• **⇄ Sammenlign indhold** eksporterer flowet fra hver kunde og sammenligner hashen. Det tager tid, så det køres kun for den række du beder om.\n• Kunne en org ikke læses, siges det — der står **aldrig** "identisk" hvis vi mangler svar fra nogen.',
-    help_migrate:'Eksport fra én org og import direkte til en anden. Kører i to faser.\n• **Tjek** — flowet eksporteres, og mål-org\'en undersøges for alt det refererer til. Der skrives intet endnu.\n• **Import** — først efter dit valg. Mangler noget, kan tabeller, data actions og common modules migreres med inden flowet.\n• Har målet et **præfiks** eller en anden **division**, omdøbes flowet og dets referencer undervejs.\n• **Import handling** vælges efter målet: alt andet end prod publiceres som standard, så det er i drift med det samme. Prod lægges som kladde du selv publicerer.\n• Skrivning til **prod** kræver dit prod-login med rettigheden — du bliver tilbudt at logge ind hvis det mangler.\n• Migreres et **common module**, tilbydes du at genpublicere de flows i målet der bruger det.\n• Køer, skills, wrap-up-koder og scripts skal oprettes manuelt — de kan ikke migreres.\n• Bruger flowet en **Function Data Action**, der mangler i målet, **blokeres** forfremmelsen, til den er oprettet i Genesys. Tryk **Tjek igen**, når den findes.',
+    help_migrate:'Eksport fra én org og import direkte til en anden. Kører i to faser.\n• **Tjek** — flowet eksporteres, og mål-org\'en undersøges for alt det refererer til. Der skrives intet endnu.\n• **Import** — først efter dit valg. Mangler noget, kan tabeller, data actions og common modules migreres med inden flowet.\n• Har målet et **præfiks** eller en anden **division**, omdøbes flowet og dets referencer undervejs.\n• **Import handling** vælges efter målet: alt andet end prod publiceres som standard, så det er i drift med det samme. Prod lægges som kladde du selv publicerer.\n• Skrivning til **prod** kræver dit prod-login med rettigheden — du bliver tilbudt at logge ind hvis det mangler.\n• Migreres et **common module**, tilbydes du at genpublicere de flows i målet der bruger det.\n• Køer, skills, wrap-up-koder og scripts skal oprettes manuelt — de kan ikke migreres.\n• Bruger flowet en **Function Data Action**, der mangler i målet, **blokeres** forfremmelsen, til den er oprettet i Genesys. Tryk **Tjek igen**, når den findes.\n• Hedder en **data action** noget andet i målet — fx en anden integration — vises flowets data actions, og du vælger hvilken i målet de skal pege på. Valget gemmes til næste gang.',
     help_dataactions:'Migrerer det der ikke er flows: **Data Actions**, **Data Tabeller** og **User Prompts**.\n• Data Actions hører til en integration. Vælg kilde-integration, så vises kun actions derfra, og grupperingen bevares i målet.\n• Data Tabeller migrerer **strukturen** — kolonnerne. Rækkerne følger ikke med.\n• User Prompts tager både TTS-teksten og indtalt lyd med. Prompts med lyd er markeret 🔊.\n• **Function Data Actions kan ikke migreres** — deres URL er et id på en function der kun findes i kilde-org\'en.',
     help_export:'Eksporterer flows til YAML-filer på denne maskine.\n• Vælg miljø — listen over dets flows vises med det samme. Deler flere miljøer org\'en, vises kun dette miljøs egne.\n• Skriv for at filtrere. `*` viser alle, og en stjerne inde i teksten er et jokertegn: `DEV_*log` finder DEV_Create Logitems.\n• Typen sættes automatisk når du vælger flowet.\n• **Export Alle Flows** henter hele miljøet med en fremgangsindikator og kan afbrydes undervejs.\n• Filerne lander under `flows/<miljø>/` og bruges også af migrering og sammenligning.',
     help_import:'Opret, opdater eller publicér et flow ud fra YAML.\n• Indsæt teksten, upload en fil eller træk den ind.\n• **🔍 Valider YAML** tjekker syntaksen i browseren uden at kalde noget.\n• **🌐 Tjek mod org** slår op om division, køer, tabeller, data actions og prompts findes i målet — **inden** du importerer.\n• **Import handling** vælger om flowet oprettes, opdateres eller oprettes og publiceres.\n• Publicerer du et **common module**, tilbydes du bagefter at genpublicere de flows der bruger det.\n• Import til **prod** kræver dit prod-login med rettigheden.',
@@ -2497,6 +2530,22 @@ const LANGS = {
     dep_fda_copy:'Copy checklist',
     dep_fda_copied:'Checklist copied',
     dep_fda_checklist:'Create these Function Data Actions in {target} so they match the ones in {source}:',
+    dam_title:'Data actions in the flow',
+    dam_sub:'This is what they are called in the target org. Your choice is saved for the next migration.',
+    dam_col_action:'Data action in the flow',
+    dam_col_target:'In the target org',
+    dam_st_exact:'same',
+    dam_st_mapped:'saved',
+    dam_st_choose:'choose',
+    dam_st_absent:'not found',
+    dam_pick:'Choose action…',
+    dam_keep:'Keep as it is',
+    dam_search:'Pick an existing action in the target (optional)',
+    dam_hint_absent:'An action that does not exist in the target is offered for migration in the next step — unless you point it at an existing one here.',
+    dam_remember:'Remember my choices for the next migration',
+    dam_continue:'Continue',
+    dam_err_pick:'Choose an action, or Keep as it is, on the yellow rows.',
+    dam_err_unknown:'A chosen action does not exist in the target org.',
     dep_btn_migrate:'Migrate selected and continue',
     dep_can_migrate:'CAN BE MIGRATED NOW',
     dep_manual:'MUST BE CREATED MANUALLY',
@@ -3021,7 +3070,7 @@ const LANGS = {
     help_pipeline:'Flows as rows, the group\'s environments as columns in stage order.\n• Version numbers **cannot** be compared across orgs — they are counted per org. Use **⇄ Check content**, the only thing that decides whether two environments match.\n• **Green** means published the right way. **Red** means published outside the pipeline, or more versions than the stage before.\n• **Every button first shows what will happen** — flow, from and to, and warnings about prod or changes that would be lost — and you can cancel. **? Buttons** explains them all.\n• **Align version number**: on ⟶ Promote the target can be published the missing extra times so it matches the source number (e.g. dev v10 → test v10). It cannot count down.\n• **⟶ Promote** moves one stage at a time. Only a published version can be promoted — a draft is untested. Prod requires your prod login.\n• **⟵ Pull here** fetches a flow from a later stage, e.g. when dev has just been set up.\n• **↩** rolls back the latest promotion, and **📝** shows release notes.\n• When a **common module** is promoted or rolled back, you are offered to republish the flows in that environment that use it. **🔁** does the same when the module was changed directly in Architect. If a module was published after flows that use it, this is listed at the top of the board, the cells are marked ⚠ and 🔁 turns yellow.\n• **Shared manifest** keeps history in the org, so several people can work on one customer and see the same truth.',
     help_flows:'Fetch, search and filter the environment\'s flows. When several environments share an org, only this environment\'s own are shown.\n• Filter by **flow type** — the list is populated from the types the environment actually has.\n• **Publish** puts an already-migrated draft live without fetching anything from the source again. For a common module, you are then offered to republish the flows that use it.\n• **Common modules are checked** every time the list is fetched: if a module was published **after** a flow that uses it, the flow still runs the old version. This is shown in a yellow box with a button to republish them, and the rows are marked ⚠.\n• **🔁 Users** on a common module lists every flow that uses it.\n• **⇄ Compare** against another org compares **content**, not version numbers.\n• **📌 Set baseline** records what the org holds now, so the tool can later catch someone publishing directly — even for flows it never migrated itself.',
     help_cross:'Shows the flows that exist at **more than one customer** — the same common module at ten customers, say.\n• The overview rests on one call per customer and is therefore quick.\n• **⇄ Compare content** exports the flow from each customer and compares the hash. That takes time, so it runs only for the row you ask for.\n• If an org could not be read, it says so — it **never** reports "identical" when an answer is missing.',
-    help_migrate:'Export from one org and import straight into another, in two phases.\n• **Check** — the flow is exported and the target org is examined for everything it references. Nothing is written yet.\n• **Import** — only after your choice. If something is missing, tables, data actions and common modules can be migrated before the flow.\n• If the target has a **prefix** or a different **division**, the flow and its references are renamed on the way.\n• **Import action** follows the target: anything but prod is published by default so it is live at once. Prod is left as a draft for you to publish.\n• Writing to **prod** requires your prod login with the permission — you are offered to log in if it is missing.\n• When a **common module** is migrated, you are offered to republish the flows in the target that use it.\n• Queues, skills, wrap-up codes and scripts must be created manually — they cannot be migrated.\n• If the flow uses a **Function Data Action** that is missing in the target, the promotion is **blocked** until it has been created in Genesys. Press **Check again** once it exists.',
+    help_migrate:'Export from one org and import straight into another, in two phases.\n• **Check** — the flow is exported and the target org is examined for everything it references. Nothing is written yet.\n• **Import** — only after your choice. If something is missing, tables, data actions and common modules can be migrated before the flow.\n• If the target has a **prefix** or a different **division**, the flow and its references are renamed on the way.\n• **Import action** follows the target: anything but prod is published by default so it is live at once. Prod is left as a draft for you to publish.\n• Writing to **prod** requires your prod login with the permission — you are offered to log in if it is missing.\n• When a **common module** is migrated, you are offered to republish the flows in the target that use it.\n• Queues, skills, wrap-up codes and scripts must be created manually — they cannot be migrated.\n• If the flow uses a **Function Data Action** that is missing in the target, the promotion is **blocked** until it has been created in Genesys. Press **Check again** once it exists.\n• If a **data action** has a different name in the target — say another integration — the flow\'s data actions are listed and you choose which one in the target they should point at. The choice is saved for next time.',
     help_dataactions:'Migrates what is not a flow: **Data Actions**, **Data Tables** and **User Prompts**.\n• Data Actions belong to an integration. Pick the source integration and only its actions are shown, so the grouping is kept in the target.\n• Data Tables migrate the **structure** — the columns. The rows do not come along.\n• User Prompts bring both the TTS text and recorded audio. Prompts with audio are marked 🔊.\n• **Function Data Actions cannot be migrated** — their URL is an id for a function that exists only in the source org.',
     help_export:'Exports flows to YAML files on this machine.\n• Choose an environment — its flows are listed at once. When several environments share an org, only this one\'s own are shown.\n• Type to filter. `*` shows all, and a star inside the text is a wildcard: `DEV_*log` finds DEV_Create Logitems.\n• The type is set automatically when you pick the flow.\n• **Export All Flows** fetches the whole environment with a progress indicator and can be cancelled.\n• Files land under `flows/<environment>/` and are also used by migration and comparison.',
     help_import:'Create, update or publish a flow from YAML.\n• Paste the text, upload a file or drag it in.\n• **🔍 Validate YAML** checks the syntax in the browser without calling anything.\n• **🌐 Check against org** looks up whether division, queues, tables, data actions and prompts exist in the target — **before** you import.\n• **Import action** chooses whether the flow is created, updated, or created and published.\n• When you publish a **common module**, you are then offered to republish the flows that use it.\n• Importing to **prod** requires your prod login with the permission.',
@@ -3349,6 +3398,22 @@ const LANGS = {
     dep_fda_copy:'Copier la liste',
     dep_fda_copied:'Liste copiée',
     dep_fda_checklist:'Créez ces Function Data Actions dans {target} pour qu\'elles correspondent à celles de {source} :',
+    dam_title:'Data actions du flow',
+    dam_sub:'Voici leurs noms dans l\'org cible. Votre choix est enregistré pour la prochaine migration.',
+    dam_col_action:'Data action du flow',
+    dam_col_target:'Dans l\'org cible',
+    dam_st_exact:'identique',
+    dam_st_mapped:'enregistré',
+    dam_st_choose:'choisir',
+    dam_st_absent:'introuvable',
+    dam_pick:'Choisir une action…',
+    dam_keep:'Garder tel quel',
+    dam_search:'Choisir une action existante dans la cible (facultatif)',
+    dam_hint_absent:'Une action absente de la cible est proposée à la migration à l\'étape suivante — sauf si vous la faites pointer ici vers une existante.',
+    dam_remember:'Mémoriser mes choix pour la prochaine migration',
+    dam_continue:'Continuer',
+    dam_err_pick:'Choisissez une action, ou Garder tel quel, sur les lignes jaunes.',
+    dam_err_unknown:'Une action choisie n\'existe pas dans l\'org cible.',
     dep_btn_migrate:'Migrer la sélection et continuer',
     dep_can_migrate:'PEUT ÊTRE MIGRÉ MAINTENANT',
     dep_manual:'À CRÉER MANUELLEMENT',
@@ -3873,7 +3938,7 @@ const LANGS = {
     help_pipeline:'Les flows en lignes, les environnements du groupe en colonnes, par étape.\n• Les numéros de version ne sont **pas** comparables entre orgs — ils sont comptés par org. Utilisez **⇄ Vérifier le contenu**, seul juge de l\'égalité de deux environnements.\n• **Vert** : publié par le bon chemin. **Rouge** : publié hors du pipeline, ou plus de versions que l\'étape précédente.\n• **Chaque bouton montre d\'abord ce qui va se passer** — flow, source et cible, et avertissements sur prod ou des changements perdus — et vous pouvez annuler. **? Boutons** les explique tous.\n• **Aligner le numéro de version** : avec ⟶ Promouvoir, la cible peut être publiée les fois manquantes pour atteindre le numéro de la source (par ex. dev v10 → test v10). Impossible de décompter.\n• **⟶ Promouvoir** avance d\'une étape à la fois. Seule une version publiée peut être promue. Prod exige votre connexion prod.\n• **⟵ Ramener ici** récupère un flow d\'une étape ultérieure, par ex. quand dev vient d\'être créé.\n• **↩** annule la dernière promotion, **📝** affiche les notes de version.\n• Quand un **common module** est promu ou annulé, on vous propose de republier les flows de l\'environnement qui l\'utilisent. **🔁** fait de même si le module a été modifié directement dans Architect. Si un module a été publié après des flows qui l\'utilisent, c\'est indiqué en haut du tableau, les cellules sont marquées ⚠ et 🔁 devient jaune.\n• **Le manifeste partagé** garde l\'historique dans l\'org, pour que chacun voie la même vérité.',
     help_flows:'Récupérer, chercher et filtrer les flows de l\'environnement. Si plusieurs environnements partagent une org, seuls les siens sont affichés.\n• Filtrez par **type de flow** — la liste reprend les types réellement présents.\n• **Publier** met en service un brouillon déjà migré. Pour un common module, on vous propose ensuite de republier les flows qui l\'utilisent.\n• **Les common modules sont vérifiés** à chaque chargement : un module publié **après** un flow qui l\'utilise signifie que le flow tourne encore sur l\'ancienne version. C\'est signalé dans un encadré jaune avec un bouton pour les republier, et les lignes sont marquées ⚠.\n• **🔁 Utilisateurs** sur un common module liste tous les flows qui l\'utilisent.\n• **⇄ Comparer** avec une autre org compare le **contenu**, pas les numéros de version.\n• **📌 Point zéro** enregistre l\'état actuel de l\'org, pour repérer ensuite les publications directes.',
     help_cross:'Montre les flows présents chez **plusieurs clients** — par exemple le même common module chez dix clients.\n• La vue repose sur un appel par client et est donc rapide.\n• **⇄ Comparer le contenu** exporte le flow chez chaque client et compare l\'empreinte. C\'est long, donc réservé à la ligne demandée.\n• Si une org n\'a pas pu être lue, c\'est dit — il n\'affiche **jamais** « identique » quand une réponse manque.',
-    help_migrate:'Export depuis une org et import direct dans une autre, en deux phases.\n• **Vérification** — le flow est exporté et l\'org cible examinée pour tout ce qu\'il référence. Rien n\'est encore écrit.\n• **Import** — seulement après votre choix. S\'il manque quelque chose, tables, data actions et common modules peuvent être migrés avant le flow.\n• Si la cible a un **préfixe** ou une autre **division**, le flow et ses références sont renommés au passage.\n• **Action d\'import** selon la cible : tout sauf prod est publié par défaut. Prod reste en brouillon, à publier vous-même.\n• Écrire en **prod** exige votre connexion prod avec la permission — on vous propose de vous connecter si elle manque.\n• Si un **common module** est migré, on vous propose de republier les flows de la cible qui l\'utilisent.\n• Files, skills, codes de wrap-up et scripts doivent être créés manuellement.\n• Si le flow utilise une **Function Data Action** absente de la cible, la promotion est **bloquée** tant qu\'elle n\'est pas créée dans Genesys. Appuyez sur **Revérifier** une fois qu\'elle existe.',
+    help_migrate:'Export depuis une org et import direct dans une autre, en deux phases.\n• **Vérification** — le flow est exporté et l\'org cible examinée pour tout ce qu\'il référence. Rien n\'est encore écrit.\n• **Import** — seulement après votre choix. S\'il manque quelque chose, tables, data actions et common modules peuvent être migrés avant le flow.\n• Si la cible a un **préfixe** ou une autre **division**, le flow et ses références sont renommés au passage.\n• **Action d\'import** selon la cible : tout sauf prod est publié par défaut. Prod reste en brouillon, à publier vous-même.\n• Écrire en **prod** exige votre connexion prod avec la permission — on vous propose de vous connecter si elle manque.\n• Si un **common module** est migré, on vous propose de republier les flows de la cible qui l\'utilisent.\n• Files, skills, codes de wrap-up et scripts doivent être créés manuellement.\n• Si le flow utilise une **Function Data Action** absente de la cible, la promotion est **bloquée** tant qu\'elle n\'est pas créée dans Genesys. Appuyez sur **Revérifier** une fois qu\'elle existe.\n• Si une **data action** porte un autre nom dans la cible — par exemple une autre intégration — les data actions du flow sont listées et vous choisissez celle de la cible vers laquelle elles pointent. Le choix est mémorisé pour la prochaine fois.',
     help_dataactions:'Migre ce qui n\'est pas un flow : **Data Actions**, **tables de données** et **prompts utilisateur**.\n• Les Data Actions appartiennent à une intégration. Choisissez l\'intégration source : seules ses actions sont affichées et le regroupement est conservé.\n• Les tables de données migrent la **structure** — les colonnes. Les lignes ne suivent pas.\n• Les prompts emportent le texte TTS et l\'audio enregistré. Ceux avec audio sont marqués 🔊.\n• **Les Function Data Actions ne peuvent pas être migrées** — leur URL est l\'id d\'une fonction qui n\'existe que dans l\'org source.',
     help_export:'Exporte les flows en fichiers YAML sur cette machine.\n• Choisissez un environnement — ses flows sont listés aussitôt. Si plusieurs environnements partagent une org, seuls les siens sont affichés.\n• Tapez pour filtrer. `*` affiche tout, et une étoile dans le texte est un joker : `DEV_*log` trouve DEV_Create Logitems.\n• Le type est défini automatiquement quand vous choisissez le flow.\n• **Exporter tous les flows** récupère tout l\'environnement avec une progression et peut être interrompu.\n• Les fichiers arrivent sous `flows/<environnement>/` et servent aussi à la migration et à la comparaison.',
     help_import:'Créer, mettre à jour ou publier un flow à partir de YAML.\n• Collez le texte, téléversez un fichier ou glissez-le.\n• **🔍 Valider YAML** vérifie la syntaxe dans le navigateur sans rien appeler.\n• **🌐 Vérifier dans l\'org** contrôle que division, files, tables, data actions et prompts existent dans la cible — **avant** l\'import.\n• **Action d\'import** choisit de créer, mettre à jour, ou créer et publier.\n• Si vous publiez un **common module**, on vous propose ensuite de republier les flows qui l\'utilisent.\n• Importer en **prod** exige votre connexion prod avec la permission.',
@@ -4201,6 +4266,22 @@ const LANGS = {
     dep_fda_copy:'Checklist kopiëren',
     dep_fda_copied:'Checklist gekopieerd',
     dep_fda_checklist:'Maak deze Function Data Actions aan in {target}, zodat ze overeenkomen met die in {source}:',
+    dam_title:'Data actions in de flow',
+    dam_sub:'Zo heten ze in de doel-org. Je keuze wordt bewaard voor de volgende migratie.',
+    dam_col_action:'Data action in de flow',
+    dam_col_target:'In de doel-org',
+    dam_st_exact:'gelijk',
+    dam_st_mapped:'bewaard',
+    dam_st_choose:'kies',
+    dam_st_absent:'niet gevonden',
+    dam_pick:'Kies actie…',
+    dam_keep:'Laten zoals het is',
+    dam_search:'Kies een bestaande actie in het doel (optioneel)',
+    dam_hint_absent:'Een actie die niet in het doel bestaat, wordt in de volgende stap voor migratie aangeboden — tenzij je hier naar een bestaande verwijst.',
+    dam_remember:'Onthoud mijn keuzes voor de volgende migratie',
+    dam_continue:'Doorgaan',
+    dam_err_pick:'Kies een actie, of Laten zoals het is, bij de gele rijen.',
+    dam_err_unknown:'Een gekozen actie bestaat niet in de doel-org.',
     dep_btn_migrate:'Migreer selectie en ga door',
     dep_can_migrate:'KAN NU GEMIGREERD WORDEN',
     dep_manual:'MOET HANDMATIG WORDEN AANGEMAAKT',
@@ -4725,7 +4806,7 @@ const LANGS = {
     help_pipeline:'Flows als rijen, de omgevingen van de groep als kolommen op fase-volgorde.\n• Versienummers zijn **niet** vergelijkbaar tussen orgs — ze worden per org geteld. Gebruik **⇄ Inhoud checken**, het enige dat bepaalt of twee omgevingen gelijk zijn.\n• **Groen** betekent langs de juiste weg gepubliceerd. **Rood** betekent buiten de pipeline om, of meer versies dan de vorige fase.\n• **Elke knop toont eerst wat er gebeurt** — flow, van en naar, en waarschuwingen over prod of wijzigingen die verloren gaan — en je kunt annuleren. **? Knoppen** legt ze allemaal uit.\n• **Versienummer gelijktrekken**: bij ⟶ Promoveren kan het doel de ontbrekende keren extra worden gepubliceerd, zodat het het nummer van de bron krijgt (bv. dev v10 → test v10). Terugtellen kan niet.\n• **⟶ Promoveren** gaat één fase tegelijk. Alleen een gepubliceerde versie kan worden gepromoveerd. Prod vereist je prod-login.\n• **⟵ Hierheen halen** haalt een flow op uit een latere fase, bv. als dev net is opgezet.\n• **↩** draait de laatste promotie terug, **📝** toont release notes.\n• Wordt een **common module** gepromoveerd of teruggedraaid, dan krijg je aangeboden de flows in die omgeving die hem gebruiken opnieuw te publiceren. **🔁** doet hetzelfde als de module direct in Architect is aangepast. Is een module gepubliceerd na flows die hem gebruiken, dan staat dat bovenaan het bord, zijn de cellen gemarkeerd met ⚠ en wordt 🔁 geel.\n• **Gedeeld manifest** bewaart de geschiedenis in de org, zodat iedereen dezelfde waarheid ziet.',
     help_flows:'Flows van de omgeving ophalen, zoeken en filteren. Delen meerdere omgevingen een org, dan worden alleen de eigen getoond.\n• Filter op **flowtype** — de lijst wordt gevuld met de types die de omgeving echt heeft.\n• **Publiceren** zet een al gemigreerd concept live. Bij een common module krijg je daarna aangeboden de flows die hem gebruiken opnieuw te publiceren.\n• **Common modules worden gecontroleerd** bij elke keer ophalen: is een module **na** een flow die hem gebruikt gepubliceerd, dan draait die flow nog op de oude versie. Dat staat in een geel vak met een knap om ze opnieuw te publiceren, en de rijen zijn gemarkeerd met ⚠.\n• **🔁 Gebruikers** op een common module toont alle flows die hem gebruiken.\n• **⇄ Vergelijken** met een andere org vergelijkt de **inhoud**, niet de versienummers.\n• **📌 Nulpunt** legt vast wat de org nu bevat, zodat directe publicaties later opvallen.',
     help_cross:'Toont de flows die bij **meerdere klanten** bestaan — bijvoorbeeld dezelfde common module bij tien klanten.\n• Het overzicht steunt op één aanroep per klant en is dus snel.\n• **⇄ Inhoud vergelijken** exporteert de flow bij elke klant en vergelijkt de hash. Dat kost tijd, dus alleen voor de rij die je vraagt.\n• Kon een org niet gelezen worden, dan wordt dat gezegd — er staat **nooit** "identiek" als een antwoord ontbreekt.',
-    help_migrate:'Export uit één org en import direct in een andere, in twee fasen.\n• **Controle** — de flow wordt geëxporteerd en de doel-org onderzocht op alles waarnaar hij verwijst. Er wordt nog niets geschreven.\n• **Import** — pas na jouw keuze. Ontbreekt er iets, dan kunnen tabellen, data actions en common modules eerst mee.\n• Heeft het doel een **voorvoegsel** of een andere **divisie**, dan worden de flow en zijn verwijzingen onderweg hernoemd.\n• **Importactie** volgt het doel: alles behalve prod wordt standaard gepubliceerd. Prod blijft een concept dat je zelf publiceert.\n• Schrijven naar **prod** vereist je prod-login met de permissie — je krijgt aangeboden in te loggen als die ontbreekt.\n• Wordt een **common module** gemigreerd, dan krijg je aangeboden de flows in het doel die hem gebruiken opnieuw te publiceren.\n• Wachtrijen, skills, wrap-up-codes en scripts moeten handmatig worden aangemaakt.\n• Gebruikt de flow een **Function Data Action** die in het doel ontbreekt, dan wordt de promotie **geblokkeerd** tot ze in Genesys is aangemaakt. Druk op **Opnieuw controleren** zodra ze bestaat.',
+    help_migrate:'Export uit één org en import direct in een andere, in twee fasen.\n• **Controle** — de flow wordt geëxporteerd en de doel-org onderzocht op alles waarnaar hij verwijst. Er wordt nog niets geschreven.\n• **Import** — pas na jouw keuze. Ontbreekt er iets, dan kunnen tabellen, data actions en common modules eerst mee.\n• Heeft het doel een **voorvoegsel** of een andere **divisie**, dan worden de flow en zijn verwijzingen onderweg hernoemd.\n• **Importactie** volgt het doel: alles behalve prod wordt standaard gepubliceerd. Prod blijft een concept dat je zelf publiceert.\n• Schrijven naar **prod** vereist je prod-login met de permissie — je krijgt aangeboden in te loggen als die ontbreekt.\n• Wordt een **common module** gemigreerd, dan krijg je aangeboden de flows in het doel die hem gebruiken opnieuw te publiceren.\n• Wachtrijen, skills, wrap-up-codes en scripts moeten handmatig worden aangemaakt.\n• Gebruikt de flow een **Function Data Action** die in het doel ontbreekt, dan wordt de promotie **geblokkeerd** tot ze in Genesys is aangemaakt. Druk op **Opnieuw controleren** zodra ze bestaat.\n• Heet een **data action** in het doel anders — bijvoorbeeld een andere integratie — dan worden de data actions van de flow getoond en kies je naar welke in het doel ze verwijzen. De keuze wordt bewaard voor de volgende keer.',
     help_dataactions:'Migreert wat geen flow is: **Data Actions**, **datatables** en **user prompts**.\n• Data Actions horen bij een integratie. Kies de bronintegratie en alleen die acties worden getoond, zodat de groepering in het doel blijft.\n• Datatables migreren de **structuur** — de kolommen. De rijen gaan niet mee.\n• User prompts nemen zowel de TTS-tekst als opgenomen audio mee. Prompts met audio zijn gemarkeerd met 🔊.\n• **Function Data Actions kunnen niet gemigreerd worden** — hun URL is een id van een functie die alleen in de bronorg bestaat.',
     help_export:'Exporteert flows naar YAML-bestanden op deze machine.\n• Kies een omgeving — de flows worden meteen getoond. Delen meerdere omgevingen een org, dan alleen de eigen.\n• Typ om te filteren. `*` toont alles, en een ster in de tekst is een jokerteken: `DEV_*log` vindt DEV_Create Logitems.\n• Het type wordt automatisch gezet als je de flow kiest.\n• **Alle flows exporteren** haalt de hele omgeving op met voortgang en kan worden afgebroken.\n• Bestanden komen in `flows/<omgeving>/` en worden ook gebruikt voor migratie en vergelijking.',
     help_import:'Een flow aanmaken, bijwerken of publiceren vanuit YAML.\n• Plak de tekst, upload een bestand of sleep het erin.\n• **🔍 YAML valideren** controleert de syntaxis in de browser zonder iets aan te roepen.\n• **🌐 Controleren tegen org** kijkt of divisie, wachtrijen, tabellen, data actions en prompts in het doel bestaan — **voordat** je importeert.\n• **Importactie** kiest aanmaken, bijwerken, of aanmaken en publiceren.\n• Publiceer je een **common module**, dan krijg je daarna aangeboden de flows die hem gebruiken opnieuw te publiceren.\n• Importeren naar **prod** vereist je prod-login met de permissie.',
@@ -5053,6 +5134,22 @@ const LANGS = {
     dep_fda_copy:'Copiar lista',
     dep_fda_copied:'Lista copiada',
     dep_fda_checklist:'Cree estas Function Data Actions en {target} para que coincidan con las de {source}:',
+    dam_title:'Data actions del flow',
+    dam_sub:'Así se llaman en la org de destino. Su elección se guarda para la próxima migración.',
+    dam_col_action:'Data action del flow',
+    dam_col_target:'En la org de destino',
+    dam_st_exact:'igual',
+    dam_st_mapped:'guardado',
+    dam_st_choose:'elegir',
+    dam_st_absent:'no existe',
+    dam_pick:'Elegir acción…',
+    dam_keep:'Dejar como está',
+    dam_search:'Elegir una acción existente en el destino (opcional)',
+    dam_hint_absent:'Una acción que no existe en el destino se ofrece para migrar en el siguiente paso, salvo que la apunte aquí a una existente.',
+    dam_remember:'Recordar mis elecciones para la próxima migración',
+    dam_continue:'Continuar',
+    dam_err_pick:'Elija una acción, o Dejar como está, en las filas amarillas.',
+    dam_err_unknown:'Una acción elegida no existe en la org de destino.',
     dep_btn_migrate:'Migrar seleccionados y continuar',
     dep_can_migrate:'SE PUEDE MIGRAR AHORA',
     dep_manual:'DEBE CREARSE MANUALMENTE',
@@ -5577,7 +5674,7 @@ const LANGS = {
     help_pipeline:'Flows en filas, los entornos del grupo en columnas por orden de etapa.\n• Los números de versión **no** son comparables entre orgs — se cuentan por org. Use **⇄ Comprobar contenido**, lo único que decide si dos entornos son iguales.\n• **Verde**: publicado por el camino correcto. **Rojo**: publicado fuera del pipeline, o más versiones que la etapa anterior.\n• **Cada botón muestra primero qué ocurrirá** — flow, origen y destino, y avisos sobre prod o cambios que se perderían — y puede cancelar. **? Botones** los explica todos.\n• **Igualar número de versión**: al ⟶ Promover, el destino puede publicarse las veces que faltan para alcanzar el número del origen (p. ej. dev v10 → test v10). No puede bajar.\n• **⟶ Promover** avanza una etapa cada vez. Solo se puede promover una versión publicada. Prod exige su inicio de sesión de prod.\n• **⟵ Traer aquí** trae un flow de una etapa posterior, p. ej. cuando dev se acaba de crear.\n• **↩** revierte la última promoción y **📝** muestra las notas de versión.\n• Al promover o revertir un **common module**, se le ofrece volver a publicar los flows del entorno que lo usan. **🔁** hace lo mismo si el módulo se cambió directamente en Architect. Si un módulo se publicó después de flows que lo usan, se indica arriba del tablero, las celdas se marcan con ⚠ y 🔁 se vuelve amarillo.\n• **El manifiesto compartido** guarda el historial en la org, para que todos vean la misma verdad.',
     help_flows:'Obtener, buscar y filtrar los flows del entorno. Si varios entornos comparten una org, solo se muestran los propios.\n• Filtre por **tipo de flow** — la lista se llena con los tipos que el entorno tiene realmente.\n• **Publicar** pone en producción un borrador ya migrado. Si es un common module, se le ofrece después volver a publicar los flows que lo usan.\n• **Los common modules se comprueban** cada vez que se carga la lista: si un módulo se publicó **después** de un flow que lo usa, el flow sigue con la versión antigua. Se indica en un recuadro amarillo con un botón para volver a publicarlos, y las filas se marcan con ⚠.\n• **🔁 Usuarios** en un common module lista todos los flows que lo usan.\n• **⇄ Comparar** con otra org compara el **contenido**, no los números de versión.\n• **📌 Punto cero** registra lo que contiene la org ahora, para detectar después publicaciones directas.',
     help_cross:'Muestra los flows presentes en **varios clientes**, por ejemplo el mismo common module en diez clientes.\n• La vista se basa en una llamada por cliente, así que es rápida.\n• **⇄ Comparar contenido** exporta el flow de cada cliente y compara el hash. Lleva tiempo, así que solo se hace en la fila que pida.\n• Si una org no se pudo leer, se dice: **nunca** informa «idéntico» cuando falta una respuesta.',
-    help_migrate:'Exportación desde una org e importación directa en otra, en dos fases.\n• **Comprobación** — se exporta el flow y se examina la org de destino por todo lo que referencia. Aún no se escribe nada.\n• **Importación** — solo tras su elección. Si falta algo, tablas, data actions y common modules pueden migrarse antes del flow.\n• Si el destino tiene un **prefijo** u otra **división**, el flow y sus referencias se renombran por el camino.\n• **Acción de importación** según el destino: todo salvo prod se publica por defecto. Prod queda como borrador que publica usted.\n• Escribir en **prod** exige su inicio de sesión de prod con el permiso — se le ofrece iniciar sesión si falta.\n• Si se migra un **common module**, se le ofrece volver a publicar los flows del destino que lo usan.\n• Colas, skills, códigos de wrap-up y scripts deben crearse manualmente.\n• Si el flow usa una **Function Data Action** que falta en el destino, la promoción queda **bloqueada** hasta que se cree en Genesys. Pulse **Comprobar de nuevo** cuando exista.',
+    help_migrate:'Exportación desde una org e importación directa en otra, en dos fases.\n• **Comprobación** — se exporta el flow y se examina la org de destino por todo lo que referencia. Aún no se escribe nada.\n• **Importación** — solo tras su elección. Si falta algo, tablas, data actions y common modules pueden migrarse antes del flow.\n• Si el destino tiene un **prefijo** u otra **división**, el flow y sus referencias se renombran por el camino.\n• **Acción de importación** según el destino: todo salvo prod se publica por defecto. Prod queda como borrador que publica usted.\n• Escribir en **prod** exige su inicio de sesión de prod con el permiso — se le ofrece iniciar sesión si falta.\n• Si se migra un **common module**, se le ofrece volver a publicar los flows del destino que lo usan.\n• Colas, skills, códigos de wrap-up y scripts deben crearse manualmente.\n• Si el flow usa una **Function Data Action** que falta en el destino, la promoción queda **bloqueada** hasta que se cree en Genesys. Pulse **Comprobar de nuevo** cuando exista.\n• Si una **data action** tiene otro nombre en el destino — por ejemplo otra integración — se listan las data actions del flow y usted elige a cuál del destino apuntan. La elección se guarda para la próxima vez.',
     help_dataactions:'Migra lo que no es un flow: **Data Actions**, **tablas de datos** y **prompts de usuario**.\n• Las Data Actions pertenecen a una integración. Elija la integración de origen y solo se mostrarán sus acciones, conservando la agrupación.\n• Las tablas de datos migran la **estructura**: las columnas. Las filas no se llevan.\n• Los prompts llevan tanto el texto TTS como el audio grabado. Los que tienen audio están marcados con 🔊.\n• **Las Function Data Actions no se pueden migrar**: su URL es un id de una función que solo existe en la org de origen.',
     help_export:'Exporta flows a archivos YAML en esta máquina.\n• Elija un entorno — sus flows se listan al instante. Si varios entornos comparten una org, solo se muestran los propios.\n• Escriba para filtrar. `*` muestra todos, y un asterisco dentro del texto es un comodín: `DEV_*log` encuentra DEV_Create Logitems.\n• El tipo se fija automáticamente al elegir el flow.\n• **Exportar todos los flows** obtiene todo el entorno con progreso y se puede cancelar.\n• Los archivos quedan en `flows/<entorno>/` y también se usan en migración y comparación.',
     help_import:'Crear, actualizar o publicar un flow a partir de YAML.\n• Pegue el texto, suba un archivo o arrástrelo.\n• **🔍 Validar YAML** comprueba la sintaxis en el navegador sin llamar a nada.\n• **🌐 Comprobar en la org** mira si división, colas, tablas, data actions y prompts existen en el destino — **antes** de importar.\n• **Acción de importación** elige crear, actualizar, o crear y publicar.\n• Si publica un **common module**, se le ofrece después volver a publicar los flows que lo usan.\n• Importar a **prod** exige su inicio de sesión de prod con el permiso.',
@@ -6719,15 +6816,27 @@ async function runMigration() {
       // Fase 1: eksportér og undersøg mål-org'en. Intet skrives endnu.
       log(logBox, `  ${t('dep_checking')}`, 'info');
       let prep, spring = false;
+      // Brugerens valg af data actions i målet. En action der er peget over på
+      // en anden, mangler ikke længere — hverken som afhængighed eller som FDA.
+      let actionMap = [], rememberMap = true, mapDone = false;
+      const aktiv = d => !(d.kind === 'dataaction' && actionMap.some(e => e.from.name === d.name));
       for (;;) {
         prep = await fetch('/api/migrate/prepare', {
           method: 'POST', headers: {'Content-Type':'application/json'},
           body: JSON.stringify({ sourceId, targetId, flowName: name, flowType: type, confirmProd })
         }).then(r => r.json());
         if (prep.error) break;
+        // Hedder en data action noget andet i målet, vises flowets data actions
+        // med det navn de har dér, og brugeren vælger. Én gang pr. flow.
+        if (!mapDone && (prep.actionRefs || []).some(r => r.status === 'choose' || r.status === 'absent')) {
+          const mv = await showActionMapModal(name, prep);
+          mapDone = true;
+          if (mv.choice === 'cancel') { spring = true; break; }
+          actionMap = mv.map; rememberMap = mv.remember;
+        }
         // En Function Data Action der mangler i målet blokerer flowet: dialogen
         // lader brugeren oprette den i Genesys og tjekke igen, eller springe over.
-        const blocked = (prep.deps || []).filter(d => !d.ok);
+        const blocked = (prep.deps || []).filter(d => !d.ok && aktiv(d));
         if (!blocked.some(d => d.blocking)) break;
         log(logBox, `  ⛔ ${t('dep_fda_title')}`, 'err');
         const svar = await showDepModal(name, blocked, prep.dynamicSkills, {
@@ -6739,7 +6848,7 @@ async function runMigration() {
       if (prep.error) { log(logBox, `  ✗ ${prep.error}`, 'err'); failed++; continue; }
       if (spring) { log(logBox, `  ⊘ ${t('dep_skipped_flow')}`, 'info'); skipped++; continue; }
 
-      const missing = (prep.deps || []).filter(d => !d.ok);
+      const missing = (prep.deps || []).filter(d => !d.ok && aktiv(d));
       const divisionMap = {};   // fyldes hvis brugeren vælger "brug Home"
       if (missing.length) {
         log(logBox, `  ⚠ ${missing.length} ${t('dep_missing_count')}`, 'info');
@@ -6775,7 +6884,7 @@ async function runMigration() {
       // Fase 2: importér flowet
       const data = await fetch('/api/migrate/commit', {
         method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ sourceId, targetId, flowName: name, filePath: prep.filePath, action, divisionMap, confirmProd, alignVersion })
+        body: JSON.stringify({ sourceId, targetId, flowName: name, filePath: prep.filePath, action, divisionMap, confirmProd, alignVersion, actionMap, rememberMap })
       }).then(r => r.json());
       if (data.error) { log(logBox, `  ✗ ${data.error}`, 'err'); failed++; }
       else {
@@ -9595,6 +9704,70 @@ function copyFdaChecklist(btn) {
   const done = () => { btn.textContent = t('dep_fda_copied'); };
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, () => {});
   else done();
+}
+
+// ── Data actions i flowet: hvad de hedder i mål-org'en ──────────────────────
+let damResolver = null, damRefs = [], damByLabel = new Map();
+const damLabel = a => a.category + ' / ' + a.name;
+
+function showActionMapModal(flowName, prep) {
+  damRefs = prep.actionRefs || [];
+  damByLabel = new Map((prep.targetActions || []).map(a => [damLabel(a), a]));
+  document.getElementById('dam-flowname').textContent = flowName;
+  document.getElementById('dam-err').textContent = '';
+  document.getElementById('dam-dl').innerHTML =
+    [...damByLabel.keys()].map(l => `<option value="${escapeHtml(l)}">`).join('');
+
+  const pill = (cls, key) => `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:${cls}">${t(key)}</span>`;
+  const GREEN = 'rgba(46,204,113,.15)', YELLOW = 'rgba(241,196,15,.18)', RED = 'rgba(231,76,60,.15)', BLUE = 'rgba(52,152,219,.15)';
+  const rows = damRefs.map((r, i) => {
+    let target, st;
+    if (r.status === 'exact') {
+      target = `<span style="color:var(--muted);font-size:12px">${escapeHtml(damLabel(r))}</span>`;
+      st = pill(GREEN, 'dam_st_exact');
+    } else if (r.status === 'choose') {
+      const c = r.candidates || [];
+      target = `<select data-i="${i}" style="width:100%"><option value="">${t('dam_pick')}</option>` +
+        c.map(a => `<option value="${escapeHtml(damLabel(a))}"${c.length === 1 ? ' selected' : ''}>${escapeHtml(damLabel(a))}</option>`).join('') +
+        `<option value="-">${t('dam_keep')}</option></select>`;
+      st = pill(YELLOW, 'dam_st_choose');
+    } else {
+      const pre = r.status === 'mapped' ? damLabel(r.mappedTo) : '';
+      target = `<input data-i="${i}" list="dam-dl" value="${escapeHtml(pre)}" placeholder="${escapeHtml(t('dam_search'))}" style="width:100%"/>`;
+      st = r.status === 'mapped' ? pill(BLUE, 'dam_st_mapped') : pill(RED, 'dam_st_absent');
+    }
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border);font-size:13px">
+      <div style="flex:1.1;min-width:0"><div style="font-family:var(--mono);font-size:12px;overflow:hidden;text-overflow:ellipsis">${escapeHtml(r.name)}</div>
+        <div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis">${escapeHtml(r.category)}</div></div>
+      <div style="flex:1.5;min-width:0">${target}</div><div style="width:84px;text-align:right">${st}</div></div>`;
+  }).join('');
+  document.getElementById('dam-body').innerHTML =
+    `<div style="display:flex;gap:10px;font-size:11px;color:var(--muted);padding-bottom:6px">
+       <div style="flex:1.1">${t('dam_col_action')}</div><div style="flex:1.5">${t('dam_col_target')}</div><div style="width:84px"></div></div>` + rows +
+    (damRefs.some(r => r.status === 'absent') ? `<div style="margin-top:12px;font-size:11px;color:var(--muted)">${t('dam_hint_absent')}</div>` : '');
+  document.getElementById('dam-overlay').style.display = 'flex';
+  return new Promise(resolve => { damResolver = resolve; });
+}
+
+function damResolve(choice) {
+  const err = document.getElementById('dam-err');
+  const map = [];
+  if (choice === 'ok') {
+    for (const el of document.querySelectorAll('#dam-body [data-i]')) {
+      const r = damRefs[+el.dataset.i], v = el.value.trim();
+      if (r.status === 'choose' && !v) { err.textContent = t('dam_err_pick'); return; }
+      if (!v || v === '-') continue;
+      const to = damByLabel.get(v);
+      if (!to) { err.textContent = t('dam_err_unknown'); return; }
+      if (r.status === 'mapped' && damLabel(r.mappedTo) === v) continue;   // uændret gemt valg
+      map.push({ from: { category: r.category, name: r.name }, to: { category: to.category, name: to.name } });
+    }
+  }
+  document.getElementById('dam-overlay').style.display = 'none';
+  if (damResolver) {
+    damResolver({ choice, map, remember: document.getElementById('dam-remember').checked });
+    damResolver = null;
+  }
 }
 
 function showDepModal(flowName, missing, dynamicSkills, names) {

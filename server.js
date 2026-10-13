@@ -5817,6 +5817,146 @@ async function functionActionsMissingInTarget(source, target, yaml) {
   return missingFunctionActions(missing, actions, types);
 }
 
+// ── Data actions i flowet: kategori og navn ───────────────────────────────────
+//
+// Et flow peger på en data action med KATEGORI og NAVN:
+//
+//     category:
+//       Genesys Cloud Data Actions - QM:
+//         dataAction:
+//           get_order:
+//
+// Kategorien er integrationens navn, og den er ikke ens fra org til org —
+// kunder har fx "Test - Genesys Cloud Data Actions" i test og
+// "Genesys Cloud Data Actions - Flows" i prod. Findes navnet i målet, men under
+// en anden kategori, ser en tjek på navn alene alt i orden, og importen fejler.
+// Derfor slås både kategori og navn op, og brugerens valg huskes pr. org-par.
+
+const DA_REF_RE = () => /(category:[ \t]*\r?\n[ \t]+)([^\r\n]+?)(:[ \t]*\r?\n[ \t]+dataAction:[ \t]*\r?\n[ \t]+)([^\r\n]+?)(:[ \t]*(?:\r?\n|$))/g;
+const daUnquote = s => String(s).trim().replace(/^(["'])(.*)\1$/, '$2');
+const daSame = (a, b) => !!a && !!b && a.category === b.category && a.name === b.name;
+
+// De data actions et flow kalder, hver én gang.
+function scanDataActionRefs(yaml) {
+  const out = [];
+  const re = DA_REF_RE();
+  let m;
+  while ((m = re.exec(String(yaml))) !== null) {
+    const ref = { category: daUnquote(m[2]), name: daUnquote(m[4]) };
+    if (!out.some(r => daSame(r, ref))) out.push(ref);
+  }
+  return out;
+}
+
+// Ren afgørelse pr. reference:
+//   exact   — findes i målet med samme kategori og navn
+//   mapped  — et gemt valg peger på en action der findes i målet
+//   choose  — navnet findes i målet, men under en anden kategori
+//   absent  — navnet findes slet ikke i målet
+function classifyDataActionRefs(refs, targetActions, saved) {
+  const ta = targetActions || [];
+  return (refs || []).map(r => {
+    if (ta.some(a => daSame(a, r))) return { ...r, status: 'exact' };
+    const sv = (saved || []).find(e => daSame(e.from, r));
+    if (sv && ta.some(a => daSame(a, sv.to))) return { ...r, status: 'mapped', mappedTo: sv.to };
+    const candidates = ta.filter(a => a.name === r.name).map(a => ({ category: a.category, name: a.name }));
+    return { ...r, status: candidates.length ? 'choose' : 'absent', candidates };
+  });
+}
+
+// Skriver referencerne om efter en liste af valg. Rører kun en reference der
+// IKKE findes i målet, og kun hvis valget peger på en action der gør.
+function applyDataActionMap(yaml, entries, targetActions) {
+  const changed = [];
+  const ta = targetActions || [];
+  const wrap = (orig, v) => { const q = String(orig).trim()[0]; return (q === '"' || q === "'") ? q + v + q : v; };
+  const out = String(yaml).replace(DA_REF_RE(), (all, h1, cat, h2, name, tail) => {
+    const ref = { category: daUnquote(cat), name: daUnquote(name) };
+    if (ta.some(a => daSame(a, ref))) return all;
+    const e = (entries || []).find(x => daSame(x.from, ref));
+    if (!e || !ta.some(a => daSame(a, e.to))) return all;
+    const txt = `${ref.category} / ${ref.name} → ${e.to.category} / ${e.to.name}`;
+    if (!changed.includes(txt)) changed.push(txt);
+    return h1 + wrap(cat, e.to.category) + h2 + wrap(name, e.to.name) + tail;
+  });
+  return { yaml: out, changed };
+}
+
+const validDaEntry = e => !!e && ['from', 'to'].every(k => e[k]
+  && typeof e[k].category === 'string' && typeof e[k].name === 'string'
+  && e[k].category && e[k].name && e[k].category.length <= 256 && e[k].name.length <= 256);
+
+// over vinder over base, på kilden.
+function mergeDaEntries(base, over) {
+  const out = (base || []).filter(validDaEntry).map(e => ({ from: { ...e.from }, to: { ...e.to } }));
+  for (const e of (over || []).filter(validDaEntry)) {
+    const i = out.findIndex(x => daSame(x.from, e.from));
+    const neu = { from: { category: e.from.category, name: e.from.name }, to: { category: e.to.category, name: e.to.name } };
+    if (i >= 0) out[i] = neu; else out.push(neu);
+  }
+  return out;
+}
+
+// Alle data actions i en org, med kategori.
+async function listDataActions(token, apiBase) {
+  const H = { headers: { Authorization: `Bearer ${token}` } };
+  let all = [], page = 1;
+  for (;;) {
+    const r = await axios.get(`${apiBase}/api/v2/integrations/actions`, { ...H, params: { pageSize: 100, pageNumber: page } });
+    const e = r.data.entities || [];
+    all = all.concat(e.map(a => ({ id: a.id, name: a.name, category: a.category, integrationId: a.integrationId })));
+    if (e.length < 100) break;
+    page++;
+  }
+  return all;
+}
+
+// Valgene gemmes pr. kilde-org og mål-org. I mål-org'ens manifest-tabel, hvis
+// den har en — så en kollega på en anden pc ser dem — ellers i en lokal fil.
+// Nøglen har ikke noget "|", så tavlen aldrig læser den som et flow.
+const DA_MAP_KEY = 'ArchyGUI_DataActionMap';
+const DA_MAP_FILE = path.join(FLOWS_DIR, '.data-action-map.json');
+
+function readLocalDaMap() { try { return JSON.parse(fs.readFileSync(DA_MAP_FILE, 'utf8')); } catch (_) { return {}; } }
+
+const daOrgKeys = async (source, target) => ({
+  s: (await getOrgId(source)) || source.id,
+  t: (await getOrgId(target)) || target.id
+});
+
+async function loadDataActionMap(source, target) {
+  const k = await daOrgKeys(source, target);
+  const local = (readLocalDaMap()[k.t] || {})[k.s] || [];
+  let org = [];
+  try {
+    const row = await readOrgManifestRow(target, DA_MAP_KEY);
+    if (row && row.maps) org = row.maps[k.s] || [];
+  } catch (_) { /* uden tabel bruges den lokale fil */ }
+  return mergeDaEntries(local, org);
+}
+
+async function saveDataActionMap(source, target, entries) {
+  const k = await daOrgKeys(source, target);
+  const all = mergeDaEntries(await loadDataActionMap(source, target), entries);
+  // Et løst miljø (intet trin) får ikke skrevet noget i sin org.
+  if (stageOf(target)) {
+    try {
+      const row = (await readOrgManifestRow(target, DA_MAP_KEY));
+      if (row !== undefined) {
+        const maps = { ...((row && row.maps) || {}), [k.s]: all };
+        const r = await putOrgManifestRow(target, DA_MAP_KEY, { schema: 1, maps, at: Date.now() });
+        if (r.ok) return { where: 'org', count: all.length };
+      }
+    } catch (e) {
+      addLog('WARN', `Could not save the data action choices in ${target.name}'s manifest: ${describeApiError(e)} — saved locally`, target.name, 'MIGRATE');
+    }
+  }
+  const local = readLocalDaMap();
+  local[k.t] = { ...(local[k.t] || {}), [k.s]: all };
+  fs.writeFileSync(DA_MAP_FILE, JSON.stringify(local, null, 2));
+  return { where: 'local', count: all.length };
+}
+
 // ── User prompts ──────────────────────────────────────────────────────────────
 
 // Migrerer én user prompt med alle dens sprogressourcer.
@@ -7236,7 +7376,31 @@ app.post('/api/migrate/prepare', async (req, res) => {
     }
     if (!missing.length) addLog('SUCCESS', `All dependencies for "${flowName}" exist in ${target.name}`, target.name, 'MIGRATE');
 
-    res.json({ ok: true, fileName: yamlFile, filePath, yaml, deps: results, dynamicSkills: /FindSkill\(\s*[A-Za-z]/.test(yaml) });
+    // Hvilke data actions flowet kalder, og hvordan de står i målet: samme
+    // kategori og navn, et gemt valg, samme navn under en anden kategori, eller
+    // slet ikke. Kun navnet blev tjekket før, og det overså en anden kategori.
+    let actionRefs = [], targetActions = [];
+    try {
+      const refs = scanDataActionRefs(yaml);
+      if (refs.length) {
+        const all = await listDataActions(tgtToken, tgtBase);
+        const saved = await loadDataActionMap(source, target);
+        actionRefs = classifyDataActionRefs(refs, all, saved);
+        // Et gemt valg gør at navnet ikke mangler, selv om det ikke står i målet.
+        for (const ref of actionRefs.filter(r => r.status === 'mapped'))
+          for (const d of results.filter(x => x.kind === 'dataaction' && x.name === ref.name && !x.ok)) {
+            d.ok = true; d.mappedTo = ref.mappedTo;
+            delete d.canMigrate; delete d.manualReason; delete d.blocking;
+          }
+        if (actionRefs.some(r => r.status !== 'exact'))
+          targetActions = all.map(a => ({ category: a.category, name: a.name }));
+      }
+    } catch (e) {
+      addLog('WARN', `Could not compare the data actions of "${flowName}" with ${target.name}: ${describeApiError(e)}`, target.name, 'MIGRATE');
+    }
+
+    res.json({ ok: true, fileName: yamlFile, filePath, yaml, deps: results, actionRefs, targetActions,
+               dynamicSkills: /FindSkill\(\s*[A-Za-z]/.test(yaml) });
 
   } catch (e) {
     addLog('ERROR', `Migration prepare failed for "${flowName}": ${e.message}`, source.name, 'MIGRATE');
@@ -7268,9 +7432,25 @@ app.post('/api/migrate/commit', async (req, res) => {
   // Hård port: en Function Data Action der mangler i målet, kan ikke oprettes
   // herfra. Commit er den der skriver, så vagten står her og ikke kun i
   // dialogen. Kan vi ikke slå det op, standser vi ikke på et gæt.
+  //
+  // Valgene til data actions (gemte og dem brugeren lige har truffet) anvendes
+  // først: en Function Data Action der er peget over på en der findes i målet,
+  // mangler ikke længere.
+  const sendt = (Array.isArray(req.body.actionMap) ? req.body.actionMap : []).filter(validDaEntry);
+  let daEntries = [], daTarget = [];
+  try {
+    if (scanDataActionRefs(fs.readFileSync(resolved, 'utf8')).length) {
+      const { token: tt, apiBase: tb } = await getToken(target);
+      daTarget = await listDataActions(tt, tb);
+      daEntries = mergeDaEntries(await loadDataActionMap(source, target), sendt);
+    }
+  } catch (e) {
+    addLog('WARN', `Could not look up the data action choices for "${flowName}": ${describeApiError(e)}`, target.name, 'MIGRATE');
+  }
   let fdaMangler = [];
   try {
-    fdaMangler = await functionActionsMissingInTarget(source, target, fs.readFileSync(resolved, 'utf8'));
+    const mapped = applyDataActionMap(fs.readFileSync(resolved, 'utf8'), daEntries, daTarget).yaml;
+    fdaMangler = await functionActionsMissingInTarget(source, target, mapped);
   } catch (e) {
     addLog('WARN', `Could not check Function Data Actions for "${flowName}": ${describeApiError(e)}`, target.name, 'MIGRATE');
   }
@@ -7311,8 +7491,16 @@ app.post('/api/migrate/commit', async (req, res) => {
     const nyDivision = divisionOf(target);
     const skalOmskrives = prefixOf(source) !== prefixOf(target) ||
                           divisionOf(source) !== nyDivision;
+    // Data actions peget over på det de hedder i målet. Samme sidefil som
+    // præfiksomskrivningen — kildens egen kopi røres aldrig.
+    const daRew = applyDataActionMap(fs.readFileSync(resolved, 'utf8'), daEntries, daTarget);
+    if (skalOmskrives || daRew.changed.length) {
+      let yaml = daRew.yaml;
+      for (const omskrevet of daRew.changed) {
+        omskrevneRefs.push(omskrevet);
+        addLog('INFO', `Data action reference rewritten: ${omskrevet}`, target.name, 'MIGRATE');
+      }
     if (skalOmskrives) {
-      let yaml = fs.readFileSync(resolved, 'utf8');
       // Divisionen følger miljøet. Er der ingen sat på målet, er det Home.
       const gammelDivision = (yaml.match(/^[ \t]{2,}division:[ \t]*(.+?)[ \t]*$/m) || [])[1];
       yaml = setFlowDivisionInYaml(yaml, nyDivision);
@@ -7326,9 +7514,10 @@ app.post('/api/migrate/commit', async (req, res) => {
       // prods tabel, og de to miljøer ville dele data.
       const dep = prefixDependenciesInYaml(yaml, source, target);
       yaml = dep.yaml;
-      omskrevneRefs = dep.changed;
+      omskrevneRefs = omskrevneRefs.concat(dep.changed);
       for (const omskrevet of dep.changed)
         addLog('INFO', `Reference rewritten: ${omskrevet}`, target.name, 'MIGRATE');
+    }
 
       importFile = path.join(path.dirname(resolved),
         `.import-${sanitizeName(target.name)}-${path.basename(resolved)}`);
@@ -7367,6 +7556,18 @@ app.post('/api/migrate/commit', async (req, res) => {
       if (importFile !== resolved) { try { fs.unlinkSync(importFile); } catch (_) {} }
     }
     addLog('SUCCESS', `Migration complete: "${nyName}" is now in ${target.name}`, target.name, 'MIGRATE');
+
+    // Brugerens valg huskes først nu, hvor de har vist sig at holde — og kun de
+    // der faktisk blev brugt. Så ligger der aldrig et valg der aldrig virkede.
+    const brugt = sendt.filter(e => daRew.changed.includes(`${e.from.category} / ${e.from.name} → ${e.to.category} / ${e.to.name}`));
+    if (brugt.length && req.body.rememberMap !== false) {
+      try {
+        const r = await saveDataActionMap(source, target, brugt);
+        addLog('INFO', `Saved ${brugt.length} data action choice(s) for ${source.name} → ${target.name} (${r.where === 'org' ? 'in the target manifest' : 'locally'})`, target.name, 'MIGRATE');
+      } catch (e) {
+        addLog('WARN', `Could not save the data action choices: ${describeApiError(e)}`, target.name, 'MIGRATE');
+      }
+    }
 
     // Notér hvad målet blev bygget af, så det senere kan verificeres om kilden
     // eller målet har flyttet sig. Versionsnumrene gemmes til orientering —
@@ -7724,6 +7925,8 @@ module.exports = {
   parseFlowFileName, versionLabel, sanitizeName, normType,
   // function data actions
   missingFunctionActions, FUNCTION_INTEGRATION,
+  // data actions i flowet
+  scanDataActionRefs, classifyDataActionRefs, applyDataActionMap, mergeDaEntries, validDaEntry,
   // miljøer og præfikser
   prefixOf, orgKeyOf, rememberOrgId, wrongOrg, clientPinsOrg, orgOwnedElsewhere, belongsToEnv, stripEnvPrefix, withEnvPrefix, depNameIn,
   targetFlowName, prefixDependenciesInYaml, divisionOf,

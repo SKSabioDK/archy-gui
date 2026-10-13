@@ -5,6 +5,25 @@
 
 ---
 
+### v1.50.0
+---
+**🇩🇰 Dansk**
+
+- **Flowets data actions slås op med kategori og navn.** Et flow peger på en data action med integrationens kategori og navnet. Før blev kun navnet tjekket, så en action med samme navn under en anden kategori — fx `Test - Genesys Cloud Data Actions` i test og `Genesys Cloud Data Actions - Flows` i prod — så ud til at findes, mens importen fejlede. Nu sammenlignes begge dele med mål-org'en.
+- **Liste over flowets data actions, når navnene ikke passer.** Findes en reference ikke præcist i målet, åbnes en liste med status pr. data action: *samme*, *gemt valg*, *vælg* (samme navn under en anden kategori) og *findes ikke*. Man peger hver over på den action i målet, den skal bruge, eller lader den være. Referencen skrives om i den side-kopi der importeres — kildens egen kopi røres ikke — og skrives med i release-noten.
+- **Valgene huskes.** De gemmes pr. kilde-org og mål-org, i mål-org'ens manifest-tabel hvis den har en (så de andre pc'er ser dem), ellers i `.data-action-map.json`. De gemmes først efter en vellykket import og bruges automatisk næste gang. *Husk mine valg* kan slås fra.
+- **En Function Data Action, der er peget over på en eksisterende i målet, blokerer ikke** (v1.49.0-spærringen ser på det valg, der faktisk importeres).
+- Endnu ikke med: et gemt valg kan ikke fjernes fra brugerfladen, og totaltjekket mellem to orgs kommer i et senere trin.
+
+**🇬🇧 English**
+- **A flow's data actions are looked up by category and name.** A flow points at a data action by the integration's category and the name. Only the name used to be checked, so an action with the same name under another category — say `Test - Genesys Cloud Data Actions` in test and `Genesys Cloud Data Actions - Flows` in prod — appeared to exist while the import failed. Both are now compared with the target org.
+- **A list of the flow's data actions when the names do not match.** If a reference does not exist exactly in the target, a list opens with a status per data action: *same*, *saved*, *choose* (same name under another category) and *not found*. You point each at the action in the target it should use, or leave it. The reference is rewritten in the side copy that is imported — the source's own copy is never touched — and is included in the release note.
+- **The choices are remembered.** They are saved per source org and target org, in the target org's manifest table if it has one (so the other PCs see them), otherwise in `.data-action-map.json`. They are saved only after a successful import and applied automatically next time. *Remember my choices* can be switched off.
+- **A Function Data Action pointed at an existing one in the target does not block** (the v1.49.0 block looks at the choice that is actually imported).
+- Not included yet: a saved choice cannot be removed from the UI, and the full check between two orgs comes in a later step.
+
+---
+
 ### v1.49.0
 ---
 **🇩🇰 Dansk**
