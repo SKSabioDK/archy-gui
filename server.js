@@ -7478,12 +7478,26 @@ app.post('/api/migrate/prepare', async (req, res) => {
   const target = loadCustomers().find(c => c.id === targetId);
   if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
 
-  const blocked = migrationGuard(source, target, req.body);
+  const pre = await migrationPreflight(source, target, flowName, flowType, req.body);
+  if (pre.refused) return res.status(pre.refused.status).json(pre.refused.body);
+
+  addLog('INFO', `Migration prepared: "${flowName}" from ${source.name} → ${target.name}`, source.name, 'MIGRATE');
+  try {
+    res.json({ ok: true, ...(await analyzeFlowForMigration(source, target, flowName, flowType, pre.kildeVersion)) });
+  } catch (e) {
+    addLog('ERROR', `Migration prepare failed for "${flowName}": ${e.message}`, source.name, 'MIGRATE');
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Vagterne før en flytning, og hvilken udgave der skal eksporteres. Delt mellem
+// prepare og tjekket, så de to aldrig er uenige om hvad der må lade sig gøre.
+async function migrationPreflight(source, target, flowName, flowType, body) {
+  const blocked = migrationGuard(source, target, body);
   if (blocked) {
     addLog('WARN', `Migration blocked (${blocked.code}): "${flowName}" ${source.name} → ${target.name}`, source.name, 'MIGRATE');
-    return res.status(409).json(blocked);
+    return { refused: { status: 409, body: blocked } };
   }
-
   // Indenfor en gruppe er dette en forfremmelse, og så gælder rækkefølgen:
   // publicér og test i kilden, forfrem derefter.
   //
@@ -7497,7 +7511,7 @@ app.post('/api/migrate/prepare', async (req, res) => {
       const msg = `"${flowName}" er ikke publiceret i ${source.name}. Publicér og test det dér, før du forfremmer.`;
       // Vejledningen til brugeren står på dansk i svaret; loggen skal være engelsk.
       addLog('WARN', `Migration blocked (unpublished-source): "${flowName}" is not published in ${source.name}`, source.name, 'MIGRATE');
-      return res.status(409).json({ code: 'unpublished-source', error: msg });
+      return { refused: { status: 409, body: { code: 'unpublished-source', error: msg } } };
     }
     kildeVersion = published;
     if (found && !published)
@@ -7506,13 +7520,15 @@ app.post('/api/migrate/prepare', async (req, res) => {
     // Kan vi ikke slå det op, standser vi ikke migreringen på et gæt.
     addLog('WARN', `Could not check the published version in ${source.name}: ${describeApiError(e)}`, source.name, 'MIGRATE');
   }
+  return { kildeVersion };
+}
 
+// Eksportér flowet fra kilden og undersøg alt det refererer til i målet.
+// Skriver intet i mål-org'en.
+async function analyzeFlowForMigration(source, target, flowName, flowType, kildeVersion) {
   const exportDir = path.join(FLOWS_DIR, sanitizeName(source.name));
   if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir, { recursive: true });
-
-  addLog('INFO', `Migration prepared: "${flowName}" from ${source.name} → ${target.name}`, source.name, 'MIGRATE');
-
-  try {
+  {
     // Find den eksporterede fil på hvad eksporten faktisk rørte — ikke på
     // navnelighed. Den gamle heuristik matchede flownavnet mod filnavnet og
     // faldt ellers tilbage på "sidste fil i mappen", hvilket kunne udpege et
@@ -7676,12 +7692,55 @@ app.post('/api/migrate/prepare', async (req, res) => {
     } catch (e) {
       addLog('WARN', `Could not compare the data actions of "${flowName}" with ${target.name}: ${describeApiError(e)}`, target.name, 'MIGRATE');
     }
+    return { fileName: yamlFile, filePath, yaml, deps: results, actionRefs, targetActions,
+             dynamicSkills: /FindSkill\(\s*[A-Za-z]/.test(yaml) };
+  }
+}
 
-    res.json({ ok: true, fileName: yamlFile, filePath, yaml, deps: results, actionRefs, targetActions,
-               dynamicSkills: /FindSkill\(\s*[A-Za-z]/.test(yaml) });
+// ── Tjek før forfremmelse ────────────────────────────────────────────────────
+//
+// Det samme som første fase af en forfremmelse, uden at noget importeres, og
+// uden dialogerne: hvad står i vejen, hvad kræver et valg, og hvad klarer
+// forfremmelsen selv. Ren afgørelse, så den kan prøves uden en org.
+//
+//   blockers  — forfremmelsen kan ikke gennemføres, før det er løst
+//   decisions — en data action findes under en anden kategori: der skal vælges
+//   warnings  — håndteres under forfremmelsen eller i hånden, men standser den ikke
+function buildMigrationVerdict(analysis) {
+  const blockers = [], decisions = [], warnings = [];
+  let ok = 0;
+  for (const d of analysis.deps || []) {
+    if (d.ok) { ok++; continue; }
+    const item = { kind: d.kind, name: d.name };
+    if (d.blocking) blockers.push({ ...item, code: 'fda' });
+    // En data action der ikke findes i nogen af de to orgs, kan hverken oprettes eller peges over på.
+    else if (d.kind === 'dataaction' && d.manualReason === 'not_in_source') blockers.push({ ...item, code: 'action-nowhere' });
+    else if (d.canMigrate) warnings.push({ ...item, code: 'will-migrate' });
+    else if (d.needsChoice) warnings.push({ ...item, code: 'needs-choice' });
+    else warnings.push({ ...item, code: d.manualReason === 'not_in_source' ? 'not-in-source' : 'manual' });
+  }
+  for (const r of analysis.actionRefs || []) {
+    if (r.status === 'choose') decisions.push({ kind: 'dataaction', name: r.name, category: r.category, candidates: r.candidates || [] });
+    else if (r.status === 'mapped') ok++;
+  }
+  return { blockers, decisions, warnings, ok, canPromote: blockers.length === 0 };
+}
 
+app.post('/api/migrate/check', async (req, res) => {
+  const { sourceId, targetId, flowName, flowType } = req.body || {};
+  const source = loadCustomers().find(c => c.id === sourceId);
+  const target = loadCustomers().find(c => c.id === targetId);
+  if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
+  const pre = await migrationPreflight(source, target, flowName, flowType, req.body);
+  if (pre.refused) return res.status(pre.refused.status).json(pre.refused.body);
+  try {
+    const verdict = buildMigrationVerdict(await analyzeFlowForMigration(source, target, flowName, flowType, pre.kildeVersion));
+    addLog(verdict.canPromote ? 'INFO' : 'WARN',
+      `Pre-promotion check "${flowName}" ${source.name} → ${target.name}: ${verdict.blockers.length} blocking, ${verdict.decisions.length} to decide, ${verdict.warnings.length} warning(s)`,
+      source.name, 'MIGRATE');
+    res.json({ ok: true, flowName, verdict });
   } catch (e) {
-    addLog('ERROR', `Migration prepare failed for "${flowName}": ${e.message}`, source.name, 'MIGRATE');
+    addLog('ERROR', `Pre-promotion check failed for "${flowName}": ${e.message}`, source.name, 'MIGRATE');
     res.status(500).json({ error: e.message });
   }
 });
@@ -8206,6 +8265,7 @@ module.exports = {
   // data actions i flowet
   scanDataActionRefs, classifyDataActionRefs, applyDataActionMap, mergeDaEntries, validDaEntry,
   compareDataActionSets, summarizeDataActionRows, compareContracts, actionCategoryFor, planDataActionPlacement,
+  buildMigrationVerdict,
   // miljøer og præfikser
   prefixOf, orgKeyOf, rememberOrgId, wrongOrg, clientPinsOrg, orgOwnedElsewhere, belongsToEnv, stripEnvPrefix, withEnvPrefix, depNameIn,
   targetFlowName, prefixDependenciesInYaml, divisionOf,

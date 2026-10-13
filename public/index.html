@@ -533,7 +533,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.53.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.54.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -2122,6 +2122,26 @@ const LANGS = {
     plb_pull_back:'Vises når ⇄ Tjek indhold har fundet en forskel. Henter det næste trins udgave tilbage hertil, så du kan se hvad der er ændret.',
     plb_check_btn:'⇄ Tjek indhold',
     plb_check:'Eksporterer flowet fra hvert miljø og sammenligner indholdet. Skriver intet. Versionsnumre kan ikke sammenlignes på tværs af orgs.',
+    pc_btn:'Tjek',
+    pc_btn_title:'Tjek om flowet kan forfremmes — uden at importere noget',
+    pc_running:'tjekker',
+    pc_title:'Tjek før forfremmelse: {flow} ({from} → {to})',
+    pc_demo:'Tjekket kræver rigtige miljøer. Demo-miljøer har intet at tjekke mod.',
+    pc_s_block:'BLOKERER FORFREMMELSEN',
+    pc_s_decide:'SKAL AFKLARES',
+    pc_s_warn:'HÅNDTERES UNDER FORFREMMELSEN ELLER I HÅND',
+    pc_c_fda:'Function Data Action: skal findes i målet først',
+    pc_c_nowhere:'findes hverken i kilden eller målet',
+    pc_c_migrate:'migreres med, hvis du vælger det',
+    pc_c_choice:'kræver et valg',
+    pc_c_notsrc:'findes hverken i kilden eller målet: opret i hånden',
+    pc_c_manual:'skal oprettes i hånden i målet',
+    pc_decide:'Findes under en anden kategori i målet: vælg ved forfremmelsen eller i Totaltjek.',
+    pc_can:'Intet blokerer. Flowet kan forfremmes.',
+    pc_cannot:'Forfremmelsen kan ikke gennemføres, før det røde er løst.',
+    pc_ok_n:'{n} afhængigheder er i orden.',
+    plb_precheck_btn:'✔ Tjek',
+    plb_precheck:'Kører første fase af en forfremmelse — eksporterer flowet og undersøger målet — men importerer intet. Viser hvad der blokerer, hvad der skal afklares, og hvad der håndteres undervejs.',
     plb_rollback_btn:'↩',
     plb_rollback:'Ruller seneste forfremmelse til dette miljø tilbage til udgaven før.',
     plb_republish_btn:'🔁 Brugere',
@@ -3078,6 +3098,26 @@ const LANGS = {
     plb_pull_back:'Shown when ⇄ Check content found a difference. Fetches the next stage\'s version back here so you can see what changed.',
     plb_check_btn:'⇄ Check content',
     plb_check:'Exports the flow from each environment and compares the content. Writes nothing. Version numbers cannot be compared across orgs.',
+    pc_btn:'Check',
+    pc_btn_title:'Check whether the flow can be promoted — without importing anything',
+    pc_running:'checking',
+    pc_title:'Pre-promotion check: {flow} ({from} → {to})',
+    pc_demo:'The check needs real environments. Demo environments have nothing to check against.',
+    pc_s_block:'BLOCKS THE PROMOTION',
+    pc_s_decide:'TO DECIDE',
+    pc_s_warn:'HANDLED DURING THE PROMOTION OR BY HAND',
+    pc_c_fda:'Function Data Action: must exist in the target first',
+    pc_c_nowhere:'exists in neither the source nor the target',
+    pc_c_migrate:'migrated along if you choose',
+    pc_c_choice:'needs a choice',
+    pc_c_notsrc:'exists in neither the source nor the target: create by hand',
+    pc_c_manual:'must be created by hand in the target',
+    pc_decide:'Exists under another category in the target: choose at promotion or in the Full check.',
+    pc_can:'Nothing blocks. The flow can be promoted.',
+    pc_cannot:'The promotion cannot go through until the red is resolved.',
+    pc_ok_n:'{n} dependencies are in order.',
+    plb_precheck_btn:'✔ Check',
+    plb_precheck:'Runs the first phase of a promotion — exports the flow and examines the target — but imports nothing. Shows what blocks, what must be decided, and what is handled along the way.',
     plb_rollback_btn:'↩',
     plb_rollback:'Rolls the latest promotion into this environment back to the version before.',
     plb_republish_btn:'🔁 Users',
@@ -4034,6 +4074,26 @@ const LANGS = {
     plb_pull_back:'Affiché quand ⇄ Vérifier le contenu a trouvé une différence. Ramène la version de l\'étape suivante ici pour voir ce qui a changé.',
     plb_check_btn:'⇄ Vérifier le contenu',
     plb_check:'Exporte le flow de chaque environnement et compare le contenu. N\'écrit rien. Les numéros de version ne sont pas comparables entre orgs.',
+    pc_btn:'Vérifier',
+    pc_btn_title:'Vérifier si le flow peut être promu — sans rien importer',
+    pc_running:'vérification',
+    pc_title:'Vérification avant promotion : {flow} ({from} → {to})',
+    pc_demo:'La vérification demande de vrais environnements. Les environnements démo n\'ont rien à vérifier.',
+    pc_s_block:'BLOQUE LA PROMOTION',
+    pc_s_decide:'À DÉCIDER',
+    pc_s_warn:'TRAITÉ PENDANT LA PROMOTION OU À LA MAIN',
+    pc_c_fda:'Function Data Action : doit d\'abord exister dans la cible',
+    pc_c_nowhere:'n\'existe ni dans la source ni dans la cible',
+    pc_c_migrate:'migrée avec si vous le choisissez',
+    pc_c_choice:'demande un choix',
+    pc_c_notsrc:'n\'existe ni dans la source ni dans la cible : à créer à la main',
+    pc_c_manual:'à créer à la main dans la cible',
+    pc_decide:'Existe sous une autre catégorie dans la cible : choisir à la promotion ou dans le contrôle complet.',
+    pc_can:'Rien ne bloque. Le flow peut être promu.',
+    pc_cannot:'La promotion ne peut pas aboutir tant que le rouge n\'est pas réglé.',
+    pc_ok_n:'{n} dépendances sont en ordre.',
+    plb_precheck_btn:'✔ Vérifier',
+    plb_precheck:'Lance la première phase d\'une promotion — exporte le flow et examine la cible — sans rien importer. Montre ce qui bloque, ce qu\'il faut décider et ce qui est traité en route.',
     plb_rollback_btn:'↩',
     plb_rollback:'Annule la dernière promotion vers cet environnement et revient à la version précédente.',
     plb_republish_btn:'🔁 Utilisateurs',
@@ -4990,6 +5050,26 @@ const LANGS = {
     plb_pull_back:'Verschijnt als ⇄ Inhoud checken een verschil vond. Haalt de versie van de volgende fase hierheen zodat je ziet wat er veranderd is.',
     plb_check_btn:'⇄ Inhoud checken',
     plb_check:'Exporteert de flow uit elke omgeving en vergelijkt de inhoud. Schrijft niets. Versienummers zijn niet vergelijkbaar tussen orgs.',
+    pc_btn:'Controleren',
+    pc_btn_title:'Controleer of de flow kan worden gepromoveerd — zonder iets te importeren',
+    pc_running:'controleren',
+    pc_title:'Controle vóór promotie: {flow} ({from} → {to})',
+    pc_demo:'De controle heeft echte omgevingen nodig. Demo-omgevingen hebben niets om tegen te controleren.',
+    pc_s_block:'BLOKKEERT DE PROMOTIE',
+    pc_s_decide:'TE BESLISSEN',
+    pc_s_warn:'WORDT TIJDENS DE PROMOTIE OF HANDMATIG AFGEHANDELD',
+    pc_c_fda:'Function Data Action: moet eerst in het doel bestaan',
+    pc_c_nowhere:'bestaat noch in de bron noch in het doel',
+    pc_c_migrate:'wordt meegemigreerd als je dat kiest',
+    pc_c_choice:'vraagt een keuze',
+    pc_c_notsrc:'bestaat noch in de bron noch in het doel: handmatig aanmaken',
+    pc_c_manual:'handmatig aanmaken in het doel',
+    pc_decide:'Bestaat onder een andere categorie in het doel: kies bij de promotie of in de volledige controle.',
+    pc_can:'Niets blokkeert. De flow kan worden gepromoveerd.',
+    pc_cannot:'De promotie kan niet doorgaan zolang het rood niet is opgelost.',
+    pc_ok_n:'{n} afhankelijkheden zijn in orde.',
+    plb_precheck_btn:'✔ Controleren',
+    plb_precheck:'Voert de eerste fase van een promotie uit — exporteert de flow en onderzoekt het doel — maar importeert niets. Toont wat blokkeert, wat moet worden beslist en wat onderweg wordt afgehandeld.',
     plb_rollback_btn:'↩',
     plb_rollback:'Draait de laatste promotie naar deze omgeving terug naar de vorige versie.',
     plb_republish_btn:'🔁 Gebruikers',
@@ -5946,6 +6026,26 @@ const LANGS = {
     plb_pull_back:'Aparece cuando ⇄ Comprobar contenido encontró una diferencia. Trae aquí la versión de la etapa siguiente para ver qué cambió.',
     plb_check_btn:'⇄ Comprobar contenido',
     plb_check:'Exporta el flow de cada entorno y compara el contenido. No escribe nada. Los números de versión no son comparables entre orgs.',
+    pc_btn:'Comprobar',
+    pc_btn_title:'Comprobar si el flow se puede promover — sin importar nada',
+    pc_running:'comprobando',
+    pc_title:'Comprobación previa a la promoción: {flow} ({from} → {to})',
+    pc_demo:'La comprobación necesita entornos reales. Los entornos de demostración no tienen nada contra lo que comprobar.',
+    pc_s_block:'BLOQUEA LA PROMOCIÓN',
+    pc_s_decide:'POR DECIDIR',
+    pc_s_warn:'SE TRATA DURANTE LA PROMOCIÓN O A MANO',
+    pc_c_fda:'Function Data Action: debe existir antes en el destino',
+    pc_c_nowhere:'no existe ni en el origen ni en el destino',
+    pc_c_migrate:'se migra con el flow si lo elige',
+    pc_c_choice:'requiere una elección',
+    pc_c_notsrc:'no existe ni en el origen ni en el destino: crear a mano',
+    pc_c_manual:'se crea a mano en el destino',
+    pc_decide:'Existe en otra categoría en el destino: elegir al promover o en la comprobación total.',
+    pc_can:'Nada bloquea. El flow se puede promover.',
+    pc_cannot:'La promoción no puede completarse hasta resolver lo rojo.',
+    pc_ok_n:'{n} dependencias están en orden.',
+    plb_precheck_btn:'✔ Comprobar',
+    plb_precheck:'Ejecuta la primera fase de una promoción — exporta el flow y examina el destino — pero no importa nada. Muestra qué bloquea, qué hay que decidir y qué se trata por el camino.',
     plb_rollback_btn:'↩',
     plb_rollback:'Revierte la última promoción a este entorno a la versión anterior.',
     plb_republish_btn:'🔁 Usuarios',
@@ -12238,6 +12338,11 @@ function renderPipeline() {
                style="font-size:10px;padding:2px 6px;opacity:.4;cursor:not-allowed"
                title="${t('pl_needs_publish')}">⟶ ${t('pl_promote')}</button></div>`)
       : '';
+    // Tjek før forfremmelse: det samme som første fase, uden at noget importeres.
+    const chk = (promotable && prev.published)
+      ? `<div style="margin-top:4px"><button class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 6px"
+           title="${t('pc_btn_title')}" onclick="boardPrecheck(this, ${jsAttr(key)}, ${i})">✔ ${t('pc_btn')}</button></div>`
+      : '';
     // Kun demo-miljøer: en knap til at lade som om nogen har arbejdet videre.
     const env = (pipelineData.environments || []).find(e => e.id === c.envId);
     const isDemoEnv = env && (customers.find(x => x.id === c.envId) || {}).demo;
@@ -12271,7 +12376,7 @@ function renderPipeline() {
 
     return `<td style="padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:top;${colStyle(d.environments[i], i)}">
         ${ownName}<span style="color:${colour};font-family:var(--mono);font-size:12px"
-          title="${t('pl_published_title')}">${body}</span>${when}${notPromoted}${changed}${inverted}${laterOnly}${pipelineStaleCell(c)}${btn}${pull}${rollback}${brugere}${pub}${notes}</td>`;
+          title="${t('pl_published_title')}">${body}</span>${when}${notPromoted}${changed}${inverted}${laterOnly}${pipelineStaleCell(c)}${btn}${chk}${pull}${rollback}${brugere}${pub}${notes}</td>`;
   };
 
   // Miljøerne grupperes under den fysiske org. Har en kunde fire miljøer der
@@ -12469,9 +12574,51 @@ async function boardAction(kind, key, i) {
   return promoteFromBoard(src.name || row.flowName, row.flowType, src.envId, c.envId, true, align);
 }
 
+// Tjek før forfremmelse. Kører samme undersøgelse som første fase af en
+// forfremmelse, men importerer intet og lader mål-org'en være urørt.
+const PC_CODE_KEY = { 'fda': 'pc_c_fda', 'action-nowhere': 'pc_c_nowhere', 'will-migrate': 'pc_c_migrate',
+  'needs-choice': 'pc_c_choice', 'not-in-source': 'pc_c_notsrc', 'manual': 'pc_c_manual' };
+
+function precheckHtml(v) {
+  const line = (x, col, text) => `<div style="display:flex;gap:10px;padding:5px 0;font-size:13px;align-items:baseline">
+    <span style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:78px">${escapeHtml(x.kind)}</span>
+    <span style="flex:1">${escapeHtml(x.name)}</span><span style="font-size:11px;color:var(--${col})">${escapeHtml(text)}</span></div>`;
+  const sec = (col, key) => `<div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--${col});margin:14px 0 4px">${escapeHtml(t(key))}</div>`;
+  let h = '';
+  if (v.blockers.length) h += sec('red', 'pc_s_block') + v.blockers.map(x => line(x, 'red', t(PC_CODE_KEY[x.code] || 'pc_c_manual'))).join('');
+  if (v.decisions.length) h += sec('yellow', 'pc_s_decide') + v.decisions.map(x => {
+    const c = (x.candidates || []).map(a => a.category + ' / ' + a.name).join(' · ');
+    return line(x, 'yellow', t('pc_decide')) + (c ? `<div style="font-size:11px;color:var(--muted);margin:0 0 4px 88px">${escapeHtml(c)}</div>` : '');
+  }).join('');
+  if (v.warnings.length) h += sec('muted', 'pc_s_warn') + v.warnings.map(x => line(x, 'muted', t(PC_CODE_KEY[x.code] || 'pc_c_manual'))).join('');
+  h += `<div style="font-size:12px;color:var(--${v.blockers.length ? 'red' : 'green'});margin-top:14px;font-weight:600">${escapeHtml(t(v.canPromote ? 'pc_can' : 'pc_cannot'))}</div>`;
+  h += `<div style="font-size:11px;color:var(--muted);margin-top:4px">${escapeHtml(t('pc_ok_n').replace('{n}', String(v.ok)))}</div>`;
+  return h;
+}
+
+async function boardPrecheck(btn, key, i) {
+  const d = pipelineData;
+  const row = d && d.rows.find(r => r.flowName + '|' + r.flowType === key);
+  if (!row || i < 1) return;
+  const src = row.cells[i - 1], c = row.cells[i];
+  const isDemoId = id => !!(customers.find(x => x.id === id) || {}).demo;
+  if (isDemoId(src.envId) || isDemoId(c.envId)) return alert(t('pc_demo'));
+  const old = btn.textContent;
+  btn.disabled = true; btn.textContent = '… ' + t('pc_running');
+  let r;
+  try {
+    r = await fetch('/api/migrate/check', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sourceId: src.envId, targetId: c.envId, flowName: src.name || row.flowName, flowType: row.flowType }) }).then(x => x.json());
+  } catch (e) { r = { error: e.message }; }
+  btn.disabled = false; btn.textContent = old;
+  if (r.error) return showAlert('pipelineAlert', escapeHtml(r.error), 'err');
+  confirmAction({ title: fillT('pc_title', { flow: row.flowName, from: envNameOf(src.envId), to: envNameOf(c.envId) }),
+                  extraHtml: precheckHtml(r.verdict), infoOnly: true });
+}
+
 // Forklaring af alle knapper på tavlen — samme dialog, kun til læsning.
 function showBoardButtonsHelp() {
-  const linjer = ['promote', 'pull_here', 'pull_back', 'check', 'rollback', 'republish', 'notes', 'demo_publish']
+  const linjer = ['promote', 'precheck', 'pull_here', 'pull_back', 'check', 'rollback', 'republish', 'notes', 'demo_publish']
     .map(k => `<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">
       <span style="font-family:var(--mono);white-space:nowrap;min-width:120px">${escapeHtml(t('plb_' + k + '_btn'))}</span>
       <span>${escapeHtml(t('plb_' + k))}</span></div>`).join('');

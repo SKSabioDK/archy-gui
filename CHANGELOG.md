@@ -5,6 +5,21 @@
 
 ---
 
+### v1.54.0
+---
+**🇩🇰 Dansk**
+
+- **Ny knap ✔ Tjek ved ⟶ Forfrem på tavlen.** Kører første fase af en forfremmelse — eksporterer flowet fra kilden og undersøger alt det refererer til i målet — men importerer intet og skriver intet i mål-org'en. Rapporten har tre grupper: **blokerer** (en Function Data Action der mangler i målet, en data action der hverken findes i kilden eller målet), **skal afklares** (en data action under en anden kategori i målet, med kandidaterne) og **håndteres undervejs eller i hånden** (det der kan migreres med, og det der skal oprettes i målet). Til sidst står det, om flowet kan forfremmes, og hvor mange afhængigheder der er i orden.
+- **Samme undersøgelse som forfremmelsen.** Vagterne (gruppen, prod-reglerne, "ikke publiceret i kilden") og selve analysen er skilt ud i fælles funktioner, som både forfremmelsens første fase og tjekket bruger. Så kan de to ikke blive uenige om, hvad der står i vejen.
+- Tjekket er ikke et krav: man kan forfremme uden at have kørt det, og blokeringerne er de samme, som stopper selve forfremmelsen. Det virker ikke på demo-miljøer. Knappen er også med i tavlens knap-forklaring.
+
+**🇬🇧 English**
+- **New ✔ Check button next to ⟶ Promote on the board.** Runs the first phase of a promotion — exports the flow from the source and examines everything it references in the target — but imports nothing and writes nothing in the target org. The report has three groups: **blocks** (a Function Data Action missing in the target, a data action that exists in neither the source nor the target), **must be decided** (a data action under another category in the target, with the candidates) and **handled along the way or by hand** (what can be migrated along, and what must be created in the target). It ends by saying whether the flow can be promoted and how many dependencies are in order.
+- **The same examination as the promotion.** The guards (the group, the prod rules, "not published in the source") and the analysis itself are split out into shared functions that both the first phase of a promotion and the check use. So the two cannot disagree about what is in the way.
+- The check is not a requirement: you can promote without having run it, and the blockers are the same ones that stop the promotion itself. It does not work on demo environments. The button is also in the board's button help.
+
+---
+
 ### v1.53.0
 ---
 **🇩🇰 Dansk**
