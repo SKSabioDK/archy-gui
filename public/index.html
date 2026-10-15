@@ -533,7 +533,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.55.3 · Archy GUI</div>
+    <div class="version" id="app-version">v1.56.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1011,6 +1011,7 @@
             <select id="da-cat-filter" style="width:160px" onchange="daFilter()">
               <option value="" data-i18n="da_all_categories">Alle kategorier</option>
             </select>
+            <button class="btn btn-secondary btn-sm" id="da-backup-btn" onclick="daBackupSelected()" data-i18n="da_backup_btn" disabled>💾 Download backup</button>
             <button class="btn btn-primary btn-sm" id="da-migrate-btn" onclick="daMigrateSelected()" data-i18n="da_migrate_btn" disabled>⚡ Migrér valgte</button>
           </div>
         </div>
@@ -1029,6 +1030,7 @@
           <div class="card-title" style="margin:0"><span data-i18n="dt_tables">TABELLER</span> (<span id="dt-count">0</span>)</div>
           <div style="display:flex;gap:8px">
             <input id="dt-search" style="width:220px" data-i18n-placeholder="dt_search_ph" placeholder="🔍 Søg tabeller…" oninput="dtFilter()"/>
+            <button class="btn btn-secondary btn-sm" id="dt-backup-btn" onclick="dtBackupSelected()" data-i18n="dt_backup_btn" disabled>💾 Download backup</button>
             <button class="btn btn-primary btn-sm" id="dt-migrate-btn" onclick="dtMigrateSelected()" data-i18n="dt_migrate_btn" disabled>⚡ Migrér valgte</button>
           </div>
         </div>
@@ -1604,6 +1606,7 @@ const LANGS = {
     da_search_ph:'🔍 Søg actions…',
     da_all_categories:'Alle kategorier',
     da_migrate_btn:'⚡ Migrér valgte',
+    da_backup_btn:'💾 Download backup',
     da_selected:'valgt',
     da_select_all:'Vælg alle',
     da_reset:'Nulstil',
@@ -1670,6 +1673,7 @@ const LANGS = {
     dt_tables:'TABELLER',
     dt_search_ph:'🔍 Søg tabeller…',
     dt_migrate_btn:'⚡ Migrér valgte',
+    dt_backup_btn:'💾 Download backup',
     dt_loading:'Henter tabeller…',
     dt_none:'Ingen tabeller fundet.',
     dt_columns:'kolonner',
@@ -2343,7 +2347,7 @@ const LANGS = {
     help_flows:'Hent, søg og filtrér miljøets flows. Deler flere miljøer org\'en, vises kun dette miljøs egne.\n• Filtrér på **flowtype** — listen fyldes ud fra de typer miljøet faktisk har.\n• **Publicér** sætter en allerede migreret kladde i drift uden at hente noget fra kilden igen. Er det et common module, tilbydes du bagefter at genpublicere de flows der bruger det.\n• **Common modules tjekkes** hver gang listen hentes: er et modul publiceret **efter** et flow der bruger det, kører flowet stadig på den gamle udgave. Det står i et gult felt med en knap der genpublicerer dem, og rækkerne er mærket ⚠.\n• **🔁 Brugere** på et common module viser alle de flows der bruger det.\n• **⇄ Sammenlign** mod en anden org sammenligner **indholdet**, ikke versionsnumrene.\n• **📌 Sæt nulpunkt** noterer hvad org\'en indeholder nu, så værktøjet bagefter kan fange at nogen har publiceret direkte — også for flows det aldrig selv har migreret.',
     help_cross:'Viser de flows der findes hos **flere kunder** — fx det samme common module hos ti kunder.\n• Oversigten bygger på ét kald pr. kunde og er derfor hurtig.\n• **⇄ Sammenlign indhold** eksporterer flowet fra hver kunde og sammenligner hashen. Det tager tid, så det køres kun for den række du beder om.\n• Kunne en org ikke læses, siges det — der står **aldrig** "identisk" hvis vi mangler svar fra nogen.',
     help_migrate:'Eksport fra én org og import direkte til en anden. Kører i to faser.\n• **Tjek** — flowet eksporteres, og mål-org\'en undersøges for alt det refererer til. Der skrives intet endnu.\n• **Import** — først efter dit valg. Mangler noget, kan tabeller, data actions og common modules migreres med inden flowet.\n• Har målet et **præfiks** eller en anden **division**, omdøbes flowet og dets referencer undervejs.\n• **Import handling** vælges efter målet: alt andet end prod publiceres som standard, så det er i drift med det samme. Prod lægges som kladde du selv publicerer.\n• Skrivning til **prod** kræver dit prod-login med rettigheden — du bliver tilbudt at logge ind hvis det mangler.\n• Migreres et **common module**, tilbydes du at genpublicere de flows i målet der bruger det.\n• Køer, skills, wrap-up-koder og scripts skal oprettes manuelt — de kan ikke migreres.\n• Bruger flowet en **Function Data Action**, der mangler i målet, **blokeres** forfremmelsen, til den er oprettet i Genesys. Tryk **Tjek igen**, når den findes.\n• Hedder en **data action** noget andet i målet — fx en anden integration — vises flowets data actions, og du vælger hvilken i målet de skal pege på. Valget gemmes til næste gang.',
-    help_dataactions:'Migrerer det der ikke er flows: **Data Actions**, **Data Tabeller** og **User Prompts**.\n• Data Actions hører til en integration. Vælg kilde-integration, så vises kun actions derfra, og grupperingen bevares i målet.\n• Data Tabeller migrerer **strukturen** — kolonnerne. Rækkerne følger ikke med.\n• User Prompts tager både TTS-teksten og indtalt lyd med. Prompts med lyd er markeret 🔊.\n• **Function Data Actions kan ikke migreres** — deres URL er et id på en function der kun findes i kilde-org\'en.\n• Fanen **Totaltjek** sætter hver data action i kilden op mod mål-org\'en på kategori og navn: *matcher*, *gemt valg*, *skal vælges*, *mangler* og *FDA mangler*. Her kan du pege en action over på den, den hedder i målet, gemme eller fjerne valget, og tjekke at kontrakterne (input og output) stemmer.\n• Fanen **Setup-forslag** foreslår hvilke aktive integrationer i målet de data actions, der mangler, skal ligge i, ud fra hvor der er plads (du angiver grænsen pr. integration). En kildeintegrations actions holdes samlet, hvor det kan lade sig gøre. Gruppen kan flyttes, og forslaget kan eksporteres til Excel eller en printvenlig side til kunden.',
+    help_dataactions:'Migrerer det der ikke er flows: **Data Actions**, **Data Tabeller** og **User Prompts**.\n• Data Actions hører til en integration. Vælg kilde-integration, så vises kun actions derfra, og grupperingen bevares i målet.\n• Data Tabeller migrerer **strukturen** — kolonnerne. Rækkerne følger ikke med.\n• User Prompts tager både TTS-teksten og indtalt lyd med. Prompts med lyd er markeret 🔊.\n• **Function Data Actions kan ikke migreres** — deres URL er et id på en function der kun findes i kilde-org\'en.\n• Fanen **Totaltjek** sætter hver data action i kilden op mod mål-org\'en på kategori og navn: *matcher*, *gemt valg*, *skal vælges*, *mangler* og *FDA mangler*. Her kan du pege en action over på den, den hedder i målet, gemme eller fjerne valget, og tjekke at kontrakterne (input og output) stemmer.\n• Fanen **Setup-forslag** foreslår hvilke aktive integrationer i målet de data actions, der mangler, skal ligge i, ud fra hvor der er plads (du angiver grænsen pr. integration). En kildeintegrations actions holdes samlet, hvor det kan lade sig gøre. Gruppen kan flyttes, og forslaget kan eksporteres til Excel eller en printvenlig side til kunden.\n• **💾 Download backup** på fanerne Data Actions og Data Tabeller henter de valgte som en lokal JSON-fil: actions komplet (contract, config og eventuel draft), tabeller med hele strukturen (schemaet, ingen rækker). Det læser kun — målet behøver ikke være valgt.',
     help_export:'Eksporterer flows til YAML-filer på denne maskine.\n• Vælg miljø — listen over dets flows vises med det samme. Deler flere miljøer org\'en, vises kun dette miljøs egne.\n• Skriv for at filtrere. `*` viser alle, og en stjerne inde i teksten er et jokertegn: `DEV_*log` finder DEV_Create Logitems.\n• Typen sættes automatisk når du vælger flowet.\n• **Export Alle Flows** henter hele miljøet med en fremgangsindikator og kan afbrydes undervejs.\n• Filerne lander under `flows/<miljø>/` og bruges også af migrering og sammenligning.',
     help_import:'Opret, opdater eller publicér et flow ud fra YAML.\n• Indsæt teksten, upload en fil eller træk den ind.\n• **🔍 Valider YAML** tjekker syntaksen i browseren uden at kalde noget.\n• **🌐 Tjek mod org** slår op om division, køer, tabeller, data actions og prompts findes i målet — **inden** du importerer.\n• **Import handling** vælger om flowet oprettes, opdateres eller oprettes og publiceres.\n• Publicerer du et **common module**, tilbydes du bagefter at genpublicere de flows der bruger det.\n• Import til **prod** kræver dit prod-login med rettigheden.',
     wiz_beta_note:'Beta — tjek altid YAML\'en med 🔍 Valider YAML og 🌐 Tjek mod org før du importerer.',
@@ -2412,7 +2416,9 @@ const LANGS = {
     tip_btn_validate_yaml:'Tjekker YAML\'ens syntaks lokalt uden at røre org\'en.',
     tip_btn_check_org:'Tjekker at køer, datatabeller, prompts m.m. som flowet bruger, findes i org\'en.',
     tip_da_migrate_btn:'Kopierer de valgte data actions til mål-org\'en.',
+    tip_da_backup_btn:'Henter de valgte data actions (komplet, med contract og config) som en lokal JSON-fil. Der skrives intet i nogen org.',
     tip_dt_migrate_btn:'Kopierer de valgte datatabellers struktur til mål-org\'en.',
+    tip_dt_backup_btn:'Henter de valgte datatabellers struktur (schema) som en lokal JSON-fil. Rækker er ikke med, og der skrives intet i nogen org.',
     tip_pr_migrate_btn:'Kopierer de valgte prompts med lydfiler til mål-org\'en.',
     tip_fl_cleanup:'Viser først hvilke gamle YAML-filer der kan slettes. Intet slettes uden bekræftelse.',
     tip_btn_auto_refresh_off:'Opdaterer loggen automatisk hvert 5. sekund.',
@@ -2589,6 +2595,7 @@ const LANGS = {
     da_search_ph:'🔍 Search actions…',
     da_all_categories:'All categories',
     da_migrate_btn:'⚡ Migrate selected',
+    da_backup_btn:'💾 Download backup',
     da_selected:'selected',
     da_select_all:'Select all',
     da_reset:'Reset',
@@ -2655,6 +2662,7 @@ const LANGS = {
     dt_tables:'TABLES',
     dt_search_ph:'🔍 Search tables…',
     dt_migrate_btn:'⚡ Migrate selected',
+    dt_backup_btn:'💾 Download backup',
     dt_loading:'Loading tables…',
     dt_none:'No tables found.',
     dt_columns:'columns',
@@ -3328,7 +3336,7 @@ const LANGS = {
     help_flows:'Fetch, search and filter the environment\'s flows. When several environments share an org, only this environment\'s own are shown.\n• Filter by **flow type** — the list is populated from the types the environment actually has.\n• **Publish** puts an already-migrated draft live without fetching anything from the source again. For a common module, you are then offered to republish the flows that use it.\n• **Common modules are checked** every time the list is fetched: if a module was published **after** a flow that uses it, the flow still runs the old version. This is shown in a yellow box with a button to republish them, and the rows are marked ⚠.\n• **🔁 Users** on a common module lists every flow that uses it.\n• **⇄ Compare** against another org compares **content**, not version numbers.\n• **📌 Set baseline** records what the org holds now, so the tool can later catch someone publishing directly — even for flows it never migrated itself.',
     help_cross:'Shows the flows that exist at **more than one customer** — the same common module at ten customers, say.\n• The overview rests on one call per customer and is therefore quick.\n• **⇄ Compare content** exports the flow from each customer and compares the hash. That takes time, so it runs only for the row you ask for.\n• If an org could not be read, it says so — it **never** reports "identical" when an answer is missing.',
     help_migrate:'Export from one org and import straight into another, in two phases.\n• **Check** — the flow is exported and the target org is examined for everything it references. Nothing is written yet.\n• **Import** — only after your choice. If something is missing, tables, data actions and common modules can be migrated before the flow.\n• If the target has a **prefix** or a different **division**, the flow and its references are renamed on the way.\n• **Import action** follows the target: anything but prod is published by default so it is live at once. Prod is left as a draft for you to publish.\n• Writing to **prod** requires your prod login with the permission — you are offered to log in if it is missing.\n• When a **common module** is migrated, you are offered to republish the flows in the target that use it.\n• Queues, skills, wrap-up codes and scripts must be created manually — they cannot be migrated.\n• If the flow uses a **Function Data Action** that is missing in the target, the promotion is **blocked** until it has been created in Genesys. Press **Check again** once it exists.\n• If a **data action** has a different name in the target — say another integration — the flow\'s data actions are listed and you choose which one in the target they should point at. The choice is saved for next time.',
-    help_dataactions:'Migrates what is not a flow: **Data Actions**, **Data Tables** and **User Prompts**.\n• Data Actions belong to an integration. Pick the source integration and only its actions are shown, so the grouping is kept in the target.\n• Data Tables migrate the **structure** — the columns. The rows do not come along.\n• User Prompts bring both the TTS text and recorded audio. Prompts with audio are marked 🔊.\n• **Function Data Actions cannot be migrated** — their URL is an id for a function that exists only in the source org.\n• The **Full check** tab sets every data action in the source against the target org by category and name: *match*, *saved choice*, *to choose*, *missing* and *FDA missing*. Here you can point an action at the one it is called in the target, save or remove the choice, and check that the contracts (input and output) agree.\n• The **Setup proposal** tab proposes which active integrations in the target the missing data actions should live in, based on where there is room (you enter the limit per integration). A source integration\'s actions are kept together where possible. A group can be moved, and the proposal exported to Excel or a printable page for the customer.',
+    help_dataactions:'Migrates what is not a flow: **Data Actions**, **Data Tables** and **User Prompts**.\n• Data Actions belong to an integration. Pick the source integration and only its actions are shown, so the grouping is kept in the target.\n• Data Tables migrate the **structure** — the columns. The rows do not come along.\n• User Prompts bring both the TTS text and recorded audio. Prompts with audio are marked 🔊.\n• **Function Data Actions cannot be migrated** — their URL is an id for a function that exists only in the source org.\n• The **Full check** tab sets every data action in the source against the target org by category and name: *match*, *saved choice*, *to choose*, *missing* and *FDA missing*. Here you can point an action at the one it is called in the target, save or remove the choice, and check that the contracts (input and output) agree.\n• The **Setup proposal** tab proposes which active integrations in the target the missing data actions should live in, based on where there is room (you enter the limit per integration). A source integration\'s actions are kept together where possible. A group can be moved, and the proposal exported to Excel or a printable page for the customer.\n• **💾 Download backup** on the Data Actions and Data Tables tabs downloads the selected ones as a local JSON file: actions complete (contract, config and any draft), tables with the whole structure (the schema, no rows). It only reads — no target needs to be chosen.',
     help_export:'Exports flows to YAML files on this machine.\n• Choose an environment — its flows are listed at once. When several environments share an org, only this one\'s own are shown.\n• Type to filter. `*` shows all, and a star inside the text is a wildcard: `DEV_*log` finds DEV_Create Logitems.\n• The type is set automatically when you pick the flow.\n• **Export All Flows** fetches the whole environment with a progress indicator and can be cancelled.\n• Files land under `flows/<environment>/` and are also used by migration and comparison.',
     help_import:'Create, update or publish a flow from YAML.\n• Paste the text, upload a file or drag it in.\n• **🔍 Validate YAML** checks the syntax in the browser without calling anything.\n• **🌐 Check against org** looks up whether division, queues, tables, data actions and prompts exist in the target — **before** you import.\n• **Import action** chooses whether the flow is created, updated, or created and published.\n• When you publish a **common module**, you are then offered to republish the flows that use it.\n• Importing to **prod** requires your prod login with the permission.',
     wiz_beta_note:'Beta — always check the YAML with 🔍 Validate YAML and 🌐 Check against org before importing.',
@@ -3397,7 +3405,9 @@ const LANGS = {
     tip_btn_validate_yaml:'Checks the YAML syntax locally without touching the org.',
     tip_btn_check_org:'Checks that the queues, data tables, prompts etc. the flow uses exist in the org.',
     tip_da_migrate_btn:'Copies the selected data actions to the target org.',
+    tip_da_backup_btn:'Downloads the selected data actions (complete, with contract and config) as a local JSON file. Nothing is written to any org.',
     tip_dt_migrate_btn:'Copies the selected data tables\' structure to the target org.',
+    tip_dt_backup_btn:'Downloads the selected data tables\' structure (schema) as a local JSON file. Rows are not included and nothing is written to any org.',
     tip_pr_migrate_btn:'Copies the selected prompts, with audio, to the target org.',
     tip_fl_cleanup:'First shows which old YAML files can be deleted. Nothing is deleted without confirmation.',
     tip_btn_auto_refresh_off:'Refreshes the log automatically every 5 seconds.',
@@ -3574,6 +3584,7 @@ const LANGS = {
     da_search_ph:'🔍 Rechercher des actions…',
     da_all_categories:'Toutes les catégories',
     da_migrate_btn:'⚡ Migrer la sélection',
+    da_backup_btn:'💾 Télécharger une sauvegarde',
     da_selected:'sélectionné(s)',
     da_select_all:'Tout sélectionner',
     da_reset:'Réinitialiser',
@@ -3640,6 +3651,7 @@ const LANGS = {
     dt_tables:'TABLES',
     dt_search_ph:'🔍 Rechercher des tables…',
     dt_migrate_btn:'⚡ Migrer la sélection',
+    dt_backup_btn:'💾 Télécharger une sauvegarde',
     dt_loading:'Chargement des tables…',
     dt_none:'Aucune table trouvée.',
     dt_columns:'colonnes',
@@ -4313,7 +4325,7 @@ const LANGS = {
     help_flows:'Récupérer, chercher et filtrer les flows de l\'environnement. Si plusieurs environnements partagent une org, seuls les siens sont affichés.\n• Filtrez par **type de flow** — la liste reprend les types réellement présents.\n• **Publier** met en service un brouillon déjà migré. Pour un common module, on vous propose ensuite de republier les flows qui l\'utilisent.\n• **Les common modules sont vérifiés** à chaque chargement : un module publié **après** un flow qui l\'utilise signifie que le flow tourne encore sur l\'ancienne version. C\'est signalé dans un encadré jaune avec un bouton pour les republier, et les lignes sont marquées ⚠.\n• **🔁 Utilisateurs** sur un common module liste tous les flows qui l\'utilisent.\n• **⇄ Comparer** avec une autre org compare le **contenu**, pas les numéros de version.\n• **📌 Point zéro** enregistre l\'état actuel de l\'org, pour repérer ensuite les publications directes.',
     help_cross:'Montre les flows présents chez **plusieurs clients** — par exemple le même common module chez dix clients.\n• La vue repose sur un appel par client et est donc rapide.\n• **⇄ Comparer le contenu** exporte le flow chez chaque client et compare l\'empreinte. C\'est long, donc réservé à la ligne demandée.\n• Si une org n\'a pas pu être lue, c\'est dit — il n\'affiche **jamais** « identique » quand une réponse manque.',
     help_migrate:'Export depuis une org et import direct dans une autre, en deux phases.\n• **Vérification** — le flow est exporté et l\'org cible examinée pour tout ce qu\'il référence. Rien n\'est encore écrit.\n• **Import** — seulement après votre choix. S\'il manque quelque chose, tables, data actions et common modules peuvent être migrés avant le flow.\n• Si la cible a un **préfixe** ou une autre **division**, le flow et ses références sont renommés au passage.\n• **Action d\'import** selon la cible : tout sauf prod est publié par défaut. Prod reste en brouillon, à publier vous-même.\n• Écrire en **prod** exige votre connexion prod avec la permission — on vous propose de vous connecter si elle manque.\n• Si un **common module** est migré, on vous propose de republier les flows de la cible qui l\'utilisent.\n• Files, skills, codes de wrap-up et scripts doivent être créés manuellement.\n• Si le flow utilise une **Function Data Action** absente de la cible, la promotion est **bloquée** tant qu\'elle n\'est pas créée dans Genesys. Appuyez sur **Revérifier** une fois qu\'elle existe.\n• Si une **data action** porte un autre nom dans la cible — par exemple une autre intégration — les data actions du flow sont listées et vous choisissez celle de la cible vers laquelle elles pointent. Le choix est mémorisé pour la prochaine fois.',
-    help_dataactions:'Migre ce qui n\'est pas un flow : **Data Actions**, **tables de données** et **prompts utilisateur**.\n• Les Data Actions appartiennent à une intégration. Choisissez l\'intégration source : seules ses actions sont affichées et le regroupement est conservé.\n• Les tables de données migrent la **structure** — les colonnes. Les lignes ne suivent pas.\n• Les prompts emportent le texte TTS et l\'audio enregistré. Ceux avec audio sont marqués 🔊.\n• **Les Function Data Actions ne peuvent pas être migrées** — leur URL est l\'id d\'une fonction qui n\'existe que dans l\'org source.\n• L\'onglet **Contrôle complet** compare chaque data action de la source à l\'org cible par catégorie et nom : *identiques*, *choix enregistré*, *à choisir*, *manquantes* et *FDA manquantes*. Vous pouvez y faire pointer une action vers son nom dans la cible, enregistrer ou retirer le choix, et vérifier que les contrats (entrée et sortie) concordent.\n• L\'onglet **Proposition de setup** propose dans quelles intégrations actives de la cible placer les data actions manquantes, selon la place disponible (vous indiquez la limite par intégration). Les actions d\'une intégration source restent ensemble quand c\'est possible. Un groupe peut être déplacé, et la proposition exportée vers Excel ou en page imprimable pour le client.',
+    help_dataactions:'Migre ce qui n\'est pas un flow : **Data Actions**, **tables de données** et **prompts utilisateur**.\n• Les Data Actions appartiennent à une intégration. Choisissez l\'intégration source : seules ses actions sont affichées et le regroupement est conservé.\n• Les tables de données migrent la **structure** — les colonnes. Les lignes ne suivent pas.\n• Les prompts emportent le texte TTS et l\'audio enregistré. Ceux avec audio sont marqués 🔊.\n• **Les Function Data Actions ne peuvent pas être migrées** — leur URL est l\'id d\'une fonction qui n\'existe que dans l\'org source.\n• L\'onglet **Contrôle complet** compare chaque data action de la source à l\'org cible par catégorie et nom : *identiques*, *choix enregistré*, *à choisir*, *manquantes* et *FDA manquantes*. Vous pouvez y faire pointer une action vers son nom dans la cible, enregistrer ou retirer le choix, et vérifier que les contrats (entrée et sortie) concordent.\n• L\'onglet **Proposition de setup** propose dans quelles intégrations actives de la cible placer les data actions manquantes, selon la place disponible (vous indiquez la limite par intégration). Les actions d\'une intégration source restent ensemble quand c\'est possible. Un groupe peut être déplacé, et la proposition exportée vers Excel ou en page imprimable pour le client.\n• **💾 Télécharger une sauvegarde** sur les onglets Data Actions et Tables de données télécharge la sélection dans un fichier JSON local : les actions complètes (contract, config et éventuel brouillon), les tables avec toute la structure (le schéma, sans lignes). Lecture seule — aucune cible n\'est requise.',
     help_export:'Exporte les flows en fichiers YAML sur cette machine.\n• Choisissez un environnement — ses flows sont listés aussitôt. Si plusieurs environnements partagent une org, seuls les siens sont affichés.\n• Tapez pour filtrer. `*` affiche tout, et une étoile dans le texte est un joker : `DEV_*log` trouve DEV_Create Logitems.\n• Le type est défini automatiquement quand vous choisissez le flow.\n• **Exporter tous les flows** récupère tout l\'environnement avec une progression et peut être interrompu.\n• Les fichiers arrivent sous `flows/<environnement>/` et servent aussi à la migration et à la comparaison.',
     help_import:'Créer, mettre à jour ou publier un flow à partir de YAML.\n• Collez le texte, téléversez un fichier ou glissez-le.\n• **🔍 Valider YAML** vérifie la syntaxe dans le navigateur sans rien appeler.\n• **🌐 Vérifier dans l\'org** contrôle que division, files, tables, data actions et prompts existent dans la cible — **avant** l\'import.\n• **Action d\'import** choisit de créer, mettre à jour, ou créer et publier.\n• Si vous publiez un **common module**, on vous propose ensuite de republier les flows qui l\'utilisent.\n• Importer en **prod** exige votre connexion prod avec la permission.',
     wiz_beta_note:'Bêta — vérifiez toujours le YAML avec 🔍 Valider YAML et 🌐 Vérifier dans l\'org avant d\'importer.',
@@ -4382,7 +4394,9 @@ const LANGS = {
     tip_btn_validate_yaml:'Vérifie la syntaxe YAML localement sans toucher l\'org.',
     tip_btn_check_org:'Vérifie que les files, tables de données, prompts etc. utilisés par le flow existent dans l\'org.',
     tip_da_migrate_btn:'Copie les data actions sélectionnées vers l\'org cible.',
+    tip_da_backup_btn:'Télécharge les data actions sélectionnées (complètes, avec contract et config) dans un fichier JSON local. Rien n\'est écrit dans aucune org.',
     tip_dt_migrate_btn:'Copie la structure des tables de données sélectionnées vers l\'org cible.',
+    tip_dt_backup_btn:'Télécharge la structure (schéma) des tables sélectionnées dans un fichier JSON local. Les lignes ne sont pas incluses et rien n\'est écrit dans aucune org.',
     tip_pr_migrate_btn:'Copie les prompts sélectionnés, avec l\'audio, vers l\'org cible.',
     tip_fl_cleanup:'Montre d\'abord quels anciens fichiers YAML peuvent être supprimés. Rien n\'est supprimé sans confirmation.',
     tip_btn_auto_refresh_off:'Actualise le journal automatiquement toutes les 5 secondes.',
@@ -4559,6 +4573,7 @@ const LANGS = {
     da_search_ph:'🔍 Zoek actions…',
     da_all_categories:'Alle categorieën',
     da_migrate_btn:'⚡ Migreer selectie',
+    da_backup_btn:'💾 Backup downloaden',
     da_selected:'geselecteerd',
     da_select_all:'Alles selecteren',
     da_reset:'Wissen',
@@ -4625,6 +4640,7 @@ const LANGS = {
     dt_tables:'TABELLEN',
     dt_search_ph:'🔍 Zoek tabellen…',
     dt_migrate_btn:'⚡ Migreer selectie',
+    dt_backup_btn:'💾 Backup downloaden',
     dt_loading:'Tabellen laden…',
     dt_none:'Geen tabellen gevonden.',
     dt_columns:'kolommen',
@@ -5298,7 +5314,7 @@ const LANGS = {
     help_flows:'Flows van de omgeving ophalen, zoeken en filteren. Delen meerdere omgevingen een org, dan worden alleen de eigen getoond.\n• Filter op **flowtype** — de lijst wordt gevuld met de types die de omgeving echt heeft.\n• **Publiceren** zet een al gemigreerd concept live. Bij een common module krijg je daarna aangeboden de flows die hem gebruiken opnieuw te publiceren.\n• **Common modules worden gecontroleerd** bij elke keer ophalen: is een module **na** een flow die hem gebruikt gepubliceerd, dan draait die flow nog op de oude versie. Dat staat in een geel vak met een knap om ze opnieuw te publiceren, en de rijen zijn gemarkeerd met ⚠.\n• **🔁 Gebruikers** op een common module toont alle flows die hem gebruiken.\n• **⇄ Vergelijken** met een andere org vergelijkt de **inhoud**, niet de versienummers.\n• **📌 Nulpunt** legt vast wat de org nu bevat, zodat directe publicaties later opvallen.',
     help_cross:'Toont de flows die bij **meerdere klanten** bestaan — bijvoorbeeld dezelfde common module bij tien klanten.\n• Het overzicht steunt op één aanroep per klant en is dus snel.\n• **⇄ Inhoud vergelijken** exporteert de flow bij elke klant en vergelijkt de hash. Dat kost tijd, dus alleen voor de rij die je vraagt.\n• Kon een org niet gelezen worden, dan wordt dat gezegd — er staat **nooit** "identiek" als een antwoord ontbreekt.',
     help_migrate:'Export uit één org en import direct in een andere, in twee fasen.\n• **Controle** — de flow wordt geëxporteerd en de doel-org onderzocht op alles waarnaar hij verwijst. Er wordt nog niets geschreven.\n• **Import** — pas na jouw keuze. Ontbreekt er iets, dan kunnen tabellen, data actions en common modules eerst mee.\n• Heeft het doel een **voorvoegsel** of een andere **divisie**, dan worden de flow en zijn verwijzingen onderweg hernoemd.\n• **Importactie** volgt het doel: alles behalve prod wordt standaard gepubliceerd. Prod blijft een concept dat je zelf publiceert.\n• Schrijven naar **prod** vereist je prod-login met de permissie — je krijgt aangeboden in te loggen als die ontbreekt.\n• Wordt een **common module** gemigreerd, dan krijg je aangeboden de flows in het doel die hem gebruiken opnieuw te publiceren.\n• Wachtrijen, skills, wrap-up-codes en scripts moeten handmatig worden aangemaakt.\n• Gebruikt de flow een **Function Data Action** die in het doel ontbreekt, dan wordt de promotie **geblokkeerd** tot ze in Genesys is aangemaakt. Druk op **Opnieuw controleren** zodra ze bestaat.\n• Heet een **data action** in het doel anders — bijvoorbeeld een andere integratie — dan worden de data actions van de flow getoond en kies je naar welke in het doel ze verwijzen. De keuze wordt bewaard voor de volgende keer.',
-    help_dataactions:'Migreert wat geen flow is: **Data Actions**, **datatables** en **user prompts**.\n• Data Actions horen bij een integratie. Kies de bronintegratie en alleen die acties worden getoond, zodat de groepering in het doel blijft.\n• Datatables migreren de **structuur** — de kolommen. De rijen gaan niet mee.\n• User prompts nemen zowel de TTS-tekst als opgenomen audio mee. Prompts met audio zijn gemarkeerd met 🔊.\n• **Function Data Actions kunnen niet gemigreerd worden** — hun URL is een id van een functie die alleen in de bronorg bestaat.\n• Het tabblad **Volledige controle** zet elke data action in de bron naast de doel-org op categorie en naam: *gelijk*, *bewaarde keuze*, *te kiezen*, *ontbreekt* en *FDA ontbreekt*. Hier verwijs je een actie naar de naam in het doel, bewaar of verwijder je de keuze en controleer je of de contracten (invoer en uitvoer) kloppen.\n• Het tabblad **Setupvoorstel** stelt voor in welke actieve integraties van het doel de ontbrekende data actions komen, op basis van waar ruimte is (je voert de grens per integratie in). De actions van een bronintegratie blijven waar mogelijk samen. Een groep kan worden verplaatst en het voorstel kan naar Excel of een afdrukbare pagina voor de klant worden geëxporteerd.',
+    help_dataactions:'Migreert wat geen flow is: **Data Actions**, **datatables** en **user prompts**.\n• Data Actions horen bij een integratie. Kies de bronintegratie en alleen die acties worden getoond, zodat de groepering in het doel blijft.\n• Datatables migreren de **structuur** — de kolommen. De rijen gaan niet mee.\n• User prompts nemen zowel de TTS-tekst als opgenomen audio mee. Prompts met audio zijn gemarkeerd met 🔊.\n• **Function Data Actions kunnen niet gemigreerd worden** — hun URL is een id van een functie die alleen in de bronorg bestaat.\n• Het tabblad **Volledige controle** zet elke data action in de bron naast de doel-org op categorie en naam: *gelijk*, *bewaarde keuze*, *te kiezen*, *ontbreekt* en *FDA ontbreekt*. Hier verwijs je een actie naar de naam in het doel, bewaar of verwijder je de keuze en controleer je of de contracten (invoer en uitvoer) kloppen.\n• Het tabblad **Setupvoorstel** stelt voor in welke actieve integraties van het doel de ontbrekende data actions komen, op basis van waar ruimte is (je voert de grens per integratie in). De actions van een bronintegratie blijven waar mogelijk samen. Een groep kan worden verplaatst en het voorstel kan naar Excel of een afdrukbare pagina voor de klant worden geëxporteerd.\n• **💾 Backup downloaden** op de tabbladen Data Actions en Datatables downloadt de selectie als lokaal JSON-bestand: actions volledig (contract, config en eventuele draft), tabellen met de hele structuur (het schema, geen rijen). Alleen lezen — een doel hoeft niet gekozen te zijn.',
     help_export:'Exporteert flows naar YAML-bestanden op deze machine.\n• Kies een omgeving — de flows worden meteen getoond. Delen meerdere omgevingen een org, dan alleen de eigen.\n• Typ om te filteren. `*` toont alles, en een ster in de tekst is een jokerteken: `DEV_*log` vindt DEV_Create Logitems.\n• Het type wordt automatisch gezet als je de flow kiest.\n• **Alle flows exporteren** haalt de hele omgeving op met voortgang en kan worden afgebroken.\n• Bestanden komen in `flows/<omgeving>/` en worden ook gebruikt voor migratie en vergelijking.',
     help_import:'Een flow aanmaken, bijwerken of publiceren vanuit YAML.\n• Plak de tekst, upload een bestand of sleep het erin.\n• **🔍 YAML valideren** controleert de syntaxis in de browser zonder iets aan te roepen.\n• **🌐 Controleren tegen org** kijkt of divisie, wachtrijen, tabellen, data actions en prompts in het doel bestaan — **voordat** je importeert.\n• **Importactie** kiest aanmaken, bijwerken, of aanmaken en publiceren.\n• Publiceer je een **common module**, dan krijg je daarna aangeboden de flows die hem gebruiken opnieuw te publiceren.\n• Importeren naar **prod** vereist je prod-login met de permissie.',
     wiz_beta_note:'Bèta — controleer de YAML altijd met 🔍 YAML valideren en 🌐 Controleren tegen org voordat je importeert.',
@@ -5367,7 +5383,9 @@ const LANGS = {
     tip_btn_validate_yaml:'Controleert de YAML-syntaxis lokaal zonder de org aan te raken.',
     tip_btn_check_org:'Controleert of de wachtrijen, datatabellen, prompts enz. die de flow gebruikt in de org bestaan.',
     tip_da_migrate_btn:'Kopieert de geselecteerde data actions naar de doel-org.',
+    tip_da_backup_btn:'Downloadt de geselecteerde data actions (volledig, met contract en config) als lokaal JSON-bestand. Er wordt niets naar een org geschreven.',
     tip_dt_migrate_btn:'Kopieert de structuur van de geselecteerde datatabellen naar de doel-org.',
+    tip_dt_backup_btn:'Downloadt de structuur (schema) van de geselecteerde datatabellen als lokaal JSON-bestand. Rijen zijn niet inbegrepen en er wordt niets naar een org geschreven.',
     tip_pr_migrate_btn:'Kopieert de geselecteerde prompts met audio naar de doel-org.',
     tip_fl_cleanup:'Toont eerst welke oude YAML-bestanden weg kunnen. Niets wordt verwijderd zonder bevestiging.',
     tip_btn_auto_refresh_off:'Vernieuwt het logboek automatisch elke 5 seconden.',
@@ -5544,6 +5562,7 @@ const LANGS = {
     da_search_ph:'🔍 Buscar actions…',
     da_all_categories:'Todas las categorías',
     da_migrate_btn:'⚡ Migrar seleccionados',
+    da_backup_btn:'💾 Descargar copia',
     da_selected:'seleccionados',
     da_select_all:'Seleccionar todo',
     da_reset:'Restablecer',
@@ -5610,6 +5629,7 @@ const LANGS = {
     dt_tables:'TABLAS',
     dt_search_ph:'🔍 Buscar tablas…',
     dt_migrate_btn:'⚡ Migrar seleccionadas',
+    dt_backup_btn:'💾 Descargar copia',
     dt_loading:'Cargando tablas…',
     dt_none:'No se encontraron tablas.',
     dt_columns:'columnas',
@@ -6283,7 +6303,7 @@ const LANGS = {
     help_flows:'Obtener, buscar y filtrar los flows del entorno. Si varios entornos comparten una org, solo se muestran los propios.\n• Filtre por **tipo de flow** — la lista se llena con los tipos que el entorno tiene realmente.\n• **Publicar** pone en producción un borrador ya migrado. Si es un common module, se le ofrece después volver a publicar los flows que lo usan.\n• **Los common modules se comprueban** cada vez que se carga la lista: si un módulo se publicó **después** de un flow que lo usa, el flow sigue con la versión antigua. Se indica en un recuadro amarillo con un botón para volver a publicarlos, y las filas se marcan con ⚠.\n• **🔁 Usuarios** en un common module lista todos los flows que lo usan.\n• **⇄ Comparar** con otra org compara el **contenido**, no los números de versión.\n• **📌 Punto cero** registra lo que contiene la org ahora, para detectar después publicaciones directas.',
     help_cross:'Muestra los flows presentes en **varios clientes**, por ejemplo el mismo common module en diez clientes.\n• La vista se basa en una llamada por cliente, así que es rápida.\n• **⇄ Comparar contenido** exporta el flow de cada cliente y compara el hash. Lleva tiempo, así que solo se hace en la fila que pida.\n• Si una org no se pudo leer, se dice: **nunca** informa «idéntico» cuando falta una respuesta.',
     help_migrate:'Exportación desde una org e importación directa en otra, en dos fases.\n• **Comprobación** — se exporta el flow y se examina la org de destino por todo lo que referencia. Aún no se escribe nada.\n• **Importación** — solo tras su elección. Si falta algo, tablas, data actions y common modules pueden migrarse antes del flow.\n• Si el destino tiene un **prefijo** u otra **división**, el flow y sus referencias se renombran por el camino.\n• **Acción de importación** según el destino: todo salvo prod se publica por defecto. Prod queda como borrador que publica usted.\n• Escribir en **prod** exige su inicio de sesión de prod con el permiso — se le ofrece iniciar sesión si falta.\n• Si se migra un **common module**, se le ofrece volver a publicar los flows del destino que lo usan.\n• Colas, skills, códigos de wrap-up y scripts deben crearse manualmente.\n• Si el flow usa una **Function Data Action** que falta en el destino, la promoción queda **bloqueada** hasta que se cree en Genesys. Pulse **Comprobar de nuevo** cuando exista.\n• Si una **data action** tiene otro nombre en el destino — por ejemplo otra integración — se listan las data actions del flow y usted elige a cuál del destino apuntan. La elección se guarda para la próxima vez.',
-    help_dataactions:'Migra lo que no es un flow: **Data Actions**, **tablas de datos** y **prompts de usuario**.\n• Las Data Actions pertenecen a una integración. Elija la integración de origen y solo se mostrarán sus acciones, conservando la agrupación.\n• Las tablas de datos migran la **estructura**: las columnas. Las filas no se llevan.\n• Los prompts llevan tanto el texto TTS como el audio grabado. Los que tienen audio están marcados con 🔊.\n• **Las Function Data Actions no se pueden migrar**: su URL es un id de una función que solo existe en la org de origen.\n• La pestaña **Comprobación total** compara cada data action del origen con la org de destino por categoría y nombre: *coinciden*, *elección guardada*, *por elegir*, *faltan* y *FDA que faltan*. Aquí puede apuntar una acción al nombre que tiene en el destino, guardar o quitar la elección y comprobar que los contratos (entrada y salida) coinciden.\n• La pestaña **Propuesta de setup** propone en qué integraciones activas del destino deben ir las data actions que faltan, según dónde haya sitio (usted indica el límite por integración). Las acciones de una integración de origen se mantienen juntas cuando es posible. Un grupo se puede mover y la propuesta se exporta a Excel o a una página imprimible para el cliente.',
+    help_dataactions:'Migra lo que no es un flow: **Data Actions**, **tablas de datos** y **prompts de usuario**.\n• Las Data Actions pertenecen a una integración. Elija la integración de origen y solo se mostrarán sus acciones, conservando la agrupación.\n• Las tablas de datos migran la **estructura**: las columnas. Las filas no se llevan.\n• Los prompts llevan tanto el texto TTS como el audio grabado. Los que tienen audio están marcados con 🔊.\n• **Las Function Data Actions no se pueden migrar**: su URL es un id de una función que solo existe en la org de origen.\n• La pestaña **Comprobación total** compara cada data action del origen con la org de destino por categoría y nombre: *coinciden*, *elección guardada*, *por elegir*, *faltan* y *FDA que faltan*. Aquí puede apuntar una acción al nombre que tiene en el destino, guardar o quitar la elección y comprobar que los contratos (entrada y salida) coinciden.\n• La pestaña **Propuesta de setup** propone en qué integraciones activas del destino deben ir las data actions que faltan, según dónde haya sitio (usted indica el límite por integración). Las acciones de una integración de origen se mantienen juntas cuando es posible. Un grupo se puede mover y la propuesta se exporta a Excel o a una página imprimible para el cliente.\n• **💾 Descargar copia** en las pestañas Data Actions y Tablas de datos descarga la selección como archivo JSON local: las acciones completas (contract, config y borrador si lo hay), las tablas con toda la estructura (el esquema, sin filas). Solo lee: no hace falta elegir destino.',
     help_export:'Exporta flows a archivos YAML en esta máquina.\n• Elija un entorno — sus flows se listan al instante. Si varios entornos comparten una org, solo se muestran los propios.\n• Escriba para filtrar. `*` muestra todos, y un asterisco dentro del texto es un comodín: `DEV_*log` encuentra DEV_Create Logitems.\n• El tipo se fija automáticamente al elegir el flow.\n• **Exportar todos los flows** obtiene todo el entorno con progreso y se puede cancelar.\n• Los archivos quedan en `flows/<entorno>/` y también se usan en migración y comparación.',
     help_import:'Crear, actualizar o publicar un flow a partir de YAML.\n• Pegue el texto, suba un archivo o arrástrelo.\n• **🔍 Validar YAML** comprueba la sintaxis en el navegador sin llamar a nada.\n• **🌐 Comprobar en la org** mira si división, colas, tablas, data actions y prompts existen en el destino — **antes** de importar.\n• **Acción de importación** elige crear, actualizar, o crear y publicar.\n• Si publica un **common module**, se le ofrece después volver a publicar los flows que lo usan.\n• Importar a **prod** exige su inicio de sesión de prod con el permiso.',
     wiz_beta_note:'Beta — compruebe siempre el YAML con 🔍 Validar YAML y 🌐 Comprobar en la org antes de importar.',
@@ -6352,7 +6372,9 @@ const LANGS = {
     tip_btn_validate_yaml:'Comprueba la sintaxis YAML localmente sin tocar la org.',
     tip_btn_check_org:'Comprueba que las colas, tablas de datos, prompts, etc. que usa el flow existen en la org.',
     tip_da_migrate_btn:'Copia las data actions seleccionadas a la org de destino.',
+    tip_da_backup_btn:'Descarga las data actions seleccionadas (completas, con contract y config) como archivo JSON local. No se escribe nada en ninguna org.',
     tip_dt_migrate_btn:'Copia la estructura de las tablas de datos seleccionadas a la org de destino.',
+    tip_dt_backup_btn:'Descarga la estructura (esquema) de las tablas seleccionadas como archivo JSON local. Las filas no se incluyen y no se escribe nada en ninguna org.',
     tip_pr_migrate_btn:'Copia los prompts seleccionados, con audio, a la org de destino.',
     tip_fl_cleanup:'Muestra primero qué archivos YAML antiguos se pueden borrar. Nada se borra sin confirmación.',
     tip_btn_auto_refresh_off:'Actualiza el registro automáticamente cada 5 segundos.',
@@ -9986,7 +10008,29 @@ function daUpdateReady() {
   const srcInt = document.getElementById('da-source-int')?.value || '';
   const tgtInt = document.getElementById('da-target-int')?.value || '';
   btn.disabled = !(srcInt && tgtInt && daSelectedIds.size);
+  const bk = document.getElementById('da-backup-btn');
+  if (bk) bk.disabled = !(srcInt && daSelectedIds.size);
 }
+
+// Henter de valgte ressourcer fra kilde-org'en og gemmer dem som én JSON-fil.
+// Læser kun — der skrives intet, og målet behøver ikke være valgt.
+async function backupDownload(kind, ids, fileBase) {
+  const sourceId = document.getElementById('da-source').value;
+  const org = (customers.find(c => c.id === sourceId)?.name || 'org').replace(/[^\w.-]+/g, '_');
+  try {
+    const r = await fetch(`/api/customers/${encodeURIComponent(sourceId)}/backup?kind=${kind}&ids=${[...ids].map(encodeURIComponent).join(',')}`);
+    const data = await r.json();
+    if (data.error) return alert(data.error);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+    a.download = `${fileBase}-${org}-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  } catch (e) { alert(e.message); }
+}
+
+function daBackupSelected() { if (daSelectedIds.size) backupDownload('actions', daSelectedIds, 'data-actions-backup'); }
+function dtBackupSelected() { if (dtSelectedIds.size) backupDownload('datatables', dtSelectedIds, 'datatables-struktur'); }
 
 function daRender(actions) {
   const el = document.getElementById('da-list');
@@ -11131,6 +11175,8 @@ function dtUpdateReady() {
   const src = document.getElementById('da-source')?.value || '';
   const tgt = document.getElementById('da-target')?.value || '';
   btn.disabled = !(src && tgt && src !== tgt && dtSelectedIds.size);
+  const bk = document.getElementById('dt-backup-btn');
+  if (bk) bk.disabled = !(src && dtSelectedIds.size);
 }
 
 async function dtMigrateSelected() {

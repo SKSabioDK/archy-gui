@@ -5,6 +5,19 @@
 
 ---
 
+### v1.56.0
+---
+**🇩🇰 Dansk**
+
+- **Ny: lokal backup på siden Migrér ressourcer.** Fanerne *Data Actions* og *Data Tabeller* har en ny knap, **💾 Download backup**, der henter de valgte som én JSON-fil på din pc. Data actions kommer med komplet (contract, config og en eventuel draft); datatabeller med hele strukturen (schemaet) — rækkerne er ikke med. Knappen læser kun, så den kræver ingen mål-org og ingen prod-rettighed, og filen hedder fx `data-actions-backup-Kunde-2026-10-15.json`.
+- To nye tests.
+
+**🇬🇧 English**
+- **New: local backup on the Migrate resources page.** The *Data Actions* and *Data Tables* tabs have a new button, **💾 Download backup**, that saves the selected items as one JSON file on your PC. Data actions come complete (contract, config and any draft); data tables with the whole structure (the schema) — rows are not included. The button only reads, so it needs no target org and no prod right.
+- Two new tests.
+
+---
+
 ### v1.55.3
 ---
 **🇩🇰 Dansk**

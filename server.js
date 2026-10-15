@@ -2590,6 +2590,49 @@ app.get('/api/customers/:id/integrations', async (req, res) => {
   }
 });
 
+// Lokal backup af de valgte data actions eller datatabeller i en org — kun
+// læsning, så ingen rettighedsvagt. Actions hentes komplet (contract + config,
+// og draft hvis der er en); tabeller med hele schemaet, men uden rækker.
+app.get('/api/customers/:id/backup', async (req, res) => {
+  const customer = loadCustomers().find(c => c.id === req.params.id);
+  if (!customer) return res.status(404).json({ error: 'Not found' });
+  const kind = req.query.kind;
+  const ids  = String(req.query.ids || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (!['actions', 'datatables'].includes(kind) || !ids.length)
+    return res.status(400).json({ error: 'kind (actions|datatables) and ids are required' });
+  try {
+    const { token, apiBase } = await getToken(customer);
+    const H = { Authorization: `Bearer ${token}` };
+    const items = [];
+    for (const id of ids) {
+      if (kind === 'datatables') {
+        const r = await axios.get(`${apiBase}/api/v2/flows/datatables/${encodeURIComponent(id)}`,
+          { headers: H, params: { expand: 'schema' } });
+        items.push(r.data);
+        continue;
+      }
+      const base = `${apiBase}/api/v2/integrations/actions/${encodeURIComponent(id)}`;
+      const params = { expand: 'contract', includeConfig: true };
+      const published = (await axios.get(base, { headers: H, params })).data;
+      let draft = null;
+      try { draft = (await axios.get(`${base}/draft`, { headers: H, params })).data; }
+      catch (e) { if (e.response?.status !== 404) throw e; }
+      items.push(draft ? { ...published, draft } : published);
+    }
+    addLog('INFO', `Backup of ${items.length} ${kind === 'actions' ? 'data action(s)' : 'data table structure(s)'} downloaded`, customer.name, 'MIGRATE');
+    res.json({
+      archyBackup: 1,
+      kind,
+      org: customer.name,
+      exportedAt: new Date().toISOString(),
+      note: kind === 'datatables' ? 'Structure only — rows are not included.' : undefined,
+      items
+    });
+  } catch (e) {
+    res.status(500).json({ error: describeApiError(e) });
+  }
+});
+
 // Kategorien en migreret action oprettes med: målintegrationens navn. Kan det
 // ikke læses, beholdes kildens — som før.
 function actionCategoryFor(sourceCategory, targetIntegrationName) {
