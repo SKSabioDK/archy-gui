@@ -5,6 +5,17 @@
 
 ---
 
+### v1.57.1
+---
+**🇩🇰 Dansk**
+
+- **Rettelse: "archy not found in PATH".** Archy behøver ikke længere stå i Windows' PATH. Står den ikke dér, leder programmet i de sædvanlige mapper (`C:\Tools\Archy`, `C:\Archy`, `C:\Program Files\Archy`, din brugermappe), og du kan pege på mappen med `archyDir` i `settings.json` eller miljøvariablen `ARCHY_DIR`. Fejlen siger nu, hvad man skal gøre.
+
+**🇬🇧 English**
+- **Fix: "archy not found in PATH".** Archy no longer has to be in the Windows PATH. If it is not, the app looks in the usual folders (`C:\Tools\Archy`, `C:\Archy`, `C:\Program Files\Archy`, your user folder), and you can point to the folder with `archyDir` in `settings.json` or the `ARCHY_DIR` environment variable. The error now says what to do.
+
+---
+
 ### v1.57.0
 ---
 **🇩🇰 Dansk**

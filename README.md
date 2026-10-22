@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.57.0
+# Archy GUI — Flow Manager · v1.57.1
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.57.0**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.57.0**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.57.1**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.57.1**.
 
 ---
 
@@ -22,7 +22,7 @@ Et grafisk interface til [Archy](https://help.mypurecloud.com/articles/archy/) m
 
 ### Krav
 - **Node.js 18+**
-- **Archy** installeret og tilgængeligt i PATH (`archy version` skal returnere en version)
+- **Archy** installeret. Helst i PATH (`archy version` skal returnere en version); ellers leder programmet i `C:\Tools\Archy`, `C:\Archy`, `C:\Program Files\Archy` og din brugermappe, eller du skriver mappen med `archy.bat` i `archyDir` i `settings.json` (eller sætter miljøvariablen `ARCHY_DIR`). Genstart med `start.bat` bagefter
 - **Windows** (`start.bat`/`stop.bat`) og en browser
 - En Genesys Cloud OAuth-klient af typen **Code Authorization** (PKCE) pr. org, med redirect URI `http://localhost:3737/auth/callback` — se [opsætning nedenfor](#opsætning-af-oauth-klienten-pkce). Ældre miljøer med Client Credentials virker stadig, men nye oprettes altid med PKCE
 
@@ -507,7 +507,7 @@ A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) 
 
 ### Requirements
 - **Node.js 18+**
-- **Archy** installed and available in PATH (`archy version` must return a version)
+- **Archy** installed. Preferably in PATH (`archy version` must return a version); otherwise the app looks in `C:\Tools\Archy`, `C:\Archy`, `C:\Program Files\Archy` and your user folder, or you put the folder holding `archy.bat` in `archyDir` in `settings.json` (or set the environment variable `ARCHY_DIR`). Restart with `start.bat` afterwards
 - **Windows** (`start.bat`/`stop.bat`) and a browser
 - A Genesys Cloud OAuth client of type **Code Authorization** (PKCE) per org, with redirect URI `http://localhost:3737/auth/callback` — see [setup below](#setting-up-the-oauth-client-pkce). Older environments using Client Credentials still work, but new ones are always created with PKCE
 

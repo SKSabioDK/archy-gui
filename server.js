@@ -6660,14 +6660,50 @@ function safeFileName(navn, standard) {
 // Find archy's own directory at startup (archy.bat uses relative paths so must
 // be run from there). We detect it by resolving 'where archy' on cmd.exe.
 let ARCHY_DIR = null;
+// Kommandoen der kalder Archy. "archy" når den findes i PATH; ellers den fulde
+// sti til archy.bat, så Archy virker uden at være sat i PATH.
+let ARCHY_CMD = 'archy';
+
+// Steder Archy typisk pakkes ud, når den ikke ligger i PATH. Rækkefølgen er
+// prioriteten; en sti fra settings.json (archyDir) eller miljøvariablen
+// ARCHY_DIR vinder over gætene.
+function archyCandidateDirs() {
+  const home = process.env.USERPROFILE || os.homedir();
+  const liste = [
+    process.env.ARCHY_DIR,
+    (() => { try { return loadSettings().archyDir; } catch (_) { return null; } })(),
+    'C:\\Tools\\Archy', 'C:\\Archy', 'C:\\Program Files\\Archy', 'C:\\Program Files (x86)\\Archy',
+    path.join(home, 'Archy'), path.join(home, 'archy'),
+    path.join(home, 'Downloads', 'archy'), path.join(home, 'Downloads', 'Archy'),
+  ];
+  return liste.filter(Boolean);
+}
+
+// Finder mappen med archy.bat — direkte eller i en undermappe (bin).
+function archyDirIn(dir) {
+  for (const d of [dir, path.join(dir, 'bin')]) {
+    if (fs.existsSync(path.join(d, 'archy.bat'))) return d;
+  }
+  return null;
+}
+
 try {
   const { execSync } = require('child_process');
-  const archyBat = execSync('where archy', { shell: 'cmd.exe' })
+  const archyBat = execSync('where archy', { shell: 'cmd.exe', stdio: ['ignore', 'pipe', 'ignore'] })
     .toString().split(/\r?\n/)[0].trim();
   ARCHY_DIR = path.dirname(archyBat);
   console.log(`[archy] Found at: ${ARCHY_DIR}`);
 } catch (e) {
-  console.warn('[archy] Not found in PATH:', e.message);
+  for (const kandidat of archyCandidateDirs()) {
+    const d = archyDirIn(kandidat);
+    if (d) {
+      ARCHY_DIR = d;
+      ARCHY_CMD = `"${path.join(d, 'archy.bat')}"`;
+      console.log(`[archy] Not in PATH — using ${ARCHY_DIR}`);
+      break;
+    }
+  }
+  if (!ARCHY_DIR) console.warn('[archy] Not found in PATH or in the usual folders');
 }
 
 // ── Værdier på Archys kommandolinje ──────────────────────────────────────────
@@ -7032,8 +7068,8 @@ function runArchy(args, customer) {
     if (isDemo(customer))
       return reject(new Error(`"${customer.name}" is a demo environment — it exists only locally, ` +
         `so there is no org to run Archy against. Use the Pipeline page to try promotions.`));
-    if (!ARCHY_DIR) return reject(new Error('archy not found in PATH'));
-    const cmd = `archy ${args} ${archyCredFlags(customer)}`;
+    if (!ARCHY_DIR) return reject(new Error("Archy was not found. Add Archy to PATH, or put the folder holding archy.bat in \"archyDir\" in settings.json, then restart with start.bat."));
+    const cmd = `${ARCHY_CMD} ${args} ${archyCredFlags(customer)}`;
     const bundle = ensureArchyCaBundle();
     const env = { ...process.env };
     if (bundle) env.NODE_EXTRA_CA_CERTS = bundle;
