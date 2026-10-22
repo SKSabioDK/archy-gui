@@ -5,6 +5,25 @@
 
 ---
 
+### v1.58.2
+---
+**🇩🇰 Dansk**
+
+- **OAuth-migrering opretter også manglende divisioner.** Klienternes roller er knyttet til divisioner. Findes en division ikke i mål-org'en, kunne rollen ikke gives til klienten, og en Client Credentials-klient stod uden roller. Programmet spørger nu, om de manglende divisioner skal oprettes, før rollerne og klienterne migreres.
+- **Samle i Home.** Bruges divisioner ikke i den nye org, kan du i stedet vælge at give klienternes roller i målets Home-division.
+- Når en klient fejler, står det nu i loggen hvilke roller og divisioner der ikke kunne matches.
+- Fejlen *bad.client.role* skyldes, at den loggede bruger ikke selv har rollerne i målet. Det er README nu tydeligere om: giv brugeren de migrerede roller (fx *Sabio Master Admin*), log ind igen, og kør klienterne igen.
+- To nye tests.
+
+**🇬🇧 English**
+- **OAuth migration also creates missing divisions.** The clients' roles are tied to divisions. If a division did not exist in the target org, the role could not be given to the client, and a Client Credentials client was left without roles. The app now asks whether to create the missing divisions before it migrates the roles and the clients.
+- **Collect in Home.** If the new org does not use divisions, you can choose to give the clients' roles in the target's Home division instead.
+- When a client fails, the log now says which roles and divisions could not be matched.
+- The *bad.client.role* error is caused by the logged-in user not holding the roles in the target. The README is now clearer: give the user the migrated roles (e.g. *Sabio Master Admin*), log in again, and run the clients again.
+- Two new tests.
+
+---
+
 ### v1.58.1
 ---
 **🇩🇰 Dansk**

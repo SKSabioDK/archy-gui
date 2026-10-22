@@ -533,7 +533,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.58.1 · Archy GUI</div>
+    <div class="version" id="app-version">v1.58.2 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1749,6 +1749,10 @@ const LANGS = {
     da_sum_failed:'fejlet',
     da_tab_actions:'Data Actions',
     da_tab_tables:'Data Tabeller',
+    oa_home_confirm:'Skal klienternes roller i stedet gives i målets Home-division? ({n} divisioner findes ikke i målet.) Vælg OK for Home, eller Annullér for at springe de roller over.',
+    oa_home_used:'Roller uden division i målet gives i Home-divisionen',
+    oa_divs_confirm:'{n} divisioner som klienternes roller er knyttet til, findes ikke i mål-org\'en. Skal de oprettes først? (Uden dem kan rollerne ikke gives til klienterne.)',
+    oa_divisions:'divisioner',
     oa_roles_confirm:'{n} roller som klienterne bruger, findes ikke i mål-org\'en. Skal de migreres først? (Klienter uden roller kan ikke oprettes som Client Credentials.) Bemærk: den bruger der er logget ind, skal selv have rollerne i målet for at give dem til en klient.',
     oa_builtin_missing:'Standardroller der mangler i målet og ikke kan oprettes',
     da_tab_roles:'Roller',
@@ -2774,6 +2778,10 @@ const LANGS = {
     da_sum_failed:'failed',
     da_tab_actions:'Data Actions',
     da_tab_tables:'Data Tables',
+    oa_home_confirm:'Give the clients\' roles in the target\'s Home division instead? ({n} divisions do not exist in the target.) Choose OK for Home, or Cancel to skip those roles.',
+    oa_home_used:'Roles without a division in the target are given in the Home division',
+    oa_divs_confirm:'{n} divisions that the clients\' roles are tied to do not exist in the target org. Create them first? (Without them the roles cannot be given to the clients.)',
+    oa_divisions:'divisions',
     oa_roles_confirm:'{n} roles used by the clients do not exist in the target org. Migrate them first? (Client Credentials clients cannot be created without roles.) Note: the logged-in user must hold the roles in the target to assign them to a client.',
     oa_builtin_missing:'Built-in roles missing in the target that cannot be created',
     da_tab_roles:'Roles',
@@ -3799,6 +3807,10 @@ const LANGS = {
     da_sum_failed:'échouées',
     da_tab_actions:'Data Actions',
     da_tab_tables:'Data Tables',
+    oa_home_confirm:'Attribuer plutôt les rôles des clients dans la division Home de la cible ? ({n} divisions n\'existent pas dans la cible.) OK pour Home, Annuler pour ignorer ces rôles.',
+    oa_home_used:'Les rôles sans division dans la cible sont attribués dans la division Home',
+    oa_divs_confirm:'{n} divisions auxquelles les rôles des clients sont liés n\'existent pas dans l\'org cible. Les créer d\'abord ? (Sans elles, les rôles ne peuvent pas être attribués aux clients.)',
+    oa_divisions:'divisions',
     oa_roles_confirm:'{n} rôles utilisés par les clients n\'existent pas dans l\'org cible. Les migrer d\'abord ? (Les clients Client Credentials ne peuvent pas être créés sans rôles.) Remarque : l\'utilisateur connecté doit lui-même détenir ces rôles dans la cible pour les attribuer à un client.',
     oa_builtin_missing:'Rôles intégrés absents de la cible et impossibles à créer',
     da_tab_roles:'Rôles',
@@ -4824,6 +4836,10 @@ const LANGS = {
     da_sum_failed:'mislukt',
     da_tab_actions:'Data Actions',
     da_tab_tables:'Data Tables',
+    oa_home_confirm:'De rollen van de clients in plaats daarvan in de Home-division van het doel toekennen? ({n} divisions bestaan niet in het doel.) Kies OK voor Home, of Annuleren om die rollen over te slaan.',
+    oa_home_used:'Rollen zonder division in het doel worden in de Home-division toegekend',
+    oa_divs_confirm:'{n} divisions waaraan de rollen van de clients gekoppeld zijn, bestaan niet in de doel-org. Eerst aanmaken? (Zonder die divisions kunnen de rollen niet aan de clients worden toegekend.)',
+    oa_divisions:'divisions',
     oa_roles_confirm:'{n} rollen die de clients gebruiken bestaan niet in de doel-org. Eerst migreren? (Client Credentials-clients kunnen niet zonder rollen worden aangemaakt.) Let op: de ingelogde gebruiker moet de rollen in het doel zelf hebben om ze aan een client toe te kennen.',
     oa_builtin_missing:'Ingebouwde rollen die in het doel ontbreken en niet kunnen worden aangemaakt',
     da_tab_roles:'Rollen',
@@ -5849,6 +5865,10 @@ const LANGS = {
     da_sum_failed:'fallidas',
     da_tab_actions:'Data Actions',
     da_tab_tables:'Data Tables',
+    oa_home_confirm:'¿Asignar en su lugar los roles de los clientes en la división Home del destino? ({n} divisiones no existen en el destino.) Elija Aceptar para Home, o Cancelar para omitir esos roles.',
+    oa_home_used:'Los roles sin división en el destino se asignan en la división Home',
+    oa_divs_confirm:'{n} divisiones a las que están vinculados los roles de los clientes no existen en la org de destino. ¿Crearlas primero? (Sin ellas los roles no se pueden asignar a los clientes.)',
+    oa_divisions:'divisiones',
     oa_roles_confirm:'{n} roles que usan los clientes no existen en la org de destino. ¿Migrarlos primero? (Los clientes Client Credentials no se pueden crear sin roles.) Nota: el usuario conectado debe tener esos roles en el destino para asignarlos a un cliente.',
     oa_builtin_missing:'Roles integrados que faltan en el destino y no se pueden crear',
     da_tab_roles:'Roles',
@@ -11678,19 +11698,38 @@ async function mlOfferRoles(sourceId, targetId, logBox) {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sourceId, targetId, clientIds: [...ML.oauth.sel] })
   }).then(r => r.json());
-  if (plan.error) { log(logBox, `  \u26a0 ${plan.error}`, 'info'); return; }
+  if (plan.error) { log(logBox, `  \u26a0 ${plan.error}`, 'info'); return {}; }
+  const divs = plan.missingDivisions || [];
+  let homeFallback = false;
+  const wantCreate = divs.length > 0 &&
+    confirm(t('oa_divs_confirm').replace('{n}', divs.length) + '\n\n' + divs.slice(0, 15).map(d => '\u2022 ' + d).join('\n'));
+  if (divs.length && !wantCreate) {
+    // Bruges divisioner ikke i målet, kan klienternes roller samles i Home i stedet.
+    homeFallback = confirm(t('oa_home_confirm').replace('{n}', divs.length));
+    if (homeFallback) log(logBox, `  \u26a0 ${t('oa_home_used')}`, 'info');
+  }
+  if (wantCreate) {
+    log(logBox, `\u27f6 ${t('da_migrating')}: ${divs.length} ${t('oa_divisions')}`, 'info');
+    for (const name of divs) {
+      const r = await fetch('/api/divisions/create', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetId, name }) }).then(x => x.json()).catch(e => ({ error: e.message }));
+      if (r.ok) log(logBox, `  \u2713 ${escapeHtml(name)}`, 'ok');
+      else if (r.error === 'already_exists') log(logBox, `  \u26a0 ${escapeHtml(name)}: ${t('ml_exists')}`, 'info');
+      else log(logBox, `  \u2717 ${escapeHtml(name)}: ${escapeHtml(r.error)}`, 'err');
+    }
+  }
   const custom = (plan.missingRoles || []).filter(r => !r.default);
   const builtin = (plan.missingRoles || []).filter(r => r.default);
   if (builtin.length) log(logBox, `  \u26a0 ${t('oa_builtin_missing')}: ${escapeHtml(builtin.map(r => r.name).join(', '))}`, 'info');
-  if (!custom.length) return;
+  if (!custom.length) return { homeFallback };
   const list = custom.slice(0, 15).map(r => '\u2022 ' + r.name).join('\n') + (custom.length > 15 ? `\n\u2026 +${custom.length - 15}` : '');
-  if (!confirm(t('oa_roles_confirm').replace('{n}', custom.length) + '\n\n' + list)) return;
+  if (!confirm(t('oa_roles_confirm').replace('{n}', custom.length) + '\n\n' + list)) return { homeFallback };
   log(logBox, `\u27f6 ${t('da_migrating')}: ${custom.length} ${t('ro_roles').toLowerCase()}`, 'info');
   const rr = await fetch('/api/roles/migrate', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sourceId, targetId, roleIds: custom.map(r => r.id) })
   }).then(r => r.json());
-  if (rr.error) { log(logBox, `  \u2717 ${rr.error}`, 'err'); return; }
+  if (rr.error) { log(logBox, `  \u2717 ${rr.error}`, 'err'); return { homeFallback }; }
   for (const r of rr.results) {
     if (r.status === 'created') log(logBox, `  \u2713 ${r.name}`, 'ok');
     else if (r.status === 'exists') log(logBox, `  \u26a0 ${r.name}: ${t('ml_exists')}`, 'info');
@@ -11698,6 +11737,7 @@ async function mlOfferRoles(sourceId, targetId, logBox) {
     for (const x of r.missing || []) log(logBox, `    \u26a0 ${t('ro_skipped')}: ${x}`, 'info');
   }
   log(logBox, `\u27f6 ${t('da_migrating')}: ${ML.oauth.sel.size} ${t('oa_clients').toLowerCase()}`, 'info');
+  return { homeFallback };
 }
 
 async function mlMigrate(k) {
@@ -11715,10 +11755,10 @@ async function mlMigrate(k) {
   log(logBox, `\u27f6 ${t('da_migrating')}: ${m.sel.size} ${t(m.what).toLowerCase()}`, 'info');
   let ok = 0, skipped = 0, failed = 0;
   try {
-    if (k === 'oauth') await mlOfferRoles(sourceId, targetId, logBox);
+    const extra = k === 'oauth' ? await mlOfferRoles(sourceId, targetId, logBox) : {};
     const data = await fetch(m.migrate, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sourceId, targetId, [m.ids]: [...m.sel] })
+      body: JSON.stringify({ sourceId, targetId, [m.ids]: [...m.sel], ...extra })
     }).then(r => r.json());
     if (data.error) { log(logBox, `  \u2717 ${data.error}`, 'err'); failed++; }
     else {
@@ -11740,7 +11780,10 @@ async function mlMigrate(k) {
           }
         }
         else if (r.status === 'exists') { log(logBox, `  \u26a0 ${name}: ${t('ml_exists')}`, 'info'); skipped++; }
-        else { log(logBox, `  \u2717 ${name}: ${r.message}`, 'err'); failed++; }
+        else {
+          log(logBox, `  \u2717 ${name}: ${r.message}`, 'err'); failed++;
+          for (const x of r.missing || []) log(logBox, `    \u26a0 ${t('oa_missing')}: ${x}`, 'info');
+        }
       }
       if (k === 'oauth' && mlSecrets.length) {
         log(logBox, `\n\u26a0 ${t('oa_secret_warn')}`, 'info');

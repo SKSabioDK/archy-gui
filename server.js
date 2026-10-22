@@ -2984,8 +2984,9 @@ app.post('/api/wrapupcodes/migrate', async (req, res) => {
 // divisioner på navn; "*" (alle divisioner) bæres uændret med. Det der ikke kan
 // matches, springes over og meldes tilbage — en klient uden roller er stadig
 // bedre end en der fejler helt, men brugeren skal vide det.
-function mapRoleDivisions(roleDivisions, srcRoleName, srcDivName, tgtRoleId, tgtDivId) {
+function mapRoleDivisions(roleDivisions, srcRoleName, srcDivName, tgtRoleId, tgtDivId, fallbackDivisionId = null) {
   const mapped = [], missing = [];
+  const seen = new Set();
   for (const rd of roleDivisions || []) {
     const roleName = srcRoleName.get(rd.roleId);
     const roleId = roleName ? tgtRoleId.get(roleName) : null;
@@ -2994,8 +2995,13 @@ function mapRoleDivisions(roleDivisions, srcRoleName, srcDivName, tgtRoleId, tgt
     if (divisionId !== '*') {
       const dn = srcDivName.get(rd.divisionId);
       divisionId = dn ? tgtDivId.get(dn) : null;
+      // Uden den division i målet kan brugeren vælge at samle alt i Home.
+      if (!divisionId && fallbackDivisionId) divisionId = fallbackDivisionId;
       if (!divisionId) { missing.push(`division ${dn || rd.divisionId} (rolle ${roleName})`); continue; }
     }
+    const nøgle = roleId + '|' + divisionId;
+    if (seen.has(nøgle)) continue;
+    seen.add(nøgle);
     mapped.push({ roleId, divisionId });
   }
   return { mapped, missing };
@@ -3064,6 +3070,19 @@ function missingRolesFor(clients, srcRoles, tgtRoleNames) {
   return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
+// Divisioner som klienternes roller er knyttet til, men som mangler i målet.
+function missingDivisionsFor(clients, srcDivs, tgtDivNames) {
+  const byId = new Map(srcDivs.map(d => [d.id, d.name]));
+  const seen = new Set();
+  for (const c of clients) {
+    for (const rd of c.roleDivisions || []) {
+      const n = rd.divisionId === '*' ? null : byId.get(rd.divisionId);
+      if (n && !tgtDivNames.has(n)) seen.add(n);
+    }
+  }
+  return [...seen].sort((a, b) => a.localeCompare(b));
+}
+
 app.post('/api/oauthclients/plan', async (req, res) => {
   const { sourceId, targetId, clientIds } = req.body;
   const source = loadCustomers().find(c => c.id === sourceId);
@@ -3072,20 +3091,24 @@ app.post('/api/oauthclients/plan', async (req, res) => {
   try {
     const { token: srcToken, apiBase: srcBase } = await getToken(source);
     const { token: tgtToken, apiBase: tgtBase } = await getToken(target);
-    const [srcClients, srcRoles, tgtRoles] = await Promise.all([
+    const [srcClients, srcRoles, tgtRoles, srcDivs, tgtDivs] = await Promise.all([
       listAll(srcBase, srcToken, '/api/v2/oauth/clients'),
       listAll(srcBase, srcToken, '/api/v2/authorization/roles'),
       listAll(tgtBase, tgtToken, '/api/v2/authorization/roles'),
+      listAll(srcBase, srcToken, '/api/v2/authorization/divisions'),
+      listAll(tgtBase, tgtToken, '/api/v2/authorization/divisions'),
     ]);
     const chosen = srcClients.filter(c => (clientIds || []).includes(c.id));
-    res.json({ ok: true, missingRoles: missingRolesFor(chosen, srcRoles, new Set(tgtRoles.map(r => r.name))) });
+    res.json({ ok: true,
+      missingRoles: missingRolesFor(chosen, srcRoles, new Set(tgtRoles.map(r => r.name))),
+      missingDivisions: missingDivisionsFor(chosen, srcDivs, new Set(tgtDivs.map(d => d.name))) });
   } catch (e) {
     res.status(500).json({ error: describeApiError(e) });
   }
 });
 
 app.post('/api/oauthclients/migrate', async (req, res) => {
-  const { sourceId, targetId, clientIds } = req.body;
+  const { sourceId, targetId, clientIds, homeFallback } = req.body;
   const source = loadCustomers().find(c => c.id === sourceId);
   const target = loadCustomers().find(c => c.id === targetId);
   if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
@@ -3106,6 +3129,7 @@ app.post('/api/oauthclients/migrate', async (req, res) => {
     const srcDivName  = new Map(srcDivs.map(d => [d.id, d.name]));
     const tgtDivId    = new Map(tgtDivs.map(d => [d.name, d.id]));
     const tgtNames    = new Set(tgtClients.map(c => c.name.toLowerCase()));
+    const homeId      = homeFallback ? (tgtDivs.find(d => d.homeDivision)?.id || null) : null;
     const key = `${sourceId}>${targetId}`;
     if (!migratedClientSecrets.has(key)) migratedClientSecrets.set(key, new Map());
 
@@ -3114,7 +3138,7 @@ app.post('/api/oauthclients/migrate', async (req, res) => {
       const src = srcClients.find(c => c.id === id);
       if (!src) { results.push({ id, status: 'failed', message: 'Klienten findes ikke i kilden' }); continue; }
       if (tgtNames.has(src.name.toLowerCase())) { results.push({ id, name: src.name, status: 'exists' }); continue; }
-      const { mapped, missing } = mapRoleDivisions(src.roleDivisions, srcRoleName, srcDivName, tgtRoleId, tgtDivId);
+      const { mapped, missing } = mapRoleDivisions(src.roleDivisions, srcRoleName, srcDivName, tgtRoleId, tgtDivId, homeId);
       if (src.authorizedGrantType === 'CLIENT-CREDENTIALS' && !mapped.length) {
         // Genesys kræver mindst én rolle på en client-credentials-klient.
         results.push({ id, name: src.name, status: 'failed', missing,
@@ -8819,7 +8843,7 @@ if (require.main === module) {
 // især haft mindst én fejl der nåede ud til brugeren, og de er samtidig de
 // eneste der kan efterprøves uden en rigtig org. Se test/*.test.js.
 module.exports = {
-  sanitizeDatatableSchema, mapRoleDivisions, buildOauthClientBody, buildRolePolicies, missingRolesFor,
+  sanitizeDatatableSchema, mapRoleDivisions, buildOauthClientBody, buildRolePolicies, missingRolesFor, missingDivisionsFor,
   app, tokenStore, getToken, loadSessions, saveSessions, setSessionPersist, SESSION_FILE,
   // konventioner
   STAGES, VERSION_SUFFIX, stageListError, alignmentPlan, MAX_ALIGN_PUBLISHES, prefixRenamePlan,

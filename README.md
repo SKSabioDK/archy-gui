@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.58.1
+# Archy GUI — Flow Manager · v1.58.2
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.58.1**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.58.1**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.58.2**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.58.2**.
 
 ---
 
@@ -370,7 +370,7 @@ Siden migrerer det der ikke er flows mellem to orgs, fordelt på syv faner: **Da
 
 - *Roller* kopierer brugerdefinerede roller med deres rettigheder (standardrollerne findes i alle orgs). Rettigheder med en betingelse på bestemte divisioner eller køer springes over og meldes i loggen, så rollen ikke bliver stærkere end i kilden. Kræver `authorization:role:view/add`.
 
-- *OAuth-klienter* kopierer navn, grant type, redirect-URI'er, scope og roller. Roller og divisioner matches på **navn** — brugerdefinerede roller skal altså findes i målet først (brug fanen *Roller*); det der ikke kan matches, meldes i loggen. Genesys kan ikke udlevere en klients secret, så hver ny klient får en **ny secret**, som vises kun én gang; **💾 Download secrets** gemmer dem som JSON. Gem filen sikkert og slet den bagefter. Mangler klienternes roller i målet, spørger programmet om de skal migreres først. Den bruger der er logget ind, skal selv have rollerne i målet for at kunne give dem til en klient (Genesys svarer ellers *bad.client.role*). Findes en klient med samme navn i målet, springes den over. Kræver `oauth:client:view/add` og `authorization:role:view`.
+- *OAuth-klienter* kopierer navn, grant type, redirect-URI'er, scope og roller. Roller og divisioner matches på **navn** — brugerdefinerede roller skal altså findes i målet først (brug fanen *Roller*); det der ikke kan matches, meldes i loggen. Genesys kan ikke udlevere en klients secret, så hver ny klient får en **ny secret**, som vises kun én gang; **💾 Download secrets** gemmer dem som JSON. Gem filen sikkert og slet den bagefter. Mangler klienternes divisioner eller roller i målet, spørger programmet om de skal oprettes først. Bruges divisioner ikke i målet, kan du i stedet vælge at give rollerne i Home-divisionen. Rækkefølgen er: log ind, giv dig selv de migrerede roller i målet (fx *Sabio Master Admin*), log ind igen, og migrér så klienterne. Den bruger der er logget ind, skal selv have rollerne i målet for at kunne give dem til en klient (Genesys svarer ellers *bad.client.role*). Findes en klient med samme navn i målet, springes den over. Kræver `oauth:client:view/add` og `authorization:role:view`.
 - *Integrationer* opretter integrationen med samme type og konfiguration. Credentials kan ikke læses fra Genesys: en OAuth-klient migreret i samme omgang (uden at genstarte programmet) kobles automatisk på integrationens credential, mens alle andre credentials (API-nøgler, basic auth m.m.) står i loggen som manuelt arbejde. En integration aktiveres kun hvis kilden var aktiv og intet mangler. Kræver `integrations:integration:view/add/edit` og `integrations:credential:view/add`.
 
 **Fanen User Prompts** migrerer user prompts mellem orgs. Både TTS-teksten og indtalt lyd kopieres — prompts med lyd er markeret 🔊 i listen.
@@ -485,7 +485,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-364 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+366 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -846,7 +846,7 @@ This page migrates everything that is not a flow between two orgs, across seven 
 
 - *Roles* copies custom roles with their permissions (default roles exist in every org). Permissions with a condition on specific divisions or queues are skipped and reported in the log, so the role never becomes stronger than in the source. Needs `authorization:role:view/add`.
 
-- *OAuth clients* copies name, grant type, redirect URIs, scope and roles. Roles and divisions are matched by **name** — custom roles must therefore exist in the target first (use the *Roles* tab); whatever cannot be matched is reported in the log. Genesys cannot hand out a client's secret, so every new client gets a **new secret**, shown only once; **💾 Download secrets** saves them as JSON. Store the file safely and delete it afterwards. If the clients' roles are missing in the target, the app asks whether to migrate them first. The logged-in user must hold the roles in the target to give them to a client (otherwise Genesys answers *bad.client.role*). A client with the same name in the target is skipped. Needs `oauth:client:view/add` and `authorization:role:view`.
+- *OAuth clients* copies name, grant type, redirect URIs, scope and roles. Roles and divisions are matched by **name** — custom roles must therefore exist in the target first (use the *Roles* tab); whatever cannot be matched is reported in the log. Genesys cannot hand out a client's secret, so every new client gets a **new secret**, shown only once; **💾 Download secrets** saves them as JSON. Store the file safely and delete it afterwards. If the clients' divisions or roles are missing in the target, the app asks whether to create them first. If the target does not use divisions, you can instead choose to give the roles in the Home division. The order is: log in, give yourself the migrated roles in the target (e.g. *Sabio Master Admin*), log in again, and then migrate the clients. The logged-in user must hold the roles in the target to give them to a client (otherwise Genesys answers *bad.client.role*). A client with the same name in the target is skipped. Needs `oauth:client:view/add` and `authorization:role:view`.
 - *Integrations* creates the integration with the same type and configuration. Credentials cannot be read from Genesys: an OAuth client migrated in the same session (without restarting the app) is wired up to the integration's credential automatically, while all other credentials (API keys, basic auth etc.) are listed in the log as manual work. An integration is only activated if the source was active and nothing is missing. Needs `integrations:integration:view/add/edit` and `integrations:credential:view/add`.
 
 **The User Prompts tab** migrates user prompts between orgs. Both the TTS text and any recorded audio are copied — prompts with audio are marked 🔊 in the list.
@@ -961,7 +961,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-364 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+366 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 
