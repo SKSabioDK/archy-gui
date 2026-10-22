@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.56.1
+# Archy GUI — Flow Manager · v1.57.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.56.1**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.56.1**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.57.0**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.57.0**.
 
 ---
 
@@ -339,7 +339,7 @@ Eksporter ét flow eller hele miljøet med live fremgangsindikator. Listen over 
 - Publicerer du et **common module**, tilbydes du bagefter at genpublicere de flows der bruger det. Import til prod kræver dit prod-login
 
 #### ⚡ Migrér ressourcer
-Siden migrerer det der ikke er flows mellem to orgs, fordelt på tre faner: **Data Actions**, **Data Tabeller** og **User Prompts**. Kilde- og mål-org vælges ét sted og deles af alle tre.
+Siden migrerer det der ikke er flows mellem to orgs, fordelt på fire faner: **Data Actions**, **Data Tabeller**, **Wrap-up-koder** og **User Prompts**. Kilde- og mål-org vælges ét sted og deles af alle.
 
 **Fanen Data Actions:**
 1. Vælg **kilde-org** og **mål-org**
@@ -363,6 +363,8 @@ Siden migrerer det der ikke er flows mellem to orgs, fordelt på tre faner: **Da
 ![Setup-forslag for data actions](docs/setup-forslag.da.png)
 
 *Eksempel med opdigtede data (Demo A/S — TEST til PROD): billedet viser appens rigtige brugerflade, men svarene er beregnet af appens egne funktioner på en opdigtet org, ikke hentet fra en kunde. Faneblade kræver to forskellige orgs.*
+
+**Fanen Wrap-up-koder** migrerer koder med navn og division (kræver `routing:wrapupCode:view/add`). Findes navnet i målet, springes koden over; findes divisionen ikke, bruges standarddivisionen.
 
 **Fanen User Prompts** migrerer user prompts mellem orgs. Både TTS-teksten og indtalt lyd kopieres — prompts med lyd er markeret 🔊 i listen.
 
@@ -476,7 +478,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-352 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+356 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -806,7 +808,7 @@ Export a single flow or the whole environment with a live progress indicator. Th
 - When you publish a **common module**, you are then offered to republish the flows that use it. Importing to prod requires your prod login
 
 #### ⚡ Migrate resources
-This page migrates everything that is not a flow between two orgs, across three tabs: **Data Actions**, **Data Tables** and **User Prompts**. Source and target org are chosen once and shared by all three.
+This page migrates everything that is not a flow between two orgs, across four tabs: **Data Actions**, **Data Tables**, **Wrap-up codes** and **User Prompts**. Source and target org are chosen once and shared by all three.
 
 **The Data Actions tab:**
 1. Select **source org** and **target org**
@@ -830,6 +832,8 @@ This page migrates everything that is not a flow between two orgs, across three 
 ![Setup proposal for data actions](docs/setup-forslag.en.png)
 
 *Example with invented data (Demo A/S — TEST to PROD): the image shows the app's real UI, but the answers are computed by the app's own functions on an invented org, not fetched from a customer. These tabs need two different orgs.*
+
+**The Wrap-up codes tab** migrates codes with name and division (needs `routing:wrapupCode:view/add`). If the name already exists in the target the code is skipped; if the division is missing, the default division is used.
 
 **The User Prompts tab** migrates user prompts between orgs. Both the TTS text and any recorded audio are copied — prompts with audio are marked 🔊 in the list.
 
@@ -943,7 +947,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-352 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+356 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 

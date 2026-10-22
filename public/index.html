@@ -533,7 +533,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.56.1 · Archy GUI</div>
+    <div class="version" id="app-version">v1.57.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -973,6 +973,7 @@
       <div class="da-tabs">
         <div class="da-tab active" id="da-tab-actions" onclick="daSetTab('actions')" data-i18n="da_tab_actions">Data Actions</div>
         <div class="da-tab" id="da-tab-tables" onclick="daSetTab('tables')" data-i18n="da_tab_tables">Data Tabeller</div>
+        <div class="da-tab" id="da-tab-wrapup" onclick="daSetTab('wrapup')" data-i18n="da_tab_wrapup">Wrap-up-koder</div>
         <div class="da-tab" id="da-tab-prompts" onclick="daSetTab('prompts')" data-i18n="da_tab_prompts">User Prompts</div>
         <div class="da-tab" id="da-tab-check" onclick="daSetTab('check')" data-i18n="da_tab_check">Totaltjek</div>
         <div class="da-tab" id="da-tab-plan" onclick="daSetTab('plan')" data-i18n="da_tab_plan">Setup-forslag</div>
@@ -987,7 +988,7 @@
           </div>
           <div>
             <label data-i18n="da_label_target">Mål (kopier til)</label>
-            <select id="da-target" onchange="daLoadTargetIntegrations(); dtUpdateReady(); prUpdateReady()"></select>
+            <select id="da-target" onchange="daLoadTargetIntegrations(); dtUpdateReady(); wuUpdateReady(); prUpdateReady()"></select>
           </div>
         </div>
         <div class="grid-2" id="da-actions-only" style="margin-top:12px">
@@ -1043,6 +1044,24 @@
         </div>
         <div style="font-size:11px;color:var(--muted);margin-bottom:10px" data-i18n="dt_structure_note">Kun strukturen migreres — rækker kopieres ikke.</div>
         <div id="dt-list"></div>
+      </div>
+
+      <div class="card" id="da-wrapup-card" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="card-title" style="margin:0"><span data-i18n="wu_codes">WRAP-UP-KODER</span> (<span id="wu-count">0</span>)</div>
+          <div style="display:flex;gap:8px">
+            <input id="wu-search" style="width:220px" data-i18n-placeholder="wu_search_ph" placeholder="🔍 Søg koder…" oninput="wuFilter()"/>
+            <button class="btn btn-primary btn-sm" id="wu-migrate-btn" onclick="wuMigrateSelected()" data-i18n="wu_migrate_btn" disabled>⚡ Migrér valgte</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:10px">
+          <span id="wu-sel-count" style="color:var(--accent);font-weight:700">0</span> <span data-i18n="da_selected">valgt</span>
+          &nbsp;·&nbsp;
+          <a href="#" onclick="wuSelectAll();return false" style="color:var(--accent);text-decoration:none" data-i18n="da_select_all">Vælg alle</a>
+          &nbsp;·&nbsp;
+          <a href="#" onclick="wuClearSel();return false" style="color:var(--muted);text-decoration:none" data-i18n="da_reset">Nulstil</a>
+        </div>
+        <div id="wu-list"></div>
       </div>
 
       <div class="card" id="da-prompt-card" style="display:none">
@@ -1670,6 +1689,14 @@ const LANGS = {
     da_sum_failed:'fejlet',
     da_tab_actions:'Data Actions',
     da_tab_tables:'Data Tabeller',
+    da_tab_wrapup:'Wrap-up-koder',
+    wu_codes:'WRAP-UP-KODER',
+    wu_search_ph:'🔍 Søg koder…',
+    wu_migrate_btn:'⚡ Migrér valgte',
+    wu_loading:'Henter wrap-up-koder…',
+    wu_none:'Ingen wrap-up-koder fundet.',
+    wu_exists:'Findes allerede i mål-org — springer over',
+    tip_wu_migrate_btn:'Kopierer de valgte wrap-up-koder (navn og division) til mål-org\'en.',
     dt_tables:'TABELLER',
     dt_search_ph:'🔍 Søg tabeller…',
     dt_migrate_btn:'⚡ Migrér valgte',
@@ -2659,6 +2686,14 @@ const LANGS = {
     da_sum_failed:'failed',
     da_tab_actions:'Data Actions',
     da_tab_tables:'Data Tables',
+    da_tab_wrapup:'Wrap-up codes',
+    wu_codes:'WRAP-UP CODES',
+    wu_search_ph:'🔍 Search codes…',
+    wu_migrate_btn:'⚡ Migrate selected',
+    wu_loading:'Loading wrap-up codes…',
+    wu_none:'No wrap-up codes found.',
+    wu_exists:'Already exists in target org — skipping',
+    tip_wu_migrate_btn:'Copies the selected wrap-up codes (name and division) to the target org.',
     dt_tables:'TABLES',
     dt_search_ph:'🔍 Search tables…',
     dt_migrate_btn:'⚡ Migrate selected',
@@ -3648,6 +3683,14 @@ const LANGS = {
     da_sum_failed:'échouées',
     da_tab_actions:'Data Actions',
     da_tab_tables:'Data Tables',
+    da_tab_wrapup:'Codes de clôture',
+    wu_codes:'CODES DE CLÔTURE',
+    wu_search_ph:'🔍 Rechercher des codes…',
+    wu_migrate_btn:'⚡ Migrer la sélection',
+    wu_loading:'Chargement des codes de clôture…',
+    wu_none:'Aucun code de clôture trouvé.',
+    wu_exists:'Existe déjà dans l\'org cible — ignoré',
+    tip_wu_migrate_btn:'Copie les codes de clôture sélectionnés (nom et division) vers l\'org cible.',
     dt_tables:'TABLES',
     dt_search_ph:'🔍 Rechercher des tables…',
     dt_migrate_btn:'⚡ Migrer la sélection',
@@ -4637,6 +4680,14 @@ const LANGS = {
     da_sum_failed:'mislukt',
     da_tab_actions:'Data Actions',
     da_tab_tables:'Data Tables',
+    da_tab_wrapup:'Wrap-upcodes',
+    wu_codes:'WRAP-UPCODES',
+    wu_search_ph:'🔍 Zoek codes…',
+    wu_migrate_btn:'⚡ Migreer selectie',
+    wu_loading:'Wrap-upcodes laden…',
+    wu_none:'Geen wrap-upcodes gevonden.',
+    wu_exists:'Bestaat al in doel-org — overgeslagen',
+    tip_wu_migrate_btn:'Kopieert de geselecteerde wrap-upcodes (naam en division) naar de doel-org.',
     dt_tables:'TABELLEN',
     dt_search_ph:'🔍 Zoek tabellen…',
     dt_migrate_btn:'⚡ Migreer selectie',
@@ -5626,6 +5677,14 @@ const LANGS = {
     da_sum_failed:'fallidas',
     da_tab_actions:'Data Actions',
     da_tab_tables:'Data Tables',
+    da_tab_wrapup:'Códigos de cierre',
+    wu_codes:'CÓDIGOS DE CIERRE',
+    wu_search_ph:'🔍 Buscar códigos…',
+    wu_migrate_btn:'⚡ Migrar selección',
+    wu_loading:'Cargando códigos de cierre…',
+    wu_none:'No se encontraron códigos de cierre.',
+    wu_exists:'Ya existe en la org de destino — omitido',
+    tip_wu_migrate_btn:'Copia los códigos de cierre seleccionados (nombre y división) a la org de destino.',
     dt_tables:'TABLAS',
     dt_search_ph:'🔍 Buscar tablas…',
     dt_migrate_btn:'⚡ Migrar seleccionadas',
@@ -10653,6 +10712,7 @@ function daSetTab(tab) {
   document.getElementById('da-tab-actions').classList.toggle('active', tab === 'actions');
   document.getElementById('da-tab-tables').classList.toggle('active',  tab === 'tables');
   document.getElementById('da-tab-prompts').classList.toggle('active', tab === 'prompts');
+  document.getElementById('da-tab-wrapup').classList.toggle('active',  tab === 'wrapup');
   document.getElementById('da-tab-check').classList.toggle('active',   tab === 'check');
   document.getElementById('da-check-card').style.display = tab === 'check' ? 'block' : 'none';
   document.getElementById('da-tab-plan').classList.toggle('active', tab === 'plan');
@@ -10669,6 +10729,7 @@ function daSetTab(tab) {
   document.getElementById('da-action-card').style.display = (tab === 'actions' && srcPicked) ? 'block' : 'none';
   document.getElementById('da-table-card').style.display  = (tab === 'tables'  && srcPicked) ? 'block' : 'none';
   document.getElementById('da-prompt-card').style.display = (tab === 'prompts' && srcPicked) ? 'block' : 'none';
+  document.getElementById('da-wrapup-card').style.display = (tab === 'wrapup'  && srcPicked) ? 'block' : 'none';
 }
 
 // ── Totaltjek af data actions ────────────────────────────────────────────────
@@ -11100,6 +11161,7 @@ function dpExportPrint() {
 function daSourceChanged() {
   daLoadActions();
   dtLoadTables();
+  wuLoadCodes();
   prLoadPrompts();
 }
 
@@ -11223,6 +11285,103 @@ async function dtMigrateSelected() {
   log(logBox, `\n\u2500\u2500 ${t('da_done')} \u2500\u2500 ${ok} ${t('da_sum_ok')} \u00b7 ${skipped} ${t('da_sum_skipped')} \u00b7 ${failed} ${t('da_sum_failed')}`,
       failed ? 'err' : 'info');
   dtUpdateReady();
+}
+
+// ── Wrap-up-koder ─────────────────────────────────────────────────────────────
+let wuAll = [];
+let wuSelectedIds = new Set();
+
+async function wuLoadCodes() {
+  const id = document.getElementById('da-source').value;
+  wuAll = [];
+  wuSelectedIds.clear();
+  const card = document.getElementById('da-wrapup-card');
+  if (!id) { card.style.display = 'none'; return; }
+  if (daTab === 'wrapup') card.style.display = 'block';
+  document.getElementById('wu-list').innerHTML =
+    `<div style="color:var(--muted);font-size:12px"><span class="spin"></span> ${t('wu_loading')}</div>`;
+  try {
+    const data = await fetch(`/api/customers/${id}/wrapupcodes`).then(r => r.json());
+    if (data.error) {
+      document.getElementById('wu-list').innerHTML = `<div style="color:var(--red);font-size:12px">${escapeHtml(data.error)}</div>`;
+      return;
+    }
+    wuAll = data;
+    wuFilter();
+  } catch (e) {
+    document.getElementById('wu-list').innerHTML = `<div style="color:var(--red);font-size:12px">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function wuVisible() {
+  const q = (document.getElementById('wu-search')?.value || '').toLowerCase();
+  return wuAll.filter(x => !q || x.name.toLowerCase().includes(q));
+}
+
+function wuFilter() {
+  const list = wuVisible();
+  document.getElementById('wu-count').textContent = list.length;
+  const el = document.getElementById('wu-list');
+  el.innerHTML = !list.length
+    ? `<div style="color:var(--muted);font-size:12px;padding:8px 0">${t('wu_none')}</div>`
+    : list.map(x => {
+        const sel = wuSelectedIds.has(x.id);
+        return `
+      <div class="migrate-flow-item ${sel ? 'selected' : ''}" onclick="wuToggle('${x.id}')">
+        <div style="min-width:0">
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(x.name)}</div>
+          ${x.division ? `<div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-top:2px">${escapeHtml(x.division)}</div>` : ''}
+        </div>
+        <span style="color:var(--accent);font-size:16px;width:18px;text-align:center;flex-shrink:0">${sel ? '\u2713' : ''}</span>
+      </div>`;
+      }).join('');
+  document.getElementById('wu-sel-count').textContent = wuSelectedIds.size;
+  wuUpdateReady();
+}
+
+function wuToggle(id) { if (wuSelectedIds.has(id)) wuSelectedIds.delete(id); else wuSelectedIds.add(id); wuFilter(); }
+function wuSelectAll() { wuVisible().forEach(x => wuSelectedIds.add(x.id)); wuFilter(); }
+function wuClearSel()  { wuSelectedIds.clear(); wuFilter(); }
+
+function wuUpdateReady() {
+  const btn = document.getElementById('wu-migrate-btn');
+  if (!btn) return;
+  const src = document.getElementById('da-source')?.value || '';
+  const tgt = document.getElementById('da-target')?.value || '';
+  btn.disabled = !(src && tgt && src !== tgt && wuSelectedIds.size);
+}
+
+async function wuMigrateSelected() {
+  const sourceId = document.getElementById('da-source').value;
+  const targetId = document.getElementById('da-target').value;
+  if (!sourceId || !targetId) return alert(t('da_err_select'));
+  if (sourceId === targetId) return alert(t('da_err_same'));
+  if (!wuSelectedIds.size) return;
+
+  const logCard = document.getElementById('da-log');
+  const logBox  = document.getElementById('da-logbox');
+  logCard.style.display = 'block';
+  logBox.innerHTML = '';
+  const btn = document.getElementById('wu-migrate-btn');
+  btn.disabled = true;
+  log(logBox, `\u27f6 ${t('da_migrating')}: ${wuSelectedIds.size} ${t('wu_codes').toLowerCase()}`, 'info');
+  let ok = 0, skipped = 0, failed = 0;
+  try {
+    const data = await fetch('/api/wrapupcodes/migrate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sourceId, targetId, codeIds: [...wuSelectedIds] })
+    }).then(r => r.json());
+    if (data.error) { log(logBox, `  \u2717 ${data.error}`, 'err'); failed++; }
+    else for (const r of data.results) {
+      const name = r.name || r.id;
+      if (r.status === 'created') { log(logBox, `  \u2713 ${name}`, 'ok'); ok++; if (r.divisionNote) log(logBox, `    \u26a0 ${r.divisionNote}`, 'info'); }
+      else if (r.status === 'exists') { log(logBox, `  \u26a0 ${name}: ${t('wu_exists')}`, 'info'); skipped++; }
+      else { log(logBox, `  \u2717 ${name}: ${r.message}`, 'err'); failed++; }
+    }
+  } catch (e) { log(logBox, `  \u2717 ${e.message}`, 'err'); failed++; }
+  log(logBox, `\n\u2500\u2500 ${t('da_done')} \u2500\u2500 ${ok} ${t('da_sum_ok')} \u00b7 ${skipped} ${t('da_sum_skipped')} \u00b7 ${failed} ${t('da_sum_failed')}`,
+      failed ? 'err' : 'info');
+  wuUpdateReady();
 }
 
 // ── Kunde → gruppe → miljø ────────────────────────────────────────────────────

@@ -5,6 +5,21 @@
 
 ---
 
+### v1.57.0
+---
+**🇩🇰 Dansk**
+
+- **Ny: migrér wrap-up-koder.** Siden Migrér ressourcer har en ny fane, **Wrap-up-koder**: vælg koder i kilden og migrér dem til mål-org'en med navn og division. Findes en kode med samme navn allerede i målet, springes den over. Findes divisionen ikke i målet, bruges standarddivisionen, og loggen siger det.
+- **Rettelse: datatabeller med talkolonner kunne ikke migreres.** Genesys afviste to af 140 tabeller med *the minimum … is less than the min limit*, fordi en talkolonne bar en grænse uden for det tilladte område. Sådanne minimum/maximum-grænser fjernes nu fra schemaet, før tabellen oprettes (de betyder "ingen grænse").
+- Fire nye tests.
+
+**🇬🇧 English**
+- **New: migrate wrap-up codes.** The Migrate resources page has a new tab, **Wrap-up codes**: pick codes in the source and migrate them to the target org with name and division. A code with the same name already in the target is skipped. If the division is missing in the target, the default division is used and the log says so.
+- **Fix: data tables with number columns could not be migrated.** Genesys rejected two of 140 tables with *the minimum … is less than the min limit*, because a number column carried a limit outside the allowed range. Such minimum/maximum limits are now removed from the schema before the table is created (they mean "no limit").
+- Four new tests.
+
+---
+
 ### v1.56.1
 ---
 **🇩🇰 Dansk**
