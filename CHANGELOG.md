@@ -5,6 +5,19 @@
 
 ---
 
+### v1.56.1
+---
+**🇩🇰 Dansk**
+
+- **Sikkerhed:** afhængighederne er opdateret med `npm audit fix` (follow-redirects og proxy-addr) — ingen kendte sårbarheder tilbage.
+- **README:** nyt afsnit om opsætning af OAuth-klienten (PKCE) trin for trin, med skema over de rettigheder brugeren skal have og de typiske fejl. Kravene er præciseret.
+
+**🇬🇧 English**
+- **Security:** dependencies updated with `npm audit fix` (follow-redirects and proxy-addr) — no known vulnerabilities left.
+- **README:** new section on setting up the OAuth client (PKCE) step by step, with a table of the permissions the user needs and the common errors. Requirements clarified.
+
+---
+
 ### v1.56.0
 ---
 **🇩🇰 Dansk**

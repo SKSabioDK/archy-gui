@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.56.0
+# Archy GUI — Flow Manager · v1.56.1
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.56.0**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.56.0**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.56.1**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.56.1**.
 
 ---
 
@@ -23,7 +23,38 @@ Et grafisk interface til [Archy](https://help.mypurecloud.com/articles/archy/) m
 ### Krav
 - **Node.js 18+**
 - **Archy** installeret og tilgængeligt i PATH (`archy version` skal returnere en version)
-- En Genesys Cloud OAuth-klient af typen **Code Authorization** (PKCE) pr. org, med redirect URI `http://localhost:3737/auth/callback`. Ældre miljøer med Client Credentials virker stadig, men nye oprettes altid med PKCE
+- **Windows** (`start.bat`/`stop.bat`) og en browser
+- En Genesys Cloud OAuth-klient af typen **Code Authorization** (PKCE) pr. org, med redirect URI `http://localhost:3737/auth/callback` — se [opsætning nedenfor](#opsætning-af-oauth-klienten-pkce). Ældre miljøer med Client Credentials virker stadig, men nye oprettes altid med PKCE
+
+#### Opsætning af OAuth-klienten (PKCE)
+
+Gøres én gang pr. Genesys-org (se også **📋 Opsætning** i programmet, som fører dig gennem det samme og tjekker det mod org'en):
+
+1. I Genesys Cloud: **Admin → Integrations → OAuth → Add Client**.
+2. **Grant Type:** *Code Authorization*. (*Client Credentials* bruges kun af ældre miljøer.)
+3. **Authorized redirect URIs:** `http://localhost:3737/auth/callback` — præcis sådan, uden skråstreg til sidst. Kører programmet på en anden port (`PORT`), skal URI'en følge den, og `OAUTH_REDIRECT_URI` i `server.js` ændres tilsvarende.
+4. **Scope:** programmet beder ikke om bestemte scopes — brugerens egne roller afgør, hvad der er tilladt. Klientens scope skal derfor ikke indsnævres.
+5. Gem, og kopiér **Client ID** (en GUID). Der er ingen secret at gemme; PKCE bruger ingen.
+6. I programmet: opret miljøet med **🌐 OAuth (PKCE)**, indsæt Client ID, vælg region, og tryk **Log ind**. Log ind i den rigtige org — logger du ind i en anden, afvises tokenet.
+
+**Rettigheder for den bruger der logger ind** (tjek dem med **🔌 Test**):
+
+| Funktion | Rettigheder |
+|---|---|
+| Læse flows | `architect:flow:view`, `architect:ui:view` |
+| Importere flows | `architect:flow:add`, `architect:flow:edit` |
+| Publicere flows (og deploy til prod) | `architect:flow:publish` |
+| Datatabeller og manifest | `architect:datatable:view/add`, `architect:datatableRow:view/add/edit` |
+| Data Actions | `integrations:integration:view`, `integrations:action:view/add` |
+| Prompts | `architect:userPrompt:view/add` |
+| Divisioner, køer, brugere | `authorization:division:view`, `routing:queue:view`, `directory:user:view` |
+| Afhængigheder | `architect:dependencyTracking:view` |
+| Vise OAuth-klientens navn | `oauth:client:view` |
+
+Mangler en rettighed, viser **🔌 Test** præcis hvilken. Er miljøet prod, kræves desuden deploy-retten (standard `architect:flow:publish`).
+
+**Typiske fejl:** *redirect_uri mismatch* → URI'en i klienten er ikke præcis den ovenfor. *Forkert org* → du loggede ind i en anden org end miljøets. *Port optaget* → luk den anden instans med `stop.bat`.
+
 
 ### Installation
 
@@ -474,8 +505,39 @@ A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) 
 
 ### Requirements
 - **Node.js 18+**
-- **Archy** installed and available in PATH
-- A Genesys Cloud OAuth client of type **Code Authorization** (PKCE) per org, with redirect URI `http://localhost:3737/auth/callback`. Older environments using Client Credentials still work, but new ones are always created with PKCE
+- **Archy** installed and available in PATH (`archy version` must return a version)
+- **Windows** (`start.bat`/`stop.bat`) and a browser
+- A Genesys Cloud OAuth client of type **Code Authorization** (PKCE) per org, with redirect URI `http://localhost:3737/auth/callback` — see [setup below](#setting-up-the-oauth-client-pkce). Older environments using Client Credentials still work, but new ones are always created with PKCE
+
+#### Setting up the OAuth client (PKCE)
+
+Done once per Genesys org (the **📋 Setup** guide in the app walks you through the same steps and checks them against the org):
+
+1. In Genesys Cloud: **Admin → Integrations → OAuth → Add Client**.
+2. **Grant Type:** *Code Authorization*. (*Client Credentials* is only used by older environments.)
+3. **Authorized redirect URIs:** `http://localhost:3737/auth/callback` — exactly like this, no trailing slash. If the app runs on another port (`PORT`), the URI must follow it, and `OAUTH_REDIRECT_URI` in `server.js` must be changed to match.
+4. **Scope:** the app does not request specific scopes — the signed-in user's own roles decide what is allowed, so do not narrow the client's scope.
+5. Save, and copy the **Client ID** (a GUID). There is no secret to store; PKCE uses none.
+6. In the app: create the environment with **🌐 OAuth (PKCE)**, paste the Client ID, pick the region, and press **Log in**. Log in to the right org — a login in another org is rejected.
+
+**Permissions for the user who logs in** (verify them with **🔌 Test**):
+
+| Feature | Permissions |
+|---|---|
+| Read flows | `architect:flow:view`, `architect:ui:view` |
+| Import flows | `architect:flow:add`, `architect:flow:edit` |
+| Publish flows (and deploy to prod) | `architect:flow:publish` |
+| Data tables and manifest | `architect:datatable:view/add`, `architect:datatableRow:view/add/edit` |
+| Data Actions | `integrations:integration:view`, `integrations:action:view/add` |
+| Prompts | `architect:userPrompt:view/add` |
+| Divisions, queues, users | `authorization:division:view`, `routing:queue:view`, `directory:user:view` |
+| Dependencies | `architect:dependencyTracking:view` |
+| Show the OAuth client's name | `oauth:client:view` |
+
+If a permission is missing, **🔌 Test** shows exactly which. A prod environment also requires the deploy right (default `architect:flow:publish`).
+
+**Common errors:** *redirect_uri mismatch* → the URI in the client is not exactly the one above. *Wrong org* → you logged in to a different org than the environment's. *Port in use* → close the other instance with `stop.bat`.
+
 
 ### Installation
 
