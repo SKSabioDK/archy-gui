@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.57.1
+# Archy GUI — Flow Manager · v1.58.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.57.1**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.57.1**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.58.0**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.58.0**.
 
 ---
 
@@ -339,7 +339,7 @@ Eksporter ét flow eller hele miljøet med live fremgangsindikator. Listen over 
 - Publicerer du et **common module**, tilbydes du bagefter at genpublicere de flows der bruger det. Import til prod kræver dit prod-login
 
 #### ⚡ Migrér ressourcer
-Siden migrerer det der ikke er flows mellem to orgs, fordelt på fire faner: **Data Actions**, **Data Tabeller**, **Wrap-up-koder** og **User Prompts**. Kilde- og mål-org vælges ét sted og deles af alle.
+Siden migrerer det der ikke er flows mellem to orgs, fordelt på syv faner: **Data Actions**, **Data Tabeller**, **Wrap-up-koder**, **Roller**, **OAuth-klienter**, **Integrationer** og **User Prompts**. Kilde- og mål-org vælges ét sted og deles af alle.
 
 **Fanen Data Actions:**
 1. Vælg **kilde-org** og **mål-org**
@@ -365,6 +365,13 @@ Siden migrerer det der ikke er flows mellem to orgs, fordelt på fire faner: **D
 *Eksempel med opdigtede data (Demo A/S — TEST til PROD): billedet viser appens rigtige brugerflade, men svarene er beregnet af appens egne funktioner på en opdigtet org, ikke hentet fra en kunde. Faneblade kræver to forskellige orgs.*
 
 **Fanen Wrap-up-koder** migrerer koder med navn og division (kræver `routing:wrapupCode:view/add`). Findes navnet i målet, springes koden over; findes divisionen ikke, bruges standarddivisionen.
+
+**Fanerne OAuth-klienter og Integrationer** flytter en hel opsætning til en ny org. Brug rækkefølgen **Roller → OAuth-klienter → Integrationer → Data Actions**.
+
+- *Roller* kopierer brugerdefinerede roller med deres rettigheder (standardrollerne findes i alle orgs). Rettigheder med en betingelse på bestemte divisioner eller køer springes over og meldes i loggen, så rollen ikke bliver stærkere end i kilden. Kræver `authorization:role:view/add`.
+
+- *OAuth-klienter* kopierer navn, grant type, redirect-URI'er, scope og roller. Roller og divisioner matches på **navn** — brugerdefinerede roller skal altså findes i målet først (brug fanen *Roller*); det der ikke kan matches, meldes i loggen. Genesys kan ikke udlevere en klients secret, så hver ny klient får en **ny secret**, som vises kun én gang; **💾 Download secrets** gemmer dem som JSON. Gem filen sikkert og slet den bagefter. Findes en klient med samme navn i målet, springes den over. Kræver `oauth:client:view/add` og `authorization:role:view`.
+- *Integrationer* opretter integrationen med samme type og konfiguration. Credentials kan ikke læses fra Genesys: en OAuth-klient migreret i samme omgang (uden at genstarte programmet) kobles automatisk på integrationens credential, mens alle andre credentials (API-nøgler, basic auth m.m.) står i loggen som manuelt arbejde. En integration aktiveres kun hvis kilden var aktiv og intet mangler. Kræver `integrations:integration:view/add/edit` og `integrations:credential:view/add`.
 
 **Fanen User Prompts** migrerer user prompts mellem orgs. Både TTS-teksten og indtalt lyd kopieres — prompts med lyd er markeret 🔊 i listen.
 
@@ -478,7 +485,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-356 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+363 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -808,7 +815,7 @@ Export a single flow or the whole environment with a live progress indicator. Th
 - When you publish a **common module**, you are then offered to republish the flows that use it. Importing to prod requires your prod login
 
 #### ⚡ Migrate resources
-This page migrates everything that is not a flow between two orgs, across four tabs: **Data Actions**, **Data Tables**, **Wrap-up codes** and **User Prompts**. Source and target org are chosen once and shared by all three.
+This page migrates everything that is not a flow between two orgs, across seven tabs: **Data Actions**, **Data Tables**, **Wrap-up codes**, **Roles**, **OAuth clients**, **Integrations** and **User Prompts**. Source and target org are chosen once and shared by all three.
 
 **The Data Actions tab:**
 1. Select **source org** and **target org**
@@ -834,6 +841,13 @@ This page migrates everything that is not a flow between two orgs, across four t
 *Example with invented data (Demo A/S — TEST to PROD): the image shows the app's real UI, but the answers are computed by the app's own functions on an invented org, not fetched from a customer. These tabs need two different orgs.*
 
 **The Wrap-up codes tab** migrates codes with name and division (needs `routing:wrapupCode:view/add`). If the name already exists in the target the code is skipped; if the division is missing, the default division is used.
+
+**The OAuth clients and Integrations tabs** move a whole setup to a new org. Use the order **Roles → OAuth clients → Integrations → Data Actions**.
+
+- *Roles* copies custom roles with their permissions (default roles exist in every org). Permissions with a condition on specific divisions or queues are skipped and reported in the log, so the role never becomes stronger than in the source. Needs `authorization:role:view/add`.
+
+- *OAuth clients* copies name, grant type, redirect URIs, scope and roles. Roles and divisions are matched by **name** — custom roles must therefore exist in the target first (use the *Roles* tab); whatever cannot be matched is reported in the log. Genesys cannot hand out a client's secret, so every new client gets a **new secret**, shown only once; **💾 Download secrets** saves them as JSON. Store the file safely and delete it afterwards. A client with the same name in the target is skipped. Needs `oauth:client:view/add` and `authorization:role:view`.
+- *Integrations* creates the integration with the same type and configuration. Credentials cannot be read from Genesys: an OAuth client migrated in the same session (without restarting the app) is wired up to the integration's credential automatically, while all other credentials (API keys, basic auth etc.) are listed in the log as manual work. An integration is only activated if the source was active and nothing is missing. Needs `integrations:integration:view/add/edit` and `integrations:credential:view/add`.
 
 **The User Prompts tab** migrates user prompts between orgs. Both the TTS text and any recorded audio are copied — prompts with audio are marked 🔊 in the list.
 
@@ -947,7 +961,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-356 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+363 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 

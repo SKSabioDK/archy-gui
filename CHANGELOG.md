@@ -5,6 +5,23 @@
 
 ---
 
+### v1.58.0
+---
+**🇩🇰 Dansk**
+
+- **Ny: migrér OAuth-klienter og integrationer.** Siden Migrér ressourcer har to nye faner. **OAuth-klienter** kopierer navn, grant type, redirect-URI'er, scope og roller; roller og divisioner matches på navn, og det der ikke findes i målet, meldes tilbage. Klienterne får en **ny secret**, som kun vises én gang — der er en knap til at hente dem som JSON-fil. **Integrationer** opretter integrationen med samme type og konfiguration. Credentials kan ikke læses ud af Genesys: en OAuth-klient migreret i samme omgang kobles automatisk på integrationens credential, alt andet meldes som manuelt arbejde. En integration aktiveres kun, hvis kilden var aktiv og intet mangler.
+- **Ny: fanen Roller.** Kopierer brugerdefinerede roller med deres rettigheder (standardrollerne findes i alle orgs). Rettigheder med en betingelse på bestemte divisioner eller køer springes over og meldes, så rollen ikke bliver stærkere end i kilden.
+- Rækkefølgen i en ny org er roller → OAuth-klienter → integrationer → data actions.
+- Syv nye tests.
+
+**🇬🇧 English**
+- **New: migrate OAuth clients and integrations.** The Migrate resources page has two new tabs. **OAuth clients** copies name, grant type, redirect URIs, scope and roles; roles and divisions are matched by name, and anything missing in the target is reported. The clients get a **new secret**, shown only once — a button downloads them as a JSON file. **Integrations** creates the integration with the same type and configuration. Credentials cannot be read from Genesys: an OAuth client migrated in the same session is wired up to the integration's credential automatically, everything else is reported as manual work. An integration is only activated if the source was active and nothing is missing.
+- **New: Roles tab.** Copies custom roles with their permissions (default roles exist in every org). Permissions with a condition on specific divisions or queues are skipped and reported, so the role never becomes stronger than in the source.
+- The order in a new org is roles → OAuth clients → integrations → data actions.
+- Seven new tests.
+
+---
+
 ### v1.57.1
 ---
 **🇩🇰 Dansk**

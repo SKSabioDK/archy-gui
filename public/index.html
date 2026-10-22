@@ -533,7 +533,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.57.1 · Archy GUI</div>
+    <div class="version" id="app-version">v1.58.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -974,6 +974,9 @@
         <div class="da-tab active" id="da-tab-actions" onclick="daSetTab('actions')" data-i18n="da_tab_actions">Data Actions</div>
         <div class="da-tab" id="da-tab-tables" onclick="daSetTab('tables')" data-i18n="da_tab_tables">Data Tabeller</div>
         <div class="da-tab" id="da-tab-wrapup" onclick="daSetTab('wrapup')" data-i18n="da_tab_wrapup">Wrap-up-koder</div>
+        <div class="da-tab" id="da-tab-roles" onclick="daSetTab('roles')" data-i18n="da_tab_roles">Roller</div>
+        <div class="da-tab" id="da-tab-oauth" onclick="daSetTab('oauth')" data-i18n="da_tab_oauth">OAuth-klienter</div>
+        <div class="da-tab" id="da-tab-integ" onclick="daSetTab('integ')" data-i18n="da_tab_integ">Integrationer</div>
         <div class="da-tab" id="da-tab-prompts" onclick="daSetTab('prompts')" data-i18n="da_tab_prompts">User Prompts</div>
         <div class="da-tab" id="da-tab-check" onclick="daSetTab('check')" data-i18n="da_tab_check">Totaltjek</div>
         <div class="da-tab" id="da-tab-plan" onclick="daSetTab('plan')" data-i18n="da_tab_plan">Setup-forslag</div>
@@ -988,7 +991,7 @@
           </div>
           <div>
             <label data-i18n="da_label_target">Mål (kopier til)</label>
-            <select id="da-target" onchange="daLoadTargetIntegrations(); dtUpdateReady(); wuUpdateReady(); prUpdateReady()"></select>
+            <select id="da-target" onchange="daLoadTargetIntegrations(); dtUpdateReady(); wuUpdateReady(); mlUpdateReady('roles'); mlUpdateReady('oauth'); mlUpdateReady('integ'); prUpdateReady()"></select>
           </div>
         </div>
         <div class="grid-2" id="da-actions-only" style="margin-top:12px">
@@ -1062,6 +1065,63 @@
           <a href="#" onclick="wuClearSel();return false" style="color:var(--muted);text-decoration:none" data-i18n="da_reset">Nulstil</a>
         </div>
         <div id="wu-list"></div>
+      </div>
+
+      <div class="card" id="da-roles-card" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="card-title" style="margin:0"><span data-i18n="ro_roles"></span> (<span id="roles-count">0</span>)</div>
+          <div style="display:flex;gap:8px">
+            <input id="roles-search" style="width:220px" data-i18n-placeholder="ro_search_ph" oninput="mlFilter('roles')"/>
+            <button class="btn btn-primary btn-sm" id="roles-migrate-btn" onclick="mlMigrate('roles')" data-i18n="ml_migrate_btn" disabled>⚡</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:10px">
+          <span id="roles-sel-count" style="color:var(--accent);font-weight:700">0</span> <span data-i18n="da_selected">valgt</span>
+          &nbsp;·&nbsp;
+          <a href="#" onclick="mlSelectAll('roles');return false" style="color:var(--accent);text-decoration:none" data-i18n="da_select_all">Vælg alle</a>
+          &nbsp;·&nbsp;
+          <a href="#" onclick="mlClearSel('roles');return false" style="color:var(--muted);text-decoration:none" data-i18n="da_reset">Nulstil</a>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px" data-i18n="roles_note"></div>
+        <div id="roles-list"></div>
+      </div>
+
+      <div class="card" id="da-oauth-card" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="card-title" style="margin:0"><span data-i18n="oa_clients"></span> (<span id="oauth-count">0</span>)</div>
+          <div style="display:flex;gap:8px">
+            <input id="oauth-search" style="width:220px" data-i18n-placeholder="oa_search_ph" oninput="mlFilter('oauth')"/>
+            <button class="btn btn-primary btn-sm" id="oauth-migrate-btn" onclick="mlMigrate('oauth')" data-i18n="ml_migrate_btn" disabled>⚡</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:10px">
+          <span id="oauth-sel-count" style="color:var(--accent);font-weight:700">0</span> <span data-i18n="da_selected">valgt</span>
+          &nbsp;·&nbsp;
+          <a href="#" onclick="mlSelectAll('oauth');return false" style="color:var(--accent);text-decoration:none" data-i18n="da_select_all">Vælg alle</a>
+          &nbsp;·&nbsp;
+          <a href="#" onclick="mlClearSel('oauth');return false" style="color:var(--muted);text-decoration:none" data-i18n="da_reset">Nulstil</a>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px" data-i18n="oauth_note"></div>
+        <div id="oauth-list"></div>
+      </div>
+
+      <div class="card" id="da-integ-card" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="card-title" style="margin:0"><span data-i18n="ig_integrations"></span> (<span id="integ-count">0</span>)</div>
+          <div style="display:flex;gap:8px">
+            <input id="integ-search" style="width:220px" data-i18n-placeholder="ig_search_ph" oninput="mlFilter('integ')"/>
+            <button class="btn btn-primary btn-sm" id="integ-migrate-btn" onclick="mlMigrate('integ')" data-i18n="ml_migrate_btn" disabled>⚡</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:10px">
+          <span id="integ-sel-count" style="color:var(--accent);font-weight:700">0</span> <span data-i18n="da_selected">valgt</span>
+          &nbsp;·&nbsp;
+          <a href="#" onclick="mlSelectAll('integ');return false" style="color:var(--accent);text-decoration:none" data-i18n="da_select_all">Vælg alle</a>
+          &nbsp;·&nbsp;
+          <a href="#" onclick="mlClearSel('integ');return false" style="color:var(--muted);text-decoration:none" data-i18n="da_reset">Nulstil</a>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px" data-i18n="integ_note"></div>
+        <div id="integ-list"></div>
       </div>
 
       <div class="card" id="da-prompt-card" style="display:none">
@@ -1689,6 +1749,32 @@ const LANGS = {
     da_sum_failed:'fejlet',
     da_tab_actions:'Data Actions',
     da_tab_tables:'Data Tabeller',
+    da_tab_roles:'Roller',
+    ro_roles:'ROLLER',
+    ro_search_ph:'🔍 Søg roller…',
+    ro_policies:'rettighedsgrupper',
+    ro_skipped:'Springet over (peger på ressourcer i kilden)',
+    roles_note:'Kopierer brugerdefinerede roller med deres rettigheder. Standardrollerne findes i alle orgs og migreres ikke. Rettigheder med en betingelse på bestemte divisioner eller køer springes over og meldes — ellers ville de gælde alt. Migrér roller først, så OAuth-klienter.',
+    da_tab_oauth:'OAuth-klienter',
+    da_tab_integ:'Integrationer',
+    oa_clients:'OAUTH-KLIENTER',
+    ig_integrations:'INTEGRATIONER',
+    oa_search_ph:'🔍 Søg klienter…',
+    ig_search_ph:'🔍 Søg integrationer…',
+    ml_migrate_btn:'⚡ Migrér valgte',
+    ml_loading:'Henter…',
+    ml_none:'Ingen fundet.',
+    ml_exists:'Findes allerede i mål-org — springer over',
+    oa_roles:'roller',
+    oa_missing:'Springet over i målet',
+    oa_secret_warn:'Secrets kan ikke læses fra Genesys: de nye klienter har fået NYE secrets, og de vises kun nu. Hent dem herunder og læg dem et sikkert sted.',
+    oa_download_secrets:'💾 Download secrets (JSON)',
+    oauth_note:'Navn, grant type, redirect-URI\'er, scope og roller kopieres (roller og divisioner matches på navn). Secret\'en er ny. Migrér klienter først, derefter integrationer, så data actions.',
+    integ_note:'Opretter integrationen med samme type og konfiguration. Credentials kan ikke kopieres: en OAuth-klient migreret i samme omgang kobles automatisk på, alt andet meldes som manuelt arbejde. Integrationen aktiveres kun hvis kilden var aktiv og intet mangler.',
+    ig_activated:'Aktiveret',
+    ig_inactive:'Oprettet, men ikke aktiveret',
+    ig_todo:'Credential der skal oprettes i målet',
+    tip_ml_migrate_btn:'Kopierer de valgte til mål-org\'en. Secrets og credentials kan ikke kopieres — se teksten over listen.',
     da_tab_wrapup:'Wrap-up-koder',
     wu_codes:'WRAP-UP-KODER',
     wu_search_ph:'🔍 Søg koder…',
@@ -2686,6 +2772,32 @@ const LANGS = {
     da_sum_failed:'failed',
     da_tab_actions:'Data Actions',
     da_tab_tables:'Data Tables',
+    da_tab_roles:'Roles',
+    ro_roles:'ROLES',
+    ro_search_ph:'🔍 Search roles…',
+    ro_policies:'permission groups',
+    ro_skipped:'Skipped (points to resources in the source)',
+    roles_note:'Copies custom roles with their permissions. Default roles exist in every org and are not migrated. Permissions with a condition on specific divisions or queues are skipped and reported — otherwise they would apply to everything. Migrate roles first, then OAuth clients.',
+    da_tab_oauth:'OAuth clients',
+    da_tab_integ:'Integrations',
+    oa_clients:'OAUTH CLIENTS',
+    ig_integrations:'INTEGRATIONS',
+    oa_search_ph:'🔍 Search clients…',
+    ig_search_ph:'🔍 Search integrations…',
+    ml_migrate_btn:'⚡ Migrate selected',
+    ml_loading:'Loading…',
+    ml_none:'None found.',
+    ml_exists:'Already exists in target org — skipping',
+    oa_roles:'roles',
+    oa_missing:'Skipped in the target',
+    oa_secret_warn:'Secrets cannot be read from Genesys: the new clients have been given NEW secrets, shown only now. Download them below and store them safely.',
+    oa_download_secrets:'💾 Download secrets (JSON)',
+    oauth_note:'Name, grant type, redirect URIs, scope and roles are copied (roles and divisions are matched by name). The secret is new. Migrate clients first, then integrations, then data actions.',
+    integ_note:'Creates the integration with the same type and configuration. Credentials cannot be copied: an OAuth client migrated in the same session is wired up automatically, everything else is reported as manual work. The integration is only activated if the source was active and nothing is missing.',
+    ig_activated:'Activated',
+    ig_inactive:'Created, but not activated',
+    ig_todo:'Credential to create in the target',
+    tip_ml_migrate_btn:'Copies the selection to the target org. Secrets and credentials cannot be copied — see the text above the list.',
     da_tab_wrapup:'Wrap-up codes',
     wu_codes:'WRAP-UP CODES',
     wu_search_ph:'🔍 Search codes…',
@@ -3683,6 +3795,32 @@ const LANGS = {
     da_sum_failed:'échouées',
     da_tab_actions:'Data Actions',
     da_tab_tables:'Data Tables',
+    da_tab_roles:'Rôles',
+    ro_roles:'RÔLES',
+    ro_search_ph:'🔍 Rechercher des rôles…',
+    ro_policies:'groupes de permissions',
+    ro_skipped:'Ignoré (pointe vers des ressources de la source)',
+    roles_note:'Copie les rôles personnalisés avec leurs permissions. Les rôles par défaut existent dans toutes les orgs et ne sont pas migrés. Les permissions avec une condition sur des divisions ou files précises sont ignorées et signalées — sinon elles s\'appliqueraient à tout. Migrez d\'abord les rôles, puis les clients OAuth.',
+    da_tab_oauth:'Clients OAuth',
+    da_tab_integ:'Intégrations',
+    oa_clients:'CLIENTS OAUTH',
+    ig_integrations:'INTÉGRATIONS',
+    oa_search_ph:'🔍 Rechercher des clients…',
+    ig_search_ph:'🔍 Rechercher des intégrations…',
+    ml_migrate_btn:'⚡ Migrer la sélection',
+    ml_loading:'Chargement…',
+    ml_none:'Aucun trouvé.',
+    ml_exists:'Existe déjà dans l\'org cible — ignoré',
+    oa_roles:'rôles',
+    oa_missing:'Ignoré dans la cible',
+    oa_secret_warn:'Les secrets ne peuvent pas être lus dans Genesys : les nouveaux clients ont reçu de NOUVEAUX secrets, affichés uniquement maintenant. Téléchargez-les ci-dessous et conservez-les en lieu sûr.',
+    oa_download_secrets:'💾 Télécharger les secrets (JSON)',
+    oauth_note:'Nom, grant type, URI de redirection, scope et rôles sont copiés (rôles et divisions sont appariés par nom). Le secret est nouveau. Migrez d\'abord les clients, puis les intégrations, puis les data actions.',
+    integ_note:'Crée l\'intégration avec le même type et la même configuration. Les credentials ne peuvent pas être copiés : un client OAuth migré dans la même session est relié automatiquement, le reste est signalé comme travail manuel. L\'intégration n\'est activée que si la source était active et que rien ne manque.',
+    ig_activated:'Activée',
+    ig_inactive:'Créée, mais non activée',
+    ig_todo:'Credential à créer dans la cible',
+    tip_ml_migrate_btn:'Copie la sélection vers l\'org cible. Les secrets et credentials ne peuvent pas être copiés — voir le texte au-dessus de la liste.',
     da_tab_wrapup:'Codes de clôture',
     wu_codes:'CODES DE CLÔTURE',
     wu_search_ph:'🔍 Rechercher des codes…',
@@ -4680,6 +4818,32 @@ const LANGS = {
     da_sum_failed:'mislukt',
     da_tab_actions:'Data Actions',
     da_tab_tables:'Data Tables',
+    da_tab_roles:'Rollen',
+    ro_roles:'ROLLEN',
+    ro_search_ph:'🔍 Zoek rollen…',
+    ro_policies:'rechtengroepen',
+    ro_skipped:'Overgeslagen (verwijst naar resources in de bron)',
+    roles_note:'Kopieert aangepaste rollen met hun rechten. Standaardrollen bestaan in elke org en worden niet gemigreerd. Rechten met een voorwaarde op specifieke divisions of queues worden overgeslagen en gemeld — anders zouden ze voor alles gelden. Migreer eerst rollen, dan OAuth-clients.',
+    da_tab_oauth:'OAuth-clients',
+    da_tab_integ:'Integraties',
+    oa_clients:'OAUTH-CLIENTS',
+    ig_integrations:'INTEGRATIES',
+    oa_search_ph:'🔍 Zoek clients…',
+    ig_search_ph:'🔍 Zoek integraties…',
+    ml_migrate_btn:'⚡ Migreer selectie',
+    ml_loading:'Laden…',
+    ml_none:'Niets gevonden.',
+    ml_exists:'Bestaat al in doel-org — overgeslagen',
+    oa_roles:'rollen',
+    oa_missing:'Overgeslagen in het doel',
+    oa_secret_warn:'Secrets kunnen niet uit Genesys worden gelezen: de nieuwe clients hebben NIEUWE secrets gekregen, die alleen nu worden getoond. Download ze hieronder en bewaar ze veilig.',
+    oa_download_secrets:'💾 Secrets downloaden (JSON)',
+    oauth_note:'Naam, grant type, redirect-URI\'s, scope en rollen worden gekopieerd (rollen en divisions op naam gekoppeld). De secret is nieuw. Migreer eerst clients, dan integraties, dan data actions.',
+    integ_note:'Maakt de integratie aan met hetzelfde type en dezelfde configuratie. Credentials kunnen niet worden gekopieerd: een OAuth-client die in dezelfde sessie is gemigreerd wordt automatisch gekoppeld, de rest wordt gemeld als handwerk. De integratie wordt alleen geactiveerd als de bron actief was en er niets ontbreekt.',
+    ig_activated:'Geactiveerd',
+    ig_inactive:'Aangemaakt, maar niet geactiveerd',
+    ig_todo:'Credential om in het doel aan te maken',
+    tip_ml_migrate_btn:'Kopieert de selectie naar de doel-org. Secrets en credentials kunnen niet worden gekopieerd — zie de tekst boven de lijst.',
     da_tab_wrapup:'Wrap-upcodes',
     wu_codes:'WRAP-UPCODES',
     wu_search_ph:'🔍 Zoek codes…',
@@ -5677,6 +5841,32 @@ const LANGS = {
     da_sum_failed:'fallidas',
     da_tab_actions:'Data Actions',
     da_tab_tables:'Data Tables',
+    da_tab_roles:'Roles',
+    ro_roles:'ROLES',
+    ro_search_ph:'🔍 Buscar roles…',
+    ro_policies:'grupos de permisos',
+    ro_skipped:'Omitido (apunta a recursos del origen)',
+    roles_note:'Copia los roles personalizados con sus permisos. Los roles predeterminados existen en todas las orgs y no se migran. Los permisos con una condición sobre divisiones o colas concretas se omiten y se informan — de lo contrario se aplicarían a todo. Migre primero los roles y después los clientes OAuth.',
+    da_tab_oauth:'Clientes OAuth',
+    da_tab_integ:'Integraciones',
+    oa_clients:'CLIENTES OAUTH',
+    ig_integrations:'INTEGRACIONES',
+    oa_search_ph:'🔍 Buscar clientes…',
+    ig_search_ph:'🔍 Buscar integraciones…',
+    ml_migrate_btn:'⚡ Migrar selección',
+    ml_loading:'Cargando…',
+    ml_none:'No se encontró nada.',
+    ml_exists:'Ya existe en la org de destino — omitido',
+    oa_roles:'roles',
+    oa_missing:'Omitido en el destino',
+    oa_secret_warn:'Los secrets no se pueden leer desde Genesys: los clientes nuevos han recibido secrets NUEVOS, mostrados solo ahora. Descárguelos abajo y guárdelos en un lugar seguro.',
+    oa_download_secrets:'💾 Descargar secrets (JSON)',
+    oauth_note:'Se copian nombre, grant type, URI de redirección, scope y roles (roles y divisiones se emparejan por nombre). El secret es nuevo. Migre primero los clientes, después las integraciones y por último las data actions.',
+    integ_note:'Crea la integración con el mismo tipo y configuración. Las credenciales no se pueden copiar: un cliente OAuth migrado en la misma sesión se enlaza automáticamente, el resto se informa como trabajo manual. La integración solo se activa si el origen estaba activo y no falta nada.',
+    ig_activated:'Activada',
+    ig_inactive:'Creada, pero no activada',
+    ig_todo:'Credencial que crear en el destino',
+    tip_ml_migrate_btn:'Copia la selección a la org de destino. Los secrets y credenciales no se pueden copiar — vea el texto sobre la lista.',
     da_tab_wrapup:'Códigos de cierre',
     wu_codes:'CÓDIGOS DE CIERRE',
     wu_search_ph:'🔍 Buscar códigos…',
@@ -10712,6 +10902,9 @@ function daSetTab(tab) {
   document.getElementById('da-tab-actions').classList.toggle('active', tab === 'actions');
   document.getElementById('da-tab-tables').classList.toggle('active',  tab === 'tables');
   document.getElementById('da-tab-prompts').classList.toggle('active', tab === 'prompts');
+  document.getElementById('da-tab-roles').classList.toggle('active',   tab === 'roles');
+  document.getElementById('da-tab-oauth').classList.toggle('active',   tab === 'oauth');
+  document.getElementById('da-tab-integ').classList.toggle('active',   tab === 'integ');
   document.getElementById('da-tab-wrapup').classList.toggle('active',  tab === 'wrapup');
   document.getElementById('da-tab-check').classList.toggle('active',   tab === 'check');
   document.getElementById('da-check-card').style.display = tab === 'check' ? 'block' : 'none';
@@ -10730,6 +10923,9 @@ function daSetTab(tab) {
   document.getElementById('da-table-card').style.display  = (tab === 'tables'  && srcPicked) ? 'block' : 'none';
   document.getElementById('da-prompt-card').style.display = (tab === 'prompts' && srcPicked) ? 'block' : 'none';
   document.getElementById('da-wrapup-card').style.display = (tab === 'wrapup'  && srcPicked) ? 'block' : 'none';
+  document.getElementById('da-roles-card').style.display  = (tab === 'roles'   && srcPicked) ? 'block' : 'none';
+  document.getElementById('da-oauth-card').style.display  = (tab === 'oauth'   && srcPicked) ? 'block' : 'none';
+  document.getElementById('da-integ-card').style.display  = (tab === 'integ'   && srcPicked) ? 'block' : 'none';
 }
 
 // ── Totaltjek af data actions ────────────────────────────────────────────────
@@ -11162,6 +11358,9 @@ function daSourceChanged() {
   daLoadActions();
   dtLoadTables();
   wuLoadCodes();
+  mlLoad('roles');
+  mlLoad('oauth');
+  mlLoad('integ');
   prLoadPrompts();
 }
 
@@ -11382,6 +11581,140 @@ async function wuMigrateSelected() {
   log(logBox, `\n\u2500\u2500 ${t('da_done')} \u2500\u2500 ${ok} ${t('da_sum_ok')} \u00b7 ${skipped} ${t('da_sum_skipped')} \u00b7 ${failed} ${t('da_sum_failed')}`,
       failed ? 'err' : 'info');
   wuUpdateReady();
+}
+
+// ── OAuth-klienter og integrationer ──────────────────────────────────────────
+// To lister med samme opførsel, så de deler kode. Rækkefølgen i en ny org er
+// OAuth-klienter → integrationer → data actions.
+const ML = {
+  roles: { list: 'roles',         migrate: '/api/roles/migrate',        ids: 'roleIds',        all: [], sel: new Set(), what: 'ro_roles' },
+  oauth: { list: 'oauthclients',  migrate: '/api/oauthclients/migrate', ids: 'clientIds',      all: [], sel: new Set(), what: 'oa_clients' },
+  integ: { list: 'integrations',  migrate: '/api/integrations/migrate', ids: 'integrationIds', all: [], sel: new Set(), what: 'ig_integrations' },
+};
+let mlSecrets = [];   // {name, clientId, secret} fra sidste OAuth-migrering — kun i denne fane, aldrig gemt
+
+function mlSub(k, x) {
+  if (k === 'roles') return `${x.policies} ${t('ro_policies')}`;
+  return k === 'oauth'
+    ? `${x.grant === 'CODE' ? 'Code / PKCE' : x.grant === 'CLIENT-CREDENTIALS' ? 'Client Credentials' : x.grant}${x.roles ? ` · ${x.roles} ${t('oa_roles')}` : ''}`
+    : `${x.type}${x.state && x.state !== 'ENABLED' ? ` · ${x.state}` : ''}`;
+}
+
+async function mlLoad(k) {
+  const m = ML[k], id = document.getElementById('da-source').value;
+  m.all = []; m.sel.clear();
+  const card = document.getElementById(`da-${k}-card`);
+  if (!id) { card.style.display = 'none'; return; }
+  if (daTab === k) card.style.display = 'block';
+  const box = document.getElementById(`${k}-list`);
+  box.innerHTML = `<div style="color:var(--muted);font-size:12px"><span class="spin"></span> ${t('ml_loading')}</div>`;
+  try {
+    const data = await fetch(`/api/customers/${id}/${m.list}`).then(r => r.json());
+    if (data.error) { box.innerHTML = `<div style="color:var(--red);font-size:12px">${escapeHtml(data.error)}</div>`; return; }
+    m.all = data;
+    mlFilter(k);
+  } catch (e) {
+    box.innerHTML = `<div style="color:var(--red);font-size:12px">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function mlVisible(k) {
+  const q = (document.getElementById(`${k}-search`)?.value || '').toLowerCase();
+  return ML[k].all.filter(x => !q || x.name.toLowerCase().includes(q));
+}
+
+function mlFilter(k) {
+  const m = ML[k], list = mlVisible(k);
+  document.getElementById(`${k}-count`).textContent = list.length;
+  document.getElementById(`${k}-list`).innerHTML = !list.length
+    ? `<div style="color:var(--muted);font-size:12px;padding:8px 0">${t('ml_none')}</div>`
+    : list.map(x => `
+      <div class="migrate-flow-item ${m.sel.has(x.id) ? 'selected' : ''}" onclick="mlToggle('${k}','${x.id}')">
+        <div style="min-width:0">
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(x.name)}</div>
+          <div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-top:2px">${escapeHtml(mlSub(k, x))}</div>
+        </div>
+        <span style="color:var(--accent);font-size:16px;width:18px;text-align:center;flex-shrink:0">${m.sel.has(x.id) ? '\u2713' : ''}</span>
+      </div>`).join('');
+  document.getElementById(`${k}-sel-count`).textContent = m.sel.size;
+  mlUpdateReady(k);
+}
+
+function mlToggle(k, id) { const s = ML[k].sel; if (s.has(id)) s.delete(id); else s.add(id); mlFilter(k); }
+function mlSelectAll(k) { mlVisible(k).forEach(x => ML[k].sel.add(x.id)); mlFilter(k); }
+function mlClearSel(k)  { ML[k].sel.clear(); mlFilter(k); }
+
+function mlUpdateReady(k) {
+  const btn = document.getElementById(`${k}-migrate-btn`);
+  if (!btn) return;
+  const src = document.getElementById('da-source')?.value || '';
+  const tgt = document.getElementById('da-target')?.value || '';
+  btn.disabled = !(src && tgt && src !== tgt && ML[k].sel.size);
+}
+
+function mlDownloadSecrets() {
+  const blob = new Blob([JSON.stringify(mlSecrets, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `oauth-secrets-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+}
+
+async function mlMigrate(k) {
+  const m = ML[k];
+  const sourceId = document.getElementById('da-source').value;
+  const targetId = document.getElementById('da-target').value;
+  if (!sourceId || !targetId) return alert(t('da_err_select'));
+  if (sourceId === targetId) return alert(t('da_err_same'));
+  if (!m.sel.size) return;
+
+  const logBox = document.getElementById('da-logbox');
+  document.getElementById('da-log').style.display = 'block';
+  logBox.innerHTML = '';
+  document.getElementById(`${k}-migrate-btn`).disabled = true;
+  log(logBox, `\u27f6 ${t('da_migrating')}: ${m.sel.size} ${t(m.what).toLowerCase()}`, 'info');
+  let ok = 0, skipped = 0, failed = 0;
+  try {
+    const data = await fetch(m.migrate, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sourceId, targetId, [m.ids]: [...m.sel] })
+    }).then(r => r.json());
+    if (data.error) { log(logBox, `  \u2717 ${data.error}`, 'err'); failed++; }
+    else {
+      if (k === 'oauth') mlSecrets = [];
+      for (const r of data.results) {
+        const name = r.name || r.id;
+        if (r.status === 'created') {
+          ok++;
+          log(logBox, `  \u2713 ${name}`, 'ok');
+          if (k === 'oauth') {
+            if (r.secret) { mlSecrets.push({ name, clientId: r.newClientId, secret: r.secret }); log(logBox, `    Client ID: ${r.newClientId}`, 'info'); }
+            else log(logBox, `    Client ID: ${r.newClientId}`, 'info');
+            for (const x of r.missing || []) log(logBox, `    \u26a0 ${t('oa_missing')}: ${x}`, 'info');
+          } else if (k === 'roles') {
+            for (const x of r.missing || []) log(logBox, `    \u26a0 ${t('ro_skipped')}: ${x}`, 'info');
+          } else {
+            log(logBox, r.activated ? `    ${t('ig_activated')}` : `    ${t('ig_inactive')}`, 'info');
+            for (const x of r.todo || []) log(logBox, `    \u26a0 ${t('ig_todo')}: ${x}`, 'info');
+          }
+        }
+        else if (r.status === 'exists') { log(logBox, `  \u26a0 ${name}: ${t('ml_exists')}`, 'info'); skipped++; }
+        else { log(logBox, `  \u2717 ${name}: ${r.message}`, 'err'); failed++; }
+      }
+      if (k === 'oauth' && mlSecrets.length) {
+        log(logBox, `\n\u26a0 ${t('oa_secret_warn')}`, 'info');
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-secondary btn-sm';
+        btn.textContent = t('oa_download_secrets');
+        btn.onclick = mlDownloadSecrets;
+        logBox.appendChild(btn);
+      }
+    }
+  } catch (e) { log(logBox, `  \u2717 ${e.message}`, 'err'); failed++; }
+  log(logBox, `\n\u2500\u2500 ${t('da_done')} \u2500\u2500 ${ok} ${t('da_sum_ok')} \u00b7 ${skipped} ${t('da_sum_skipped')} \u00b7 ${failed} ${t('da_sum_failed')}`,
+      failed ? 'err' : 'info');
+  mlUpdateReady(k);
 }
 
 // ── Kunde → gruppe → miljø ────────────────────────────────────────────────────
