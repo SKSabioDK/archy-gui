@@ -5,7 +5,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { mapRoleDivisions, buildOauthClientBody, buildRolePolicies } = require('../server.js');
+const { mapRoleDivisions, buildOauthClientBody, buildRolePolicies, missingRolesFor } = require('../server.js');
 
 const rod = path.join(__dirname, '..');
 const server = fs.readFileSync(path.join(rod, 'server.js'), 'utf8');
@@ -61,8 +61,15 @@ test('rolle-migrering er skrivende og målbeskyttet', () => {
   assert.match(server, /'\/api\/roles\/migrate':\s+'targetId'/);
 });
 
+test('roller der mangler i målet findes ud fra de valgte klienter, standardroller markeret', () => {
+  const roller = [{ id: 'a', name: 'Admin', default: true }, { id: 'b', name: 'Egen' }, { id: 'c', name: 'Findes' }];
+  const klienter = [{ roleDivisions: [{ roleId: 'a' }, { roleId: 'b' }, { roleId: 'c' }, { roleId: 'b' }] }];
+  const r = missingRolesFor(klienter, roller, new Set(['Findes']));
+  assert.deepEqual(r, [{ id: 'a', name: 'Admin', default: true }, { id: 'b', name: 'Egen', default: false }]);
+});
+
 test('fanerne har tekst på alle fem sprog', () => {
-  for (const key of ['da_tab_roles', 'ro_roles', 'ro_search_ph', 'ro_policies', 'ro_skipped', 'roles_note', 'da_tab_oauth', 'da_tab_integ', 'oa_clients', 'ig_integrations', 'oa_search_ph', 'ig_search_ph',
+  for (const key of ['oa_roles_confirm', 'oa_builtin_missing', 'da_tab_roles', 'ro_roles', 'ro_search_ph', 'ro_policies', 'ro_skipped', 'roles_note', 'da_tab_oauth', 'da_tab_integ', 'oa_clients', 'ig_integrations', 'oa_search_ph', 'ig_search_ph',
     'ml_migrate_btn', 'ml_loading', 'ml_none', 'ml_exists', 'oa_roles', 'oa_missing', 'oa_secret_warn',
     'oa_download_secrets', 'oauth_note', 'integ_note', 'ig_activated', 'ig_inactive', 'ig_todo', 'tip_ml_migrate_btn']) {
     const antal = (html.match(new RegExp(`^[ \t]*${key}:`, 'gm')) || []).length;

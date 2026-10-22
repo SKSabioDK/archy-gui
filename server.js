@@ -3050,6 +3050,40 @@ app.get('/api/customers/:id/oauthclients', async (req, res) => {
   }
 });
 
+// Hvilke roller de valgte klienter bruger, som mangler i målet? Skriver intet.
+// Standardroller kan ikke oprettes og meldes med default: true.
+function missingRolesFor(clients, srcRoles, tgtRoleNames) {
+  const byId = new Map(srcRoles.map(r => [r.id, r]));
+  const seen = new Map();
+  for (const c of clients) {
+    for (const rd of c.roleDivisions || []) {
+      const r = byId.get(rd.roleId);
+      if (r && !tgtRoleNames.has(r.name) && !seen.has(r.id)) seen.set(r.id, { id: r.id, name: r.name, default: !!r.default });
+    }
+  }
+  return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+app.post('/api/oauthclients/plan', async (req, res) => {
+  const { sourceId, targetId, clientIds } = req.body;
+  const source = loadCustomers().find(c => c.id === sourceId);
+  const target = loadCustomers().find(c => c.id === targetId);
+  if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
+  try {
+    const { token: srcToken, apiBase: srcBase } = await getToken(source);
+    const { token: tgtToken, apiBase: tgtBase } = await getToken(target);
+    const [srcClients, srcRoles, tgtRoles] = await Promise.all([
+      listAll(srcBase, srcToken, '/api/v2/oauth/clients'),
+      listAll(srcBase, srcToken, '/api/v2/authorization/roles'),
+      listAll(tgtBase, tgtToken, '/api/v2/authorization/roles'),
+    ]);
+    const chosen = srcClients.filter(c => (clientIds || []).includes(c.id));
+    res.json({ ok: true, missingRoles: missingRolesFor(chosen, srcRoles, new Set(tgtRoles.map(r => r.name))) });
+  } catch (e) {
+    res.status(500).json({ error: describeApiError(e) });
+  }
+});
+
 app.post('/api/oauthclients/migrate', async (req, res) => {
   const { sourceId, targetId, clientIds } = req.body;
   const source = loadCustomers().find(c => c.id === sourceId);
@@ -3081,6 +3115,12 @@ app.post('/api/oauthclients/migrate', async (req, res) => {
       if (!src) { results.push({ id, status: 'failed', message: 'Klienten findes ikke i kilden' }); continue; }
       if (tgtNames.has(src.name.toLowerCase())) { results.push({ id, name: src.name, status: 'exists' }); continue; }
       const { mapped, missing } = mapRoleDivisions(src.roleDivisions, srcRoleName, srcDivName, tgtRoleId, tgtDivId);
+      if (src.authorizedGrantType === 'CLIENT-CREDENTIALS' && !mapped.length) {
+        // Genesys kræver mindst én rolle på en client-credentials-klient.
+        results.push({ id, name: src.name, status: 'failed', missing,
+          message: 'No roles could be mapped to the target org — client credentials needs at least one role. Migrate the roles first (Roles tab).' });
+        continue;
+      }
       try {
         const r = await axios.post(`${tgtBase}/api/v2/oauth/clients`, buildOauthClientBody(src, mapped),
           { headers: { Authorization: `Bearer ${tgtToken}`, 'Content-Type': 'application/json' } });
@@ -3091,7 +3131,9 @@ app.post('/api/oauthclients/migrate', async (req, res) => {
           newClientId: r.data.id, secret, missing });
         addLog('SUCCESS', `OAuth client "${src.name}" migrated to ${target.name}`, source.name, 'MIGRATE');
       } catch (e) {
-        const msg = describeApiError(e);
+        let msg = describeApiError(e);
+        if (/bad\.client\.role/.test(msg))
+          msg += ' — The logged-in user must hold the roles the client gets. Give the user these roles (or the Admin role) in the target org and try again.';
         results.push({ id, name: src.name, status: 'failed', message: msg });
         addLog('ERROR', `OAuth client migration failed: ${msg}`, source.name, 'MIGRATE');
       }
@@ -8777,7 +8819,7 @@ if (require.main === module) {
 // især haft mindst én fejl der nåede ud til brugeren, og de er samtidig de
 // eneste der kan efterprøves uden en rigtig org. Se test/*.test.js.
 module.exports = {
-  sanitizeDatatableSchema, mapRoleDivisions, buildOauthClientBody, buildRolePolicies,
+  sanitizeDatatableSchema, mapRoleDivisions, buildOauthClientBody, buildRolePolicies, missingRolesFor,
   app, tokenStore, getToken, loadSessions, saveSessions, setSessionPersist, SESSION_FILE,
   // konventioner
   STAGES, VERSION_SUFFIX, stageListError, alignmentPlan, MAX_ALIGN_PUBLISHES, prefixRenamePlan,

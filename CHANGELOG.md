@@ -5,6 +5,21 @@
 
 ---
 
+### v1.58.1
+---
+**🇩🇰 Dansk**
+
+- **Migrering af OAuth-klienter spørger nu om rollerne.** Før klienterne oprettes, tjekker programmet hvilke af deres roller der mangler i mål-org'en og spørger, om de skal migreres først. Standardroller der mangler, og som ikke kan oprettes, nævnes i loggen.
+- **Klar fejl i stedet for en afvisning fra Genesys.** En Client Credentials-klient uden en eneste rolle i målet forsøges ikke oprettet, og loggen siger at rollerne skal migreres først. Afviser Genesys med *bad.client.role*, står der at den loggede bruger selv skal have rollerne i målet.
+- En ny test.
+
+**🇬🇧 English**
+- **OAuth client migration now asks about the roles.** Before the clients are created, the app checks which of their roles are missing in the target org and asks whether to migrate them first. Missing built-in roles, which cannot be created, are listed in the log.
+- **A clear error instead of a Genesys rejection.** A Client Credentials client with no role at all in the target is not attempted, and the log says the roles must be migrated first. If Genesys rejects with *bad.client.role*, the message says the logged-in user must hold the roles in the target.
+- One new test.
+
+---
+
 ### v1.58.0
 ---
 **🇩🇰 Dansk**
