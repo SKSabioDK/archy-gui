@@ -5,6 +5,19 @@
 
 ---
 
+### v1.58.3
+---
+**🇩🇰 Dansk**
+
+- **Krav: Node.js med sikkerhedsrettelserne fra 21. oktober 2026.** Mindst 22.23.4, 24.22.1 eller 26.12.1 — rettelserne omfatter bl.a. en Brotli-dekoderfejl, der kan give fjernkørsel af kode, og flere fejl i TLS-certifikattjekket. Kravet står i `package.json` (`engines`) og README, og programmet skriver en advarsel ved start, hvis versionen er for gammel.
+- Tre nye tests.
+
+**🇬🇧 English**
+- **Requirement: Node.js with the security fixes from 21 October 2026.** At least 22.23.4, 24.22.1 or 26.12.1 — the fixes include a Brotli decoder flaw that allows remote code execution and several flaws in TLS certificate validation. The requirement is in `package.json` (`engines`) and the README, and the app prints a warning at start if the version is too old.
+- Three new tests.
+
+---
+
 ### v1.58.2
 ---
 **🇩🇰 Dansk**

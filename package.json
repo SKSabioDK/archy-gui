@@ -1,8 +1,11 @@
 {
   "name": "archy-gui",
-  "version": "1.58.2",
+  "version": "1.58.3",
   "description": "",
   "main": "index.js",
+  "engines": {
+    "node": ">=22.23.4 <23 || >=24.22.1 <25 || >=26.12.1"
+  },
   "scripts": {
     "test": "node --test \"test/*.test.js\""
   },
