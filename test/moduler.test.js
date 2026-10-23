@@ -56,3 +56,21 @@ test('moduler tager prompts og scripts med', () => {
   assert.match(fn, /for \(const kind of \['datatable', 'dataaction', \.\.\.COPYABLE_KINDS\]\)/);
   assert.match(fn, /url = kind === 'prompt' \? '\/api\/prompts\/migrate' : '\/api\/scripts\/migrate'/);
 });
+
+// Falck US: den migrerede action fik målintegrationens navn som kategori, men
+// flowet pegede stadig på kildens kategori — importen fejlede med "no matches".
+test('en action der ligger under én anden kategori peges over automatisk', () => {
+  const yaml = YAML;
+  const ta = [{ category: 'Genesys Cloud Survey Data Actions', name: 'EA Ws-payment retrieveinfobloom Modified 20241119' }];
+  const e = s.autoDataActionEntries(yaml, ta, []);
+  assert.equal(e.length, 1);
+  assert.equal(e[0].to.category, 'Genesys Cloud Survey Data Actions');
+  const r = s.applyDataActionMap(yaml, e, ta);
+  assert.match(r.yaml, /Genesys Cloud Survey Data Actions:\s*\n\s+secureDataAction:/);
+});
+
+test('flere kandidater overlades til brugeren', () => {
+  const n = 'EA Ws-payment retrieveinfobloom Modified 20241119';
+  const ta = [{ category: 'A', name: n }, { category: 'B', name: n }];
+  assert.deepEqual(s.autoDataActionEntries(YAML, ta, []), []);
+});

@@ -6562,6 +6562,20 @@ function classifyDataActionRefs(refs, targetActions, saved) {
   });
 }
 
+// En reference der ikke findes i målet, men hvis navn findes under præcis én
+// anden kategori, peges over dér. Importen ville ellers fejle med "no matches":
+// en migreret action får målintegrationens navn som kategori, ikke kildens.
+// Et gemt eller sendt valg går forud; flere kandidater overlades til brugeren.
+function autoDataActionEntries(yaml, targetActions, entries) {
+  const out = [];
+  for (const r of classifyDataActionRefs(scanDataActionRefs(yaml), targetActions, entries)) {
+    if (r.status === 'choose' && r.candidates.length === 1) {
+      out.push({ from: { category: r.category, name: r.name }, to: { ...r.candidates[0] } });
+    }
+  }
+  return out;
+}
+
 // Skriver referencerne om efter en liste af valg. Rører kun en reference der
 // IKKE findes i målet, og kun hvis valget peger på en action der gør.
 function applyDataActionMap(yaml, entries, targetActions) {
@@ -8915,6 +8929,7 @@ app.post('/api/migrate/commit', async (req, res) => {
       const { token: tt, apiBase: tb } = await getToken(target);
       daTarget = await listDataActions(tt, tb);
       daEntries = mergeDaEntries(await loadDataActionMap(source, target), sendt);
+      daEntries = mergeDaEntries(autoDataActionEntries(fs.readFileSync(resolved, 'utf8'), daTarget, daEntries), daEntries);
     }
   } catch (e) {
     addLog('WARN', `Could not look up the data action choices for "${flowName}": ${describeApiError(e)}`, target.name, 'MIGRATE');
@@ -9408,7 +9423,7 @@ module.exports = {
   // function data actions
   missingFunctionActions, FUNCTION_INTEGRATION,
   // data actions i flowet
-  scanDataActionRefs, classifyDataActionRefs, applyDataActionMap, mergeDaEntries, validDaEntry,
+  scanDataActionRefs, classifyDataActionRefs, applyDataActionMap, autoDataActionEntries, mergeDaEntries, validDaEntry,
   compareDataActionSets, summarizeDataActionRows, compareContracts, actionCategoryFor, planDataActionPlacement,
   buildMigrationVerdict, groupFdaConsumers,
   // miljøer og præfikser

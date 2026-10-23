@@ -5,6 +5,19 @@
 
 ---
 
+### v1.59.7
+---
+**🇩🇰 Dansk**
+
+- **Migreret action findes nu under den kategori flowet leder efter.** En action migreret til Falck US blev oprettet under målintegrationens navn ("Genesys Cloud Survey Data Actions"), men flowet pegede stadig på kildens kategori, så importen fejlede med *Error details: no matches*. Findes navnet i målet under præcis én anden kategori, peges referencen nu over dér ved import (og logges). Flere kandidater overlades stadig til brugeren.
+- To nye tests.
+
+**🇬🇧 English**
+- **A migrated action is found under the category the flow looks for.** An action migrated to Falck US was created under the target integration's name ("Genesys Cloud Survey Data Actions"), but the flow still pointed at the source category, so the import failed with *Error details: no matches*. When the name exists in the target under exactly one other category, the reference is now pointed there on import (and logged). Several candidates are still left to the user.
+- Two new tests.
+
+---
+
 ### v1.59.6
 ---
 **🇩🇰 Dansk**
