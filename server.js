@@ -203,7 +203,14 @@ function redactSecrets(text) {
   return s;
 }
 
+// Er man ikke logget ind endnu, er det ikke en fejl men en opfordring til at
+// trykke Login — det sker hver gang siden åbnes, før PKCE-login er gennemført.
+function logLevelFor(level, message) {
+  return level === 'ERROR' && /OAuth token missing for "/.test(String(message)) ? 'INFO' : level;
+}
+
 function addLog(level, message, customer = null, action = 'SYSTEM') {
+  level = logLevelFor(level, message);
   const entry = {
     ts: new Date().toISOString(),
     level,          // INFO | SUCCESS | WARN | ERROR
@@ -6384,7 +6391,10 @@ function scanYamlDependencies(yaml) {
     // ── Øvrige org-ressourcer ─────────────────────────────────────────────
     knowledgebase: grab(/knowledgeBase:\s*\n\s*name:\s*["']?([^'"\n]+)["']?/gm),
     sttengine:     grab(/speechToText:\s*\n\s*engine:\s*\n\s*name:\s*["']?([^'"\n]+)["']?/gm),
-    group:         grab(/targetGroup:\s*\n\s*lit:\s*\n\s*name:\s*["']?([^'"\n]+)["']?/gm)
+    group:         grab(/targetGroup:\s*\n\s*lit:\s*\n\s*name:\s*["']?([^'"\n]+)["']?/gm),
+    // "Set Utilization Label": utilizationLabel: \n lit: \n name: X. Et udtryk
+    // (exp:) slås op når flowet kører og kan ikke tjekkes her.
+    utilizationlabel: grab(/utilizationLabel:\s*\n\s*lit:\s*\n\s*name:[ \t]*["']?([^'"\n]+?)["']?[ \t]*$/gm)
   };
 }
 
@@ -6419,7 +6429,8 @@ async function lookupExisting(kind, names, token, apiBase) {
     targetflow:   { url: '/api/v2/flows', size: 100 },
     knowledgebase:{ url: '/api/v2/knowledge/knowledgebases', size: 100 },
     sttengine:    { url: '/api/v2/integrations/speech/stt/engines', size: 100 },
-    group:        { url: '/api/v2/groups', size: 100 }
+    group:        { url: '/api/v2/groups', size: 100 },
+    utilizationlabel: { url: '/api/v2/routing/utilization/labels', size: 100 }
   };
   if (bulk[kind]) {
     let page = 1;
@@ -9408,6 +9419,7 @@ if (require.main === module) {
 // især haft mindst én fejl der nåede ud til brugeren, og de er samtidig de
 // eneste der kan efterprøves uden en rigtig org. Se test/*.test.js.
 module.exports = {
+  logLevelFor,
   nodeSecurityStatus, countsAsExisting, scanTtsEngines, missingTtsEngines, replaceTtsEngines, applyClientScopes, dropRejectedLogin, flowOwnDivision, divisionProblem, appsBaseOf, COPYABLE_KINDS, credentialChangeError, forgetLogin, keepsOrgOnClientChange,
   sanitizeDatatableSchema, mapRoleDivisions, buildOauthClientBody, buildRolePolicies, missingRolesFor, missingDivisionsFor,
   app, tokenStore, getToken, loadSessions, saveSessions, setSessionPersist, SESSION_FILE,

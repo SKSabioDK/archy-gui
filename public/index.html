@@ -533,7 +533,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.59.7 · Archy GUI</div>
+    <div class="version" id="app-version">v1.59.9 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -7740,7 +7740,7 @@ function clearMigrateSelection() {
 
 function updateMigrateBtn() {
   const n = selectedMigrateFlows.size;
-  document.getElementById('m-runBtn').disabled = n === 0;
+  document.getElementById('m-runBtn').disabled = n === 0 || migrationRunning;
   const cntEl = document.getElementById('m-sel-count');
   if (cntEl) cntEl.textContent = n;
 }
@@ -7811,7 +7811,23 @@ function updateMigrateAuthStatus() {
   _checkMigrateAuth('m-target-auth', document.getElementById('m-target').value);
 }
 
+// Knappen låses mens migreringen kører, så et ekstra klik ikke starter den én
+// gang til, og viser at der arbejdes. Loggen får en tydelig slutlinje.
+let migrationRunning = false;
 async function runMigration() {
+  if (migrationRunning) return;
+  const btn = document.getElementById('m-runBtn');
+  const label = btn ? btn.innerHTML : '';
+  migrationRunning = true;
+  if (btn) { btn.disabled = true; btn.innerHTML = `<span class="spin"></span> ${t('migrating_msg')}`; }
+  try { await _runMigration(); }
+  finally {
+    migrationRunning = false;
+    if (btn) { btn.innerHTML = label; btn.disabled = selectedMigrateFlows.size === 0; }
+  }
+}
+
+async function _runMigration() {
   const sourceId = document.getElementById('m-source').value;
   const targetId = document.getElementById('m-target').value;
   const action = document.getElementById('m-action').value;

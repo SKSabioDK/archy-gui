@@ -434,3 +434,10 @@ test('rigtige credentials fra customers.json slipper ikke igennem', () => {
     assert.ok(ud.includes(ids[i].slice(0, 8)), 'de første 8 tegn skal blive stående, så man kan se HVILKEN klient');
   }
 });
+
+test('manglende OAuth-token er en info, ikke en fejl', () => {
+  const s = require('../server.js');
+  assert.equal(s.logLevelFor('ERROR', 'Flows error for X: OAuth token missing for "X" — click the Login button'), 'INFO');
+  assert.equal(s.logLevelFor('ERROR', 'Flows error for X: 500'), 'ERROR');
+  assert.equal(s.logLevelFor('WARN', 'OAuth token missing for "X"'), 'WARN');
+});

@@ -9,7 +9,8 @@ echo Starting Archy GUI on port %PORT%...
 
 REM Stop en tidligere instans paa porten
 for /f "tokens=5" %%a in ('netstat -aon 2^>nul ^| findstr /r /c:":%PORT% .*LISTENING"') do (
-    taskkill /PID %%a /F >nul 2>&1
+    echo Stopping the running instance on port %PORT% ^(PID %%a^)...
+    taskkill /PID %%a /F /T >nul 2>&1
 )
 
 REM Norton (og andre TLS-inspicerende proxyer) gensignerer HTTPS med et eget

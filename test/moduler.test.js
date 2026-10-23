@@ -74,3 +74,20 @@ test('flere kandidater overlades til brugeren', () => {
   const ta = [{ category: 'A', name: n }, { category: 'B', name: n }];
   assert.deepEqual(s.autoDataActionEntries(YAML, ta, []), []);
 });
+
+// Falck US: "Set Utilization Label" pegede på en label målet ikke havde, men den
+// blev ikke regnet som en afhængighed — så tjekket meldte "alt findes".
+test('utilization labels findes som afhængigheder', () => {
+  const y = [
+    '- setUtilizationLabel:',
+    '    name: Set Utilization Label',
+    '    utilizationLabel:',
+    '      lit:',
+    '        name: Emergency Call',
+    '- setUtilizationLabel:',
+    '    utilizationLabel:',
+    '      exp: Task.Label',
+    ''
+  ].join('\n');
+  assert.deepEqual(s.scanYamlDependencies(y).utilizationlabel, ['Emergency Call']);
+});

@@ -5,6 +5,36 @@
 
 ---
 
+### v1.59.9
+---
+**🇩🇰 Dansk**
+
+- **Manglende login er en info, ikke en fejl.** Åbner man en kunde, man ikke er logget ind på endnu, stod der en rød *ERROR* i systemloggen. Nu er det en *INFO* — man skal blot trykke Login.
+- **start.bat siger det, når den lukker en kørende instans.** Den lukkede allerede en server på samme port før start; nu skrives det i vinduet, og hele procestræet lukkes.
+- En ny test.
+
+**🇬🇧 English**
+- **A missing login is info, not an error.** Opening a customer you are not logged in to yet showed a red *ERROR* in the system log. It is now an *INFO* — just press Login.
+- **start.bat says when it closes a running instance.** It already stopped a server on the same port before starting; it now says so in the window and closes the whole process tree.
+- One new test.
+
+---
+
+### v1.59.8
+---
+**🇩🇰 Dansk**
+
+- **Utilization labels tjekkes.** Et flow med *Set Utilization Label* fejlede ved import med *Error details: no matches ('utilizationLabel' …)*, fordi labelen ikke blev regnet som en afhængighed, og tjekket meldte "alle afhængigheder findes". Nu læses den, slås op i målet og meldes som manglende, før noget importeres. Labels kan ikke oprettes herfra — opret dem i målet.
+- **Kør Migration låses mens den kører.** Knappen viser nu at der arbejdes og kan ikke trykkes to gange, så migreringen ikke starter dobbelt.
+- En ny test.
+
+**🇬🇧 English**
+- **Utilization labels are checked.** A flow with *Set Utilization Label* failed on import with *Error details: no matches ('utilizationLabel' …)*, because the label was not counted as a dependency and the check said "all dependencies exist". It is now read, looked up in the target and reported as missing before anything is imported. Labels cannot be created from here — create them in the target.
+- **Run Migration is locked while it runs.** The button now shows that work is in progress and cannot be pressed twice, so the migration does not start twice.
+- One new test.
+
+---
+
 ### v1.59.7
 ---
 **🇩🇰 Dansk**
