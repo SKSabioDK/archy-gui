@@ -1712,6 +1712,7 @@ const PROD_WRITE_ROUTES = {
   '/api/integrations/migrate':    'targetId',
   '/api/data-actions/map':        'targetId',
   '/api/prompts/migrate':         'targetId',
+  '/api/scripts/migrate':         'targetId',
   '/api/surveyforms/migrate':     'targetId',
   '/api/divisions/create':        'targetId',
   '/api/prefix/apply':            'envId'
@@ -6858,6 +6859,132 @@ app.post('/api/prompts/migrate', async (req, res) => {
   }
 });
 
+// ── Scripts ───────────────────────────────────────────────────────────────────
+
+// Scripter-importen ligger ikke på api.<region> men på apps.<region> — samme
+// vej som Genesys' egen "Import" i Scripter og CX as Code bruger.
+const appsBaseOf = apiBase => String(apiBase).replace('://api.', '://apps.');
+
+async function listScripts(apiBase, token, name) {
+  const H = { headers: { Authorization: `Bearer ${token}` } };
+  let all = [], page = 1;
+  while (true) {
+    const r = await axios.get(`${apiBase}/api/v2/scripts`, {
+      ...H, params: { pageSize: 100, pageNumber: page, ...(name ? { name } : {}) }
+    });
+    const e = r.data.entities || [];
+    all = all.concat(e);
+    if (e.length < 100) break;
+    page++;
+  }
+  return all;
+}
+
+async function publishedScriptIds(apiBase, token) {
+  const ids = new Set();
+  let page = 1;
+  while (true) {
+    const r = await axios.get(`${apiBase}/api/v2/scripts/published`, {
+      headers: { Authorization: `Bearer ${token}` }, params: { pageSize: 100, pageNumber: page }
+    });
+    const e = r.data.entities || [];
+    for (const s of e) ids.add(s.id);
+    if (e.length < 100) break;
+    page++;
+  }
+  return ids;
+}
+
+app.get('/api/customers/:id/scripts', async (req, res) => {
+  const customer = loadCustomers().find(c => c.id === req.params.id);
+  if (!customer) return res.status(404).json({ error: 'Not found' });
+  try {
+    const { token, apiBase } = await getToken(customer);
+    const all = await listScripts(apiBase, token);
+    let published = new Set();
+    try { published = await publishedScriptIds(apiBase, token); } catch (_) { /* vises blot uden mærke */ }
+    res.json(all
+      .sort((a, b) => String(a.name).localeCompare(String(b.name)))
+      .map(s => ({ id: s.id, name: s.name, published: published.has(s.id), modifiedDate: s.modifiedDate || null })));
+  } catch (e) {
+    res.status(500).json({ error: describeApiError(e) });
+  }
+});
+
+// Et script flyttes som helhed: eksportér fra kilden, importér i målet og
+// publicér, hvis det var publiceret i kilden. Et flow peger på den publicerede
+// udgave, så et upubliceret script ville stadig mangle for flowet.
+app.post('/api/scripts/migrate', async (req, res) => {
+  const { sourceId, targetId, scriptName } = req.body;
+  const source = loadCustomers().find(c => c.id === sourceId);
+  const target = loadCustomers().find(c => c.id === targetId);
+  if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
+  if (!scriptName) return res.status(400).json({ error: 'scriptName mangler' });
+
+  const trail = [];
+  try {
+    const { token: srcToken, apiBase: srcBase } = await getToken(source);
+    const SH = { headers: { Authorization: `Bearer ${srcToken}` } };
+    const hit = (await listScripts(srcBase, srcToken, scriptName)).find(s => s.name === scriptName);
+    if (!hit) return res.status(400).json({ error: `Script "${scriptName}" findes ikke i ${source.name}` });
+    let srcPublished = false;
+    try { await axios.get(`${srcBase}/api/v2/scripts/published/${hit.id}`, SH); srcPublished = true; }
+    catch (e) { if (e.response?.status !== 404) throw e; }
+
+    const { token: tgtToken, apiBase: tgtBase } = await getToken(target);
+    const TH = { headers: { Authorization: `Bearer ${tgtToken}` } };
+    if ((await listScripts(tgtBase, tgtToken, scriptName)).some(s => s.name === scriptName))
+      return res.status(409).json({ error: 'already_exists', message: `Script "${scriptName}" findes allerede i ${target.name}` });
+
+    // Eksporten giver en midlertidig download-URL til script-filen
+    const ex = await axios.post(`${srcBase}/api/v2/scripts/${hit.id}/export`, {},
+      { headers: { ...SH.headers, 'Content-Type': 'application/json' } });
+    if (!ex.data?.url) throw new Error('The script export returned no download URL');
+    const file = await axios.get(ex.data.url, { responseType: 'arraybuffer', timeout: 60000 });
+    trail.push(`✓ export (${Math.round(file.data.length / 1024)} kB)`);
+
+    const form = new FormData();
+    form.append('file', new Blob([file.data], { type: 'application/json' }), 'script.json');
+    form.append('scriptName', scriptName);
+    const up = await fetch(`${appsBaseOf(tgtBase)}/uploads/v2/scripter`, {
+      method: 'POST', headers: { Authorization: `Bearer ${tgtToken}` }, body: form
+    });
+    if (!up.ok) throw new Error(`Script upload answered ${up.status}: ${(await up.text()).slice(0, 300)}`);
+    const { correlationId } = await up.json();
+    if (!correlationId) throw new Error('Script upload returned no correlationId');
+
+    // Importen kører asynkront hos Genesys — vent på svaret
+    let status = null;
+    for (let i = 0; i < 30; i++) {
+      const s = (await axios.get(`${tgtBase}/api/v2/scripts/uploads/${correlationId}/status`,
+        { ...TH, params: { longPoll: true } })).data;
+      if (s.succeeded === true) { status = s; break; }
+      if (s.succeeded === false && s.message) throw new Error(`Script import failed: ${s.message}`);
+      await new Promise(r => setTimeout(r, 1000));
+    }
+    if (!status) throw new Error('Script import did not finish within 30 seconds');
+    trail.push('✓ import');
+
+    const created = (await listScripts(tgtBase, tgtToken, scriptName)).find(s => s.name === scriptName);
+    if (!created) throw new Error(`Script "${scriptName}" was imported but cannot be found in ${target.name}`);
+    if (srcPublished) {
+      await axios.post(`${tgtBase}/api/v2/scripts/published`, { scriptId: created.id },
+        { headers: { ...TH.headers, 'Content-Type': 'application/json' } });
+      trail.push('✓ publish');
+    } else {
+      trail.push('⚠ ikke publiceret i kilden — står som kladde i målet');
+    }
+
+    addLog('SUCCESS', `Script "${scriptName}" migrated to ${target.name}` + (srcPublished ? ' and published' : ' (draft)'),
+      source.name, 'MIGRATE');
+    res.json({ ok: true, id: created.id, name: created.name, published: srcPublished, trail });
+  } catch (e) {
+    const msg = describeApiError(e);
+    addLog('ERROR', `Script "${scriptName}" failed: ${msg}`, target.name, 'MIGRATE');
+    res.status(500).json({ error: msg, trail });
+  }
+});
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 // Genesys svarer typisk 400 med en intetsigende "Bad Request" i .message, mens
@@ -7828,6 +7955,8 @@ app.post('/api/import', async (req, res) => {
 // Referencer der peger på et andet FLOW. De kan migreres med samme maskineri
 // som alt andet — et common module er bare et flow af typen COMMONMODULE.
 const FLOW_KINDS = new Set(['commonmodule', 'botflow', 'targetflow']);
+// Ressourcer der kopieres hele fra kilden ved navn: user prompts (med lyd) og scripts
+const COPYABLE_KINDS = new Set(['prompt', 'script']);
 
 // Migrerer ét flow som afhængighed af et andet. Modulet kan selv have
 // afhængigheder — også andre common modules — så de tages først, nedefra og op.
@@ -8195,7 +8324,7 @@ async function analyzeFlowForMigration(source, target, flowName, flowType, kilde
         const iMaal = depNameIn(kind, name, target, source);
         const ok = existing.has(iMaal);
         results.push({ kind, name, ok, targetName: iMaal !== name ? iMaal : undefined });
-        if (!ok && (kind === 'datatable' || kind === 'dataaction' || FLOW_KINDS.has(kind))) needSource.push(kind);
+        if (!ok && (kind === 'datatable' || kind === 'dataaction' || COPYABLE_KINDS.has(kind) || FLOW_KINDS.has(kind))) needSource.push(kind);
       }
     }
 
@@ -8239,6 +8368,20 @@ async function analyzeFlowForMigration(source, target, flowName, flowType, kilde
       }
     }
 
+    // Prompts og scripts kopieres hele, så det eneste vi skal vide er om
+    // kilden har dem under samme navn.
+    const inSource = {};
+    for (const kind of COPYABLE_KINDS) {
+      const names = results.filter(r => r.kind === kind && !r.ok).map(r => r.name);
+      if (!names.length) continue;
+      const { token: srcToken, apiBase: srcBase } = await getToken(source);
+      try { inSource[kind] = await lookupExisting(kind, names, srcToken, srcBase); }
+      catch (e) {
+        addLog('WARN', `Could not look up ${kind} in ${source.name}: ${describeApiError(e)}`, source.name, 'MIGRATE');
+        inSource[kind] = new Set();
+      }
+    }
+
     // Marker hvad der kan migreres automatisk og hvad der kræver håndarbejde
     for (const r of results) {
       if (r.ok) continue;
@@ -8258,6 +8401,9 @@ async function analyzeFlowForMigration(source, target, flowName, flowType, kilde
         const hit = srcFlows.find(f => f.name === r.name);
         if (!hit) r.manualReason = 'not_in_source';
         else { r.canMigrate = true; r.flowName = hit.name; r.flowType = hit.type; }
+      } else if (COPYABLE_KINDS.has(r.kind)) {
+        if (inSource[r.kind]?.has(r.name)) r.canMigrate = true;
+        else r.manualReason = 'not_in_source';
       } else if (r.kind === 'division') {
         // En manglende division kan enten oprettes, eller flowet kan lægges i
         // Home i stedet. Begge dele er indgreb, så brugeren skal vælge.
@@ -8268,7 +8414,7 @@ async function analyzeFlowForMigration(source, target, flowName, flowType, kilde
         r.needsChoice = true;
         r.choices = ['copy', 'skip'];
       } else {
-        r.manualReason = 'manual_only';  // køer, skills, wrapup, scripts, prompts, divisioner
+        r.manualReason = 'manual_only';  // køer, skills, wrapup-koder, brugere m.m.
       }
     }
 
@@ -8865,7 +9011,7 @@ if (require.main === module) {
 // især haft mindst én fejl der nåede ud til brugeren, og de er samtidig de
 // eneste der kan efterprøves uden en rigtig org. Se test/*.test.js.
 module.exports = {
-  nodeSecurityStatus,
+  nodeSecurityStatus, appsBaseOf, COPYABLE_KINDS,
   sanitizeDatatableSchema, mapRoleDivisions, buildOauthClientBody, buildRolePolicies, missingRolesFor, missingDivisionsFor,
   app, tokenStore, getToken, loadSessions, saveSessions, setSessionPersist, SESSION_FILE,
   // konventioner

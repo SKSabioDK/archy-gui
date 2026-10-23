@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.58.3
+# Archy GUI — Flow Manager · v1.59.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.58.3**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.58.3**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.59.0**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.59.0**.
 
 ---
 
@@ -47,6 +47,7 @@ Gøres én gang pr. Genesys-org (se også **📋 Opsætning** i programmet, som 
 | Datatabeller og manifest | `architect:datatable:view/add`, `architect:datatableRow:view/add/edit` |
 | Data Actions | `integrations:integration:view`, `integrations:action:view/add` |
 | Prompts | `architect:userPrompt:view/add` |
+| Scripts | `scripter:script:view/add`, `scripter:publishedScript:view/add` |
 | Divisioner, køer, brugere | `authorization:division:view`, `routing:queue:view`, `directory:user:view` |
 | Afhængigheder | `architect:dependencyTracking:view` |
 | Vise OAuth-klientens navn | `oauth:client:view` |
@@ -295,7 +296,7 @@ Oversigten bygger på ét API-kald pr. kunde og er derfor hurtig. **⇄ Sammenli
 > Begge niveauer er nødvendige: to kunder kan stå med samme versionsnummer og alligevel have forskelligt indhold, fordi numrene tælles pr. org.
 
 #### 🔄 Migrer Flow
-Vælg kilde, mål og flows. Migreringen kører i to faser:
+Vælg kilde, mål og flows. **Import handling** og **🚀 Kør Migration** står over flowlisten, så de kan nås uden at rulle forbi hundredvis af flows. Migreringen kører i to faser:
 
 1. **Tjek** — flowet eksporteres fra kilden, og mål-org'en undersøges for alt flowet refererer til. Der skrives intet til mål-org'en i denne fase.
 2. **Import** — først efter dit valg importeres flowet.
@@ -304,9 +305,9 @@ Mangler der noget, åbnes en dialog med to sektioner:
 
 | Sektion | Indhold | Handling |
 |---|---|---|
-| Kan migreres nu | DataTables, Data Actions, **common modules**, bot flows, transfer-mål | Afkrydsning — migreres inden flowet |
+| Kan migreres nu | DataTables, Data Actions, **common modules**, bot flows, transfer-mål, **user prompts**, **scripts** | Afkrydsning — migreres inden flowet |
 | Kræver et valg | **Division** (opret / brug Home / spring over), **survey form** (kopiér / spring over) | Rullemenu pr. ressource |
-| Skal oprettes manuelt | Køer, **brugere** (fast bruger i *Transfer to User*), skills, wrap-up-koder, scripts, prompts, schedules, knowledge bases, Function Data Actions | Oprettes i mål-org'en først |
+| Skal oprettes manuelt | Køer, **brugere** (fast bruger i *Transfer to User*), skills, wrap-up-koder, schedules, knowledge bases, Function Data Actions | Oprettes i mål-org'en først |
 
 Common modules migreres med samme maskineri som flows, og deres **egne** afhængigheder tages først — rekursivt, nedefra og op. Et modul der selv bruger femten tabeller får dem alle med.
 
@@ -339,7 +340,7 @@ Eksporter ét flow eller hele miljøet med live fremgangsindikator. Listen over 
 - Publicerer du et **common module**, tilbydes du bagefter at genpublicere de flows der bruger det. Import til prod kræver dit prod-login
 
 #### ⚡ Migrér ressourcer
-Siden migrerer det der ikke er flows mellem to orgs, fordelt på syv faner: **Data Actions**, **Data Tabeller**, **Wrap-up-koder**, **Roller**, **OAuth-klienter**, **Integrationer** og **User Prompts**. Kilde- og mål-org vælges ét sted og deles af alle.
+Siden migrerer det der ikke er flows mellem to orgs, fordelt på otte faner: **Data Actions**, **Data Tabeller**, **Wrap-up-koder**, **Roller**, **OAuth-klienter**, **Integrationer**, **User Prompts** og **Scripts**. Kilde- og mål-org vælges ét sted og deles af alle.
 
 **Fanen Data Actions:**
 1. Vælg **kilde-org** og **mål-org**
@@ -374,6 +375,8 @@ Siden migrerer det der ikke er flows mellem to orgs, fordelt på syv faner: **Da
 - *Integrationer* opretter integrationen med samme type og konfiguration. Credentials kan ikke læses fra Genesys: en OAuth-klient migreret i samme omgang (uden at genstarte programmet) kobles automatisk på integrationens credential, mens alle andre credentials (API-nøgler, basic auth m.m.) står i loggen som manuelt arbejde. En integration aktiveres kun hvis kilden var aktiv og intet mangler. Kræver `integrations:integration:view/add/edit` og `integrations:credential:view/add`.
 
 **Fanen User Prompts** migrerer user prompts mellem orgs. Både TTS-teksten og indtalt lyd kopieres — prompts med lyd er markeret 🔊 i listen.
+
+**Fanen Scripts** migrerer scripts mellem orgs. Scriptet eksporteres fra kilden og importeres i sin helhed i målet, og er det publiceret i kilden, publiceres det også i målet — et flow peger på den publicerede udgave. Findes et script med samme navn i målet, springes det over. Scriptet lander i målets standarddivision.
 
 **Fanen Data Tabeller** migrerer DataTable-*strukturer* mellem orgs: vælg kilde- og mål-org, markér tabellerne, klik **⚡ Migrér valgte**. Kun kolonnedefinitionen kopieres — **rækkerne følger ikke med**. Findes kildens division i mål-org'en, oprettes tabellen der; ellers havner den i standarddivisionen, og loggen siger det. **💾 Download backup** henter de valgte tabellers struktur som en JSON-fil uden at skrive noget i nogen org.
 
@@ -485,7 +488,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-369 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+375 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -539,6 +542,7 @@ Done once per Genesys org (the **📋 Setup** guide in the app walks you through
 | Data tables and manifest | `architect:datatable:view/add`, `architect:datatableRow:view/add/edit` |
 | Data Actions | `integrations:integration:view`, `integrations:action:view/add` |
 | Prompts | `architect:userPrompt:view/add` |
+| Scripts | `scripter:script:view/add`, `scripter:publishedScript:view/add` |
 | Divisions, queues, users | `authorization:division:view`, `routing:queue:view`, `directory:user:view` |
 | Dependencies | `architect:dependencyTracking:view` |
 | Show the OAuth client's name | `oauth:client:view` |
@@ -771,7 +775,7 @@ The overview is one API call per customer and therefore fast. **⇄ Compare cont
 > Both levels are needed: two customers can show the same version number and still hold different content, because the numbers are counted per org.
 
 #### 🔄 Migrate Flow
-Select source, target and flows. Migration runs in two phases:
+Select source, target and flows. **Import action** and **🚀 Run Migration** sit above the flow list, so they can be reached without scrolling past hundreds of flows. Migration runs in two phases:
 
 1. **Check** — the flow is exported from the source and the target org is inspected for everything the flow references. Nothing is written to the target in this phase.
 2. **Import** — the flow is imported only after your decision.
@@ -780,9 +784,9 @@ If anything is missing, a dialog opens with two sections:
 
 | Section | Contents | Action |
 |---|---|---|
-| Can be migrated now | DataTables, Data Actions, **common modules**, bot flows, transfer targets | Checkboxes — migrated before the flow |
+| Can be migrated now | DataTables, Data Actions, **common modules**, bot flows, transfer targets, **user prompts**, **scripts** | Checkboxes — migrated before the flow |
 | Needs a decision | **Division** (create / use Home / skip), **survey form** (copy / skip) | Dropdown per resource |
-| Must be created manually | Queues, **users** (a fixed user in *Transfer to User*), skills, wrap-up codes, scripts, prompts, schedules, knowledge bases, Function Data Actions | Create them in the target org first |
+| Must be created manually | Queues, **users** (a fixed user in *Transfer to User*), skills, wrap-up codes, schedules, knowledge bases, Function Data Actions | Create them in the target org first |
 
 Common modules are migrated with the same machinery as flows, and their **own** dependencies are handled first — recursively, bottom-up. A module that itself uses fifteen tables brings all of them along.
 
@@ -815,7 +819,7 @@ Export a single flow or the whole environment with a live progress indicator. Th
 - When you publish a **common module**, you are then offered to republish the flows that use it. Importing to prod requires your prod login
 
 #### ⚡ Migrate resources
-This page migrates everything that is not a flow between two orgs, across seven tabs: **Data Actions**, **Data Tables**, **Wrap-up codes**, **Roles**, **OAuth clients**, **Integrations** and **User Prompts**. Source and target org are chosen once and shared by all three.
+This page migrates everything that is not a flow between two orgs, across eight tabs: **Data Actions**, **Data Tables**, **Wrap-up codes**, **Roles**, **OAuth clients**, **Integrations**, **User Prompts** and **Scripts**. Source and target org are chosen once and shared by all of them.
 
 **The Data Actions tab:**
 1. Select **source org** and **target org**
@@ -850,6 +854,8 @@ This page migrates everything that is not a flow between two orgs, across seven 
 - *Integrations* creates the integration with the same type and configuration. Credentials cannot be read from Genesys: an OAuth client migrated in the same session (without restarting the app) is wired up to the integration's credential automatically, while all other credentials (API keys, basic auth etc.) are listed in the log as manual work. An integration is only activated if the source was active and nothing is missing. Needs `integrations:integration:view/add/edit` and `integrations:credential:view/add`.
 
 **The User Prompts tab** migrates user prompts between orgs. Both the TTS text and any recorded audio are copied — prompts with audio are marked 🔊 in the list.
+
+**The Scripts tab** migrates scripts between orgs. The script is exported from the source and imported whole into the target, and if it is published in the source it is published in the target too — a flow points at the published version. A script with the same name in the target is skipped. The script lands in the target's default division.
 
 **The Data Tables tab** migrates DataTable *structures* between orgs: pick source and target org, select the tables, click **⚡ Migrate selected**. Only the column definition is copied — **rows do not come along**. If the source division exists in the target org the table is created there; otherwise it lands in the default division and the log says so. **💾 Download backup** saves the selected tables' structure as a JSON file without writing anything to any org.
 
@@ -961,7 +967,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-369 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+375 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 

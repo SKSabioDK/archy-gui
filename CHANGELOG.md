@@ -5,6 +5,25 @@
 
 ---
 
+### v1.59.0
+---
+**🇩🇰 Dansk**
+
+- **Scripts kan migreres.** Ny fane *Scripts* på Data Actions-siden: vælg scripts i kilden og migrér dem til målet. Scriptet eksporteres og importeres i sin helhed og publiceres i målet, hvis det er publiceret i kilden. Findes et script med samme navn i målet, springes det over.
+- **Manglende prompts og scripts kan tages med, når et flow migreres.** Før stod de under *Skal oprettes manuelt* i dialogen. Nu står de under *Kan migreres nu*, når kilden har dem, og migreres inden flowet ligesom tabeller, data actions og common modules.
+- **🚀 Kør Migration står over flowlisten.** Med flere hundrede flows lå knappen langt nede. Import handling og knappen står nu øverst, og loggen rulles frem, når kørslen starter.
+- Kræver `scripter:script:view/add` og `scripter:publishedScript:view/add` for scripts.
+- Seks nye tests.
+
+**🇬🇧 English**
+- **Scripts can be migrated.** New *Scripts* tab on the Data Actions page: pick scripts in the source and migrate them to the target. The script is exported and imported whole, and published in the target if it is published in the source. A script with the same name in the target is skipped.
+- **Missing prompts and scripts can be brought along when a flow is migrated.** They used to be listed under *Must be created manually* in the dialog. Now they are under *Can be migrated now* when the source has them, and are migrated before the flow like tables, data actions and common modules.
+- **🚀 Run Migration sits above the flow list.** With hundreds of flows the button was far down. Import action and the button are now at the top, and the log scrolls into view when the run starts.
+- Requires `scripter:script:view/add` and `scripter:publishedScript:view/add` for scripts.
+- Six new tests.
+
+---
+
 ### v1.58.3
 ---
 **🇩🇰 Dansk**
