@@ -5,6 +5,23 @@
 
 ---
 
+### v1.59.6
+---
+**🇩🇰 Dansk**
+
+- **Moduler tager prompts og scripts med.** Et common module der selv brugte et screen pop-script, fejlede med *Error details: no matches*, fordi modulmigreringen kun tog tabeller og data actions med. Nu kopieres modulets user prompts og scripts også, før modulet importeres.
+- **Secure data actions genkendes.** Referencer skrevet som `secureDataAction:` blev slet ikke fundet — hverken i tjekket, i dialogen eller når et modul blev migreret. Nu tæller de som data actions overalt.
+- **Secure-flaget følger med.** En secure data action blev oprettet som en almindelig i målet, og Archy, der kun leder blandt de secure, fandt den ikke. Nu bevares flaget.
+- Fire nye tests.
+
+**🇬🇧 English**
+- **Modules bring their prompts and scripts.** A common module that used a screen pop script failed with *Error details: no matches*, because module migration only brought tables and data actions. The module's user prompts and scripts are now copied too, before the module is imported.
+- **Secure data actions are recognised.** References written as `secureDataAction:` were not found at all — not in the check, the dialog, or when a module was migrated. They now count as data actions everywhere.
+- **The secure flag comes along.** A secure data action was created as an ordinary one in the target, and Archy, which only looks among the secure ones, did not find it. The flag is now kept.
+- Four new tests.
+
+---
+
 ### v1.59.5
 ---
 **🇩🇰 Dansk**

@@ -2870,6 +2870,9 @@ app.post('/api/actions/migrate', async (req, res) => {
         name:         published.name,
         category,
         integrationId,
+        // Archy slår en secureDataAction op blandt de secure actions alene, så
+        // uden flaget fandtes den ikke i målet, selv om den var oprettet.
+        secure:       !!published.secure,
         contract,
         config
       },
@@ -6343,7 +6346,9 @@ function scanYamlDependencies(yaml) {
     queue:      grab(/targetQueue:[\s\S]{0,60}?name:[ \t]*["']?([^'"\n]+)["']?/gm),
     datatable:  grab(new RegExp(`dataTable:\\s*\\n\\s+([${ORD}][${ORD} _\\-]+):`, 'gm'))
                   .filter(n => !['foundOutputs', 'failureOutputs', 'outputs'].includes(n)),
-    dataaction: grab(new RegExp(`dataAction:\\s*\\n\\s+([${ORD}][${ORD} _\\-()]+):`, 'gm')),
+    // secureDataAction: er en data action markeret secure — samme opslag, og
+    // før blev den slet ikke fundet.
+    dataaction: grab(new RegExp(`(?:secureDataAction|dataAction):\\s*\\n\\s+([${ORD}][${ORD} _\\-()]+):`, 'gm')),
     // PromptSystem.* er Genesys' indbyggede systemprompts. De ligger ikke i
     // orgens promptliste og ville derfor altid fremstå som manglende.
     prompt:     grab(new RegExp(`prompt:[ \\t]+["']?(?:Prompt\\.)?([${ORD}_\\-. ]+)["']?`, 'gm'))
@@ -6525,7 +6530,7 @@ async function functionActionsMissingInTarget(source, target, yaml) {
 // en anden kategori, ser en tjek på navn alene alt i orden, og importen fejler.
 // Derfor slås både kategori og navn op, og brugerens valg huskes pr. org-par.
 
-const DA_REF_RE = () => /(category:[ \t]*\r?\n[ \t]+)([^\r\n]+?)(:[ \t]*\r?\n[ \t]+dataAction:[ \t]*\r?\n[ \t]+)([^\r\n]+?)(:[ \t]*(?:\r?\n|$))/g;
+const DA_REF_RE = () => /(category:[ \t]*\r?\n[ \t]+)([^\r\n]+?)(:[ \t]*\r?\n[ \t]+(?:secureDataAction|dataAction):[ \t]*\r?\n[ \t]+)([^\r\n]+?)(:[ \t]*(?:\r?\n|$))/g;
 const daUnquote = s => String(s).trim().replace(/^(["'])(.*)\1$/, '$2');
 const daSame = (a, b) => !!a && !!b && a.category === b.category && a.name === b.name;
 
@@ -7956,7 +7961,7 @@ app.post('/api/validate-yaml', async (req, res) => {
     }
 
     // 4. Data Action checks
-    const daRe = /dataAction:\s*\n\s+([\w][\w _\-()]+):/gm;
+    const daRe = /(?:secureDataAction|dataAction):\s*\n\s+([\w][\w _\-()]+):/gm;
     const daNames = [];
     let dam;
     while ((dam = daRe.exec(yamlContent)) !== null) {
@@ -8272,8 +8277,8 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
   const deps = scanYamlDependencies(fs.readFileSync(filePath, 'utf8'));
   const { token: tgtToken, apiBase: tgtBase } = await getToken(target);
 
-  // 1) Tabeller og data actions modulet bruger
-  for (const kind of ['datatable', 'dataaction']) {
+  // 1) Tabeller, data actions, prompts og scripts modulet bruger
+  for (const kind of ['datatable', 'dataaction', ...COPYABLE_KINDS]) {
     const names = deps[kind] || [];
     if (!names.length) continue;
     // Uvished er ikke det samme som fravær. Fejlen her blev før slugt, og den
@@ -8297,7 +8302,11 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
     const SH = { headers: { Authorization: `Bearer ${srcToken}` } };
     for (const n of missing) {
       let url, body;
-      if (kind === 'datatable') {
+      if (COPYABLE_KINDS.has(kind)) {
+        // Kopieres ved navn — endpointet slår selv kilden op
+        url = kind === 'prompt' ? '/api/prompts/migrate' : '/api/scripts/migrate';
+        body = { sourceId: source.id, targetId: target.id, [kind === 'prompt' ? 'promptName' : 'scriptName']: n };
+      } else if (kind === 'datatable') {
         const r = await axios.get(`${srcBase}/api/v2/flows/datatables`, { ...SH, params: { pageSize: 200 } });
         const hit = (r.data.entities || []).find(t => t.name === n);
         if (!hit) { trail.push(`⚠ tabel "${n}" findes ikke i kilde-org`); continue; }
