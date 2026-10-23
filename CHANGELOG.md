@@ -5,6 +5,19 @@
 
 ---
 
+### v1.59.2
+---
+**🇩🇰 Dansk**
+
+- **Prod-vagten siger hvilke felter den afviser.** Afvisningen af en ændring på et prod-miljø nævner nu de låste felter, der er ændret (fx *Du har ændret: trin, Client ID*). Står trinnet på "intet trin" fra et tidligere forsøg, lignede en afvisning af et klientskift før en fejl. Er Client ID blandt dem, siger beskeden også, at et nyt Client ID alene kan gemmes uden login.
+- Én ny test.
+
+**🇬🇧 English**
+- **The prod guard says which fields it refuses.** Refusing a change on a prod environment now names the locked fields that were changed (e.g. *You changed: stage, Client ID*). With the stage left on "no stage" from an earlier attempt, refusing a client change used to look like a bug. If Client ID is among them, the message also says that a new Client ID on its own can be saved without a login.
+- One new test.
+
+---
+
 ### v1.59.1
 ---
 **🇩🇰 Dansk**

@@ -1916,8 +1916,19 @@ function prodSettingsBlock(before, changed, stored, now = Date.now()) {
   if (onlyClientIdChange(before, changed)) return null;
   const b = prodWriteBlock(before, stored, now);
   if (!b) return null;
-  return { ...b, error: `Trin, godkendelse og deploy-krav på et prod-miljø kan kun ændres af en der må deploye dertil. ${b.error}` };
+  // Sig HVILKE felter der er låst. Ellers lignede en afvisning af et klientskift
+  // en fejl, når det i virkeligheden var trinnet, der også var ændret i formularen.
+  const laaste = PROD_GUARDED_FIELDS.filter(k => changed[k] !== undefined);
+  const hint = laaste.includes('clientId') && before.authType === 'oauth'
+    ? ` Et nyt Client ID alene kan gemmes uden login — sæt ${laaste.filter(k => k !== 'clientId').map(k => PROD_FIELD_NAMES[k]).join(' og ')} tilbage, og gem igen.`
+    : '';
+  return { ...b, fields: laaste,
+           error: `Trin, godkendelse og deploy-krav på et prod-miljø kan kun ændres af en der må deploye dertil. ` +
+                  `Du har ændret: ${laaste.map(k => PROD_FIELD_NAMES[k]).join(', ')}. ${b.error}${hint}` };
 }
+
+const PROD_FIELD_NAMES = { stage: 'trin', authType: 'godkendelse', clientId: 'Client ID', region: 'region',
+                           deployPermission: 'deploy-rettighed', deployGroup: 'deploy-gruppe' };
 
 const onlyClientIdChange = (before, changed) =>
   before.authType === 'oauth' && changed.clientId !== undefined &&

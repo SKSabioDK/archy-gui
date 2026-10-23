@@ -160,6 +160,15 @@ test('et nyt client id på prod kræver ikke prod-login — login\'et går jo ge
   assert.equal(s.prodSettingsBlock(PROD, { clientId: 'ny-klient', authType: 'credentials' }, null, NU).code, 'prod-login');
 });
 
+test('afvisningen siger hvilke låste felter der er ændret', () => {
+  // Trinnet stod på "intet trin" fra et tidligere forsøg, og afvisningen af
+  // klientskiftet lignede en fejl i rettelsen.
+  const b = s.prodSettingsBlock(PROD, { clientId: 'ny-klient', stage: '' }, null, NU);
+  assert.deepEqual(b.fields, ['stage', 'clientId']);
+  assert.match(b.error, /Du har ændret: trin, Client ID\./);
+  assert.match(b.error, /Client ID alene kan gemmes uden login — sæt trin tilbage/);
+});
+
 test('prod beholder sit org-id, når klienten skiftes', () => {
   // Så skal den nye klients login lande i samme org — et klientskift uden
   // login må ikke løsne org-bindingen.
