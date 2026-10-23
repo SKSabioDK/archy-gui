@@ -533,7 +533,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.59.2 · Archy GUI</div>
+    <div class="version" id="app-version">v1.59.3 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1943,6 +1943,7 @@ const LANGS = {
     dep_reason_function:'Function Data Action — intet API',
     dep_reason_notinsource:'findes heller ikke i kilde-org',
     dep_reason_manual:'opret i mål-org først',
+    dep_reason_unchecked:'kunne ikke tjekkes — se fejlen',
     dep_dynamic_skills:'Flowet slår skills op på kørselstidspunktet med FindSkill(). De kan ikke tjekkes på forhånd — kontrollér selv at de findes i mål-org\'en.',
     dep_checking:'Tjekker afhængigheder…',
     dep_missing_count:'afhængigheder mangler',
@@ -2291,6 +2292,8 @@ const LANGS = {
     pc_c_fda:'Function Data Action: skal findes i målet først',
     pc_c_nowhere:'findes hverken i kilden eller målet',
     pc_c_migrate:'migreres med, hvis du vælger det',
+    pc_c_unchecked:'kunne ikke tjekkes i målet',
+    pc_c_division_denied:'du må ikke oprette flows i divisionen',
     pc_c_choice:'kræver et valg',
     pc_c_notsrc:'findes hverken i kilden eller målet: opret i hånden',
     pc_c_manual:'skal oprettes i hånden i målet',
@@ -2983,6 +2986,7 @@ const LANGS = {
     dep_reason_function:'Function Data Action — no API',
     dep_reason_notinsource:'not in the source org either',
     dep_reason_manual:'create in the target org first',
+    dep_reason_unchecked:'could not be checked — see the error',
     dep_dynamic_skills:'This flow resolves skills at runtime with FindSkill(). They cannot be checked in advance — verify yourself that they exist in the target org.',
     dep_checking:'Checking dependencies…',
     dep_missing_count:'dependencies missing',
@@ -3331,6 +3335,8 @@ const LANGS = {
     pc_c_fda:'Function Data Action: must exist in the target first',
     pc_c_nowhere:'exists in neither the source nor the target',
     pc_c_migrate:'migrated along if you choose',
+    pc_c_unchecked:'could not be checked in the target',
+    pc_c_division_denied:'you may not create flows in this division',
     pc_c_choice:'needs a choice',
     pc_c_notsrc:'exists in neither the source nor the target: create by hand',
     pc_c_manual:'must be created by hand in the target',
@@ -4023,6 +4029,7 @@ const LANGS = {
     dep_reason_function:'Function Data Action — pas d\'API',
     dep_reason_notinsource:'absent aussi de l\'org source',
     dep_reason_manual:'à créer d\'abord dans l\'org cible',
+    dep_reason_unchecked:'vérification impossible — voir l\'erreur',
     dep_dynamic_skills:'Ce flow résout les compétences à l\'exécution via FindSkill(). Impossible de les vérifier à l\'avance — vérifiez vous-même leur présence dans l\'org cible.',
     dep_checking:'Vérification des dépendances…',
     dep_missing_count:'dépendances manquantes',
@@ -4371,6 +4378,8 @@ const LANGS = {
     pc_c_fda:'Function Data Action : doit d\'abord exister dans la cible',
     pc_c_nowhere:'n\'existe ni dans la source ni dans la cible',
     pc_c_migrate:'migrée avec si vous le choisissez',
+    pc_c_unchecked:'vérification impossible dans la cible',
+    pc_c_division_denied:'vous ne pouvez pas créer de flows dans cette division',
     pc_c_choice:'demande un choix',
     pc_c_notsrc:'n\'existe ni dans la source ni dans la cible : à créer à la main',
     pc_c_manual:'à créer à la main dans la cible',
@@ -5063,6 +5072,7 @@ const LANGS = {
     dep_reason_function:'Function Data Action — geen API',
     dep_reason_notinsource:'ook niet in de bron-org',
     dep_reason_manual:'maak eerst aan in de doel-org',
+    dep_reason_unchecked:'kon niet worden gecontroleerd — zie de fout',
     dep_dynamic_skills:'Dit flow zoekt skills tijdens runtime op met FindSkill(). Ze kunnen niet vooraf worden gecontroleerd — controleer zelf of ze in de doel-org bestaan.',
     dep_checking:'Afhankelijkheden controleren…',
     dep_missing_count:'afhankelijkheden ontbreken',
@@ -5411,6 +5421,8 @@ const LANGS = {
     pc_c_fda:'Function Data Action: moet eerst in het doel bestaan',
     pc_c_nowhere:'bestaat noch in de bron noch in het doel',
     pc_c_migrate:'wordt meegemigreerd als je dat kiest',
+    pc_c_unchecked:'kon niet worden gecontroleerd in het doel',
+    pc_c_division_denied:'je mag geen flows aanmaken in deze divisie',
     pc_c_choice:'vraagt een keuze',
     pc_c_notsrc:'bestaat noch in de bron noch in het doel: handmatig aanmaken',
     pc_c_manual:'handmatig aanmaken in het doel',
@@ -6103,6 +6115,7 @@ const LANGS = {
     dep_reason_function:'Function Data Action — sin API',
     dep_reason_notinsource:'tampoco está en la org de origen',
     dep_reason_manual:'créalo primero en la org de destino',
+    dep_reason_unchecked:'no se pudo comprobar — vea el error',
     dep_dynamic_skills:'Este flow resuelve las skills en tiempo de ejecución con FindSkill(). No se pueden comprobar de antemano — verifica tú mismo que existen en la org de destino.',
     dep_checking:'Comprobando dependencias…',
     dep_missing_count:'dependencias faltan',
@@ -6451,6 +6464,8 @@ const LANGS = {
     pc_c_fda:'Function Data Action: debe existir antes en el destino',
     pc_c_nowhere:'no existe ni en el origen ni en el destino',
     pc_c_migrate:'se migra con el flow si lo elige',
+    pc_c_unchecked:'no se pudo comprobar en el destino',
+    pc_c_division_denied:'no puede crear flows en esta división',
     pc_c_choice:'requiere una elección',
     pc_c_notsrc:'no existe ni en el origen ni en el destino: crear a mano',
     pc_c_manual:'se crea a mano en el destino',
@@ -10790,6 +10805,7 @@ function showDepModal(flowName, missing, dynamicSkills, names) {
   const reason = d =>
     d.manualReason === 'function'      ? t('dep_reason_function') :
     d.manualReason === 'not_in_source' ? t('dep_reason_notinsource') :
+    d.manualReason === 'unchecked'     ? t('dep_reason_unchecked') :
                                          t('dep_reason_manual');
 
   let html = '';
@@ -10835,7 +10851,7 @@ function showDepModal(flowName, missing, dynamicSkills, names) {
         <span style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:78px">${d.kind}</span>
         <span>${escapeHtml(d.name)}${depTargetName(d)}</span>
         <span style="font-size:11px;color:var(--yellow);margin-left:auto">${reason(d)}</span>
-      </div>`).join('');
+      </div>${d.checkError ? `<div style="font-size:11px;color:var(--muted);margin:-4px 0 6px 88px">${escapeHtml(d.checkError)}</div>` : ''}`).join('');
   }
   if (dynamicSkills) {
     html += `<div style="margin-top:16px;font-size:11px;color:var(--muted);border-top:1px solid var(--border);padding-top:12px">${t('dep_dynamic_skills')}</div>`;
@@ -13478,6 +13494,7 @@ async function boardAction(kind, key, i) {
 // Tjek før forfremmelse. Kører samme undersøgelse som første fase af en
 // forfremmelse, men importerer intet og lader mål-org'en være urørt.
 const PC_CODE_KEY = { 'fda': 'pc_c_fda', 'action-nowhere': 'pc_c_nowhere', 'will-migrate': 'pc_c_migrate',
+  'unchecked': 'pc_c_unchecked', 'division-denied': 'pc_c_division_denied',
   'needs-choice': 'pc_c_choice', 'not-in-source': 'pc_c_notsrc', 'manual': 'pc_c_manual' };
 
 function precheckHtml(v) {

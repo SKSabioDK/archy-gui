@@ -7085,6 +7085,11 @@ function describeApiError(e) {
 
   if (d.contextId) parts.push(`contextId=${d.contextId}`);
 
+  // Et manglende scope rettes på OAuth-klienten, ikke på brugerens roller —
+  // og et nyt scope gælder først efter et nyt login.
+  if (d.code === 'app.not.authorized.for.scope')
+    parts.push('— add the scope to the OAuth client in Genesys (Admin → Integrations → OAuth → the client → Scope), then log in again');
+
   return parts.join(' ');
 }
 
@@ -8011,6 +8016,54 @@ const FLOW_KINDS = new Set(['commonmodule', 'botflow', 'targetflow']);
 // Ressourcer der kopieres hele fra kilden ved navn: user prompts (med lyd) og scripts
 const COPYABLE_KINDS = new Set(['prompt', 'script']);
 
+// ── Divisionen et flow oprettes i ────────────────────────────────────────────
+// Archy opretter flowet i den division YAML'en siger. Findes den ikke i målet,
+// eller må login'et ikke oprette flows dér, fejlede importen først i Archy —
+// efter tabeller, prompts og moduler var migreret.
+
+// Flowets EGEN division: den første indrykkede division-linje, samme som
+// setFlowDivisionInYaml skriver om.
+function flowOwnDivision(yaml) {
+  const m = String(yaml).match(/^[ 	]{2,}division:[ 	]*(.+?)[ 	]*$/m);
+  return m ? m[1].replace(/^["']|["']$/g, '') : null;
+}
+
+// Divisionerne i målet, og dem login'et må oprette flows i. Kan det sidste
+// ikke slås op (fx for en client credentials-klient), er permitted null, og
+// så afgør Archy det.
+async function flowDivisionAccess(target) {
+  const { token, apiBase } = await getToken(target);
+  const H = { headers: { Authorization: `Bearer ${token}` } };
+  const pages = async (url, params) => {
+    const ud = new Set();
+    for (let page = 1; ; page++) {
+      const r = await axios.get(`${apiBase}${url}`, { ...H, params: { ...params, pageSize: 100, pageNumber: page } });
+      const e = r.data.entities || [];
+      for (const d of e) if (d.name) ud.add(d.name);
+      if (e.length < 100) break;
+    }
+    return ud;
+  };
+  const names = await pages('/api/v2/authorization/divisions', {});
+  let permitted = null;
+  try { permitted = await pages('/api/v2/authorization/divisionspermitted/paged/me', { permission: 'architect:flow:add' }); }
+  catch (e) { addLog('WARN', `Could not look up which divisions the login in ${target.name} may create flows in: ${describeApiError(e)}`, target.name, 'MIGRATE'); }
+  return { names, permitted };
+}
+
+// null, 'missing' eller 'denied'. Ren funktion.
+function divisionProblem(division, access) {
+  if (!division || !access) return null;
+  if (!access.names.has(division)) return 'missing';
+  if (access.permitted && !access.permitted.has(division)) return 'denied';
+  return null;
+}
+
+const divisionDeniedText = (division, target) =>
+  `Du må ikke oprette flows i divisionen "${division}" i ${target.name}. Giv din rolle (eller OAuth-klientens) ` +
+  `architect:flow:add/edit/view i den division under Admin → Roles, og log ind igen — eller sæt en division på ` +
+  `målmiljøet under ⚙ Indstillinger, så flowet lægges dér.`;
+
 // Migrerer ét flow som afhængighed af et andet. Modulet kan selv have
 // afhængigheder — også andre common modules — så de tages først, nedefra og op.
 // 'visited' bryder cirkler, og dybden er begrænset for en sikkerheds skyld.
@@ -8146,7 +8199,30 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
   }
   let importFile = filePath;
   const nyDivision = divisionOf(target);
-  if (prefixOf(source) !== prefixOf(target) || divisionOf(source) !== nyDivision) {
+  let omskriv = prefixOf(source) !== prefixOf(target) || divisionOf(source) !== nyDivision;
+  // Divisionen modulet oprettes i. Mangler den i målet, lægges modulet i
+  // målmiljøets division (Home, hvis der ingen er) — samme regel som for
+  // tabeller og wrap-up-koder. Må login'et ikke oprette flows dér, stopper vi
+  // før importen med en besked, der siger hvad der skal gøres.
+  try {
+    const access = await flowDivisionAccess(target);
+    const egen = omskriv ? nyDivision : flowOwnDivision(fs.readFileSync(filePath, 'utf8'));
+    let problem = divisionProblem(egen, access);
+    if (problem === 'missing' && !omskriv) {
+      trail.push(`⚠ ${flowName}: divisionen "${egen}" findes ikke i ${target.name} — lægges i "${nyDivision}"`);
+      addLog('WARN', `Division "${egen}" does not exist in ${target.name} — "${flowName}" goes into "${nyDivision}"`, target.name, 'MIGRATE');
+      omskriv = true;
+      problem = divisionProblem(nyDivision, access);
+    }
+    const blokeret = problem === 'denied' ? (omskriv ? nyDivision : egen) : null;
+    if (blokeret) {
+      addLog('ERROR', `Flow dependency "${flowName}" refused: the login may not create flows in division "${blokeret}" in ${target.name}`, target.name, 'MIGRATE');
+      return { ok: false, error: divisionDeniedText(blokeret, target) };
+    }
+  } catch (e) {
+    addLog('WARN', `Could not check the divisions in ${target.name}: ${describeApiError(e)}`, target.name, 'MIGRATE');
+  }
+  if (omskriv) {
     let yaml = fs.readFileSync(filePath, 'utf8');
     yaml = setFlowDivisionInYaml(yaml, nyDivision);
     if (nyName !== flowName) yaml = renameFlowInYaml(yaml, nyName);
@@ -8280,7 +8356,13 @@ app.post('/api/migrate/prepare', async (req, res) => {
 
   addLog('INFO', `Migration prepared: "${flowName}" from ${source.name} → ${target.name}`, source.name, 'MIGRATE');
   try {
-    res.json({ ok: true, ...(await analyzeFlowForMigration(source, target, flowName, flowType, pre.kildeVersion)) });
+    const analysis = await analyzeFlowForMigration(source, target, flowName, flowType, pre.kildeVersion);
+    // Før der migreres noget med: ellers blev tabeller og moduler lagt i målet
+    // for et flow, der alligevel ikke måtte oprettes.
+    if (analysis.divisionDenied)
+      return res.status(409).json({ code: 'division-denied', division: analysis.divisionDenied,
+                                    error: divisionDeniedText(analysis.divisionDenied, target) });
+    res.json({ ok: true, ...analysis });
   } catch (e) {
     addLog('ERROR', `Migration prepare failed for "${flowName}": ${e.message}`, source.name, 'MIGRATE');
     res.status(500).json({ error: e.message });
@@ -8370,8 +8452,17 @@ async function analyzeFlowForMigration(source, target, flowName, flowType, kilde
       try {
         existing = await lookupExisting(kind, wanted, tgtToken, tgtBase);
       } catch (e) {
-        addLog('WARN', `Could not check ${kind}: ${describeApiError(e)}`, target.name, 'MIGRATE');
-        existing = new Set();
+        // Kunne målet ikke læses (fx et manglende scope på OAuth-klienten), ved
+        // vi ikke om ressourcen mangler. Før blev den regnet for manglende og
+        // tilbudt migreret — og hver migrering fejlede så på samme opslag.
+        const checkError = describeApiError(e);
+        addLog('WARN', `Could not check ${kind} in ${target.name}: ${checkError}`, target.name, 'MIGRATE');
+        for (const name of names) {
+          const iMaal = depNameIn(kind, name, target, source);
+          results.push({ kind, name, ok: false, unchecked: true, manualReason: 'unchecked', checkError,
+                         targetName: iMaal !== name ? iMaal : undefined });
+        }
+        continue;
       }
       for (const name of names) {
         const iMaal = depNameIn(kind, name, target, source);
@@ -8430,14 +8521,15 @@ async function analyzeFlowForMigration(source, target, flowName, flowType, kilde
       const { token: srcToken, apiBase: srcBase } = await getToken(source);
       try { inSource[kind] = await lookupExisting(kind, names, srcToken, srcBase); }
       catch (e) {
-        addLog('WARN', `Could not look up ${kind} in ${source.name}: ${describeApiError(e)}`, source.name, 'MIGRATE');
-        inSource[kind] = new Set();
+        const checkError = describeApiError(e);
+        addLog('WARN', `Could not look up ${kind} in ${source.name}: ${checkError}`, source.name, 'MIGRATE');
+        inSource[kind] = { error: checkError };
       }
     }
 
     // Marker hvad der kan migreres automatisk og hvad der kræver håndarbejde
     for (const r of results) {
-      if (r.ok) continue;
+      if (r.ok || r.unchecked) continue;
       if (r.kind === 'datatable') {
         const hit = srcTables.find(t => t.name === r.name);
         if (hit) { r.canMigrate = true; r.sourceRefId = hit.id; }
@@ -8455,7 +8547,9 @@ async function analyzeFlowForMigration(source, target, flowName, flowType, kilde
         if (!hit) r.manualReason = 'not_in_source';
         else { r.canMigrate = true; r.flowName = hit.name; r.flowType = hit.type; }
       } else if (COPYABLE_KINDS.has(r.kind)) {
-        if (inSource[r.kind]?.has(r.name)) r.canMigrate = true;
+        const src = inSource[r.kind];
+        if (src?.error) { r.unchecked = true; r.manualReason = 'unchecked'; r.checkError = src.error; }
+        else if (src?.has(r.name)) r.canMigrate = true;
         else r.manualReason = 'not_in_source';
       } else if (r.kind === 'division') {
         // En manglende division kan enten oprettes, eller flowet kan lægges i
@@ -8479,6 +8573,7 @@ async function analyzeFlowForMigration(source, target, flowName, flowType, kilde
         (m.canMigrate ? ' — can be migrated from here' :
          m.manualReason === 'function' ? ' — Function Data Action, must be created by hand (no API)' :
          m.manualReason === 'not_in_source' ? ' — does not exist in the source org either' :
+         m.manualReason === 'unchecked' ? ' — could not be checked, see the warning above' :
          ' — must be created by hand'),
         target.name, 'MIGRATE');
     }
@@ -8506,7 +8601,20 @@ async function analyzeFlowForMigration(source, target, flowName, flowType, kilde
     } catch (e) {
       addLog('WARN', `Could not compare the data actions of "${flowName}" with ${target.name}: ${describeApiError(e)}`, target.name, 'MIGRATE');
     }
-    return { fileName: yamlFile, filePath, yaml, deps: results, actionRefs, targetActions,
+    // Må login'et oprette flows i den division flowet lander i? En division der
+    // mangler, står allerede blandt afhængighederne med et valg.
+    let divisionDenied = null;
+    try {
+      const omskriv = prefixOf(source) !== prefixOf(target) || divisionOf(source) !== divisionOf(target);
+      const egen = omskriv ? divisionOf(target) : flowOwnDivision(yaml);
+      if (divisionProblem(egen, await flowDivisionAccess(target)) === 'denied') {
+        divisionDenied = egen;
+        addLog('WARN', `"${flowName}" would be created in division "${egen}", where the login in ${target.name} may not create flows`, target.name, 'MIGRATE');
+      }
+    } catch (e) {
+      addLog('WARN', `Could not check the divisions in ${target.name}: ${describeApiError(e)}`, target.name, 'MIGRATE');
+    }
+    return { fileName: yamlFile, filePath, yaml, deps: results, actionRefs, targetActions, divisionDenied,
              dynamicSkills: /FindSkill\(\s*[A-Za-z]/.test(yaml) };
   }
 }
@@ -8530,9 +8638,11 @@ function buildMigrationVerdict(analysis) {
     // En data action der ikke findes i nogen af de to orgs, kan hverken oprettes eller peges over på.
     else if (d.kind === 'dataaction' && d.manualReason === 'not_in_source') blockers.push({ ...item, code: 'action-nowhere' });
     else if (d.canMigrate) warnings.push({ ...item, code: 'will-migrate' });
+    else if (d.unchecked) warnings.push({ ...item, code: 'unchecked' });
     else if (d.needsChoice) warnings.push({ ...item, code: 'needs-choice' });
     else warnings.push({ ...item, code: d.manualReason === 'not_in_source' ? 'not-in-source' : 'manual' });
   }
+  if (analysis.divisionDenied) blockers.push({ kind: 'division', name: analysis.divisionDenied, code: 'division-denied' });
   for (const r of analysis.actionRefs || []) {
     if (r.status === 'choose') decisions.push({ kind: 'dataaction', name: r.name, category: r.category, candidates: r.candidates || [] });
     else if (r.status === 'mapped') ok++;
@@ -9064,7 +9174,7 @@ if (require.main === module) {
 // især haft mindst én fejl der nåede ud til brugeren, og de er samtidig de
 // eneste der kan efterprøves uden en rigtig org. Se test/*.test.js.
 module.exports = {
-  nodeSecurityStatus, appsBaseOf, COPYABLE_KINDS, credentialChangeError, forgetLogin, keepsOrgOnClientChange,
+  nodeSecurityStatus, flowOwnDivision, divisionProblem, appsBaseOf, COPYABLE_KINDS, credentialChangeError, forgetLogin, keepsOrgOnClientChange,
   sanitizeDatatableSchema, mapRoleDivisions, buildOauthClientBody, buildRolePolicies, missingRolesFor, missingDivisionsFor,
   app, tokenStore, getToken, loadSessions, saveSessions, setSessionPersist, SESSION_FILE,
   // konventioner

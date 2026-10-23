@@ -20,7 +20,23 @@ test('prompts og scripts kan migreres med flowet', () => {
   assert.deepEqual([...s.COPYABLE_KINDS].sort(), ['prompt', 'script']);
   // Kilden slås op, og findes de dér, kan de vælges i dialogen
   const prep = SERVER.slice(SERVER.indexOf('async function analyzeFlowForMigration('), SERVER.indexOf("app.post('/api/migrate/check'"));
-  assert.match(prep, /COPYABLE_KINDS\.has\(r\.kind\)\) \{\s*if \(inSource\[r\.kind\]\?\.has\(r\.name\)\) r\.canMigrate = true;/);
+  assert.match(prep, /COPYABLE_KINDS\.has\(r\.kind\)\) \{[\s\S]{0,200}else if \(src\?\.has\(r\.name\)\) r\.canMigrate = true;/);
+});
+
+test('kan målet ikke læses, tilbydes intet migreret', () => {
+  // Et manglende scope på mål-klienten gav før "mangler" for hvert script —
+  // og hver migrering fejlede så på samme opslag.
+  const prep = SERVER.slice(SERVER.indexOf('async function analyzeFlowForMigration('), SERVER.indexOf("app.post('/api/migrate/check'"));
+  assert.match(prep, /results\.push\(\{ kind, name, ok: false, unchecked: true, manualReason: 'unchecked', checkError/);
+  assert.match(prep, /if \(r\.ok \|\| r\.unchecked\) continue;/);
+  const v = s.buildMigrationVerdict({ deps: [{ kind: 'script', name: 'X', ok: false, unchecked: true, manualReason: 'unchecked' }] });
+  assert.deepEqual(v.warnings, [{ kind: 'script', name: 'X', code: 'unchecked' }]);
+});
+
+test('et manglende scope siger hvor det rettes', () => {
+  const msg = s.describeApiError({ message: 'x', config: { url: 'https://api.x/api/v2/scripts', method: 'get' },
+    response: { status: 403, data: { message: 'App not authorized to use scope [scripts, scripts:readonly]', code: 'app.not.authorized.for.scope' } } });
+  assert.match(msg, /add the scope to the OAuth client/);
 });
 
 test('dialogen sender prompts og scripts til deres egne endpoints', () => {

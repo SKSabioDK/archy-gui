@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.59.2
+# Archy GUI — Flow Manager · v1.59.3
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.59.2**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.59.2**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.59.3**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.59.3**.
 
 ---
 
@@ -47,7 +47,7 @@ Gøres én gang pr. Genesys-org (se også **📋 Opsætning** i programmet, som 
 | Datatabeller og manifest | `architect:datatable:view/add`, `architect:datatableRow:view/add/edit` |
 | Data Actions | `integrations:integration:view`, `integrations:action:view/add` |
 | Prompts | `architect:userPrompt:view/add` |
-| Scripts | `scripter:script:view/add`, `scripter:publishedScript:view/add` |
+| Scripts | `scripter:script:view/add`, `scripter:publishedScript:view/add` — og scopet `scripts` på OAuth-klienten |
 | Divisioner, køer, brugere | `authorization:division:view`, `routing:queue:view`, `directory:user:view` |
 | Afhængigheder | `architect:dependencyTracking:view` |
 | Vise OAuth-klientens navn | `oauth:client:view` |
@@ -311,6 +311,10 @@ Mangler der noget, åbnes en dialog med to sektioner:
 
 Common modules migreres med samme maskineri som flows, og deres **egne** afhængigheder tages først — rekursivt, nedefra og op. Et modul der selv bruger femten tabeller får dem alle med.
 
+**Divisionen flowet oprettes i** tjekkes før noget importeres. Må login'et ikke oprette flows i den, stopper flowet med en besked om hvilken division det gælder — giv rollen adgang i divisionen, eller sæt en division på målmiljøet. Ligger et common module i en division der ikke findes i målet, lægges det i målmiljøets division (Home, hvis der ingen er sat).
+
+**Kan målet ikke læses** — fx fordi OAuth-klienten mangler et scope — står ressourcen som *kunne ikke tjekkes* med fejlen under, og den tilbydes ikke migreret.
+
 > **Function Data Actions blokerer.** Bruger flowet en Function Data Action, der findes i kilden men ikke i målet, kan den ikke oprettes herfra, og forfremmelsen **standses**: dialogen viser den i rødt med en **tjekliste til kopiering**, og de to knapper *Fortsæt uden* og *Migrér valgte* er skjult. Opret den i Genesys i mål-org'en, og tryk **Tjek igen**; først når den findes, kan flowet forfremmes. Spærringen står også i selve importen, så den ikke kan springes over. Det holder versionsnummer og tjek i takt, i stedet for at man retter bagefter direkte i Genesys.
 
 > **Data actions får målets navne.** Et flow peger på en data action med **kategori** (integrationens navn) og **navn**. Hedder de noget andet i mål-org'en — fx *Test - Genesys Cloud Data Actions* i test og *Genesys Cloud Data Actions - Flows* i prod — fejler importen, selv om navnet findes. Archy slår derfor begge dele op i målet, og findes en af dem ikke præcist, åbnes en liste over flowets data actions: *samme* (findes), *gemt valg*, *vælg* (samme navn under en anden kategori — vælg hvilken) og *findes ikke* (peg den over på en eksisterende, eller lad den blive migreret i næste trin). Referencen i flowet skrives om på den side-kopi der importeres; kildens egen kopi røres ikke. Valgene gemmes pr. org-par — i mål-org'ens manifest-tabel hvis den har en, ellers i `.data-action-map.json` — og gemmes først efter en vellykket import, så de bruges automatisk næste gang. Vil du ikke have dem gemt, fjern kryds i *Husk mine valg*. Et gemt valg kan ikke fjernes fra brugerfladen endnu.
@@ -488,7 +492,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-385 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+393 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -542,7 +546,7 @@ Done once per Genesys org (the **📋 Setup** guide in the app walks you through
 | Data tables and manifest | `architect:datatable:view/add`, `architect:datatableRow:view/add/edit` |
 | Data Actions | `integrations:integration:view`, `integrations:action:view/add` |
 | Prompts | `architect:userPrompt:view/add` |
-| Scripts | `scripter:script:view/add`, `scripter:publishedScript:view/add` |
+| Scripts | `scripter:script:view/add`, `scripter:publishedScript:view/add` — and the `scripts` scope on the OAuth client |
 | Divisions, queues, users | `authorization:division:view`, `routing:queue:view`, `directory:user:view` |
 | Dependencies | `architect:dependencyTracking:view` |
 | Show the OAuth client's name | `oauth:client:view` |
@@ -788,6 +792,10 @@ If anything is missing, a dialog opens with two sections:
 | Needs a decision | **Division** (create / use Home / skip), **survey form** (copy / skip) | Dropdown per resource |
 | Must be created manually | Queues, **users** (a fixed user in *Transfer to User*), skills, wrap-up codes, schedules, knowledge bases, Function Data Actions | Create them in the target org first |
 
+**The division the flow is created in** is checked before anything is imported. If the login may not create flows there, the flow stops with a message naming the division — give the role access in the division, or set a division on the target environment. A common module in a division that does not exist in the target goes into the target environment's division (Home if none is set).
+
+**If the target cannot be read** — say the OAuth client lacks a scope — the resource is shown as *could not be checked* with the error below it, and it is not offered for migration.
+
 Common modules are migrated with the same machinery as flows, and their **own** dependencies are handled first — recursively, bottom-up. A module that itself uses fifteen tables brings all of them along.
 
 > **Function Data Actions block.** If the flow uses a Function Data Action that exists in the source but not in the target, it cannot be created from here and the promotion is **stopped**: the dialog shows it in red with a **checklist to copy**, and the *Continue anyway* and *Migrate selected* buttons are hidden. Create it in Genesys in the target org and press **Check again**; only once it exists can the flow be promoted. The block is also in the import itself, so it cannot be skipped. This keeps the version number and the check in step, instead of fixing things afterwards directly in Genesys.
@@ -967,7 +975,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-385 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+393 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 

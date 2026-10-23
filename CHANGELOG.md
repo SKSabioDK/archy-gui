@@ -5,6 +5,25 @@
 
 ---
 
+### v1.59.3
+---
+**🇩🇰 Dansk**
+
+- **Divisionen tjekkes før importen.** Må login'et ikke oprette flows i den division flowet lander i, stopper flowet, før noget migreres med, og beskeden siger hvilken division og hvad der skal gøres. Før fejlede importen først i Archy (*unable to create a flow in division …*), efter at tabeller, prompts og moduler var lagt i målet. Tjekket før forfremmelse viser det som blokerende.
+- **Common modules i en division der mangler i målet** lægges i målmiljøets division (Home, hvis der ingen er sat) i stedet for at fejle (*unable to look up the flow creation division*).
+- **Kan målet ikke læses, tilbydes intet migreret.** Manglede OAuth-klienten i målet fx scopet `scripts`, stod hvert script som manglende, og hver migrering fejlede på samme opslag. Nu står de som *kunne ikke tjekkes* med fejlen under.
+- Fejlen *app.not.authorized.for.scope* siger nu, at scopet skal tilføjes på OAuth-klienten, og at man skal logge ind igen.
+- Otte nye tests.
+
+**🇬🇧 English**
+- **The division is checked before the import.** If the login may not create flows in the division the flow lands in, the flow stops before anything is migrated along, and the message names the division and what to do. The import used to fail only in Archy (*unable to create a flow in division …*), after tables, prompts and modules had been put in the target. The pre-promotion check shows it as blocking.
+- **Common modules in a division missing in the target** go into the target environment's division (Home if none is set) instead of failing (*unable to look up the flow creation division*).
+- **If the target cannot be read, nothing is offered for migration.** When the OAuth client in the target lacked e.g. the `scripts` scope, every script showed as missing, and every migration failed on the same lookup. They now show as *could not be checked* with the error below.
+- The *app.not.authorized.for.scope* error now says to add the scope to the OAuth client and log in again.
+- Eight new tests.
+
+---
+
 ### v1.59.2
 ---
 **🇩🇰 Dansk**
