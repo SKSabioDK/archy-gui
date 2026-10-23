@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.59.3
+# Archy GUI — Flow Manager · v1.59.4
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.59.3**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.59.3**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.59.4**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.59.4**.
 
 ---
 
@@ -33,7 +33,7 @@ Gøres én gang pr. Genesys-org (se også **📋 Opsætning** i programmet, som 
 1. I Genesys Cloud: **Admin → Integrations → OAuth → Add Client**.
 2. **Grant Type:** *Code Authorization*. (*Client Credentials* bruges kun af ældre miljøer.)
 3. **Authorized redirect URIs:** `http://localhost:3737/auth/callback` — præcis sådan, uden skråstreg til sidst. Kører programmet på en anden port (`PORT`), skal URI'en følge den, og `OAUTH_REDIRECT_URI` i `server.js` ændres tilsvarende.
-4. **Scope:** programmet beder ikke om bestemte scopes — brugerens egne roller afgør, hvad der er tilladt. Klientens scope skal derfor ikke indsnævres.
+4. **Scope:** et kald skal være tilladt af **både** brugerens roller og klientens scopes. Vælg mindst `architect`, `scripts`, `integrations`, `authorization`, `routing`, `users`, `groups` og `oauth` (de fire sidste må gerne være `:readonly`). Mangler et scope, fejler kaldet med *app.not.authorized.for.scope* — **🔌 Test** viser det som `scope …` ud for funktionen. Et nyt scope gælder først efter et nyt login.
 5. Gem, og kopiér **Client ID** (en GUID). Der er ingen secret at gemme; PKCE bruger ingen.
 6. I programmet: opret miljøet med **🌐 OAuth (PKCE)**, indsæt Client ID, vælg region, og tryk **Log ind**. Log ind i den rigtige org — logger du ind i en anden, afvises tokenet.
 
@@ -492,7 +492,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-393 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+398 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -532,7 +532,7 @@ Done once per Genesys org (the **📋 Setup** guide in the app walks you through
 1. In Genesys Cloud: **Admin → Integrations → OAuth → Add Client**.
 2. **Grant Type:** *Code Authorization*. (*Client Credentials* is only used by older environments.)
 3. **Authorized redirect URIs:** `http://localhost:3737/auth/callback` — exactly like this, no trailing slash. If the app runs on another port (`PORT`), the URI must follow it, and `OAUTH_REDIRECT_URI` in `server.js` must be changed to match.
-4. **Scope:** the app does not request specific scopes — the signed-in user's own roles decide what is allowed, so do not narrow the client's scope.
+4. **Scope:** a call must be allowed by **both** the user's roles and the client's scopes. Pick at least `architect`, `scripts`, `integrations`, `authorization`, `routing`, `users`, `groups` and `oauth` (the last four may be `:readonly`). A missing scope fails the call with *app.not.authorized.for.scope* — **🔌 Test** shows it as `scope …` next to the feature. A new scope only applies after a new login.
 5. Save, and copy the **Client ID** (a GUID). There is no secret to store; PKCE uses none.
 6. In the app: create the environment with **🌐 OAuth (PKCE)**, paste the Client ID, pick the region, and press **Log in**. Log in to the right org — a login in another org is rejected.
 
@@ -975,7 +975,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-393 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+398 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 

@@ -1229,6 +1229,7 @@ app.get('/api/customers/:id/oauth-client', async (req, res) => {
   } catch (e) {
     const st = e.response?.status;
     if (st === 403) return res.json({ ok: false, code: 'forbidden' });
+    if (st === 401 && c.authType === 'oauth') return res.json({ ok: false, code: 'login' });
     if (/OAuth token (missing|expired)|another org/.test(e.message)) return res.json({ ok: false, code: 'login' });
     res.json({ ok: false, code: 'error', error: describeApiError(e) });
   }
@@ -1757,11 +1758,35 @@ const PERMISSION_CHECKS = [
                                    'architect:datatableRow:view', 'architect:datatableRow:add', 'architect:datatableRow:edit'] },
   { area: 'dataactions',   perms: ['integrations:integration:view', 'integrations:action:view', 'integrations:action:add'] },
   { area: 'prompts',       perms: ['architect:userPrompt:view', 'architect:userPrompt:add'] },
+  { area: 'scripts',       perms: ['scripter:script:view', 'scripter:script:add', 'scripter:publishedScript:view', 'scripter:publishedScript:add'] },
   { area: 'divisions',     perms: ['authorization:division:view'] },
   { area: 'queues',        perms: ['routing:queue:view'] },
   { area: 'users',         perms: ['directory:user:view'] },
   { area: 'dependencies',  perms: ['architect:dependencyTracking:view'] },
 ];
+
+// Med PKCE er det brugerens roller OG OAuth-klientens scopes der afgør hvad
+// et kald må. Rollerne kunne være i orden, mens klienten manglede fx scopet
+// scripts — og så fejlede hvert kald med app.not.authorized.for.scope. Det
+// scope hver funktion kræver, og om læseadgang (:readonly) er nok.
+const SCOPE_NEEDS = {
+  flows_read: ['architect', true], flows_write: ['architect', false], flows_publish: ['architect', false],
+  datatables: ['architect', false], dataactions: ['integrations', false], prompts: ['architect', false],
+  scripts: ['scripts', false], divisions: ['authorization', true], queues: ['routing', true],
+  users: ['users', true], dependencies: ['architect', true]
+};
+
+// Ren funktion. En klient uden scope-liste begrænser ikke, så intet ændres.
+function applyClientScopes(checks, scopes) {
+  if (!Array.isArray(scopes) || !scopes.length) return checks;
+  return checks.map(c => {
+    const need = SCOPE_NEEDS[c.area];
+    if (!need) return c;
+    const [scope, readonlyOk] = need;
+    if (scopes.includes(scope) || (readonlyOk && scopes.includes(scope + ':readonly'))) return c;
+    return { ...c, ok: false, unknown: false, missing: [...(c.missing || []), `scope ${scope}`] };
+  });
+}
 
 // Ren vurdering: held er rettighederne som "domæne:entitet:handling[:division]".
 function evaluatePermissions(held, authType) {
@@ -1802,6 +1827,7 @@ const READ_PROBES = {
   datatables:   ['architect:datatable:view',        '/api/v2/flows/datatables'],
   dataactions:  ['integrations:action:view',        '/api/v2/integrations/actions'],
   prompts:      ['architect:userPrompt:view',       '/api/v2/architect/prompts'],
+  scripts:      ['scripter:script:view',            '/api/v2/scripts'],
   divisions:    ['authorization:division:view',     '/api/v2/authorization/divisions'],
   queues:       ['routing:queue:view',              '/api/v2/routing/queues'],
   users:        ['directory:user:view',             '/api/v2/users'],
@@ -2145,6 +2171,26 @@ app.get('/api/auth/status/:id', (req, res) => {
 
 // ── Token helper ────────────────────────────────────────────────────────────
 
+// Et PKCE-token kan dø før sin udløbstid: org'ens inaktivitets-timeout eller en
+// tilbagekaldelse. Genesys svarer så 401 bad.credentials, mens vi blev ved med
+// at kalde miljøet "logget ind" — og hvert kald fejlede. Svarer Genesys 401 på
+// et token vi har gemt, glemmes login'et, så brugerfladen beder om et nyt.
+function dropRejectedLogin(err) {
+  if (err?.response?.status !== 401) return null;
+  const h = err.config?.headers;
+  const auth = h && (typeof h.get === 'function' ? h.get('Authorization') : (h.Authorization || h.authorization));
+  const token = /^Bearer\s+(.+)$/.exec(String(auth || ''))?.[1];
+  if (!token) return null;
+  const id = Object.keys(tokenStore).find(k => tokenStore[k]?.token === token);
+  if (!id) return null;
+  forgetLogin(id);
+  const env = loadCustomers().find(c => c.id === id);
+  addLog('WARN', `Genesys no longer accepts the login for ${env?.name || id} (401) — expired, revoked or the org's idle timeout. Log in again`,
+    env?.name, 'CUSTOMER');
+  return id;
+}
+axios.interceptors.response.use(null, err => { dropRejectedLogin(err); return Promise.reject(err); });
+
 // Glemmer alt der er slået op med miljøets forrige login eller nøgle: tokenet,
 // hvem man er, manifest-tabellens id og et påbegyndt PKCE-login.
 function forgetLogin(id) {
@@ -2262,8 +2308,17 @@ app.post('/api/customers/:id/test', async (req, res) => {
     // Rettighederne holdes op mod hver funktion. Kan rollerne ikke læses,
     // prøves læsningen af, og det der ikke kan prøves, meldes som ukendt.
     const held = await heldPermissions(customer, token, apiBase);
-    const checks = held ? evaluatePermissions(held, customer.authType)
-                        : await probePermissions(customer, token, apiBase);
+    let checks = held ? evaluatePermissions(held, customer.authType)
+                      : await probePermissions(customer, token, apiBase);
+    if (customer.authType === 'oauth') {
+      try {
+        const cl = await axios.get(`${apiBase}/api/v2/oauth/clients/${encodeURIComponent(customer.clientId)}`,
+          { headers: { Authorization: `Bearer ${token}` } });
+        checks = applyClientScopes(checks, cl.data.scope);
+      } catch (e) {
+        addLog('WARN', `Could not read the scopes of the OAuth client for ${customer.name}: ${describeApiError(e)}`, customer.name, 'TEST');
+      }
+    }
     const source = customer.authType === 'oauth' ? 'user' : held ? 'roles' : 'probe';
     const missing = checks.filter(c => !c.ok && !c.unknown);
     const unknown = checks.filter(c => c.unknown);
@@ -7089,6 +7144,8 @@ function describeApiError(e) {
   // og et nyt scope gælder først efter et nyt login.
   if (d.code === 'app.not.authorized.for.scope')
     parts.push('— add the scope to the OAuth client in Genesys (Admin → Integrations → OAuth → the client → Scope), then log in again');
+  if (d.code === 'bad.credentials')
+    parts.push('— the login is no longer valid (expired, revoked or the org\'s idle timeout); log in again');
 
   return parts.join(' ');
 }
@@ -9174,7 +9231,7 @@ if (require.main === module) {
 // især haft mindst én fejl der nåede ud til brugeren, og de er samtidig de
 // eneste der kan efterprøves uden en rigtig org. Se test/*.test.js.
 module.exports = {
-  nodeSecurityStatus, flowOwnDivision, divisionProblem, appsBaseOf, COPYABLE_KINDS, credentialChangeError, forgetLogin, keepsOrgOnClientChange,
+  nodeSecurityStatus, applyClientScopes, dropRejectedLogin, flowOwnDivision, divisionProblem, appsBaseOf, COPYABLE_KINDS, credentialChangeError, forgetLogin, keepsOrgOnClientChange,
   sanitizeDatatableSchema, mapRoleDivisions, buildOauthClientBody, buildRolePolicies, missingRolesFor, missingDivisionsFor,
   app, tokenStore, getToken, loadSessions, saveSessions, setSessionPersist, SESSION_FILE,
   // konventioner

@@ -5,6 +5,25 @@
 
 ---
 
+### v1.59.4
+---
+**🇩🇰 Dansk**
+
+- **Et login Genesys ikke længere tager imod, glemmes.** Et PKCE-token kan dø før tid — fx ved org'ens inaktivitets-timeout. Genesys svarede så *401 bad.credentials* på hvert kald, mens miljøet stod som logget ind i timevis. Nu glemmes login'et ved første 401, loggen siger hvorfor, og Log ind-knappen kommer frem igen.
+- **🔌 Test tjekker OAuth-klientens scopes.** Med PKCE skal et kald være tilladt af både brugerens roller og klientens scopes. Manglede klienten fx `scripts`, fejlede hvert script-kald, mens testen viste alt grønt. Nu står `scope scripts` ud for funktionen.
+- Ny funktion i testen: **Scripts** (`scripter:script:*`, `scripter:publishedScript:*`).
+- README beskriver hvilke scopes PKCE-klienten skal have. Før stod der, at scopet ikke betød noget.
+- Fem nye tests.
+
+**🇬🇧 English**
+- **A login Genesys no longer accepts is forgotten.** A PKCE token can die early — e.g. through the org's idle timeout. Genesys then answered *401 bad.credentials* to every call while the environment showed as logged in for hours. The login is now forgotten at the first 401, the log says why, and the Log in button comes back.
+- **🔌 Test checks the OAuth client's scopes.** With PKCE a call must be allowed by both the user's roles and the client's scopes. When the client lacked e.g. `scripts`, every script call failed while the test showed all green. It now shows `scope scripts` next to the feature.
+- New feature in the test: **Scripts** (`scripter:script:*`, `scripter:publishedScript:*`).
+- The README describes which scopes the PKCE client needs. It used to say the scope did not matter.
+- Five new tests.
+
+---
+
 ### v1.59.3
 ---
 **🇩🇰 Dansk**
