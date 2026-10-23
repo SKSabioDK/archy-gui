@@ -1638,19 +1638,24 @@ app.put('/api/customers/:id', (req, res) => {
   const updated = { ...before, ...patch };
   if (updated.authType !== 'oauth' && !isDemo(updated) && !updated.clientSecret)
     return res.status(400).json({ error: 'Client credentials kræver en client secret.' });
+  // Et tomt secret-felt betyder "behold den gamle". Ved et nyt client id hører
+  // den gamle secret til den gamle klient, så Genesys afviste hvert kald med
+  // invalid_client — som om de gamle indstillinger stadig gjaldt.
+  const credKey = credentialChangeError(before, updated, !!patch.clientSecret);
+  if (credKey) return res.status(400).json({ error: credKey });
   // Som ved oprettelse: prod med PKCE har ingen secret på disken.
   if (updated.stage === 'prod' && updated.authType === 'oauth') updated.clientSecret = '';
   // Et login hører til den klient og det miljø det blev givet til. Skifter
-  // godkendelsen, klienten, regionen eller trinnet, gælder det ikke længere.
-  if (['authType', 'clientId', 'region', 'stage', 'deployPermission', 'deployGroup']
-        .some(k => (before[k] || '') !== (updated[k] || ''))) {
-    delete tokenStore[updated.id];
-    delete _whoCache[updated.id];
-  }
+  // godkendelsen, klienten, nøglen, regionen eller trinnet, gælder det ikke længere.
+  if (['authType', 'clientId', 'clientSecret', 'region', 'stage', 'deployPermission', 'deployGroup']
+        .some(k => (before[k] || '') !== (updated[k] || ''))) forgetLogin(updated.id);
   if (['clientId', 'region'].some(k => (before[k] || '') !== (updated[k] || ''))) {
-    delete updated.orgId;
+    if (!keepsOrgOnClientChange(before, updated)) delete updated.orgId;
     delete orgIdCache[updated.id];
   }
+  if ((before.clientId || '') !== (updated.clientId || '') && stageOf(before) === 'prod')
+    addLog('WARN', `Client id changed on prod ${updated.name}: ${before.clientId || '—'} → ${updated.clientId || '—'}` +
+      (updated.orgId ? ` — still pinned to org ${updated.orgId}, log in again` : ' — log in again'), updated.name, 'SECURITY');
   const clash = prefixClash(updated, customers);
   if (clash) return res.status(400).json({ error: clash });
   customers[idx] = updated;
@@ -1903,10 +1908,27 @@ function prodSettingsBlock(before, changed, stored, now = Date.now()) {
     return { code: 'prod-oauth-required',
              error: `"${before.name}" er et prod-miljø med client credentials. Det eneste der kan ændres ved godkendelsen, er at skifte til OAuth (PKCE) — trinnet skal blive prod.` };
   }
+  // Kun et nyt client id: ellers kan et prod-miljø hvis klient er slettet eller
+  // forkert, aldrig rettes — rettelsen kræver et prod-login, og login'et går
+  // gennem den gamle klient. Det svækker ikke vagten: skrivning kræver stadig
+  // et friskt login med deploy-ret, og org-id'et bliver stående (se
+  // keepsOrgOnClientChange), så den nye klients login skal lande i samme org.
+  if (onlyClientIdChange(before, changed)) return null;
   const b = prodWriteBlock(before, stored, now);
   if (!b) return null;
   return { ...b, error: `Trin, godkendelse og deploy-krav på et prod-miljø kan kun ændres af en der må deploye dertil. ${b.error}` };
 }
+
+const onlyClientIdChange = (before, changed) =>
+  before.authType === 'oauth' && changed.clientId !== undefined &&
+  PROD_GUARDED_FIELDS.filter(k => changed[k] !== undefined).every(k => k === 'clientId');
+
+// Et prod-miljø med OAuth beholder sit org-id, når klienten skiftes. Ellers
+// ville et klientskift uden prod-login løsne org-bindingen, og et login i en
+// hvilken som helst org blive taget for prod.
+const keepsOrgOnClientChange = (before, after) =>
+  stageOf(before) === 'prod' && !isDemo(before) && before.authType === 'oauth' && after.authType === 'oauth' &&
+  (before.region || '') === (after.region || '');
 
 function refuseProdWrite(res, env, what) {
   const blocked = prodWriteBlock(env, env && tokenStore[env.id]);
@@ -2111,6 +2133,26 @@ app.get('/api/auth/status/:id', (req, res) => {
 });
 
 // ── Token helper ────────────────────────────────────────────────────────────
+
+// Glemmer alt der er slået op med miljøets forrige login eller nøgle: tokenet,
+// hvem man er, manifest-tabellens id og et påbegyndt PKCE-login.
+function forgetLogin(id) {
+  delete tokenStore[id];
+  delete _whoCache[id];
+  delete _mfTableCache[id];
+  delete pkceStore[id];
+}
+
+// Et nyt client id på et miljø med client credentials skal have den nye
+// secret med. Ren funktion, så den kan prøves uden en server.
+function credentialChangeError(before, after, newSecretGiven) {
+  if (after.authType === 'oauth' || isDemo(after)) return null;
+  const nyKlient = (before.clientId || '') !== (after.clientId || '') ||
+                   (before.authType || '') !== (after.authType || '');
+  if (nyKlient && !newSecretGiven)
+    return 'Et nyt client id kræver også den nye client secret — den gamle hører til den gamle klient. Indtast den nye secret og gem igen.';
+  return null;
+}
 
 // Det eneste sted et PKCE-token hentes fra — både API-kald og Archy går herigennem.
 // Archy fik før tokenet direkte fra tokenStore, uden om org-tjekket.
@@ -9011,7 +9053,7 @@ if (require.main === module) {
 // især haft mindst én fejl der nåede ud til brugeren, og de er samtidig de
 // eneste der kan efterprøves uden en rigtig org. Se test/*.test.js.
 module.exports = {
-  nodeSecurityStatus, appsBaseOf, COPYABLE_KINDS,
+  nodeSecurityStatus, appsBaseOf, COPYABLE_KINDS, credentialChangeError, forgetLogin, keepsOrgOnClientChange,
   sanitizeDatatableSchema, mapRoleDivisions, buildOauthClientBody, buildRolePolicies, missingRolesFor, missingDivisionsFor,
   app, tokenStore, getToken, loadSessions, saveSessions, setSessionPersist, SESSION_FILE,
   // konventioner

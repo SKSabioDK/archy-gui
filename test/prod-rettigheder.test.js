@@ -151,6 +151,24 @@ test('trin og krav på et prod-miljø kan ikke ændres uden prod-login', () => {
   assert.equal(s.prodSettingsBlock(PROD, { stage: 'uat' }, login(ja), NU), null);
 });
 
+test('et nyt client id på prod kræver ikke prod-login — login\'et går jo gennem klienten', () => {
+  // Ellers kan et prod-miljø med en slettet eller forkert klient aldrig rettes.
+  assert.equal(s.prodSettingsBlock(PROD, { clientId: 'ny-klient' }, null, NU), null);
+  // Men sammen med noget andet vagten passer på, gælder vagten stadig
+  assert.equal(s.prodSettingsBlock(PROD, { clientId: 'ny-klient', stage: 'uat' }, null, NU).code, 'prod-login');
+  assert.equal(s.prodSettingsBlock(PROD, { clientId: 'ny-klient', region: 'mypurecloud.ie' }, null, NU).code, 'prod-login');
+  assert.equal(s.prodSettingsBlock(PROD, { clientId: 'ny-klient', authType: 'credentials' }, null, NU).code, 'prod-login');
+});
+
+test('prod beholder sit org-id, når klienten skiftes', () => {
+  // Så skal den nye klients login lande i samme org — et klientskift uden
+  // login må ikke løsne org-bindingen.
+  const p = { ...PROD, orgId: 'org-1' };
+  assert.equal(s.keepsOrgOnClientChange(p, { ...p, clientId: 'ny' }), true);
+  assert.equal(s.keepsOrgOnClientChange(p, { ...p, clientId: 'ny', region: 'mypurecloud.ie' }), false);
+  assert.equal(s.keepsOrgOnClientChange({ ...p, stage: 'uat' }, { ...p, stage: 'uat', clientId: 'ny' }), false);
+});
+
 test('navn og præfiks på prod kan ændres uden login', () => {
   assert.equal(s.prodSettingsBlock(PROD, { name: 'Nyt navn', prefix: '', orgLabel: 'x' }, null, NU), null);
 });

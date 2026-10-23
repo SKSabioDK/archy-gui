@@ -5,6 +5,23 @@
 
 ---
 
+### v1.59.1
+---
+**🇩🇰 Dansk**
+
+- **Skift af client id hænger ikke længere fast i den gamle nøgle.** Et tomt secret-felt under ⚙ Indstillinger betyder *behold den gamle*. Skiftede man client id på et miljø med client credentials uden at indtaste den nye secret, blev den gamle klients secret sendt med, og Genesys afviste hvert kald (*invalid_client*), som om de gamle indstillinger stadig gjaldt. Nu afvises gemningen med besked om at indtaste den nye secret.
+- **En ny nøgle glemmer alt fra den gamle.** Skiftes client id, secret, godkendelse eller region, glemmes login'et, hvem man er, manifest-tabellens id og et påbegyndt login. Før blev en ny secret alene ikke regnet for et skift.
+- **Prod-miljøer kan skifte client id uden prod-login.** Prod-vagten krævede et prod-login for at ændre client id — men login'et går gennem den gamle klient, så et prod-miljø med en slettet eller forkert klient kunne aldrig rettes (*Prod settings change blocked (prod-login): clientId*). Et nyt client id alene er nu tilladt på et OAuth-miljø. Org-id'et bliver stående, så den nye klients login skal lande i samme org, og skrivning til prod kræver stadig et friskt login med deploy-ret. Trin, region, godkendelse og deploy-krav er stadig låst.
+- Ni nye tests.
+
+**🇬🇧 English**
+- **Changing the client id no longer sticks to the old key.** An empty secret field under ⚙ Settings means *keep the old one*. Changing the client id on a client-credentials environment without entering the new secret sent the old client's secret along, and Genesys refused every call (*invalid_client*), as if the old settings still applied. Saving is now refused with a message to enter the new secret.
+- **A new key forgets everything from the old one.** When the client id, secret, authentication or region changes, the login, who you are, the manifest table id and any login in progress are forgotten. A new secret on its own used not to count as a change.
+- **Prod environments can change client id without a prod login.** The prod guard required a prod login to change the client id — but the login goes through the old client, so a prod environment with a deleted or wrong client could never be fixed (*Prod settings change blocked (prod-login): clientId*). A new client id on its own is now allowed on an OAuth environment. The org id stays, so the new client's login must land in the same org, and writing to prod still requires a fresh login with deploy rights. Stage, region, authentication and deploy requirements stay locked.
+- Nine new tests.
+
+---
+
 ### v1.59.0
 ---
 **🇩🇰 Dansk**

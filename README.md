@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.59.0
+# Archy GUI — Flow Manager · v1.59.1
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.59.0**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.59.0**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.59.1**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.59.1**.
 
 ---
 
@@ -453,7 +453,7 @@ Tekniske betegnelser oversættes ikke — flow-typer (`InboundCall`, `Workflow` 
 - OAuth PKCE: ingen secret gemmes — token lever kun i serverens hukommelse
 - **Et login gælder kun den org miljøet hører til.** Med trusted orgs vælger man selv org'en på Genesys' login-side, så værktøjet slår op hvilken org login'et landede i, før tokenet gemmes. Passer den ikke med miljøets kendte org — eller hører den til en anden kunde — kasseres tokenet. Login'et beder altid om et nyt login (`prompt=login`) og peger på miljøets org (`target`), så en husket session i en anden org ikke genbruges stille. Både API-kaldene og Archy tjekker org'en igen hver gang tokenet bruges, og et kendt org-id overskrives aldrig. Samme OAuth-klient betyder kun samme org ved client credentials
 - **Skrivning til prod kræver et personligt login.** Et prod-miljø skal bruge OAuth (PKCE); med client credentials kan det læses, men ikke skrives til. Ved login slår værktøjet brugeren op i Genesys og tjekker rettigheden — som standard `architect:flow:publish` — og eventuelt medlemskab af en gruppe. Begge sættes pr. miljø under **⚙ Indstillinger**. Deploy-retten gælder 30 minutter efter login; derefter logger man ind igen. **Genstarter man programmet inden for de 30 minutter, huskes login'et** — så skal man ikke gennem MFA igen: tokenet gemmes i din egen brugermappe (`~/.archy-gui/session.json`), kun for friske logins og kun for de miljøer og den org, der blev logget ind til, og filen ryddes når de udløber. Sæt `rememberLoginMinutes` til `0` i `settings.json` for ikke at gemme noget. Archy og API-kaldene kører med brugerens eget token, så Genesys håndhæver også selv rettighederne, og audit-loggen viser personen. Kræver en OAuth-klient af typen *Code Authorization* i prod-org'en med redirect URI `http://localhost:3737/auth/callback`. Rettigheder pr. division (`architect:flow:publish:<division-id'er>`) tæller med
-- Trin, godkendelse, Client ID, region og deploy-krav på et prod-miljø kan kun ændres med et gyldigt prod-login — ellers kunne man sætte trinnet til "uat", skrive, og sætte det tilbage. Redigering tager kun imod de felter der kan redigeres
+- Trin, godkendelse, Client ID, region og deploy-krav på et prod-miljø kan kun ændres med et gyldigt prod-login — ellers kunne man sætte trinnet til "uat", skrive, og sætte det tilbage. Undtagelsen er et nyt **Client ID alene** på et OAuth-miljø: login'et går gennem klienten, så en slettet eller forkert klient ellers aldrig kunne rettes. Org-id'et bliver stående, så den nye klients login skal lande i samme org, og skrivning kræver stadig et friskt prod-login. Redigering tager kun imod de felter der kan redigeres
 - Serveren binder til `127.0.0.1`. Sæt `HOST` hvis den bevidst skal nås udefra — men der er ingen adgangskontrol foran, så det bør ikke gøres uden
 - Filstier fra brugerfladen holdes inden for `flows/`, både ved læsning og skrivning
 - Felterne på et miljø tjekkes når de gemmes: navnet må ikke indeholde `< > : " \ | ? * % ! ^ $ '` samt backtick og kontroltegn, ikke være et reserveret Windows-navn og ikke give samme eksportmappe som et andet miljø; præfikset må kun være `A-Z 0-9 _ -`; Client ID skal være et GUID og regionen en kendt. `/` er tilladt, så "A/S" kan bruges
@@ -488,7 +488,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-375 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+384 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -932,7 +932,7 @@ Technical identifiers are not translated — flow types (`InboundCall`, `Workflo
 - OAuth PKCE: no secret stored — token lives only in server memory
 - **A login only counts for the environment's own org.** With trusted orgs you pick the org on Genesys' login page, so the tool checks which org the login landed in before storing the token. If it does not match the environment's known org — or belongs to another customer — the token is discarded. Logins always force a fresh sign-in (`prompt=login`) aimed at the environment's org (`target`), so a remembered session in another org is not silently reused. Both the API calls and Archy re-check the org every time the token is used, and a known org id is never overwritten. The same OAuth client means the same org only for client credentials
 - **Writing to prod requires a personal login.** A prod environment must use OAuth (PKCE); with client credentials it can be read but not written to. At login the tool looks the user up in Genesys and checks the permission — `architect:flow:publish` by default — and optionally membership of a group. Both are set per environment under **⚙ Settings**. Deploy rights last 30 minutes after login; then you log in again. **If you restart the program within those 30 minutes, the login is remembered** — so you do not go through MFA again: the token is kept in your own user folder (`~/.archy-gui/session.json`), only for fresh logins and only for the environments and org the login was for, and the file is cleared as they expire. Set `rememberLoginMinutes` to `0` in `settings.json` to keep nothing. Archy and the API calls run with the user's own token, so Genesys enforces the permissions too and the audit log shows the person. Needs a *Code Authorization* OAuth client in the prod org with redirect URI `http://localhost:3737/auth/callback`. Division-scoped permissions (`architect:flow:publish:<division ids>`) count
-- Stage, authentication, Client ID, region and deploy requirements of a prod environment can only be changed with a valid prod login — otherwise one could set the stage to "uat", write, and set it back. Editing only accepts the editable fields
+- Stage, authentication, Client ID, region and deploy requirements of a prod environment can only be changed with a valid prod login — otherwise one could set the stage to "uat", write, and set it back. The exception is a new **Client ID on its own** on an OAuth environment: the login goes through the client, so a deleted or wrong client could otherwise never be fixed. The org id stays, so the new client's login must land in the same org, and writing still requires a fresh prod login. Editing only accepts the editable fields
 - The server binds to `127.0.0.1`. Set `HOST` to expose it deliberately — but there is no access control in front of it
 - File paths from the UI are confined to `flows/`, for both reading and writing
 - Environment fields are checked on save: the name may not contain `< > : " \ | ? * % ! ^ $ '`, backtick or control characters, be a reserved Windows name, or map to the same export folder as another environment; the prefix may only be `A-Z 0-9 _ -`; the Client ID must be a GUID and the region a known one. `/` is allowed, so "A/S" works
@@ -967,7 +967,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-375 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+384 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 
