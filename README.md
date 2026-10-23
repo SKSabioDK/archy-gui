@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.59.4
+# Archy GUI — Flow Manager · v1.59.5
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.59.4**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.59.4**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.59.5**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.59.5**.
 
 ---
 
@@ -306,12 +306,16 @@ Mangler der noget, åbnes en dialog med to sektioner:
 | Sektion | Indhold | Handling |
 |---|---|---|
 | Kan migreres nu | DataTables, Data Actions, **common modules**, bot flows, transfer-mål, **user prompts**, **scripts** | Afkrydsning — migreres inden flowet |
-| Kræver et valg | **Division** (opret / brug Home / spring over), **survey form** (kopiér / spring over) | Rullemenu pr. ressource |
+| Kræver et valg | **Division** (opret / brug Home / spring over), **survey form** (kopiér / spring over), **TTS-motor** målet ikke har (erstat med målets TTS / spring over) | Rullemenu pr. ressource |
 | Skal oprettes manuelt | Køer, **brugere** (fast bruger i *Transfer to User*), skills, wrap-up-koder, schedules, knowledge bases, Function Data Actions | Oprettes i mål-org'en først |
 
 Common modules migreres med samme maskineri som flows, og deres **egne** afhængigheder tages først — rekursivt, nedefra og op. Et modul der selv bruger femten tabeller får dem alle med.
 
 **Divisionen flowet oprettes i** tjekkes før noget importeres. Må login'et ikke oprette flows i den, stopper flowet med en besked om hvilken division det gælder — giv rollen adgang i divisionen, eller sæt en division på målmiljøet. Ligger et common module i en division der ikke findes i målet, lægges det i målmiljøets division (Home, hvis der ingen er sat).
+
+**TTS-motorer** flowet taler med (fx *Microsoft Azure*), som målet ikke har, vises i dialogen sammen med de sprog de bruges til. Vælger du *Erstat med målets TTS*, skiftes hvert sprog til en stemme på samme sprog i en motor målet har — Genesys' egen foretrækkes — både i flowet og i de moduler der migreres med. Sprog målet ikke har en stemme til, står som *Ingen stemme i målet*; dem kan erstatningen ikke klare, og de skal have en stemme i målet først.
+
+**Tomme skaller fra en fejlet import.** Archy opretter flowet, før indholdet lægges ind. Fejler importen, ligger der et tomt flow i målet (version 1.0 med kun *Disconnect*), som aldrig er publiceret. Et common module, bot flow eller transfer-mål regnes derfor kun for at findes, når det er **publiceret** — så en tom skal migreres igen i stedet for at blive sprunget over.
 
 **Kan målet ikke læses** — fx fordi OAuth-klienten mangler et scope — står ressourcen som *kunne ikke tjekkes* med fejlen under, og den tilbydes ikke migreret.
 
@@ -492,7 +496,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-398 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+405 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -789,10 +793,14 @@ If anything is missing, a dialog opens with two sections:
 | Section | Contents | Action |
 |---|---|---|
 | Can be migrated now | DataTables, Data Actions, **common modules**, bot flows, transfer targets, **user prompts**, **scripts** | Checkboxes — migrated before the flow |
-| Needs a decision | **Division** (create / use Home / skip), **survey form** (copy / skip) | Dropdown per resource |
+| Needs a decision | **Division** (create / use Home / skip), **survey form** (copy / skip), **TTS engine** the target lacks (replace with the target's TTS / skip) | Dropdown per resource |
 | Must be created manually | Queues, **users** (a fixed user in *Transfer to User*), skills, wrap-up codes, schedules, knowledge bases, Function Data Actions | Create them in the target org first |
 
 **The division the flow is created in** is checked before anything is imported. If the login may not create flows there, the flow stops with a message naming the division — give the role access in the division, or set a division on the target environment. A common module in a division that does not exist in the target goes into the target environment's division (Home if none is set).
+
+**TTS engines** the flow speaks with (e.g. *Microsoft Azure*) that the target lacks are shown in the dialog with the languages they are used for. Choose *Replace with the target's TTS* and each language switches to a voice in the same language on an engine the target has — Genesys' own is preferred — both in the flow and in the modules migrated along. Languages the target has no voice for are shown as *No voice in the target*; the replacement cannot handle them, and they need a voice in the target first.
+
+**Empty shells from a failed import.** Archy creates the flow before the content goes in. If the import fails, an empty flow is left in the target (version 1.0 with only *Disconnect*), never published. A common module, bot flow or transfer target therefore only counts as existing when it is **published** — so an empty shell is migrated again instead of being skipped.
 
 **If the target cannot be read** — say the OAuth client lacks a scope — the resource is shown as *could not be checked* with the error below it, and it is not offered for migration.
 
@@ -975,7 +983,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-398 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+405 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 

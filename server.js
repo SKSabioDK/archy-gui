@@ -6389,6 +6389,13 @@ function notMeta(n) {
            'ver_latestPublished', 'inputs', 'outputs', 'supportedLanguages'].includes(n);
 }
 
+// Et flow et andet flow peger på, findes først når det er publiceret. Archy
+// opretter flowet før indholdet lægges ind, så en import der fejlede (fx på en
+// TTS-motor), efterlod en tom skal: version 1.0 med kun Disconnect, aldrig
+// publiceret. Den blev regnet for "findes", og modulet blev aldrig migreret.
+const countsAsExisting = (kind, entity) =>
+  !FLOW_KINDS.has(kind) || !!(entity && entity.publishedVersion);
+
 // Hvilke af 'names' findes allerede i org'en? Store lister (758 køer, 350 skills)
 // slås op pr. navn; små lister hentes i ét hug.
 async function lookupExisting(kind, names, token, apiBase) {
@@ -6416,7 +6423,7 @@ async function lookupExisting(kind, names, token, apiBase) {
         ...H, params: { pageSize: bulk[kind].size, pageNumber: page }
       });
       const e = r.data.entities || [];
-      for (const x of e) if (names.includes(x.name)) found.add(x.name);
+      for (const x of e) if (names.includes(x.name) && countsAsExisting(kind, x)) found.add(x.name);
       if (e.length < bulk[kind].size) break;
       page++;
     }
@@ -8073,6 +8080,114 @@ const FLOW_KINDS = new Set(['commonmodule', 'botflow', 'targetflow']);
 // Ressourcer der kopieres hele fra kilden ved navn: user prompts (med lyd) og scripts
 const COPYABLE_KINDS = new Set(['prompt', 'script']);
 
+// ── Talesyntese (TTS) ────────────────────────────────────────────────────────
+// Et flow siger pr. sprog hvilken TTS-motor og stemme det taler med:
+//
+//   supportedLanguages:
+//     da-dk:
+//       textToSpeech:
+//         Microsoft Azure:
+//           voice: da-DK-ChristelNeural
+//
+// Har målet ikke motoren (fx ingen Azure-integration), afviser Archy hele
+// importen. Det opdages nu før, og motoren kan skiftes til en målet har — med
+// en stemme på samme sprog.
+
+const TTS_DEFAULT = 'defaultEngine';
+
+// [{ lang, engine, voice, engineLine, voiceLine }] — linjenumrene bruges ved omskrivning.
+function scanTtsEngines(yaml) {
+  const lines = String(yaml).split(/\r?\n/);
+  const out = [];
+  let lang = null;
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    const sprog = l.match(/^([ \t]+)([a-z]{2,3}-[a-z0-9]{2,4}):[ \t]*$/i);
+    if (sprog) { lang = sprog[2]; continue; }
+    const tts = l.match(/^([ \t]+)textToSpeech:[ \t]*$/);
+    if (!tts || !lang) continue;
+    const ind = tts[1].length;
+    const eng = (lines[i + 1] || '').match(/^([ \t]+)(.+?):[ \t]*$/);
+    if (!eng || eng[1].length <= ind) continue;
+    const v = (lines[i + 2] || '').match(/^([ \t]+)voice:[ \t]*["']?(.*?)["']?[ \t]*$/);
+    const harStemme = v && v[1].length > eng[1].length;
+    out.push({ lang, engine: eng[2].replace(/^["']|["']$/g, ''), voice: harStemme ? v[2] : null,
+               engineLine: i + 1, voiceLine: harStemme ? i + 2 : null });
+  }
+  return out;
+}
+
+// De motorer flowet bruger, som målet ikke har. Standardmotoren findes altid.
+function missingTtsEngines(entries, available) {
+  const har = new Set((available || []).map(e => String(e.name).toLowerCase()));
+  return [...new Set(entries.map(e => e.engine))]
+    .filter(n => n !== TTS_DEFAULT && !har.has(n.toLowerCase()));
+}
+
+// Skifter motorer målet ikke har, til en det har, med en stemme på samme sprog.
+// Genesys' egen motor foretrækkes. Uden en stemme på sproget røres linjen ikke,
+// og sproget meldes — vi gætter ikke på en stemme der taler et andet sprog.
+function replaceTtsEngines(yaml, available) {
+  const eol = /\r\n/.test(yaml) ? '\r\n' : '\n';
+  const lines = String(yaml).split(/\r?\n/);
+  const motorer = [...(available || [])].sort((a, b) =>
+    (/genesys/i.test(b.name) ? 1 : 0) - (/genesys/i.test(a.name) ? 1 : 0));
+  const mangler = new Set(missingTtsEngines(scanTtsEngines(yaml), available));
+  const changed = [], unresolved = [];
+  // Nedefra og op: en indsat stemmelinje flytter ikke de linjer, der mangler.
+  for (const e of scanTtsEngines(yaml).reverse()) {
+    if (!mangler.has(e.engine)) continue;
+    const lang = e.lang.toLowerCase();
+    let valg = null;
+    for (const m of motorer) {
+      const st = (m.voices || []).find(v => String(v.language || '').toLowerCase() === lang);
+      if (st) { valg = { engine: m.name, voice: st.name }; break; }
+    }
+    if (!valg) { unresolved.push({ lang: e.lang, engine: e.engine }); continue; }
+    const ind = lines[e.engineLine].match(/^[ \t]*/)[0];
+    lines[e.engineLine] = `${ind}${valg.engine}:`;
+    if (e.voiceLine != null) {
+      const vind = lines[e.voiceLine].match(/^[ \t]*/)[0];
+      lines[e.voiceLine] = `${vind}voice: ${valg.voice}`;
+    } else {
+      lines.splice(e.engineLine + 1, 0, `${ind}  voice: ${valg.voice}`);
+    }
+    changed.unshift({ lang: e.lang, from: `${e.engine}${e.voice ? ' / ' + e.voice : ''}`, to: `${valg.engine} / ${valg.voice}` });
+  }
+  return { yaml: lines.join(eol), changed, unresolved: unresolved.reverse() };
+}
+
+// Motorerne og deres stemmer i målet.
+async function targetTtsEngines(target) {
+  const { token, apiBase } = await getToken(target);
+  const ud = [];
+  for (let page = 1; ; page++) {
+    const r = await axios.get(`${apiBase}/api/v2/integrations/speech/tts/engines`, {
+      headers: { Authorization: `Bearer ${token}` },
+      params: { pageSize: 100, pageNumber: page, includeVoices: true }
+    });
+    const e = r.data.entities || [];
+    for (const m of e) ud.push({ name: m.name, voices: (m.voices || []).map(v => ({ name: v.name, language: v.language })) });
+    if (e.length < 100) break;
+  }
+  return ud;
+}
+
+// Skriver TTS om i en importfil, hvis brugeren har valgt det. Returnerer den
+// nye YAML og noterer i loggen og sporet hvad der blev skiftet.
+async function applyTtsChoice(yaml, target, flowName, trail) {
+  const r = replaceTtsEngines(yaml, await targetTtsEngines(target));
+  for (const c of r.changed) {
+    addLog('INFO', `TTS in "${flowName}" ${c.lang}: ${c.from} → ${c.to}`, target.name, 'MIGRATE');
+    if (trail) trail.push(`↦ ${flowName} ${c.lang}: ${c.from} → ${c.to}`);
+  }
+  for (const u of r.unresolved) {
+    addLog('WARN', `TTS in "${flowName}" ${u.lang}: ${target.name} has no voice for the language — "${u.engine}" kept`, target.name, 'MIGRATE');
+    if (trail) trail.push(`⚠ ${flowName} ${u.lang}: ingen stemme på sproget i ${target.name}`);
+  }
+  return r.yaml;
+}
+
 // ── Divisionen et flow oprettes i ────────────────────────────────────────────
 // Archy opretter flowet i den division YAML'en siger. Findes den ikke i målet,
 // eller må login'et ikke oprette flows dér, fejlede importen først i Archy —
@@ -8124,7 +8239,7 @@ const divisionDeniedText = (division, target) =>
 // Migrerer ét flow som afhængighed af et andet. Modulet kan selv have
 // afhængigheder — også andre common modules — så de tages først, nedefra og op.
 // 'visited' bryder cirkler, og dybden er begrænset for en sikkerheds skyld.
-async function migrateFlowDependency(source, target, flowName, flowType, visited, depth, trail) {
+async function migrateFlowDependency(source, target, flowName, flowType, visited, depth, trail, opts = {}) {
   const key = `${flowType}|${flowName}`;
   if (visited.has(key)) return { ok: true, skipped: 'cycle' };
   visited.add(key);
@@ -8237,7 +8352,7 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
       });
       const hit = (fr.data.entities || []).find(f => f.name === n);
       if (!hit) { trail.push(`⚠ "${n}" findes ikke i kilde-org — springes over`); continue; }
-      const sub = await migrateFlowDependency(source, target, hit.name, hit.type, visited, depth + 1, trail);
+      const sub = await migrateFlowDependency(source, target, hit.name, hit.type, visited, depth + 1, trail, opts);
       trail.push((sub.ok ? '✓ ' : '✗ ') + `${hit.name} (${hit.type})` + (sub.error ? ': ' + sub.error : ''));
       if (!sub.ok) return { ok: false, error: `Underafhængighed "${hit.name}" fejlede: ${sub.error}` };
     }
@@ -8279,8 +8394,21 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
   } catch (e) {
     addLog('WARN', `Could not check the divisions in ${target.name}: ${describeApiError(e)}`, target.name, 'MIGRATE');
   }
+  // Valgte brugeren at skifte TTS-motorer målet ikke har, gælder det også moduler.
+  let ttsYaml = null;
+  if (opts.ttsReplace) {
+    try {
+      const raa = fs.readFileSync(filePath, 'utf8');
+      const ny = await applyTtsChoice(raa, target, flowName, trail);
+      if (ny !== raa) ttsYaml = ny;
+    } catch (e) { addLog('WARN', `Could not read the TTS engines in ${target.name}: ${describeApiError(e)}`, target.name, 'MIGRATE'); }
+  }
+  if (ttsYaml && !omskriv) {
+    importFile = path.join(path.dirname(filePath), `.import-${sanitizeName(target.name)}-${path.basename(filePath)}`);
+    fs.writeFileSync(importFile, ttsYaml, 'utf8');
+  }
   if (omskriv) {
-    let yaml = fs.readFileSync(filePath, 'utf8');
+    let yaml = ttsYaml || fs.readFileSync(filePath, 'utf8');
     yaml = setFlowDivisionInYaml(yaml, nyDivision);
     if (nyName !== flowName) yaml = renameFlowInYaml(yaml, nyName);
     const pre = prefixDependenciesInYaml(yaml, source, target);
@@ -8381,13 +8509,13 @@ function stripFormIds(node) {
 }
 
 app.post('/api/flows/migrate-dependency', async (req, res) => {
-  const { sourceId, targetId, flowName, flowType } = req.body;
+  const { sourceId, targetId, flowName, flowType, ttsReplace } = req.body;
   const source = loadCustomers().find(c => c.id === sourceId);
   const target = loadCustomers().find(c => c.id === targetId);
   if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
   const trail = [];
   try {
-    const r = await migrateFlowDependency(source, target, flowName, flowType, new Set(), 0, trail);
+    const r = await migrateFlowDependency(source, target, flowName, flowType, new Set(), 0, trail, { ttsReplace: !!ttsReplace });
     if (!r.ok) {
       addLog('ERROR', `Flow dependency "${flowName}" failed: ${r.error}`, target.name, 'MIGRATE');
       return res.status(500).json({ error: r.error, trail });
@@ -8658,6 +8786,23 @@ async function analyzeFlowForMigration(source, target, flowName, flowType, kilde
     } catch (e) {
       addLog('WARN', `Could not compare the data actions of "${flowName}" with ${target.name}: ${describeApiError(e)}`, target.name, 'MIGRATE');
     }
+    // TTS-motorer flowet taler med, som målet ikke har
+    try {
+      const tts = scanTtsEngines(yaml);
+      if (tts.some(e => e.engine !== TTS_DEFAULT)) {
+        const motorer = await targetTtsEngines(target);
+        const udenStemme = replaceTtsEngines(yaml, motorer).unresolved;
+        for (const engine of missingTtsEngines(tts, motorer)) {
+          const sprog = tts.filter(e => e.engine === engine).map(e => e.lang);
+          results.push({ kind: 'tts', name: engine, ok: false, needsChoice: true, choices: ['replace', 'skip'], languages: sprog,
+                         noVoice: udenStemme.filter(u => u.engine === engine).map(u => u.lang) });
+          addLog('WARN', `Missing in ${target.name}: TTS engine "${engine}" (${sprog.join(', ')}) — can be replaced`, target.name, 'MIGRATE');
+        }
+      }
+    } catch (e) {
+      addLog('WARN', `Could not check the TTS engines in ${target.name}: ${describeApiError(e)}`, target.name, 'MIGRATE');
+    }
+
     // Må login'et oprette flows i den division flowet lander i? En division der
     // mangler, står allerede blandt afhængighederne med et valg.
     let divisionDenied = null;
@@ -8728,7 +8873,7 @@ app.post('/api/migrate/check', async (req, res) => {
 
 // Fase 2: importér den allerede eksporterede fil til mål-org'en.
 app.post('/api/migrate/commit', async (req, res) => {
-  const { sourceId, targetId, flowName, filePath, action, divisionMap } = req.body;
+  const { sourceId, targetId, flowName, filePath, action, divisionMap, ttsReplace } = req.body;
   const source = loadCustomers().find(c => c.id === sourceId);
   const target = loadCustomers().find(c => c.id === targetId);
   if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
@@ -8812,7 +8957,15 @@ app.post('/api/migrate/commit', async (req, res) => {
     // Data actions peget over på det de hedder i målet. Samme sidefil som
     // præfiksomskrivningen — kildens egen kopi røres aldrig.
     const daRew = applyDataActionMap(fs.readFileSync(resolved, 'utf8'), daEntries, daTarget);
-    if (skalOmskrives || daRew.changed.length) {
+    // TTS-motorer målet ikke har, skiftes hvis brugeren valgte det
+    let ttsSkiftet = false;
+    if (ttsReplace) {
+      try {
+        const ny = await applyTtsChoice(daRew.yaml, target, flowName, null);
+        if (ny !== daRew.yaml) { daRew.yaml = ny; ttsSkiftet = true; }
+      } catch (e) { addLog('WARN', `Could not read the TTS engines in ${target.name}: ${describeApiError(e)}`, target.name, 'MIGRATE'); }
+    }
+    if (skalOmskrives || daRew.changed.length || ttsSkiftet) {
       let yaml = daRew.yaml;
       for (const omskrevet of daRew.changed) {
         omskrevneRefs.push(omskrevet);
@@ -9231,7 +9384,7 @@ if (require.main === module) {
 // især haft mindst én fejl der nåede ud til brugeren, og de er samtidig de
 // eneste der kan efterprøves uden en rigtig org. Se test/*.test.js.
 module.exports = {
-  nodeSecurityStatus, applyClientScopes, dropRejectedLogin, flowOwnDivision, divisionProblem, appsBaseOf, COPYABLE_KINDS, credentialChangeError, forgetLogin, keepsOrgOnClientChange,
+  nodeSecurityStatus, countsAsExisting, scanTtsEngines, missingTtsEngines, replaceTtsEngines, applyClientScopes, dropRejectedLogin, flowOwnDivision, divisionProblem, appsBaseOf, COPYABLE_KINDS, credentialChangeError, forgetLogin, keepsOrgOnClientChange,
   sanitizeDatatableSchema, mapRoleDivisions, buildOauthClientBody, buildRolePolicies, missingRolesFor, missingDivisionsFor,
   app, tokenStore, getToken, loadSessions, saveSessions, setSessionPersist, SESSION_FILE,
   // konventioner

@@ -5,6 +5,23 @@
 
 ---
 
+### v1.59.5
+---
+**🇩🇰 Dansk**
+
+- **TTS-motorer målet ikke har, opdages før importen.** Et flow der talte med fx *Microsoft Azure* i et mål uden Azure, blev afvist af Archy (*the text to speech engine 'Microsoft Azure' is not a valid text to speech engine*) — også de moduler der blev migreret med. Nu står motoren i dialogen med de sprog den bruges til.
+- **Erstat med målets TTS.** Hvert sprog skiftes til en stemme på samme sprog i en motor målet har; Genesys' egen foretrækkes. Valget gælder også de moduler der migreres med, og hvert skift står i loggen. Sprog målet ikke har en stemme til, vises på forhånd som *Ingen stemme i målet* — der gættes ikke på en stemme der taler et andet sprog.
+- **Tomme skaller tæller ikke som migreret.** Archy opretter flowet, før indholdet lægges ind, så en import der fejlede, efterlod et tomt flow (version 1.0 med kun *Disconnect*). Et common module, bot flow eller transfer-mål i den tilstand blev regnet for at findes og blev aldrig migreret igen. Nu tæller kun publicerede flows.
+- Syv nye tests.
+
+**🇬🇧 English**
+- **TTS engines the target lacks are found before the import.** A flow speaking with e.g. *Microsoft Azure* in a target without Azure was refused by Archy (*the text to speech engine 'Microsoft Azure' is not a valid text to speech engine*) — so were the modules migrated along. The engine is now shown in the dialog with the languages it is used for.
+- **Replace with the target's TTS.** Each language switches to a voice in the same language on an engine the target has; Genesys' own is preferred. The choice also covers the modules migrated along, and each switch is logged. Languages the target has no voice for are shown up front as *No voice in the target* — no voice speaking another language is guessed.
+- **Empty shells do not count as migrated.** Archy creates the flow before the content goes in, so a failed import left an empty flow (version 1.0 with only *Disconnect*). A common module, bot flow or transfer target in that state counted as existing and was never migrated again. Only published flows count now.
+- Seven new tests.
+
+---
+
 ### v1.59.4
 ---
 **🇩🇰 Dansk**

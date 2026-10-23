@@ -533,7 +533,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.59.4 · Archy GUI</div>
+    <div class="version" id="app-version">v1.59.5 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1956,6 +1956,10 @@ const LANGS = {
     dep_choice_useHome:'Brug Home i stedet',
     dep_choice_copy:'Kopiér fra kilde-org',
     dep_choice_skip:'Spring over',
+    dep_choice_replace:'Erstat med målets TTS',
+    dep_tts_langs:'Sprog',
+    dep_tts_novoice:'Ingen stemme i målet',
+    dep_tts_replacing:'TTS-motorer målet ikke har, skiftes til en stemme på samme sprog',
     cmp_against:'Sammenlign mod org (valgfrit)',
     cmp_title:'Sammenligning af indhold',
     cmp_close:'Luk',
@@ -3000,6 +3004,10 @@ const LANGS = {
     dep_choice_useHome:'Use Home instead',
     dep_choice_copy:'Copy from source org',
     dep_choice_skip:'Skip',
+    dep_choice_replace:'Replace with the target\'s TTS',
+    dep_tts_langs:'Languages',
+    dep_tts_novoice:'No voice in the target',
+    dep_tts_replacing:'TTS engines the target lacks are switched to a voice in the same language',
     cmp_against:'Compare against org (optional)',
     cmp_title:'Content comparison',
     cmp_close:'Close',
@@ -4044,6 +4052,10 @@ const LANGS = {
     dep_choice_useHome:'Utiliser Home à la place',
     dep_choice_copy:'Copier depuis l\'org source',
     dep_choice_skip:'Ignorer',
+    dep_choice_replace:'Remplacer par le TTS de la cible',
+    dep_tts_langs:'Langues',
+    dep_tts_novoice:'Aucune voix dans la cible',
+    dep_tts_replacing:'Les moteurs TTS absents de la cible sont remplacés par une voix de la même langue',
     cmp_against:'Comparer avec une org (facultatif)',
     cmp_title:'Comparaison du contenu',
     cmp_close:'Fermer',
@@ -5088,6 +5100,10 @@ const LANGS = {
     dep_choice_useHome:'Gebruik Home in plaats daarvan',
     dep_choice_copy:'Kopiëren uit bron-org',
     dep_choice_skip:'Overslaan',
+    dep_choice_replace:'Vervangen door de TTS van het doel',
+    dep_tts_langs:'Talen',
+    dep_tts_novoice:'Geen stem in het doel',
+    dep_tts_replacing:'TTS-engines die het doel niet heeft, worden vervangen door een stem in dezelfde taal',
     cmp_against:'Vergelijk met org (optioneel)',
     cmp_title:'Inhoudsvergelijking',
     cmp_close:'Sluiten',
@@ -6132,6 +6148,10 @@ const LANGS = {
     dep_choice_useHome:'Usar Home en su lugar',
     dep_choice_copy:'Copiar de la org de origen',
     dep_choice_skip:'Omitir',
+    dep_choice_replace:'Sustituir por el TTS del destino',
+    dep_tts_langs:'Idiomas',
+    dep_tts_novoice:'Sin voz en el destino',
+    dep_tts_replacing:'Los motores TTS que faltan en el destino se cambian por una voz del mismo idioma',
     cmp_against:'Comparar con org (opcional)',
     cmp_title:'Comparación de contenido',
     cmp_close:'Cerrar',
@@ -7858,19 +7878,25 @@ async function runMigration() {
 
       const missing = (prep.deps || []).filter(d => !d.ok && aktiv(d));
       const divisionMap = {};   // fyldes hvis brugeren vælger "brug Home"
+      let ttsReplace = false;
       if (missing.length) {
         log(logBox, `  ⚠ ${missing.length} ${t('dep_missing_count')}`, 'info');
         const { choice, picked, decisions } = await showDepModal(name, missing, prep.dynamicSkills);
         if (choice === 'cancel') { log(logBox, `  ⊘ ${t('dep_skipped_flow')}`, 'info'); skipped++; continue; }
         if (choice === 'migrate') {
+          // TTS-valget gælder også de moduler der migreres med, så det skal
+          // kendes før de flyttes.
+          ttsReplace = (decisions || []).some(x => x.dep.kind === 'tts' && x.action === 'replace');
+          if (ttsReplace) log(logBox, `    ↦ ${t('dep_tts_replacing')}`, 'info');
           if (picked.length) {
             log(logBox, `  ${t('dep_migrating')}`, 'info');
             let depFail = 0;
-            for (const d of picked) if (!await migrateOneDep(d, sourceId, targetId, logBox)) depFail++;
+            for (const d of picked) if (!await migrateOneDep(d, sourceId, targetId, logBox, { ttsReplace })) depFail++;
             if (depFail) log(logBox, `  ⚠ ${depFail} ${t('dep_failed_count')}`, 'info');
           }
           // Valg der kræver en beslutning: opret division / brug Home / kopiér survey form
           for (const { dep, action: act } of (decisions || [])) {
+            if (dep.kind === 'tts') continue;   // klares ved importen, se ttsReplace
             if (act === 'useHome') { divisionMap[dep.name] = 'Home';
               log(logBox, `    ↦ ${dep.name} → Home`, 'info'); continue; }
             const url  = act === 'create' ? '/api/divisions/create' : '/api/surveyforms/migrate';
@@ -7892,7 +7918,7 @@ async function runMigration() {
       // Fase 2: importér flowet
       const data = await fetch('/api/migrate/commit', {
         method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ sourceId, targetId, flowName: name, filePath: prep.filePath, action, divisionMap, confirmProd, alignVersion, actionMap, rememberMap })
+        body: JSON.stringify({ sourceId, targetId, flowName: name, filePath: prep.filePath, action, divisionMap, confirmProd, alignVersion, actionMap, rememberMap, ttsReplace })
       }).then(r => r.json());
       if (data.error) { log(logBox, `  ✗ ${data.error}`, 'err'); failed++; }
       else {
@@ -10800,6 +10826,16 @@ function damResolve(choice) {
   }
 }
 
+// Under en TTS-motor målet ikke har: hvilke sprog den bruges til, og hvilke
+// målet ikke har en stemme til — dem kan "erstat" ikke klare.
+function ttsDepNote(d) {
+  const sm = 'font-size:11px;color:var(--muted);margin-top:2px';
+  let h = `<div style="${sm}">${escapeHtml(t('dep_tts_langs'))}: ${escapeHtml((d.languages || []).join(', '))}</div>`;
+  if ((d.noVoice || []).length)
+    h += `<div style="${sm};color:var(--yellow)">${escapeHtml(t('dep_tts_novoice'))}: ${escapeHtml(d.noVoice.join(', '))}</div>`;
+  return h;
+}
+
 function showDepModal(flowName, missing, dynamicSkills, names) {
   const auto   = missing.filter(d => d.canMigrate);
   const choice = missing.filter(d => !d.canMigrate && d.needsChoice);
@@ -10844,7 +10880,7 @@ function showDepModal(flowName, missing, dynamicSkills, names) {
       return `
       <div style="display:flex;align-items:center;gap:10px;padding:7px 0;font-size:13px">
         <span style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:78px">${d.kind}</span>
-        <span style="flex:1">${escapeHtml(d.name)}${depTargetName(d)}</span>
+        <span style="flex:1">${escapeHtml(d.name)}${depTargetName(d)}${d.kind === 'tts' ? ttsDepNote(d) : ''}</span>
         <select style="width:auto;min-width:150px" data-choice='${escapeHtml(JSON.stringify(d))}'>${opts}</select>
       </div>`;
     }).join('');
@@ -10875,7 +10911,7 @@ function showDepModal(flowName, missing, dynamicSkills, names) {
 
 // Migrerer én afhængighed. DataTables og Data Actions genbruger de endpoints
 // Tabeller/Actions-siderne allerede bruger.
-async function migrateOneDep(dep, sourceId, targetId, logBox) {
+async function migrateOneDep(dep, sourceId, targetId, logBox, opts = {}) {
   // Common modules, bot flows og transfer-mål ER flows, så de migreres med
   // flow-maskineriet — inkl. deres egne afhængigheder, nedefra og op.
   const FLOW_KINDS = ['commonmodule', 'botflow', 'targetflow'];
@@ -10883,7 +10919,7 @@ async function migrateOneDep(dep, sourceId, targetId, logBox) {
     try {
       const data = await fetch('/api/flows/migrate-dependency', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sourceId, targetId, flowName: dep.flowName || dep.name, flowType: dep.flowType })
+        body: JSON.stringify({ sourceId, targetId, flowName: dep.flowName || dep.name, flowType: dep.flowType, ttsReplace: !!opts.ttsReplace })
       }).then(r => r.json());
       for (const line of data.trail || []) log(logBox, `      ${line}`, 'info');
       if (data.error) { log(logBox, `    \u2717 ${dep.name}: ${data.error}`, 'err'); return false; }
