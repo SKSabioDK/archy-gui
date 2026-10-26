@@ -6426,8 +6426,15 @@ function notMeta(n) {
 // opretter flowet før indholdet lægges ind, så en import der fejlede (fx på en
 // TTS-motor), efterlod en tom skal: version 1.0 med kun Disconnect, aldrig
 // publiceret. Den blev regnet for "findes", og modulet blev aldrig migreret.
+// Samme for en prompt: en skal uden lyd eller TTS i nogen sprog findes, men
+// kan ikke afspilles, og Archy afviser flowet med "does not have audio or text
+// to speech for at least one supported language". Svarer listen ikke med
+// ressourcerne, ved vi det ikke, og så regnes den for at findes.
+const promptHasContent = e => !Array.isArray(e?.resources) ||
+  e.resources.some(r => r && (r.mediaUri || r.ttsString || r.text));
 const countsAsExisting = (kind, entity) =>
-  !FLOW_KINDS.has(kind) || !!(entity && entity.publishedVersion);
+  kind === 'prompt' ? promptHasContent(entity)
+  : (!FLOW_KINDS.has(kind) || !!(entity && entity.publishedVersion));
 
 // Hvilke af 'names' findes allerede i org'en? Store lister (758 køer, 350 skills)
 // slås op pr. navn; små lister hentes i ét hug.
@@ -6496,7 +6503,7 @@ async function lookupExisting(kind, names, token, apiBase) {
   for (const n of names) {
     try {
       const r = await axios.get(`${apiBase}${url}`, { ...H, params: { pageSize: 50, name: n } });
-      if ((r.data.entities || []).some(x => x.name === n)) found.add(n);
+      if ((r.data.entities || []).some(x => x.name === n && countsAsExisting(kind, x))) found.add(n);
     } catch (_) { /* uafklaret — tælles som manglende og markeres i rapporten */ }
   }
   return found;
@@ -6982,17 +6989,25 @@ app.post('/api/prompts/migrate', async (req, res) => {
     const TJ = { headers: { ...TH.headers, 'Content-Type': 'application/json' } };
 
     const ex = await axios.get(`${tgtBase}/api/v2/architect/prompts`, { ...TH, params: { pageSize: 200, name: promptName } });
-    if ((ex.data.entities || []).some(p => p.name === promptName))
+    const there = (ex.data.entities || []).find(p => p.name === promptName);
+    // Findes den med indhold, er den færdig. En skal uden lyd eller TTS (fx fra en
+    // migrering der fejlede midtvejs) fyldes op i stedet — ellers blev den ved med
+    // at "findes", og flowet kunne ikke importeres.
+    if (there && promptHasContent(there))
       return res.status(409).json({ error: 'already_exists', message: `Prompt "${promptName}" findes allerede i ${target.name}` });
 
-    const created = (await axios.post(`${tgtBase}/api/v2/architect/prompts`,
+    const created = there || (await axios.post(`${tgtBase}/api/v2/architect/prompts`,
       { name: src.name, description: src.description || '' }, TJ)).data;
+    if (there) trail.push('· prompten fandtes uden lyd/TTS — udfyldes');
+    const haves = new Map((there?.resources || []).map(r => [r.language, r]));
 
     let ok = 0, audioOk = 0, audioFail = 0;
     for (const r of src.resources || []) {
       try {
-        const nr = (await axios.post(`${tgtBase}/api/v2/architect/prompts/${created.id}/resources`,
-          { language: r.language, ttsString: r.ttsString || undefined, text: r.text || undefined }, TJ)).data;
+        const felter = { language: r.language, ttsString: r.ttsString || undefined, text: r.text || undefined };
+        const nr = haves.has(r.language)
+          ? (await axios.put(`${tgtBase}/api/v2/architect/prompts/${created.id}/resources/${encodeURIComponent(r.language)}`, felter, TJ)).data
+          : (await axios.post(`${tgtBase}/api/v2/architect/prompts/${created.id}/resources`, felter, TJ)).data;
         ok++;
 
         if (!r.mediaUri) { trail.push(`✓ ${r.language} (TTS)`); continue; }
@@ -9584,7 +9599,7 @@ if (require.main === module) {
 // eneste der kan efterprøves uden en rigtig org. Se test/*.test.js.
 module.exports = {
   logLevelFor,
-  nodeSecurityStatus, countsAsExisting, scanTtsEngines, missingTtsEngines, replaceTtsEngines, applyClientScopes, dropRejectedLogin, flowOwnDivision, divisionProblem, appsBaseOf, COPYABLE_KINDS, queueCreateBody, groupCreateBody, credentialChangeError, forgetLogin, keepsOrgOnClientChange,
+  nodeSecurityStatus, countsAsExisting, scanTtsEngines, missingTtsEngines, replaceTtsEngines, applyClientScopes, dropRejectedLogin, flowOwnDivision, divisionProblem, appsBaseOf, COPYABLE_KINDS, promptHasContent, queueCreateBody, groupCreateBody, credentialChangeError, forgetLogin, keepsOrgOnClientChange,
   sanitizeDatatableSchema, mapRoleDivisions, buildOauthClientBody, buildRolePolicies, missingRolesFor, missingDivisionsFor,
   app, tokenStore, getToken, loadSessions, saveSessions, setSessionPersist, SESSION_FILE,
   // konventioner

@@ -5,6 +5,23 @@
 
 ---
 
+### v1.61.1
+---
+**🇩🇰 Dansk**
+
+- **En tom prompt tæller ikke som "findes".** Et flow fejlede ved import med *'P1435' does not have audio or text to speech for at least one supported language* (36 prompts), selvom tjekket sagde "alle afhængigheder findes". Prompten fandtes i målet, men som en tom skal uden lyd eller TTS — fx efter en migrering der stoppede midtvejs. Nu regnes en prompt uden lyd/TTS for manglende, og den udfyldes fra kilden.
+- **Migrér prompt fylder en eksisterende tom skal op** i stedet for at melde *findes allerede*. Sprog der allerede er der opdateres, de øvrige oprettes, og lyden uploades. En prompt med indhold røres ikke.
+- Opdaget ud fra fejlen — målorg'en kunne ikke ses direkte. Findes prompten med lyd på et andet sprog end flowet bruger, fanger tjekket det ikke endnu.
+- En ny test.
+
+**🇬🇧 English**
+- **An empty prompt no longer counts as existing.** A flow failed on import with *'P1435' does not have audio or text to speech for at least one supported language* (36 prompts), although the check said all dependencies exist. The prompt was in the target, but as an empty shell with no audio or TTS — e.g. after a migration that stopped halfway. A prompt with no audio/TTS now counts as missing and is filled from the source.
+- **Migrate prompt fills an existing empty shell** instead of reporting *already exists*. Languages already there are updated, the rest created, and the audio uploaded. A prompt with content is left alone.
+- Found from the error — the target org could not be inspected directly. A prompt that has audio, but in a different language than the flow uses, is not caught by the check yet.
+- One new test.
+
+---
+
 ### v1.61.0
 ---
 **🇩🇰 Dansk**

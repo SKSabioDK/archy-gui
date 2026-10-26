@@ -134,3 +134,16 @@ test('køer og grupper kopieres som definition — uden medlemmer, id\'er og ref
     { name: 'G', type: 'official', visibility: 'public', rolesEnabled: true });
   assert.ok(s.COPYABLE_KINDS.has('queue') && s.COPYABLE_KINDS.has('group'));
 });
+
+// Falck: 36 prompts "fandtes" i målet, men uden lyd eller TTS. Flowet kunne ikke
+// publiceres ("does not have audio or text to speech for at least one language"),
+// mens tjekket sagde at alle afhængigheder fandtes.
+test('en prompt uden lyd eller TTS tæller ikke som at den findes', () => {
+  assert.equal(s.promptHasContent({ name: 'P1', resources: [] }), false);
+  assert.equal(s.promptHasContent({ name: 'P1', resources: [{ language: 'en-gb' }] }), false);
+  assert.equal(s.promptHasContent({ name: 'P1', resources: [{ language: 'en-gb', ttsString: 'Hello' }] }), true);
+  assert.equal(s.promptHasContent({ name: 'P1', resources: [{ language: 'en-gb', mediaUri: 'https://x' }] }), true);
+  assert.equal(s.promptHasContent({ name: 'P1' }), true, 'svarer listen ikke med ressourcer, ved vi det ikke');
+  assert.equal(s.countsAsExisting('prompt', { resources: [] }), false);
+  assert.equal(s.countsAsExisting('queue', { name: 'Q' }), true);
+});
