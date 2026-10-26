@@ -62,3 +62,50 @@ test('en afhængighed migreres aldrig under kildens eget navn i samme org', () =
   assert.ok(/publish --file \$\{archyArg\(importFile,/.test(fn), 'der skal publiceres fra den omskrevne fil');
   assert.ok(!/publish --file \$\{archyArg\(filePath,/.test(fn), 'den eksporterede fil må ikke publiceres direkte');
 });
+
+// Main_26_Dev pegede på et in-queue-flow via overrideInQueueFlow. Det blev hverken
+// læst som afhængighed eller omskrevet, så Archy afviste importen med
+// «flow name "InQueue_26_Dev" does not exist in the target org».
+const ACD = [
+  'inboundCall:',
+  '  name: Main',
+  '  tasks:',
+  '    - task:',
+  '        actions:',
+  '          - transferToAcd:',
+  '              overrideInQueueFlow:',
+  '                name: InQueue_26',
+  '              targetFlow:',
+  '                lit:',
+  '                  name: "Videre"',
+  ''
+].join('\n');
+
+test('overrideInQueueFlow læses som en flow-afhængighed', () => {
+  const d = s.scanYamlDependencies(ACD);
+  assert.deepEqual(d.inqueueflow, ['InQueue_26']);
+  assert.deepEqual(d.targetflow, ['Videre']);
+});
+
+test('overrideInQueueFlow og targetFlow får målets præfiks', () => {
+  const { yaml, changed } = s.prefixDependenciesInYaml(ACD, KUNDE.prod, KUNDE.dev);
+  assert.ok(yaml.includes('name: DEV_InQueue_26'));
+  assert.ok(yaml.includes('name: "DEV_Videre"'));
+  assert.deepEqual(changed, ['Videre → DEV_Videre', 'InQueue_26 → DEV_InQueue_26'].sort((a, b) => changed.indexOf(a) - changed.indexOf(b)));
+  assert.ok(yaml.includes('name: Main'), 'flowets eget navn er urørt');
+});
+
+test('et prompt i et udtryk læses som afhængighed', () => {
+  const yaml = ['audio:', '  exp: AudioPlaybackOptions(Prompt.P11356, true)', '  prompt: Prompt.P2', ''].join('\n');
+  assert.deepEqual(s.scanYamlDependencies(yaml).prompt.sort(), ['P11356', 'P2']);
+});
+
+test('uden præfiks på begge miljøer omskrives intet — heller ikke InQueue_26_Dev', () => {
+  const a = { name: 'A', prefix: '' }, b = { name: 'B', prefix: '' };
+  const yaml = ACD.replace('InQueue_26', 'InQueue_26_Dev');
+  const r = s.prefixDependenciesInYaml(yaml, a, b);
+  assert.equal(r.yaml, yaml);
+  assert.deepEqual(r.changed, []);
+  assert.equal(s.depNameIn('inqueueflow', 'InQueue_26_Dev', b, a), 'InQueue_26_Dev');
+  assert.equal(s.targetFlowName('Main_26_Dev', a, b), 'Main_26_Dev');
+});

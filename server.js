@@ -596,6 +596,15 @@ function prefixDependenciesInYaml(yaml, source, target) {
       return `${hoved}${ny}${hale}`;
     });
   }
+  // Transfer to Flow og Transfer to ACD peger på et flow med «name: X» under
+  // nøglen — ikke med navnet som nøgle, som de tre ovenfor.
+  const reNavn = /(^[ \t]+(?:targetFlow|overrideInQueueFlow):[ \t]*\r?\n(?:[ \t]+lit:[ \t]*\r?\n)?[ \t]+name:[ \t]*["']?)([^\r\n"']+?)(["']?[ \t]*\r?$)/gm;
+  out = out.replace(reNavn, (hele, hoved, navn, hale) => {
+    const ny = withEnvPrefix(stripEnvPrefix(navn.trim(), source), target);
+    if (ny === navn.trim()) return hele;
+    if (!changed.includes(`${navn.trim()} → ${ny}`)) changed.push(`${navn.trim()} → ${ny}`);
+    return `${hoved}${ny}${hale}`;
+  });
   return { yaml: out, changed };
 }
 
@@ -6358,7 +6367,11 @@ function scanYamlDependencies(yaml) {
     dataaction: grab(new RegExp(`(?:secureDataAction|dataAction):\\s*\\n\\s+([${ORD}][${ORD} _\\-()]+):`, 'gm')),
     // PromptSystem.* er Genesys' indbyggede systemprompts. De ligger ikke i
     // orgens promptliste og ville derfor altid fremstå som manglende.
-    prompt:     grab(new RegExp(`prompt:[ \\t]+["']?(?:Prompt\\.)?([${ORD}_\\-. ]+)["']?`, 'gm'))
+    // Et prompt kan også stå inde i et udtryk (exp: AudioPlaybackOptions(Prompt.P1, true)).
+    // Den form blev ikke læst, så et flow med den fejlede ved publicering med
+    // "The variable reference 'Prompt.P1' ... is not valid".
+    prompt:     uniq([...grab(new RegExp(`prompt:[ \\t]+["']?(?:Prompt\\.)?([${ORD}_\\-. ]+)["']?`, 'gm')),
+                      ...grab(new RegExp(`\\bPrompt\\.([${ORD}_\\-]+)`, 'g'))])
                   .filter(n => !/^PromptSystem\./i.test(n)),
     // wrapupCode: \n lit: \n name: X
     wrapupcode: grab(/wrapupCode:\s*\n\s*lit:\s*\n\s*name:[ \t]*["']?([^'"\n]+)["']?/gmi),
@@ -6376,6 +6389,9 @@ function scanYamlDependencies(yaml) {
     commonmodule: grab(new RegExp(`^\\s+commonModule:\\s*\\n\\s+([${ORD}][${ORD} .\\-()]*):`, 'gm')).filter(notMeta),
     botflow:      grab(new RegExp(`^\\s+botFlow:\\s*\\n\\s+([${ORD}][${ORD} .\\-()]*):`, 'gm')).filter(notMeta),
     targetflow:   grab(/targetFlow:\s*\n\s*(?:lit:\s*\n\s*)?name:\s*["']?([^'"\n]+)["']?/gm),
+    // "Transfer to ACD" med et bestemt in-queue-flow: overrideInQueueFlow: \n name: X.
+    // Manglede, så Archy afviste importen med «flow name "X" does not exist».
+    inqueueflow:  grab(/overrideInQueueFlow:\s*\n\s*(?:lit:\s*\n\s*)?name:\s*["']?([^'"\n]+)["']?/gm),
 
     // ── Brugere ───────────────────────────────────────────────────────────
     // "Transfer to User" med en fast bruger: targetUser: \n lit: \n userName: x@y.
@@ -6427,6 +6443,7 @@ async function lookupExisting(kind, names, token, apiBase) {
     commonmodule: { url: '/api/v2/flows', size: 100 },
     botflow:      { url: '/api/v2/flows', size: 100 },
     targetflow:   { url: '/api/v2/flows', size: 100 },
+    inqueueflow:  { url: '/api/v2/flows', size: 100 },
     knowledgebase:{ url: '/api/v2/knowledge/knowledgebases', size: 100 },
     sttengine:    { url: '/api/v2/integrations/speech/stt/engines', size: 100 },
     group:        { url: '/api/v2/groups', size: 100 },
@@ -8106,7 +8123,7 @@ app.post('/api/import', async (req, res) => {
 
 // Referencer der peger på et andet FLOW. De kan migreres med samme maskineri
 // som alt andet — et common module er bare et flow af typen COMMONMODULE.
-const FLOW_KINDS = new Set(['commonmodule', 'botflow', 'targetflow']);
+const FLOW_KINDS = new Set(['commonmodule', 'botflow', 'targetflow', 'inqueueflow']);
 // Ressourcer der kopieres hele fra kilden ved navn: user prompts (med lyd) og scripts
 const COPYABLE_KINDS = new Set(['prompt', 'script']);
 

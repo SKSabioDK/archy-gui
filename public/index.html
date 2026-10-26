@@ -533,7 +533,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.59.9 · Archy GUI</div>
+    <div class="version" id="app-version">v1.60.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -10930,7 +10930,7 @@ function showDepModal(flowName, missing, dynamicSkills, names) {
 async function migrateOneDep(dep, sourceId, targetId, logBox, opts = {}) {
   // Common modules, bot flows og transfer-mål ER flows, så de migreres med
   // flow-maskineriet — inkl. deres egne afhængigheder, nedefra og op.
-  const FLOW_KINDS = ['commonmodule', 'botflow', 'targetflow'];
+  const FLOW_KINDS = ['commonmodule', 'botflow', 'targetflow', 'inqueueflow'];
   if (FLOW_KINDS.includes(dep.kind)) {
     try {
       const data = await fetch('/api/flows/migrate-dependency', {

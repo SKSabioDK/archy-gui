@@ -5,6 +5,23 @@
 
 ---
 
+### v1.60.0
+---
+**🇩🇰 Dansk**
+
+- **In-queue-flows følger med ved migrering.** Et flow med *Transfer to ACD* og et bestemt in-queue-flow (`overrideInQueueFlow`) fejlede ved import med *flow name "InQueue_26_Dev" does not exist in the target org*, selvom tjekket meldte "alle afhængigheder findes". Referencen blev hverken læst som afhængighed eller fik målets præfiks. Nu tjekkes den, in-queue-flowet migreres først, og navnet omskrives til målets.
+- **Transfer to Flow får også målets præfiks** (`targetFlow`) — det blev kun tjekket, ikke omskrevet.
+- **Prompts inde i udtryk tjekkes.** `Prompt.P11356` i et udtryk (fx `AudioPlaybackOptions(Prompt.P11356, true)`) blev ikke regnet som afhængighed, og flowet kunne ikke publiceres: *The variable reference 'Prompt.P11356' is not valid*. Nu slås prompten op i målet og kopieres, hvis den mangler.
+- 4 nye tests.
+
+**🇬🇧 English**
+- **In-queue flows come along when migrating.** A flow with *Transfer to ACD* and a specific in-queue flow (`overrideInQueueFlow`) failed on import with *flow name "InQueue_26_Dev" does not exist in the target org*, even though the check said all dependencies exist. The reference was neither read as a dependency nor given the target's prefix. It is now checked, the in-queue flow is migrated first, and the name is rewritten for the target.
+- **Transfer to Flow also gets the target's prefix** (`targetFlow`) — it was checked but not rewritten.
+- **Prompts inside expressions are checked.** `Prompt.P11356` inside an expression (e.g. `AudioPlaybackOptions(Prompt.P11356, true)`) was not counted as a dependency, so the flow could not be published: *The variable reference 'Prompt.P11356' is not valid*. The prompt is now looked up in the target and copied if missing.
+- 4 new tests.
+
+---
+
 ### v1.59.9
 ---
 **🇩🇰 Dansk**
