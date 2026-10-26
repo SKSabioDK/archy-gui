@@ -5,6 +5,17 @@
 
 ---
 
+### v1.70.1
+---
+**🇩🇰 Dansk**
+
+- **Totaltjek: antallet i mål-org'en står nu i oversigten.** Tabellen viste kun antallet i kilden, *I begge*, *Mangler i mål* og *Kun i mål* — så en række som «Data Tabeller 80 · 80 · 0 · 0 ✓» kunne læses som om målet var tomt. Der er nu en kolonne *Findes i mål* med det samlede antal, og *Mangler i mål* står grøn, når den er 0.
+
+**🇬🇧 English**
+- **Full check: the count in the target org is now shown in the overview.** The table only showed the count in the source, *In both*, *Missing in target* and *Only in target* — so a row like "Data Tables 80 · 80 · 0 · 0 ✓" could be read as if the target were empty. There is now an *In target* column with the total, and *Missing in target* is green when it is 0.
+
+---
+
 ### v1.70.0
 ---
 **🇩🇰 Dansk**

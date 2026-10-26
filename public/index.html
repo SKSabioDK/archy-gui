@@ -539,7 +539,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.70.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.70.1 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -12585,15 +12585,15 @@ function rtcRender() {
   const th = c => `<th style="text-align:left;padding:6px 10px;font-size:11px;color:var(--muted);font-family:var(--mono)">${escapeHtml(c)}</th>`;
   const td = (c, col, extra = '') => `<td style="padding:5px 10px;border-bottom:1px solid var(--border);font-size:12px;${col ? `color:var(--${col});` : ''}${extra}">${c}</td>`;
   const sumRows = rtcSummary.map(r => r.error
-    ? `<tr>${td(escapeHtml(r.label))}${td(escapeHtml(r.error), 'red', 'font-size:11px')}${td('')}${td('')}${td('')}${td('✗', 'red')}</tr>`
-    : `<tr>${td(escapeHtml(r.label))}${td(r.src)}${td(r.ok, 'green')}${td(r.missing, r.missing ? 'red' : 'muted')}${td(r.extra, 'muted')}${td(r.missing ? '⚠' : '✓', r.missing ? 'yellow' : 'green')}</tr>`).join('');
+    ? `<tr>${td(escapeHtml(r.label))}${td(escapeHtml(r.error), 'red', 'font-size:11px')}${td('')}${td('')}${td('')}${td('')}${td('✗', 'red')}</tr>`
+    : `<tr>${td(escapeHtml(r.label))}${td(r.src)}${td(r.tgt)}${td(r.ok, 'green')}${td(r.missing, r.missing ? 'red' : 'green')}${td(r.extra, 'muted')}${td(r.missing ? '⚠' : '✓', r.missing ? 'yellow' : 'green')}</tr>`).join('');
   const onlyDiff = document.getElementById('rtc-only-diff')?.checked !== false;
   const shown = rtcRows.filter(r => !onlyDiff ? true : r.status !== 'ok');
   const detRows = shown.slice(0, RTC_MAX_ROWS).map(r =>
     `<tr>${td(escapeHtml(r.label))}${td(escapeHtml(r.name))}${td(rtcStatusText(r.status), rtcStatusColor(r.status))}${td(escapeHtml(r.detail || ''), 'muted', 'font-size:11px')}</tr>`).join('');
   document.getElementById('rtc-body').innerHTML = `
     <table style="width:100%;border-collapse:collapse;margin-bottom:16px"><thead><tr>
-      ${th(t('rtc_col_type'))}${th(t('rtc_col_src'))}${th(t('rtc_col_inboth'))}${th(t('rtc_missing'))}${th(t('rtc_extra'))}${th(t('rtc_col_status'))}
+      ${th(t('rtc_col_type'))}${th(t('rtc_col_src'))}${th(t('rtc_col_tgt'))}${th(t('rtc_col_inboth'))}${th(t('rtc_missing'))}${th(t('rtc_extra'))}${th(t('rtc_col_status'))}
     </tr></thead><tbody>${sumRows}</tbody></table>
     <label style="display:flex;align-items:center;gap:6px;font-size:12px;margin:0 0 8px;cursor:pointer">
       <input type="checkbox" id="rtc-only-diff" style="width:auto" ${onlyDiff ? 'checked' : ''} onchange="rtcRender()"/> ${escapeHtml(t('rtc_only_diff'))}
