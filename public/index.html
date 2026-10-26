@@ -471,6 +471,7 @@
       <sub>flow manager</sub>
     </div>
     <div class="status-bar">
+      <span id="work-chip" style="display:none;gap:6px;align-items:center;padding:3px 10px;border:1px solid var(--border);border-radius:14px"></span>
       <span id="archyStatus" class="dot"></span>
       <span id="archyStatusTxt">checking archy…</span>
       <select id="langSelect" class="lang-select" onchange="setLang(this.value)" title="Language / Sprog / Langue / Taal / Idioma">
@@ -533,7 +534,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.66.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.67.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -2094,7 +2095,7 @@ const LANGS = {
     pl_no_groups:'Ingen grupper endnu. Sæt kunde, gruppe og trin på miljøerne under Kunder.',
     pl_search:'🔍  Filtrér flows…',
     pl_only_gaps:'Kun dem der mangler i et senere trin',
-    migrate_only_selected:'Vis kun valgte', migrate_none_selected:'Ingen flows valgt endnu — klik på dem du vil migrere.', migrate_done_badge:'✓ migreret', paste_list_link:'Indsæt liste', retry_msg:'prøver igen', col_in_target:'I mål', fbc_paste_link:'📋 Indsæt liste', fbc_check_btn:'🔍 Tjek indhold', fbc_apply_list:'Vis kun disse', fbc_clear_list:'Fjern listen', fbc_missing:'mangler i mål', fbc_there:'findes', fbc_identical:'identisk', fbc_diff:'{n} forskelle', fbc_differ:'forskellige', fbc_unchecked:'ikke tjekket', fbc_failed:'kunne ikke tjekkes', fbc_not_in_source:'på listen, men ikke i kilden', fbc_stop:'Stop', fbc_many:'Indholdet af {n} flows sammenlignes — det kan tage et par minutter. Fortsæt?', paste_list_hint:'Ét flownavn pr. linje. Tekst i parentes til sidst (fx «(latest …)») ignoreres, hvis hele linjen ikke findes.', paste_list_apply:'Vælg disse flows', paste_list_result:'{n} fundet og valgt, {m} ikke fundet', skip_identical_label:'Spring flows over, der allerede er identiske i målet', reload_available:'En ny version er startet', reload_now:'Genindlæs siden', identical_skipped:'identisk med målet — springes over',
+    migrate_only_selected:'Vis kun valgte', migrate_none_selected:'Ingen flows valgt endnu — klik på dem du vil migrere.', migrate_done_badge:'✓ migreret', paste_list_link:'Indsæt liste', retry_msg:'prøver igen', col_in_target:'I mål', fbc_paste_link:'📋 Indsæt liste', fbc_check_btn:'🔍 Tjek indhold', fbc_apply_list:'Vis kun disse', fbc_clear_list:'Fjern listen', fbc_missing:'mangler i mål', fbc_there:'findes', fbc_identical:'identisk', fbc_diff:'{n} forskelle', fbc_differ:'forskellige', fbc_unchecked:'ikke tjekket', fbc_fetched:'mållisten hentet', work_from:'Fra-org', work_to:'Mål-org', work_none:'Ingen', work_swap:'Byt Fra og Mål', work_clear:'Ryd valget', work_login_q:'{name} er logget ind. Skal den bruges som Fra-org eller Mål-org?', fbc_failed:'kunne ikke tjekkes', fbc_not_in_source:'på listen, men ikke i kilden', fbc_stop:'Stop', fbc_many:'Indholdet af {n} flows sammenlignes — det kan tage et par minutter. Fortsæt?', paste_list_hint:'Ét flownavn pr. linje. Tekst i parentes til sidst (fx «(latest …)») ignoreres, hvis hele linjen ikke findes.', paste_list_apply:'Vælg disse flows', paste_list_result:'{n} fundet og valgt, {m} ikke fundet', skip_identical_label:'Spring flows over, der allerede er identiske i målet', reload_available:'En ny version er startet', reload_now:'Genindlæs siden', identical_skipped:'identisk med målet — springes over',
     migrate_no_match:'Ingen flows passer til filteret.',
     pl_flow:'FLOW',
     pl_missing:'mangler',
@@ -3142,7 +3143,7 @@ const LANGS = {
     pl_no_groups:'No groups yet. Set customer, group and stage on the environments under Customers.',
     pl_search:'🔍  Filter flows…',
     pl_only_gaps:'Only those missing in a later stage',
-    migrate_only_selected:'Show only selected', migrate_none_selected:'No flows selected yet — click the ones you want to migrate.', migrate_done_badge:'✓ migrated', paste_list_link:'Paste list', retry_msg:'retrying', col_in_target:'In target', fbc_paste_link:'📋 Paste list', fbc_check_btn:'🔍 Check content', fbc_apply_list:'Show only these', fbc_clear_list:'Clear the list', fbc_missing:'missing in target', fbc_there:'exists', fbc_identical:'identical', fbc_diff:'{n} differences', fbc_differ:'different', fbc_unchecked:'not checked', fbc_failed:'could not be checked', fbc_not_in_source:'on the list but not in the source', fbc_stop:'Stop', fbc_many:'The content of {n} flows will be compared — this may take a few minutes. Continue?', paste_list_hint:'One flow name per line. A trailing parenthesis (e.g. "(latest …)") is ignored if the whole line is not found.', paste_list_apply:'Select these flows', paste_list_result:'{n} found and selected, {m} not found', skip_identical_label:'Skip flows that are already identical in the target', reload_available:'A new version has started', reload_now:'Reload the page', identical_skipped:'identical to the target — skipped',
+    migrate_only_selected:'Show only selected', migrate_none_selected:'No flows selected yet — click the ones you want to migrate.', migrate_done_badge:'✓ migrated', paste_list_link:'Paste list', retry_msg:'retrying', col_in_target:'In target', fbc_paste_link:'📋 Paste list', fbc_check_btn:'🔍 Check content', fbc_apply_list:'Show only these', fbc_clear_list:'Clear the list', fbc_missing:'missing in target', fbc_there:'exists', fbc_identical:'identical', fbc_diff:'{n} differences', fbc_differ:'different', fbc_unchecked:'not checked', fbc_fetched:'target list fetched', work_from:'From org', work_to:'Target org', work_none:'Neither', work_swap:'Swap From and Target', work_clear:'Clear the choice', work_login_q:'{name} is logged in. Use it as the From org or the Target org?', fbc_failed:'could not be checked', fbc_not_in_source:'on the list but not in the source', fbc_stop:'Stop', fbc_many:'The content of {n} flows will be compared — this may take a few minutes. Continue?', paste_list_hint:'One flow name per line. A trailing parenthesis (e.g. "(latest …)") is ignored if the whole line is not found.', paste_list_apply:'Select these flows', paste_list_result:'{n} found and selected, {m} not found', skip_identical_label:'Skip flows that are already identical in the target', reload_available:'A new version has started', reload_now:'Reload the page', identical_skipped:'identical to the target — skipped',
     migrate_no_match:'No flows match the filter.',
     pl_flow:'FLOW',
     pl_missing:'missing',
@@ -4190,7 +4191,7 @@ const LANGS = {
     pl_no_groups:'Aucun groupe. Renseignez client, groupe et étape sur les environnements sous Clients.',
     pl_search:'🔍  Filtrer les flows…',
     pl_only_gaps:'Uniquement ceux absents d\'une étape ultérieure',
-    migrate_only_selected:'Afficher uniquement la sélection', migrate_none_selected:'Aucun flow sélectionné — cliquez sur ceux à migrer.', migrate_done_badge:'✓ migré', paste_list_link:'Coller une liste', retry_msg:'nouvel essai', col_in_target:'Dans la cible', fbc_paste_link:'📋 Coller une liste', fbc_check_btn:'🔍 Vérifier le contenu', fbc_apply_list:'Afficher seulement ceux-ci', fbc_clear_list:'Effacer la liste', fbc_missing:'absent de la cible', fbc_there:'existe', fbc_identical:'identique', fbc_diff:'{n} différences', fbc_differ:'différents', fbc_unchecked:'non vérifié', fbc_failed:'vérification impossible', fbc_not_in_source:'dans la liste mais pas dans la source', fbc_stop:'Arrêter', fbc_many:'Le contenu de {n} flows sera comparé — cela peut prendre quelques minutes. Continuer ?', paste_list_hint:'Un nom de flow par ligne. Une parenthèse finale est ignorée si la ligne entière est introuvable.', paste_list_apply:'Sélectionner ces flows', paste_list_result:'{n} trouvés et sélectionnés, {m} introuvables', skip_identical_label:'Ignorer les flows déjà identiques dans la cible', reload_available:'Une nouvelle version a démarré', reload_now:'Recharger la page', identical_skipped:'identique à la cible — ignoré',
+    migrate_only_selected:'Afficher uniquement la sélection', migrate_none_selected:'Aucun flow sélectionné — cliquez sur ceux à migrer.', migrate_done_badge:'✓ migré', paste_list_link:'Coller une liste', retry_msg:'nouvel essai', col_in_target:'Dans la cible', fbc_paste_link:'📋 Coller une liste', fbc_check_btn:'🔍 Vérifier le contenu', fbc_apply_list:'Afficher seulement ceux-ci', fbc_clear_list:'Effacer la liste', fbc_missing:'absent de la cible', fbc_there:'existe', fbc_identical:'identique', fbc_diff:'{n} différences', fbc_differ:'différents', fbc_unchecked:'non vérifié', fbc_fetched:'liste de la cible récupérée', work_from:'Org source', work_to:'Org cible', work_none:'Aucune', work_swap:'Inverser source et cible', work_clear:'Effacer le choix', work_login_q:'{name} est connectée. L’utiliser comme org source ou org cible ?', fbc_failed:'vérification impossible', fbc_not_in_source:'dans la liste mais pas dans la source', fbc_stop:'Arrêter', fbc_many:'Le contenu de {n} flows sera comparé — cela peut prendre quelques minutes. Continuer ?', paste_list_hint:'Un nom de flow par ligne. Une parenthèse finale est ignorée si la ligne entière est introuvable.', paste_list_apply:'Sélectionner ces flows', paste_list_result:'{n} trouvés et sélectionnés, {m} introuvables', skip_identical_label:'Ignorer les flows déjà identiques dans la cible', reload_available:'Une nouvelle version a démarré', reload_now:'Recharger la page', identical_skipped:'identique à la cible — ignoré',
     migrate_no_match:'Aucun flow ne correspond au filtre.',
     pl_flow:'FLOW',
     pl_missing:'absent',
@@ -5238,7 +5239,7 @@ const LANGS = {
     pl_no_groups:'Nog geen groepen. Stel klant, groep en fase in bij de omgevingen onder Klanten.',
     pl_search:'🔍  Flows filteren…',
     pl_only_gaps:'Alleen die ontbreken in een latere fase',
-    migrate_only_selected:'Alleen geselecteerde tonen', migrate_none_selected:'Nog geen flows geselecteerd — klik op wat je wilt migreren.', migrate_done_badge:'✓ gemigreerd', paste_list_link:'Lijst plakken', retry_msg:'opnieuw proberen', col_in_target:'In doel', fbc_paste_link:'📋 Lijst plakken', fbc_check_btn:'🔍 Inhoud controleren', fbc_apply_list:'Alleen deze tonen', fbc_clear_list:'Lijst wissen', fbc_missing:'ontbreekt in doel', fbc_there:'bestaat', fbc_identical:'identiek', fbc_diff:'{n} verschillen', fbc_differ:'verschillend', fbc_unchecked:'niet gecontroleerd', fbc_failed:'kon niet worden gecontroleerd', fbc_not_in_source:'op de lijst maar niet in de bron', fbc_stop:'Stop', fbc_many:'De inhoud van {n} flows wordt vergeleken — dit kan enkele minuten duren. Doorgaan?', paste_list_hint:'Eén flownaam per regel. Een afsluitend haakje wordt genegeerd als de hele regel niet gevonden wordt.', paste_list_apply:'Deze flows selecteren', paste_list_result:'{n} gevonden en geselecteerd, {m} niet gevonden', skip_identical_label:'Flows overslaan die al identiek zijn in het doel', reload_available:'Er is een nieuwe versie gestart', reload_now:'Pagina herladen', identical_skipped:'identiek aan het doel — overgeslagen',
+    migrate_only_selected:'Alleen geselecteerde tonen', migrate_none_selected:'Nog geen flows geselecteerd — klik op wat je wilt migreren.', migrate_done_badge:'✓ gemigreerd', paste_list_link:'Lijst plakken', retry_msg:'opnieuw proberen', col_in_target:'In doel', fbc_paste_link:'📋 Lijst plakken', fbc_check_btn:'🔍 Inhoud controleren', fbc_apply_list:'Alleen deze tonen', fbc_clear_list:'Lijst wissen', fbc_missing:'ontbreekt in doel', fbc_there:'bestaat', fbc_identical:'identiek', fbc_diff:'{n} verschillen', fbc_differ:'verschillend', fbc_unchecked:'niet gecontroleerd', fbc_fetched:'doellijst opgehaald', work_from:'Bron-org', work_to:'Doel-org', work_none:'Geen', work_swap:'Bron en doel wisselen', work_clear:'Keuze wissen', work_login_q:'{name} is ingelogd. Gebruiken als bron-org of doel-org?', fbc_failed:'kon niet worden gecontroleerd', fbc_not_in_source:'op de lijst maar niet in de bron', fbc_stop:'Stop', fbc_many:'De inhoud van {n} flows wordt vergeleken — dit kan enkele minuten duren. Doorgaan?', paste_list_hint:'Eén flownaam per regel. Een afsluitend haakje wordt genegeerd als de hele regel niet gevonden wordt.', paste_list_apply:'Deze flows selecteren', paste_list_result:'{n} gevonden en geselecteerd, {m} niet gevonden', skip_identical_label:'Flows overslaan die al identiek zijn in het doel', reload_available:'Er is een nieuwe versie gestart', reload_now:'Pagina herladen', identical_skipped:'identiek aan het doel — overgeslagen',
     migrate_no_match:'Geen flows voldoen aan het filter.',
     pl_flow:'FLOW',
     pl_missing:'ontbreekt',
@@ -6286,7 +6287,7 @@ const LANGS = {
     pl_no_groups:'Aún no hay grupos. Defina cliente, grupo y etapa en los entornos en Clientes.',
     pl_search:'🔍  Filtrar flows…',
     pl_only_gaps:'Solo los que faltan en una etapa posterior',
-    migrate_only_selected:'Mostrar solo lo seleccionado', migrate_none_selected:'Ningún flow seleccionado todavía: haga clic en los que quiera migrar.', migrate_done_badge:'✓ migrado', paste_list_link:'Pegar lista', retry_msg:'reintentando', col_in_target:'En destino', fbc_paste_link:'📋 Pegar lista', fbc_check_btn:'🔍 Comprobar contenido', fbc_apply_list:'Mostrar solo estos', fbc_clear_list:'Borrar la lista', fbc_missing:'falta en destino', fbc_there:'existe', fbc_identical:'idéntico', fbc_diff:'{n} diferencias', fbc_differ:'diferentes', fbc_unchecked:'sin comprobar', fbc_failed:'no se pudo comprobar', fbc_not_in_source:'en la lista pero no en el origen', fbc_stop:'Parar', fbc_many:'Se comparará el contenido de {n} flows; puede tardar unos minutos. ¿Continuar?', paste_list_hint:'Un nombre de flow por línea. Un paréntesis final se ignora si no se encuentra la línea completa.', paste_list_apply:'Seleccionar estos flows', paste_list_result:'{n} encontrados y seleccionados, {m} no encontrados', skip_identical_label:'Omitir los flows que ya son idénticos en el destino', reload_available:'Se ha iniciado una nueva versión', reload_now:'Recargar la página', identical_skipped:'idéntico al destino — omitido',
+    migrate_only_selected:'Mostrar solo lo seleccionado', migrate_none_selected:'Ningún flow seleccionado todavía: haga clic en los que quiera migrar.', migrate_done_badge:'✓ migrado', paste_list_link:'Pegar lista', retry_msg:'reintentando', col_in_target:'En destino', fbc_paste_link:'📋 Pegar lista', fbc_check_btn:'🔍 Comprobar contenido', fbc_apply_list:'Mostrar solo estos', fbc_clear_list:'Borrar la lista', fbc_missing:'falta en destino', fbc_there:'existe', fbc_identical:'idéntico', fbc_diff:'{n} diferencias', fbc_differ:'diferentes', fbc_unchecked:'sin comprobar', fbc_fetched:'lista del destino obtenida', work_from:'Org de origen', work_to:'Org de destino', work_none:'Ninguna', work_swap:'Intercambiar origen y destino', work_clear:'Borrar la selección', work_login_q:'{name} ha iniciado sesión. ¿Usarla como org de origen o de destino?', fbc_failed:'no se pudo comprobar', fbc_not_in_source:'en la lista pero no en el origen', fbc_stop:'Parar', fbc_many:'Se comparará el contenido de {n} flows; puede tardar unos minutos. ¿Continuar?', paste_list_hint:'Un nombre de flow por línea. Un paréntesis final se ignora si no se encuentra la línea completa.', paste_list_apply:'Seleccionar estos flows', paste_list_result:'{n} encontrados y seleccionados, {m} no encontrados', skip_identical_label:'Omitir los flows que ya son idénticos en el destino', reload_available:'Se ha iniciado una nueva versión', reload_now:'Recargar la página', identical_skipped:'idéntico al destino — omitido',
     migrate_no_match:'Ningún flow coincide con el filtro.',
     pl_flow:'FLOW',
     pl_missing:'falta',
@@ -7182,13 +7183,144 @@ function nav(el) {
   if (page === 'dataactions') daInit();
   if (page === 'syslog') { populateSyslogCustomers(); loadLog(); loadLogStats(); }
   if (page === 'readme') loadReadme();
+  applyWorkToPage(page);
 }
 
 // ── Customers ─────────────────────────────────────────────────────────────────
+// ── Arbejdspar: Fra-org og Mål-org gælder på tværs af siderne ─────────────────
+// Vælger man kilde og mål på Migrer Flow, står de samme valgt i Flow Browser,
+// Export, Import og Migrér ressourcer. Det huskes også til næste gang. Et login
+// på den første kunde gør den til Fra-org; logger man en til ind, spørges der,
+// om den er Fra- eller Mål-org.
+const WORK_KEY = 'archy.work';
+let work = { source: null, target: null };
+try { work = { ...work, ...JSON.parse(localStorage.getItem(WORK_KEY) || '{}') }; } catch (_) {}
+
+// Hvilke felter på hvilken side der er Fra-org (source) og Mål-org (target)
+const WORK_MAP = {
+  migrate:     [['m-source', 'source'], ['m-target', 'target']],
+  flows:       [['fb-customer', 'source'], ['fb-compare', 'target']],
+  export:      [['ex-customer', 'source']],
+  import:      [['im-customer', 'target']],
+  dataactions: [['da-source', 'source'], ['da-target', 'target']]
+};
+const WORK_FIELDS = Object.fromEntries(Object.values(WORK_MAP).flat());   // felt-id → rolle
+
+function workSave() {
+  try { localStorage.setItem(WORK_KEY, JSON.stringify(work)); } catch (_) {}
+  renderWorkChip();
+}
+
+// Kun kunder der findes endnu — en slettet kunde må ikke blive stående som valg
+function workPrune() {
+  for (const r of ['source', 'target'])
+    if (work[r] && !customers.some(c => c.id === work[r])) work[r] = null;
+}
+
+function workSet(role, id) {
+  work[role] = id || null;
+  // Samme org som både Fra og Mål giver ingen mening; den der var, rydles
+  const other = role === 'source' ? 'target' : 'source';
+  if (id && work[other] === id) work[other] = null;
+  workSave();
+}
+
+document.addEventListener('change', (e) => {
+  const role = WORK_FIELDS[e.target && e.target.id];
+  if (role) workSet(role, e.target.value);
+});
+
+function applyWorkToPage(page) {
+  workPrune();
+  const changed = {};
+  for (const [id, role] of WORK_MAP[page] || []) {
+    const el = document.getElementById(id), want = work[role];
+    if (!el || !want || el.value === want) continue;
+    if (![...el.options].some(o => o.value === want)) continue;
+    el.value = want; changed[role] = true;
+  }
+  // De samme følger som når man vælger i feltet selv
+  if (page === 'migrate') {
+    if (changed.source) onMigrateSourceChange();
+    if (changed.target) defaultActionForTarget();
+    updateMigrateAuthStatus();
+  }
+  if (page === 'flows') { if (changed.source) loadFlows(); else if (changed.target) onFbCompareChange(); }
+  if (page === 'export' && changed.source) loadExportFlows();
+  if (page === 'dataactions') {
+    if (changed.source) daSourceChanged();
+    if (changed.target) daLoadTargetIntegrations();
+  }
+}
+
+function workSwap() {
+  [work.source, work.target] = [work.target, work.source];
+  workSave();
+  const side = document.querySelector('.page.active')?.id.replace('page-', '');
+  // Felterne på siden følger med; en side der allerede har valg, skiftes direkte
+  for (const [id, role] of WORK_MAP[side] || []) {
+    const el = document.getElementById(id);
+    if (el) el.value = work[role] || '';
+  }
+  if (side) applyWorkToPage(side);
+  if (side === 'migrate') { onMigrateSourceChange(); defaultActionForTarget(); }
+  if (side === 'flows') loadFlows();
+  if (side === 'dataactions') { daSourceChanged(); daLoadTargetIntegrations(); }
+  if (side === 'export') loadExportFlows();
+}
+
+function workClear() {
+  work = { source: null, target: null };
+  workSave();
+}
+
+function renderWorkChip() {
+  const el = document.getElementById('work-chip');
+  if (!el) return;
+  workPrune();
+  const name = id => (customers.find(c => c.id === id) || {}).name || '—';
+  if (!work.source && !work.target) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = 'inline-flex';
+  el.innerHTML = `<span title="${escapeHtml(t('work_from'))}">${escapeHtml(t('work_from'))}: <b style="color:var(--text)">${escapeHtml(name(work.source))}</b></span>` +
+    ` <a href="#" onclick="workSwap();return false" title="${escapeHtml(t('work_swap'))}" style="color:var(--accent);text-decoration:none">⇄</a> ` +
+    `<span>${escapeHtml(t('work_to'))}: <b style="color:var(--text)">${escapeHtml(name(work.target))}</b></span>` +
+    ` <a href="#" onclick="workClear();return false" title="${escapeHtml(t('work_clear'))}" style="color:var(--muted);text-decoration:none">✕</a>`;
+}
+
+// Et nyt login: den første kunde bliver Fra-org; ellers spørges der.
+function offerWorkRole(id) {
+  workPrune();
+  if (id === work.source || id === work.target) return;
+  const name = (customers.find(c => c.id === id) || {}).name || id;
+  if (!work.source) { workSet('source', id); return; }
+  document.getElementById('work-ask')?.remove();
+  const box = document.createElement('div');
+  box.id = 'work-ask';
+  box.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center';
+  const btn = (role, label, primary) => `<button class="btn ${primary ? 'btn-primary' : 'btn-secondary'}" data-role="${role}">${escapeHtml(label)}</button>`;
+  box.innerHTML = `<div class="card" style="max-width:460px;padding:22px">
+      <div style="font-size:14px;margin-bottom:16px">${escapeHtml(t('work_login_q').replace('{name}', name))}</div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        ${btn('source', t('work_from'), false)}${btn('target', t('work_to'), !work.target)}${btn('', t('work_none'), false)}
+      </div></div>`;
+  box.addEventListener('click', (ev) => {
+    const b = ev.target.closest('button[data-role]');
+    if (!b && ev.target !== box) return;
+    if (b && b.dataset.role) {
+      workSet(b.dataset.role, id);
+      const side = document.querySelector('.page.active')?.id.replace('page-', '');
+      if (side) applyWorkToPage(side);
+    }
+    box.remove();
+  });
+  document.body.appendChild(box);
+}
+
 async function refreshCustomers() {
   loadFocus();
   const res = await fetch('/api/customers');
   customers = await res.json();
+  workPrune(); renderWorkChip();
   await loadHierarchy();
   renderDemoButtons();
   renderStagesEditor();
@@ -7397,6 +7529,7 @@ async function oauthLogin(id) {
         clearInterval(poll);
         updateOAuthStatuses();
         afterLogin(id);
+        offerWorkRole(id);
         if (btn) { btn.disabled = false; btn.textContent = '✓ ' + t('auth_status_connected'); btn.className = 'btn btn-green btn-sm'; }
         if (badge) { badge.textContent = '🟢 ' + t('auth_status_connected') + (s.orgName ? ` · ${s.orgName}` : ''); badge.style.color = 'var(--green)'; }
         // Update test dot green
@@ -7499,6 +7632,10 @@ function populateCustomerSelects(ids) {
 async function loadFlows() {
   const id = document.getElementById('fb-customer').value;
   if (!id) return;
+  // Målets liste hentes for sig selv og FØRST: fejler kildens login, må den
+  // gamle liste over målet ikke blive stående — flows migreret i mellemtiden
+  // stod ellers som «mangler i mål».
+  if (document.getElementById('fb-compare').value) onFbCompareChange();
   showAlert('flowAlert', `<span class="spin"></span> ${t('loading_flows')}`, 'info');
   document.getElementById('flowTableCard').style.display = 'none';
   const res = await fetch('/api/customers/' + id + '/flows');
@@ -7511,7 +7648,6 @@ async function loadFlows() {
   populateFlowTypeFilter();
   applyFlowFilter();
   checkStaleModules(id);
-  if (document.getElementById('fb-compare').value) onFbCompareChange();
 }
 
 // Er et common module publiceret EFTER de flows der bruger det, kører flowene
@@ -7620,7 +7756,7 @@ async function onFbCompareChange() {
   const r = await fetch('/api/customers/' + tid + '/flows').then(x => x.json()).catch(e => ({ error: e.message }));
   if (document.getElementById('fb-compare').value !== tid) return;
   fbTarget = r.error ? { id: tid, byKey: new Map(), error: r.error }
-                     : { id: tid, byKey: new Map(r.map(f => [fbKey(f.name, f.type), f])) };
+                     : { id: tid, byKey: new Map(r.map(f => [fbKey(f.name, f.type), f])), at: Date.now() };
   applyFlowFilter();
 }
 
@@ -7682,6 +7818,7 @@ function fbSummary(shown) {
   el.innerHTML = `<b>${shown.length}</b> flows &nbsp;·&nbsp; ` +
     [part(same, t('fbc_identical'), 'green'), part(diff, t('fbc_differ'), 'yellow'), part(missing, t('fbc_missing'), 'red'),
      part(unchecked, t('fbc_unchecked'), 'muted'), ...(failed ? [part(failed, t('fbc_failed'), 'red')] : [])].join(' &nbsp;·&nbsp; ') +
+    ` &nbsp;·&nbsp; <span style="color:var(--muted)">${t('fbc_fetched')} ${new Date(fbTarget.at).toLocaleTimeString()}</span> <a href="#" onclick="onFbCompareChange();return false" style="text-decoration:none" title="${t('btn_reload')}">↻</a>` +
     (fbList && fbList.missing.length
       ? `<div style="color:var(--yellow);margin-top:6px">⚠ ${fbList.missing.length} ${t('fbc_not_in_source')}: ${escapeHtml(fbList.missing.join(', '))}</div>` : '');
 }
@@ -8208,6 +8345,7 @@ async function _runMigration() {
     }
   }
   pipelineDirty = true;
+  fbTarget = null;            // Flow Browser henter målets liste igen næste gang
   applyMigrateFilter();
   updateMigrateBtn();
   log(logBox, `\n${t('migration_done')} — ${ok} ${t('da_sum_ok')} · ${skipped} ${t('da_sum_skipped')} · ${failed} ${t('da_sum_failed')}`,

@@ -270,3 +270,24 @@ test('Flow Browser viser hvad der er i målet, og sammenligningen tager præfiks
   assert.ok(cmp.includes('targetFlowName(flowName, source, target)') && cmp.includes('exportFlowToYaml(target, tName'));
   assert.ok(cmp.includes('stripEnvPrefixesInYaml(src.yaml, source)') && cmp.includes('stripEnvPrefixesInYaml(tgt.yaml, target)'));
 });
+
+test('målets flowliste i Flow Browser genhentes uafhængigt af kildens, og efter en migrering', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  const lf = html.slice(html.indexOf('async function loadFlows()'), html.indexOf('// Er et common module publiceret EFTER'));
+  const first = lf.indexOf("onFbCompareChange();"), kilde = lf.indexOf("fetch('/api/customers/' + id + '/flows')");
+  assert.ok(first > 0 && first < kilde, 'målets liste skal hentes før kildens, så en fejl dér ikke efterlader en gammel liste');
+  assert.ok(html.includes('fbTarget = null;            // Flow Browser henter målets liste igen'), 'forældet efter en migrering');
+  assert.ok(html.includes("at: Date.now()"), 'tidspunktet for hentningen vises');
+});
+
+test('Fra-org og Mål-org gælder på tværs af siderne og spørges ved et nyt login', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  for (const id of ['m-source', 'm-target', 'fb-customer', 'fb-compare', 'ex-customer', 'im-customer', 'da-source', 'da-target'])
+    assert.ok(html.includes(`'${id}'`) && html.indexOf(`'${id}', 'source'`) + html.indexOf(`'${id}', 'target'`) > -2, id);
+  const map = html.slice(html.indexOf('const WORK_MAP = {'), html.indexOf('const WORK_FIELDS'));
+  assert.equal((map.match(/'source'\]/g) || []).length, 4, 'Migrer, Flow Browser, Export og Migrér ressourcer har en Fra-org');
+  assert.equal((map.match(/'target'\]/g) || []).length, 4, 'Migrer, Flow Browser, Import og Migrér ressourcer har en Mål-org');
+  assert.ok(html.includes('applyWorkToPage(page);\n}') || html.includes('applyWorkToPage(page);\r\n}'), 'nav udfylder siden');
+  assert.ok(html.includes('afterLogin(id);\n        offerWorkRole(id);') || html.includes('afterLogin(id);\r\n        offerWorkRole(id);'), 'et login tilbyder rollen');
+  assert.ok(html.includes("localStorage.setItem(WORK_KEY"), 'valget huskes');
+});

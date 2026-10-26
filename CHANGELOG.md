@@ -5,6 +5,38 @@
 
 ---
 
+### v1.67.0
+---
+**🇩🇰 Dansk**
+
+- **Fra-org og Mål-org gælder på tværs af siderne.** Vælger man kilde og mål ét sted — Migrer Flow, Flow Browser, Export, Import eller Migrér ressourcer — står de samme valgt på de andre, når man skifter side. Flow Browser åbner direkte med Fra-org og henter flowlisten; Import får Mål-org; Export får Fra-org. Skifter man på en side, følger de andre med.
+- **Et login giver rollen.** Den første kunde man logger ind på bliver Fra-org. Logger man en til ind, spørges der: *Fra-org*, *Mål-org* eller *Ingen*. En kunde der allerede er Fra- eller Mål-org spørges der ikke om.
+- **Parret står øverst** («Fra-org: … ⇄ Mål-org: … ✕») med en knap til at bytte om og en til at rydde. Det huskes i browseren til næste gang, og en kunde der er slettet, forsvinder af sig selv.
+- En ny test.
+
+**🇬🇧 English**
+- **From org and Target org apply across the pages.** If you choose source and target in one place — Migrate Flow, Flow Browser, Export, Import or Migrate resources — the same ones are selected on the other pages when you switch. Flow Browser opens directly with the From org and loads the flow list; Import gets the Target org; Export gets the From org. Change it on one page and the others follow.
+- **A login gives the role.** The first customer you log in to becomes the From org. Log in to another and you are asked: *From org*, *Target org* or *Neither*. A customer that is already the From or Target org is not asked about.
+- **The pair is shown at the top** ("From org: … ⇄ Target org: … ✕") with a button to swap and one to clear. It is remembered in the browser for next time, and a deleted customer disappears by itself.
+- One new test.
+
+---
+
+### v1.66.1
+---
+**🇩🇰 Dansk**
+
+- **Flow Browser viste migrerede flows som «mangler i mål».** Listen over målet blev hentet, da siden blev åbnet, og blev stående: flows migreret bagefter, og flows der blev migreret mens kildens login var udløbet (den gamle liste blev ikke erstattet, fordi hentningen stoppede ved kildens fejl), stod som mangler. Nu hentes målets liste for sig selv og først, hver gang siden åbnes eller *Genindlæs* trykkes, og den er forældet efter en migrering.
+- **Tidspunktet for hentningen står i optællingen** («mållisten hentet 15.35.18») med en ↻ til at hente den igen.
+- En ny test.
+
+**🇬🇧 English**
+- **Flow Browser showed migrated flows as "missing in target".** The list of the target was fetched when the page was opened and stayed: flows migrated afterwards, and flows migrated while the source login had expired (the old list was not replaced, because fetching stopped at the source's error), showed as missing. The target's list is now fetched on its own and first, every time the page is opened or *Reload* is pressed, and it is stale after a migration.
+- **The time of the fetch is shown in the count** ("target list fetched 15.35.18") with a ↻ to fetch it again.
+- One new test.
+
+---
+
 ### v1.66.0
 ---
 **🇩🇰 Dansk**
