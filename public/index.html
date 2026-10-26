@@ -127,6 +127,11 @@
             border-bottom:2px solid transparent; margin-bottom:-1px; transition:all .15s; }
   .da-tab:hover { color:var(--text); }
   .da-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .da-tabs { flex-wrap:wrap; counter-reset:datab; }
+  .da-tab { padding:9px 12px; }
+  .da-tab:not(.da-tab-x)::before { counter-increment:datab; content:counter(datab) ". "; font-weight:400; opacity:.6; }
+  .da-tab-x { margin-left:auto; }
+  .da-tab-x ~ .da-tab-x { margin-left:0; }
 
   /* Sabio ordmærke (maske → følger --logo-color) */
   .logo-sabio { display: none; }
@@ -534,7 +539,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.67.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.69.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1001,17 +1006,36 @@
       <div class="page-sub" data-i18n="da_sub">Migrér Data Actions mellem Genesys Cloud orgs</div>
 
       <div class="da-tabs">
-        <div class="da-tab active" id="da-tab-actions" onclick="daSetTab('actions')" data-i18n="da_tab_actions">Data Actions</div>
-        <div class="da-tab" id="da-tab-tables" onclick="daSetTab('tables')" data-i18n="da_tab_tables">Data Tabeller</div>
-        <div class="da-tab" id="da-tab-wrapup" onclick="daSetTab('wrapup')" data-i18n="da_tab_wrapup">Wrap-up-koder</div>
-        <div class="da-tab" id="da-tab-roles" onclick="daSetTab('roles')" data-i18n="da_tab_roles">Roller</div>
-        <div class="da-tab" id="da-tab-oauth" onclick="daSetTab('oauth')" data-i18n="da_tab_oauth">OAuth-klienter</div>
-        <div class="da-tab" id="da-tab-integ" onclick="daSetTab('integ')" data-i18n="da_tab_integ">Integrationer</div>
+        <div class="da-tab active" id="da-tab-divisions" onclick="daSetTab('divisions')" data-i18n="da_tab_divisions">Divisioner</div>
+        <div class="da-tab" id="da-tab-skills" onclick="daSetTab('skills')" data-i18n="da_tab_skills">Skills</div>
+        <div class="da-tab" id="da-tab-skillgroups" onclick="daSetTab('skillgroups')" data-i18n="da_tab_skillgroups">Skill-grupper</div>
+        <div class="da-tab" id="da-tab-groups" onclick="daSetTab('groups')" data-i18n="da_tab_groups">Grupper</div>
+        <div class="da-tab" id="da-tab-teams" onclick="daSetTab('teams')" data-i18n="da_tab_teams">Teams</div>
+        <div class="da-tab" id="da-tab-locations" onclick="daSetTab('locations')" data-i18n="da_tab_locations">Lokationer</div>
+        <div class="da-tab" id="da-tab-utilization" onclick="daSetTab('utilization')" data-i18n="da_tab_utilization">Utilization labels</div>
         <div class="da-tab" id="da-tab-prompts" onclick="daSetTab('prompts')" data-i18n="da_tab_prompts">User Prompts</div>
         <div class="da-tab" id="da-tab-scripts" onclick="daSetTab('scripts')" data-i18n="da_tab_scripts">Scripts</div>
-        <div class="da-tab" id="da-tab-check" onclick="daSetTab('check')" data-i18n="da_tab_check">Totaltjek</div>
-        <div class="da-tab" id="da-tab-plan" onclick="daSetTab('plan')" data-i18n="da_tab_plan">Setup-forslag</div>
+        <div class="da-tab" id="da-tab-knowledgebases" onclick="daSetTab('knowledgebases')" data-i18n="da_tab_knowledgebases">Vidensbaser</div>
+        <div class="da-tab" id="da-tab-responselibs" onclick="daSetTab('responselibs')" data-i18n="da_tab_responselibs">Standardsvar</div>
+        <div class="da-tab" id="da-tab-surveyforms" onclick="daSetTab('surveyforms')" data-i18n="da_tab_surveyforms">Survey forms</div>
+        <div class="da-tab" id="da-tab-evalforms" onclick="daSetTab('evalforms')" data-i18n="da_tab_evalforms">Evalueringsformularer</div>
+        <div class="da-tab" id="da-tab-wrapup" onclick="daSetTab('wrapup')" data-i18n="da_tab_wrapup">Wrap-up-koder</div>
+        <div class="da-tab" id="da-tab-roles" onclick="daSetTab('roles')" data-i18n="da_tab_roles">Roller</div>
+        <div class="da-tab" id="da-tab-schedules" onclick="daSetTab('schedules')" data-i18n="da_tab_schedules">Åbningstider</div>
+        <div class="da-tab" id="da-tab-schedulegroups" onclick="daSetTab('schedulegroups')" data-i18n="da_tab_schedulegroups">Åbningstidsgrupper</div>
+        <div class="da-tab" id="da-tab-emergencygroups" onclick="daSetTab('emergencygroups')" data-i18n="da_tab_emergencygroups">Nødgrupper</div>
+        <div class="da-tab" id="da-tab-tables" onclick="daSetTab('tables')" data-i18n="da_tab_tables">Data Tabeller</div>
+        <div class="da-tab" id="da-tab-queues" onclick="daSetTab('queues')" data-i18n="da_tab_queues">Køer</div>
+        <div class="da-tab" id="da-tab-contactlists" onclick="daSetTab('contactlists')" data-i18n="da_tab_contactlists">Kontaktlister</div>
+        <div class="da-tab" id="da-tab-dnclists" onclick="daSetTab('dnclists')" data-i18n="da_tab_dnclists">DNC-lister</div>
+        <div class="da-tab" id="da-tab-integ" onclick="daSetTab('integ')" data-i18n="da_tab_integ">Integrationer</div>
+        <div class="da-tab" id="da-tab-actions" onclick="daSetTab('actions')" data-i18n="da_tab_actions">Data Actions</div>
+        <div class="da-tab" id="da-tab-oauth" onclick="daSetTab('oauth')" data-i18n="da_tab_oauth">OAuth-klienter</div>
+        <div class="da-tab da-tab-x" id="da-tab-check" onclick="daSetTab('check')" data-i18n="da_tab_check">Totaltjek</div>
+        <div class="da-tab da-tab-x" id="da-tab-plan" onclick="daSetTab('plan')" data-i18n="da_tab_plan">Setup-forslag</div>
       </div>
+      <div style="font-size:11px;color:var(--muted);margin:-10px 0 4px" data-i18n="da_order_note">Rækkefølgen følger afhængighederne.</div>
+      <div id="da-dep-note" style="font-size:11px;color:var(--muted);margin:0 0 14px"></div>
 
       <div class="card">
         <div class="card-title" data-i18n="da_card_srctgt">KILDE → MÅL</div>
@@ -1022,7 +1046,7 @@
           </div>
           <div>
             <label data-i18n="da_label_target">Mål (kopier til)</label>
-            <select id="da-target" onchange="daLoadTargetIntegrations(); dtUpdateReady(); wuUpdateReady(); mlUpdateReady('roles'); mlUpdateReady('oauth'); mlUpdateReady('integ'); prUpdateReady(); scUpdateReady()"></select>
+            <select id="da-target" onchange="daLoadTargetIntegrations(); dtUpdateReady(); wuUpdateReady(); mlUpdateReady('roles'); mlUpdateReady('oauth'); mlUpdateReady('integ'); prUpdateReady(); scUpdateReady(); mlUpdateAll()"></select>
           </div>
         </div>
         <div class="grid-2" id="da-actions-only" style="margin-top:12px">
@@ -1036,6 +1060,18 @@
           </div>
         </div>
         <div id="da-int-note" style="display:none;margin-top:10px;font-size:11px;font-family:var(--mono);padding:8px 12px;border-radius:5px"></div>
+      </div>
+
+      <div id="da-paste-bar" style="display:none;margin-bottom:12px">
+        <button class="btn btn-secondary btn-sm" onclick="daTogglePaste()" data-i18n="fbc_paste_link">📋 Indsæt liste</button>
+        <div id="da-paste-box" style="display:none;margin-top:8px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px" data-i18n="da_paste_hint">Ét navn pr. linje.</div>
+          <textarea id="da-paste-text" rows="8" style="width:100%;font-family:var(--mono);font-size:12px" spellcheck="false"></textarea>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+            <button class="btn btn-primary btn-sm" onclick="applyDaPaste()" data-i18n="da_paste_apply">Vælg disse</button>
+            <span id="da-paste-result" style="font-size:12px"></span>
+          </div>
+        </div>
       </div>
 
       <div class="card" id="da-action-card" style="display:none;">
@@ -2095,7 +2131,7 @@ const LANGS = {
     pl_no_groups:'Ingen grupper endnu. Sæt kunde, gruppe og trin på miljøerne under Kunder.',
     pl_search:'🔍  Filtrér flows…',
     pl_only_gaps:'Kun dem der mangler i et senere trin',
-    migrate_only_selected:'Vis kun valgte', migrate_none_selected:'Ingen flows valgt endnu — klik på dem du vil migrere.', migrate_done_badge:'✓ migreret', paste_list_link:'Indsæt liste', retry_msg:'prøver igen', col_in_target:'I mål', fbc_paste_link:'📋 Indsæt liste', fbc_check_btn:'🔍 Tjek indhold', fbc_apply_list:'Vis kun disse', fbc_clear_list:'Fjern listen', fbc_missing:'mangler i mål', fbc_there:'findes', fbc_identical:'identisk', fbc_diff:'{n} forskelle', fbc_differ:'forskellige', fbc_unchecked:'ikke tjekket', fbc_fetched:'mållisten hentet', work_from:'Fra-org', work_to:'Mål-org', work_none:'Ingen', work_swap:'Byt Fra og Mål', work_clear:'Ryd valget', work_login_q:'{name} er logget ind. Skal den bruges som Fra-org eller Mål-org?', fbc_failed:'kunne ikke tjekkes', fbc_not_in_source:'på listen, men ikke i kilden', fbc_stop:'Stop', fbc_many:'Indholdet af {n} flows sammenlignes — det kan tage et par minutter. Fortsæt?', paste_list_hint:'Ét flownavn pr. linje. Tekst i parentes til sidst (fx «(latest …)») ignoreres, hvis hele linjen ikke findes.', paste_list_apply:'Vælg disse flows', paste_list_result:'{n} fundet og valgt, {m} ikke fundet', skip_identical_label:'Spring flows over, der allerede er identiske i målet', reload_available:'En ny version er startet', reload_now:'Genindlæs siden', identical_skipped:'identisk med målet — springes over',
+    migrate_only_selected:'Vis kun valgte', migrate_none_selected:'Ingen flows valgt endnu — klik på dem du vil migrere.', migrate_done_badge:'✓ migreret', paste_list_link:'Indsæt liste', retry_msg:'prøver igen', col_in_target:'I mål', fbc_paste_link:'📋 Indsæt liste', fbc_check_btn:'🔍 Tjek indhold', fbc_apply_list:'Vis kun disse', fbc_clear_list:'Fjern listen', fbc_missing:'mangler i mål', fbc_there:'findes', fbc_identical:'identisk', fbc_diff:'{n} forskelle', fbc_differ:'forskellige', fbc_unchecked:'ikke tjekket', fbc_fetched:'mållisten hentet', work_from:'Fra-org', work_to:'Mål-org', work_none:'Ingen', da_tab_divisions:'Divisioner', da_tab_skills:'Skills', da_tab_groups:'Grupper', da_tab_schedules:'Åbningstider', da_tab_schedulegroups:'Åbningstidsgrupper', da_tab_queues:'Køer', da_tab_skillgroups:'Skill-grupper', da_tab_teams:'Teams', da_tab_locations:'Lokationer', da_tab_utilization:'Utilization labels', da_tab_knowledgebases:'Vidensbaser', da_tab_responselibs:'Standardsvar', da_tab_surveyforms:'Survey forms', da_tab_evalforms:'Evalueringsformularer', da_tab_emergencygroups:'Nødgrupper', da_tab_contactlists:'Kontaktlister', da_tab_dnclists:'DNC-lister', da_order_note:'Rækkefølgen følger afhængighederne: hver fane afhænger kun af fanerne før den. Migrér oppefra og ned, og slut med flows på Migrer Flow.', da_depends_on:'Afhænger af', da_depends_none:'Ingen afhængigheder — kan migreres først', da_paste_hint:'Ét navn pr. linje. Tekst i parentes til sidst ignoreres, hvis hele linjen ikke findes.', da_paste_apply:'Vælg disse', ml_search_generic:'🔍 Søg…', work_swap:'Byt Fra og Mål', work_clear:'Ryd valget', work_login_q:'{name} er logget ind. Skal den bruges som Fra-org eller Mål-org?', fbc_failed:'kunne ikke tjekkes', fbc_not_in_source:'på listen, men ikke i kilden', fbc_stop:'Stop', fbc_many:'Indholdet af {n} flows sammenlignes — det kan tage et par minutter. Fortsæt?', paste_list_hint:'Ét flownavn pr. linje. Tekst i parentes til sidst (fx «(latest …)») ignoreres, hvis hele linjen ikke findes.', paste_list_apply:'Vælg disse flows', paste_list_result:'{n} fundet og valgt, {m} ikke fundet', skip_identical_label:'Spring flows over, der allerede er identiske i målet', reload_available:'En ny version er startet', reload_now:'Genindlæs siden', identical_skipped:'identisk med målet — springes over',
     migrate_no_match:'Ingen flows passer til filteret.',
     pl_flow:'FLOW',
     pl_missing:'mangler',
@@ -3143,7 +3179,7 @@ const LANGS = {
     pl_no_groups:'No groups yet. Set customer, group and stage on the environments under Customers.',
     pl_search:'🔍  Filter flows…',
     pl_only_gaps:'Only those missing in a later stage',
-    migrate_only_selected:'Show only selected', migrate_none_selected:'No flows selected yet — click the ones you want to migrate.', migrate_done_badge:'✓ migrated', paste_list_link:'Paste list', retry_msg:'retrying', col_in_target:'In target', fbc_paste_link:'📋 Paste list', fbc_check_btn:'🔍 Check content', fbc_apply_list:'Show only these', fbc_clear_list:'Clear the list', fbc_missing:'missing in target', fbc_there:'exists', fbc_identical:'identical', fbc_diff:'{n} differences', fbc_differ:'different', fbc_unchecked:'not checked', fbc_fetched:'target list fetched', work_from:'From org', work_to:'Target org', work_none:'Neither', work_swap:'Swap From and Target', work_clear:'Clear the choice', work_login_q:'{name} is logged in. Use it as the From org or the Target org?', fbc_failed:'could not be checked', fbc_not_in_source:'on the list but not in the source', fbc_stop:'Stop', fbc_many:'The content of {n} flows will be compared — this may take a few minutes. Continue?', paste_list_hint:'One flow name per line. A trailing parenthesis (e.g. "(latest …)") is ignored if the whole line is not found.', paste_list_apply:'Select these flows', paste_list_result:'{n} found and selected, {m} not found', skip_identical_label:'Skip flows that are already identical in the target', reload_available:'A new version has started', reload_now:'Reload the page', identical_skipped:'identical to the target — skipped',
+    migrate_only_selected:'Show only selected', migrate_none_selected:'No flows selected yet — click the ones you want to migrate.', migrate_done_badge:'✓ migrated', paste_list_link:'Paste list', retry_msg:'retrying', col_in_target:'In target', fbc_paste_link:'📋 Paste list', fbc_check_btn:'🔍 Check content', fbc_apply_list:'Show only these', fbc_clear_list:'Clear the list', fbc_missing:'missing in target', fbc_there:'exists', fbc_identical:'identical', fbc_diff:'{n} differences', fbc_differ:'different', fbc_unchecked:'not checked', fbc_fetched:'target list fetched', work_from:'From org', work_to:'Target org', work_none:'Neither', da_tab_divisions:'Divisions', da_tab_skills:'Skills', da_tab_groups:'Groups', da_tab_schedules:'Schedules', da_tab_schedulegroups:'Schedule groups', da_tab_queues:'Queues', da_tab_skillgroups:'Skill groups', da_tab_teams:'Teams', da_tab_locations:'Locations', da_tab_utilization:'Utilization labels', da_tab_knowledgebases:'Knowledge bases', da_tab_responselibs:'Response libraries', da_tab_surveyforms:'Survey forms', da_tab_evalforms:'Evaluation forms', da_tab_emergencygroups:'Emergency groups', da_tab_contactlists:'Contact lists', da_tab_dnclists:'DNC lists', da_order_note:'The order follows the dependencies: each tab depends only on the tabs before it. Migrate from top to bottom and finish with flows on Migrate Flow.', da_depends_on:'Depends on', da_depends_none:'No dependencies — can be migrated first', da_paste_hint:'One name per line. A trailing parenthesis is ignored if the whole line is not found.', da_paste_apply:'Select these', ml_search_generic:'🔍 Search…', work_swap:'Swap From and Target', work_clear:'Clear the choice', work_login_q:'{name} is logged in. Use it as the From org or the Target org?', fbc_failed:'could not be checked', fbc_not_in_source:'on the list but not in the source', fbc_stop:'Stop', fbc_many:'The content of {n} flows will be compared — this may take a few minutes. Continue?', paste_list_hint:'One flow name per line. A trailing parenthesis (e.g. "(latest …)") is ignored if the whole line is not found.', paste_list_apply:'Select these flows', paste_list_result:'{n} found and selected, {m} not found', skip_identical_label:'Skip flows that are already identical in the target', reload_available:'A new version has started', reload_now:'Reload the page', identical_skipped:'identical to the target — skipped',
     migrate_no_match:'No flows match the filter.',
     pl_flow:'FLOW',
     pl_missing:'missing',
@@ -4191,7 +4227,7 @@ const LANGS = {
     pl_no_groups:'Aucun groupe. Renseignez client, groupe et étape sur les environnements sous Clients.',
     pl_search:'🔍  Filtrer les flows…',
     pl_only_gaps:'Uniquement ceux absents d\'une étape ultérieure',
-    migrate_only_selected:'Afficher uniquement la sélection', migrate_none_selected:'Aucun flow sélectionné — cliquez sur ceux à migrer.', migrate_done_badge:'✓ migré', paste_list_link:'Coller une liste', retry_msg:'nouvel essai', col_in_target:'Dans la cible', fbc_paste_link:'📋 Coller une liste', fbc_check_btn:'🔍 Vérifier le contenu', fbc_apply_list:'Afficher seulement ceux-ci', fbc_clear_list:'Effacer la liste', fbc_missing:'absent de la cible', fbc_there:'existe', fbc_identical:'identique', fbc_diff:'{n} différences', fbc_differ:'différents', fbc_unchecked:'non vérifié', fbc_fetched:'liste de la cible récupérée', work_from:'Org source', work_to:'Org cible', work_none:'Aucune', work_swap:'Inverser source et cible', work_clear:'Effacer le choix', work_login_q:'{name} est connectée. L’utiliser comme org source ou org cible ?', fbc_failed:'vérification impossible', fbc_not_in_source:'dans la liste mais pas dans la source', fbc_stop:'Arrêter', fbc_many:'Le contenu de {n} flows sera comparé — cela peut prendre quelques minutes. Continuer ?', paste_list_hint:'Un nom de flow par ligne. Une parenthèse finale est ignorée si la ligne entière est introuvable.', paste_list_apply:'Sélectionner ces flows', paste_list_result:'{n} trouvés et sélectionnés, {m} introuvables', skip_identical_label:'Ignorer les flows déjà identiques dans la cible', reload_available:'Une nouvelle version a démarré', reload_now:'Recharger la page', identical_skipped:'identique à la cible — ignoré',
+    migrate_only_selected:'Afficher uniquement la sélection', migrate_none_selected:'Aucun flow sélectionné — cliquez sur ceux à migrer.', migrate_done_badge:'✓ migré', paste_list_link:'Coller une liste', retry_msg:'nouvel essai', col_in_target:'Dans la cible', fbc_paste_link:'📋 Coller une liste', fbc_check_btn:'🔍 Vérifier le contenu', fbc_apply_list:'Afficher seulement ceux-ci', fbc_clear_list:'Effacer la liste', fbc_missing:'absent de la cible', fbc_there:'existe', fbc_identical:'identique', fbc_diff:'{n} différences', fbc_differ:'différents', fbc_unchecked:'non vérifié', fbc_fetched:'liste de la cible récupérée', work_from:'Org source', work_to:'Org cible', work_none:'Aucune', da_tab_divisions:'Divisions', da_tab_skills:'Compétences', da_tab_groups:'Groupes', da_tab_schedules:'Horaires', da_tab_schedulegroups:'Groupes d’horaires', da_tab_queues:'Files d’attente', da_tab_skillgroups:'Groupes de compétences', da_tab_teams:'Équipes', da_tab_locations:'Sites', da_tab_utilization:'Utilization labels', da_tab_knowledgebases:'Bases de connaissances', da_tab_responselibs:'Réponses prédéfinies', da_tab_surveyforms:'Formulaires d’enquête', da_tab_evalforms:'Formulaires d’évaluation', da_tab_emergencygroups:'Groupes d’urgence', da_tab_contactlists:'Listes de contacts', da_tab_dnclists:'Listes DNC', da_order_note:'L’ordre suit les dépendances : chaque onglet ne dépend que des précédents. Migrez de haut en bas et terminez par les flows sur Migrer Flow.', da_depends_on:'Dépend de', da_depends_none:'Aucune dépendance — à migrer en premier', da_paste_hint:'Un nom par ligne. Une parenthèse finale est ignorée si la ligne entière est introuvable.', da_paste_apply:'Sélectionner', ml_search_generic:'🔍 Rechercher…', work_swap:'Inverser source et cible', work_clear:'Effacer le choix', work_login_q:'{name} est connectée. L’utiliser comme org source ou org cible ?', fbc_failed:'vérification impossible', fbc_not_in_source:'dans la liste mais pas dans la source', fbc_stop:'Arrêter', fbc_many:'Le contenu de {n} flows sera comparé — cela peut prendre quelques minutes. Continuer ?', paste_list_hint:'Un nom de flow par ligne. Une parenthèse finale est ignorée si la ligne entière est introuvable.', paste_list_apply:'Sélectionner ces flows', paste_list_result:'{n} trouvés et sélectionnés, {m} introuvables', skip_identical_label:'Ignorer les flows déjà identiques dans la cible', reload_available:'Une nouvelle version a démarré', reload_now:'Recharger la page', identical_skipped:'identique à la cible — ignoré',
     migrate_no_match:'Aucun flow ne correspond au filtre.',
     pl_flow:'FLOW',
     pl_missing:'absent',
@@ -5239,7 +5275,7 @@ const LANGS = {
     pl_no_groups:'Nog geen groepen. Stel klant, groep en fase in bij de omgevingen onder Klanten.',
     pl_search:'🔍  Flows filteren…',
     pl_only_gaps:'Alleen die ontbreken in een latere fase',
-    migrate_only_selected:'Alleen geselecteerde tonen', migrate_none_selected:'Nog geen flows geselecteerd — klik op wat je wilt migreren.', migrate_done_badge:'✓ gemigreerd', paste_list_link:'Lijst plakken', retry_msg:'opnieuw proberen', col_in_target:'In doel', fbc_paste_link:'📋 Lijst plakken', fbc_check_btn:'🔍 Inhoud controleren', fbc_apply_list:'Alleen deze tonen', fbc_clear_list:'Lijst wissen', fbc_missing:'ontbreekt in doel', fbc_there:'bestaat', fbc_identical:'identiek', fbc_diff:'{n} verschillen', fbc_differ:'verschillend', fbc_unchecked:'niet gecontroleerd', fbc_fetched:'doellijst opgehaald', work_from:'Bron-org', work_to:'Doel-org', work_none:'Geen', work_swap:'Bron en doel wisselen', work_clear:'Keuze wissen', work_login_q:'{name} is ingelogd. Gebruiken als bron-org of doel-org?', fbc_failed:'kon niet worden gecontroleerd', fbc_not_in_source:'op de lijst maar niet in de bron', fbc_stop:'Stop', fbc_many:'De inhoud van {n} flows wordt vergeleken — dit kan enkele minuten duren. Doorgaan?', paste_list_hint:'Eén flownaam per regel. Een afsluitend haakje wordt genegeerd als de hele regel niet gevonden wordt.', paste_list_apply:'Deze flows selecteren', paste_list_result:'{n} gevonden en geselecteerd, {m} niet gevonden', skip_identical_label:'Flows overslaan die al identiek zijn in het doel', reload_available:'Er is een nieuwe versie gestart', reload_now:'Pagina herladen', identical_skipped:'identiek aan het doel — overgeslagen',
+    migrate_only_selected:'Alleen geselecteerde tonen', migrate_none_selected:'Nog geen flows geselecteerd — klik op wat je wilt migreren.', migrate_done_badge:'✓ gemigreerd', paste_list_link:'Lijst plakken', retry_msg:'opnieuw proberen', col_in_target:'In doel', fbc_paste_link:'📋 Lijst plakken', fbc_check_btn:'🔍 Inhoud controleren', fbc_apply_list:'Alleen deze tonen', fbc_clear_list:'Lijst wissen', fbc_missing:'ontbreekt in doel', fbc_there:'bestaat', fbc_identical:'identiek', fbc_diff:'{n} verschillen', fbc_differ:'verschillend', fbc_unchecked:'niet gecontroleerd', fbc_fetched:'doellijst opgehaald', work_from:'Bron-org', work_to:'Doel-org', work_none:'Geen', da_tab_divisions:'Divisies', da_tab_skills:'Skills', da_tab_groups:'Groepen', da_tab_schedules:'Roosters', da_tab_schedulegroups:'Roostergroepen', da_tab_queues:'Wachtrijen', da_tab_skillgroups:'Skillgroepen', da_tab_teams:'Teams', da_tab_locations:'Locaties', da_tab_utilization:'Utilization labels', da_tab_knowledgebases:'Kennisbanken', da_tab_responselibs:'Standaardantwoorden', da_tab_surveyforms:'Surveyformulieren', da_tab_evalforms:'Evaluatieformulieren', da_tab_emergencygroups:'Noodgroepen', da_tab_contactlists:'Contactlijsten', da_tab_dnclists:'DNC-lijsten', da_order_note:'De volgorde volgt de afhankelijkheden: elk tabblad hangt alleen af van de tabbladen ervoor. Migreer van boven naar beneden en eindig met flows op Migrate Flow.', da_depends_on:'Hangt af van', da_depends_none:'Geen afhankelijkheden — kan als eerste', da_paste_hint:'Eén naam per regel. Een afsluitend haakje wordt genegeerd als de hele regel niet gevonden wordt.', da_paste_apply:'Selecteren', ml_search_generic:'🔍 Zoeken…', work_swap:'Bron en doel wisselen', work_clear:'Keuze wissen', work_login_q:'{name} is ingelogd. Gebruiken als bron-org of doel-org?', fbc_failed:'kon niet worden gecontroleerd', fbc_not_in_source:'op de lijst maar niet in de bron', fbc_stop:'Stop', fbc_many:'De inhoud van {n} flows wordt vergeleken — dit kan enkele minuten duren. Doorgaan?', paste_list_hint:'Eén flownaam per regel. Een afsluitend haakje wordt genegeerd als de hele regel niet gevonden wordt.', paste_list_apply:'Deze flows selecteren', paste_list_result:'{n} gevonden en geselecteerd, {m} niet gevonden', skip_identical_label:'Flows overslaan die al identiek zijn in het doel', reload_available:'Er is een nieuwe versie gestart', reload_now:'Pagina herladen', identical_skipped:'identiek aan het doel — overgeslagen',
     migrate_no_match:'Geen flows voldoen aan het filter.',
     pl_flow:'FLOW',
     pl_missing:'ontbreekt',
@@ -6287,7 +6323,7 @@ const LANGS = {
     pl_no_groups:'Aún no hay grupos. Defina cliente, grupo y etapa en los entornos en Clientes.',
     pl_search:'🔍  Filtrar flows…',
     pl_only_gaps:'Solo los que faltan en una etapa posterior',
-    migrate_only_selected:'Mostrar solo lo seleccionado', migrate_none_selected:'Ningún flow seleccionado todavía: haga clic en los que quiera migrar.', migrate_done_badge:'✓ migrado', paste_list_link:'Pegar lista', retry_msg:'reintentando', col_in_target:'En destino', fbc_paste_link:'📋 Pegar lista', fbc_check_btn:'🔍 Comprobar contenido', fbc_apply_list:'Mostrar solo estos', fbc_clear_list:'Borrar la lista', fbc_missing:'falta en destino', fbc_there:'existe', fbc_identical:'idéntico', fbc_diff:'{n} diferencias', fbc_differ:'diferentes', fbc_unchecked:'sin comprobar', fbc_fetched:'lista del destino obtenida', work_from:'Org de origen', work_to:'Org de destino', work_none:'Ninguna', work_swap:'Intercambiar origen y destino', work_clear:'Borrar la selección', work_login_q:'{name} ha iniciado sesión. ¿Usarla como org de origen o de destino?', fbc_failed:'no se pudo comprobar', fbc_not_in_source:'en la lista pero no en el origen', fbc_stop:'Parar', fbc_many:'Se comparará el contenido de {n} flows; puede tardar unos minutos. ¿Continuar?', paste_list_hint:'Un nombre de flow por línea. Un paréntesis final se ignora si no se encuentra la línea completa.', paste_list_apply:'Seleccionar estos flows', paste_list_result:'{n} encontrados y seleccionados, {m} no encontrados', skip_identical_label:'Omitir los flows que ya son idénticos en el destino', reload_available:'Se ha iniciado una nueva versión', reload_now:'Recargar la página', identical_skipped:'idéntico al destino — omitido',
+    migrate_only_selected:'Mostrar solo lo seleccionado', migrate_none_selected:'Ningún flow seleccionado todavía: haga clic en los que quiera migrar.', migrate_done_badge:'✓ migrado', paste_list_link:'Pegar lista', retry_msg:'reintentando', col_in_target:'En destino', fbc_paste_link:'📋 Pegar lista', fbc_check_btn:'🔍 Comprobar contenido', fbc_apply_list:'Mostrar solo estos', fbc_clear_list:'Borrar la lista', fbc_missing:'falta en destino', fbc_there:'existe', fbc_identical:'idéntico', fbc_diff:'{n} diferencias', fbc_differ:'diferentes', fbc_unchecked:'sin comprobar', fbc_fetched:'lista del destino obtenida', work_from:'Org de origen', work_to:'Org de destino', work_none:'Ninguna', da_tab_divisions:'Divisiones', da_tab_skills:'Habilidades', da_tab_groups:'Grupos', da_tab_schedules:'Horarios', da_tab_schedulegroups:'Grupos de horarios', da_tab_queues:'Colas', da_tab_skillgroups:'Grupos de habilidades', da_tab_teams:'Equipos', da_tab_locations:'Ubicaciones', da_tab_utilization:'Utilization labels', da_tab_knowledgebases:'Bases de conocimiento', da_tab_responselibs:'Respuestas predefinidas', da_tab_surveyforms:'Formularios de encuesta', da_tab_evalforms:'Formularios de evaluación', da_tab_emergencygroups:'Grupos de emergencia', da_tab_contactlists:'Listas de contactos', da_tab_dnclists:'Listas DNC', da_order_note:'El orden sigue las dependencias: cada pestaña solo depende de las anteriores. Migre de arriba abajo y termine con los flows en Migrar Flow.', da_depends_on:'Depende de', da_depends_none:'Sin dependencias — se puede migrar primero', da_paste_hint:'Un nombre por línea. Un paréntesis final se ignora si no se encuentra la línea completa.', da_paste_apply:'Seleccionar', ml_search_generic:'🔍 Buscar…', work_swap:'Intercambiar origen y destino', work_clear:'Borrar la selección', work_login_q:'{name} ha iniciado sesión. ¿Usarla como org de origen o de destino?', fbc_failed:'no se pudo comprobar', fbc_not_in_source:'en la lista pero no en el origen', fbc_stop:'Parar', fbc_many:'Se comparará el contenido de {n} flows; puede tardar unos minutos. ¿Continuar?', paste_list_hint:'Un nombre de flow por línea. Un paréntesis final se ignora si no se encuentra la línea completa.', paste_list_apply:'Seleccionar estos flows', paste_list_result:'{n} encontrados y seleccionados, {m} no encontrados', skip_identical_label:'Omitir los flows que ya son idénticos en el destino', reload_available:'Se ha iniciado una nueva versión', reload_now:'Recargar la página', identical_skipped:'idéntico al destino — omitido',
     migrate_no_match:'Ningún flow coincide con el filtro.',
     pl_flow:'FLOW',
     pl_missing:'falta',
@@ -10686,6 +10722,7 @@ function daInit() {
       customers.map(c => `<option value="${c.id}">${escapeHtml(c.name)} (${escapeHtml(c.region)})</option>`).join('');
     if (cur) el.value = cur;
   });
+  daSetTab(daTab);
 }
 
 async function daLoadActions() {
@@ -11348,6 +11385,9 @@ async function migrateOneDep(dep, sourceId, targetId, logBox, opts = {}) {
     script:     ['/api/scripts/migrate',    { scriptName: dep.name }],
     queue:      ['/api/queues/migrate',     { name: dep.name }],
     group:      ['/api/groups/migrate',     { name: dep.name }],
+    skill:      ['/api/skills/migrate',     { name: dep.name }],
+    utilizationlabel: ['/api/resources/create', { name: dep.name, kind: 'utilization' }],
+    knowledgebase:    ['/api/resources/create', { name: dep.name, kind: 'knowledgebases' }],
     schedule:   ['/api/schedules/migrate',  { name: dep.name }],
     schedulegroup: ['/api/schedulegroups/migrate', { name: dep.name }]
   };
@@ -11588,7 +11628,7 @@ async function scMigrateSelected() {
 // ── Data Tabeller ─────────────────────────────────────────────────────────────
 let dtAll         = [];
 let dtSelectedIds = new Set();
-let daTab         = 'actions';
+let daTab         = 'divisions';
 
 function daSetTab(tab) {
   daTab = tab;
@@ -11621,6 +11661,14 @@ function daSetTab(tab) {
   document.getElementById('da-roles-card').style.display  = (tab === 'roles'   && srcPicked) ? 'block' : 'none';
   document.getElementById('da-oauth-card').style.display  = (tab === 'oauth'   && srcPicked) ? 'block' : 'none';
   document.getElementById('da-integ-card').style.display  = (tab === 'integ'   && srcPicked) ? 'block' : 'none';
+  ML_GENERIC.forEach(k => {
+    document.getElementById('da-tab-' + k).classList.toggle('active', tab === k);
+    document.getElementById('da-' + k + '-card').style.display = (tab === k && srcPicked) ? 'block' : 'none';
+    // Hentes først når fanen åbnes — ellers hentes alle køer, grupper og skills for hver kilde
+    if (tab === k && srcPicked && ML[k].loadedFor !== document.getElementById('da-source').value) mlLoad(k);
+  });
+  daUpdateDepNote(tab);
+  daUpdatePasteBar();
 }
 
 // ── Totaltjek af data actions ────────────────────────────────────────────────
@@ -12056,8 +12104,10 @@ function daSourceChanged() {
   mlLoad('roles');
   mlLoad('oauth');
   mlLoad('integ');
+  ML_GENERIC.forEach(k => { ML[k].loadedFor = null; mlLoad(k); });   // kun den aktive fane hentes
   prLoadPrompts();
   scLoadScripts();
+  daUpdatePasteBar();
 }
 
 async function dtLoadTables() {
@@ -12287,9 +12337,105 @@ const ML = {
   oauth: { list: 'oauthclients',  migrate: '/api/oauthclients/migrate', ids: 'clientIds',      all: [], sel: new Set(), what: 'oa_clients' },
   integ: { list: 'integrations',  migrate: '/api/integrations/migrate', ids: 'integrationIds', all: [], sel: new Set(), what: 'ig_integrations' },
 };
+// Ressourcer der kun har et navn og en lille definition — samme liste og samme
+// migrering for alle. Listen og migreringen ligger på serveren (RESOURCE_KINDS).
+const ML_GENERIC = ['divisions', 'skills', 'skillgroups', 'groups', 'teams', 'locations', 'utilization', 'knowledgebases',
+  'responselibs', 'surveyforms', 'evalforms', 'schedules', 'schedulegroups', 'emergencygroups', 'queues', 'contactlists', 'dnclists'];
+for (const k of ML_GENERIC)
+  ML[k] = { list: `resources/${k}`, migrate: '/api/resources/migrate', ids: 'ids', all: [], sel: new Set(),
+            what: 'da_tab_' + k, generic: true, loadedFor: null };
+
+function mlBuildCards() {
+  let prev = document.getElementById('da-integ-card');
+  for (const k of ML_GENERIC) {
+    if (!document.getElementById('da-' + k + '-card')) {
+      const d = document.createElement('div');
+      d.className = 'card'; d.id = 'da-' + k + '-card'; d.style.display = 'none';
+      d.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="card-title" style="margin:0"><span data-i18n="da_tab_${k}"></span> (<span id="${k}-count">0</span>)</div>
+          <div style="display:flex;gap:8px">
+            <input id="${k}-search" style="width:220px" data-i18n-placeholder="ml_search_generic" oninput="mlFilter('${k}')"/>
+            <button class="btn btn-primary btn-sm" id="${k}-migrate-btn" onclick="mlMigrate('${k}')" data-i18n="ml_migrate_btn" disabled>⚡</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:10px">
+          <span id="${k}-sel-count" style="color:var(--accent);font-weight:700">0</span> <span data-i18n="da_selected"></span>
+          &nbsp;·&nbsp;
+          <a href="#" onclick="mlSelectAll('${k}');return false" style="color:var(--accent);text-decoration:none" data-i18n="da_select_all"></a>
+          &nbsp;·&nbsp;
+          <a href="#" onclick="mlClearSel('${k}');return false" style="color:var(--muted);text-decoration:none" data-i18n="da_reset"></a>
+        </div>
+        <div id="${k}-list"></div>`;
+      prev.after(d);
+    }
+    prev = document.getElementById('da-' + k + '-card');
+  }
+}
+mlBuildCards();
+function mlUpdateAll() { Object.keys(ML).forEach(mlUpdateReady); }
+
+// Hvad hver fane afhænger af. Fanerne står i en rækkefølge hvor ingen afhænger
+// af noget der kommer efter den.
+const DA_DEPS = {
+  divisions: [], skills: [], skillgroups: ['skills'], groups: [], teams: ['divisions'], locations: [], utilization: [],
+  prompts: [], scripts: [], knowledgebases: [], responselibs: [], surveyforms: [], evalforms: [],
+  wrapup: ['divisions'], roles: ['divisions'], schedules: ['divisions'], schedulegroups: ['schedules'],
+  emergencygroups: ['divisions'], tables: ['divisions'], queues: ['divisions'],
+  contactlists: ['divisions'], dnclists: ['divisions'], integ: [], actions: ['integ'], oauth: ['roles']
+};
+function daUpdateDepNote(tab) {
+  const el = document.getElementById('da-dep-note');
+  if (!el) return;
+  if (!(tab in DA_DEPS)) { el.textContent = ''; return; }
+  const names = DA_DEPS[tab].map(d => (document.getElementById('da-tab-' + d)?.textContent || d).trim());
+  el.textContent = names.length ? `${t('da_depends_on')}: ${names.join(', ')}` : t('da_depends_none');
+}
+
+// «Indsæt liste» gælder den aktive fane — hver har sin egen liste og sit eget valg
+const DA_LISTS = {
+  actions: () => ({ items: daAllActions, sel: daSelectedIds, refresh: () => daFilter() }),
+  tables:  () => ({ items: dtAll,        sel: dtSelectedIds, refresh: () => dtFilter() }),
+  wrapup:  () => ({ items: wuAll,        sel: wuSelectedIds, refresh: () => wuFilter() }),
+  prompts: () => ({ items: prAll,        sel: prSelectedIds, refresh: () => prFilter() }),
+  scripts: () => ({ items: scAll,        sel: scSelectedIds, refresh: () => scFilter() }),
+};
+for (const k of Object.keys(ML)) DA_LISTS[k] = () => ({ items: ML[k].all, sel: ML[k].sel, refresh: () => mlFilter(k) });
+const daPasteText = {};
+
+function daUpdatePasteBar() {
+  const bar = document.getElementById('da-paste-bar');
+  if (!bar) return;
+  bar.style.display = (document.getElementById('da-source').value && DA_LISTS[daTab]) ? 'block' : 'none';
+  const ta = document.getElementById('da-paste-text');
+  if (ta && ta.dataset.tab !== daTab) {
+    if (ta.dataset.tab) daPasteText[ta.dataset.tab] = ta.value;
+    ta.value = daPasteText[daTab] || ''; ta.dataset.tab = daTab;
+    document.getElementById('da-paste-result').textContent = '';
+  }
+}
+function daTogglePaste() {
+  const box = document.getElementById('da-paste-box');
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  if (box.style.display === 'block') document.getElementById('da-paste-text').focus();
+}
+function applyDaPaste() {
+  const spec = DA_LISTS[daTab];
+  if (!spec) return;
+  const { items, sel, refresh } = spec();
+  const { matched, missing, lines } = matchFlowList(document.getElementById('da-paste-text').value, items);
+  for (const x of matched) sel.add(x.id);
+  refresh();
+  const el = document.getElementById('da-paste-result');
+  el.style.color = missing.length ? 'var(--yellow)' : 'var(--green)';
+  el.textContent = t('paste_list_result').replace('{n}', lines.length - missing.length).replace('{m}', missing.length)
+    + (missing.length ? ': ' + missing.join(', ') : '');
+}
+
 let mlSecrets = [];   // {name, clientId, secret} fra sidste OAuth-migrering — kun i denne fane, aldrig gemt
 
 function mlSub(k, x) {
+  if (ML[k].generic) return x.sub || '';
   if (k === 'roles') return `${x.policies} ${t('ro_policies')}`;
   return k === 'oauth'
     ? `${x.grant === 'CODE' ? 'Code / PKCE' : x.grant === 'CLIENT-CREDENTIALS' ? 'Client Credentials' : x.grant}${x.roles ? ` · ${x.roles} ${t('oa_roles')}` : ''}`
@@ -12301,6 +12447,8 @@ async function mlLoad(k) {
   m.all = []; m.sel.clear();
   const card = document.getElementById(`da-${k}-card`);
   if (!id) { card.style.display = 'none'; return; }
+  // De nye ressourcer hentes først når deres fane er åben
+  if (m.generic) { if (daTab !== k) { m.loadedFor = null; return; } m.loadedFor = id; }
   if (daTab === k) card.style.display = 'block';
   const box = document.getElementById(`${k}-list`);
   box.innerHTML = `<div style="color:var(--muted);font-size:12px"><span class="spin"></span> ${t('ml_loading')}</div>`;
@@ -12424,7 +12572,7 @@ async function mlMigrate(k) {
     const extra = k === 'oauth' ? await mlOfferRoles(sourceId, targetId, logBox) : {};
     const data = await fetch(m.migrate, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sourceId, targetId, [m.ids]: [...m.sel], ...extra })
+      body: JSON.stringify({ sourceId, targetId, [m.ids]: [...m.sel], ...(m.generic ? { kind: k } : {}), ...extra })
     }).then(r => r.json());
     if (data.error) { log(logBox, `  \u2717 ${data.error}`, 'err'); failed++; }
     else {
@@ -12440,6 +12588,8 @@ async function mlMigrate(k) {
             for (const x of r.missing || []) log(logBox, `    \u26a0 ${t('oa_missing')}: ${x}`, 'info');
           } else if (k === 'roles') {
             for (const x of r.missing || []) log(logBox, `    \u26a0 ${t('ro_skipped')}: ${x}`, 'info');
+          } else if (m.generic) {
+            for (const x of r.trail || []) log(logBox, `    ${x}`, 'info');
           } else {
             log(logBox, r.activated ? `    ${t('ig_activated')}` : `    ${t('ig_inactive')}`, 'info');
             for (const x of r.todo || []) log(logBox, `    \u26a0 ${t('ig_todo')}: ${x}`, 'info');

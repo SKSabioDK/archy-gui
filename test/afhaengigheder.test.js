@@ -291,3 +291,48 @@ test('Fra-org og Mål-org gælder på tværs af siderne og spørges ved et nyt l
   assert.ok(html.includes('afterLogin(id);\n        offerWorkRole(id);') || html.includes('afterLogin(id);\r\n        offerWorkRole(id);'), 'et login tilbyder rollen');
   assert.ok(html.includes("localStorage.setItem(WORK_KEY"), 'valget huskes');
 });
+
+test('fanerne i Migrér ressourcer står så ingen afhænger af en fane der kommer efter den', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  const order = [...html.matchAll(/id="da-tab-([a-z]+)" onclick="daSetTab\('([a-z]+)'\)"/g)].map(m => m[1]).filter(k => k !== 'check' && k !== 'plan');
+  const deps = JSON.parse(html.match(/const DA_DEPS = (\{[\s\S]*?\});/)[1].replace(/([a-z]+):/g, '"$1":').replace(/'/g, '"'));
+  assert.deepEqual([...order].sort(), Object.keys(deps).sort(), 'hver fane har en afhængighedsliste');
+  for (const [k, d] of Object.entries(deps))
+    for (const x of d) assert.ok(order.indexOf(x) < order.indexOf(k), `${k} afhænger af ${x}, som skal stå før`);
+});
+
+test('køer, grupper, skills, åbningstider og divisioner kan listes og migreres, og skrivningen er bag prod-vagten', () => {
+  assert.deepEqual(Object.keys(s.RESOURCE_KINDS).sort(), ['contactlists', 'divisions', 'dnclists', 'emergencygroups', 'evalforms', 'groups', 'knowledgebases', 'locations', 'queues', 'responselibs', 'schedulegroups', 'schedules', 'skillgroups', 'skills', 'surveyforms', 'teams', 'utilization']);
+  assert.deepEqual(Object.keys(s.RESOURCE_MIGRATE).sort(), Object.keys(s.RESOURCE_KINDS).sort());
+  for (const r of ['/api/resources/migrate', '/api/skills/migrate']) assert.equal(s.PROD_WRITE_ROUTES[r], 'targetId', r);
+  assert.equal(s.RESOURCE_KINDS.divisions.keep({ name: 'Home', homeDivision: true }), false, 'Home findes i alle org\'er');
+  assert.equal(s.RESOURCE_KINDS.divisions.keep({ name: 'DK_CTS' }), true);
+});
+
+test('Indsæt liste findes for alle faner med en liste', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  const lists = html.slice(html.indexOf('const DA_LISTS = {'), html.indexOf('const daPasteText'));
+  for (const k of ['actions', 'tables', 'wrapup', 'prompts', 'scripts']) assert.ok(lists.includes(`${k}:`), k);
+  assert.ok(lists.includes('for (const k of Object.keys(ML))'), 'roller, OAuth, integrationer og de nye ressourcer');
+});
+
+test('de enkle ressourcer kopierer kun definitionen — ikke id, medlemmer eller referencer', () => {
+  const C = s.SIMPLE_CREATE;
+  assert.deepEqual(C.teams.body({ id: 'x', name: 'T', description: 'd', memberCount: 4, division: { id: 'o' } }), { name: 'T', description: 'd' });
+  assert.deepEqual(C.utilization.body({ id: 'x', name: 'L' }), { name: 'L' });
+  assert.deepEqual(C.knowledgebases.body({ id: 'x', name: 'KB', coreLanguage: 'en-US', documentCount: 9 }), { name: 'KB', coreLanguage: 'en-US' });
+  assert.deepEqual(C.emergencygroups.body({ name: 'E', enabled: true, emergencyCallFlows: [{ x: 1 }] }), { name: 'E', enabled: false, emergencyCallFlows: [] },
+    'en nødgruppe oprettes slået fra, uden flows');
+  const cl = C.contactlists.body({ id: 'x', name: 'CL', columnNames: ['a', 'b'], phoneColumns: [{ columnName: 'a', type: 'cell' }], attemptLimits: { id: 'z' }, size: 5 });
+  assert.deepEqual(Object.keys(cl).sort(), ['columnNames', 'name', 'phoneColumns']);
+  assert.ok(C.dnclists.check({ dncSourceType: 'dnc.com' }).includes('login'), 'ekstern DNC kræver udbyderens login');
+  assert.equal(C.dnclists.check({ dncSourceType: 'rds' }), null);
+  assert.equal(C.dnclists.body({ name: 'D', contactMethod: 'Phone', dncSourceType: 'rds', loginId: 'secret' }).loginId, undefined);
+  const ef = C.evalforms.body({ name: 'F', id: 'x', published: true, questionGroups: [] });
+  assert.equal(ef.published, false);
+});
+
+test('en fejl om manglende OAuth-scope på en liste forklares', () => {
+  const src = SERVER.slice(SERVER.indexOf("app.get('/api/customers/:id/resources/:kind'"), SERVER.indexOf("app.post('/api/resources/migrate'"));
+  assert.ok(src.includes('archyHint(describeApiError(e))'));
+});

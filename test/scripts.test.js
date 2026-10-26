@@ -17,7 +17,7 @@ test('scripter-importen går til apps.<region>, ikke api.<region>', () => {
 });
 
 test('prompts og scripts kan migreres med flowet', () => {
-  assert.deepEqual([...s.COPYABLE_KINDS].sort(), ['group', 'prompt', 'queue', 'schedule', 'schedulegroup', 'script']);
+  assert.deepEqual([...s.COPYABLE_KINDS].sort(), ['group', 'knowledgebase', 'prompt', 'queue', 'schedule', 'schedulegroup', 'script', 'skill', 'utilizationlabel']);
   // Kilden slås op, og findes de dér, kan de vælges i dialogen
   const prep = SERVER.slice(SERVER.indexOf('async function analyzeFlowForMigration('), SERVER.indexOf("app.post('/api/migrate/check'"));
   assert.match(prep, /COPYABLE_KINDS\.has\(r\.kind\)\) \{[\s\S]{0,200}else if \(src\?\.has\(r\.name\)\) r\.canMigrate = true;/);

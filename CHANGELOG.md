@@ -5,6 +5,46 @@
 
 ---
 
+### v1.69.0
+---
+**🇩🇰 Dansk**
+
+- **Elleve nye faner i Migrér ressourcer:** Skill-grupper, Teams, Lokationer, Utilization labels, Vidensbaser, Standardsvar, Survey forms, Evalueringsformularer, Nødgrupper, Kontaktlister og DNC-lister. Hver har liste, søgning, *Indsæt liste* og *Migrér valgte*. Der er nu 25 faner, stadig i afhængighedsrækkefølge — fx står Skill-grupper efter Skills, og Teams, Nødgrupper, Kontaktlister og DNC-lister efter Divisioner.
+- **Kun definitionen kopieres.** Teams, skill-grupper og kontaktlister kommer uden medlemmer, skills og kontakter; vidensbaser uden dokumenter; en nødgruppe oprettes slået fra og uden nødflows; en evalueringsformular oprettes som ikke-publiceret; et standardsvar-bibliotek tager sine svar med så godt det går. En DNC-liste fra en ekstern udbyder (dnc.com m.fl.) kan ikke kopieres, fordi den kræver udbyderens login — det siges tydeligt. Hver migrering skriver i loggen hvad der ikke fulgte med.
+- **Skills, utilization labels og vidensbaser kan nu migreres sammen med et flow** i stedet for at stå som *opret i mål-org først*.
+- **Manglende OAuth-scope forklares på listerne.** Falck US' klient mangler fx scopet til outbound, quality, knowledge, locations og response-management; fanen siger hvilket scope der mangler og hvor det tilføjes, i stedet for kun Genesys' besked.
+- **Lister med cursor** (skill-grupper, vidensbaser) gav side 1 igen og igen; nu tages kun det nye.
+- **Kampagner er ikke med.** De peger på kontaktliste, kø, scripts, svarsæt og tidsrum i målet og kræver en kortlægning pr. objekt, så de bør laves for sig.
+- 2 nye tests; 3 tilpasset.
+
+**🇬🇧 English**
+- **Eleven new tabs in Migrate resources:** Skill groups, Teams, Locations, Utilization labels, Knowledge bases, Response libraries, Survey forms, Evaluation forms, Emergency groups, Contact lists and DNC lists. Each has a list, search, *Paste list* and *Migrate selected*. There are now 25 tabs, still in dependency order — e.g. Skill groups come after Skills, and Teams, Emergency groups, Contact lists and DNC lists after Divisions.
+- **Only the definition is copied.** Teams, skill groups and contact lists come without members, skills and contacts; knowledge bases without documents; an emergency group is created switched off and without emergency flows; an evaluation form is created unpublished; a response library brings its responses as far as possible. A DNC list from an external provider (dnc.com etc.) cannot be copied because it needs the provider's login — this is stated clearly. Each migration writes in the log what did not come along.
+- **Skills, utilization labels and knowledge bases can now be migrated with a flow** instead of showing as *create in the target org first*.
+- **A missing OAuth scope is explained on the lists.** Falck US' client lacks the scope for outbound, quality, knowledge, locations and response-management, for example; the tab says which scope is missing and where to add it, not just Genesys' message.
+- **Cursor lists** (skill groups, knowledge bases) returned page 1 again and again; only the new items are now taken.
+- **Campaigns are not included.** They point to contact list, queue, scripts, response sets and time sets in the target and need a mapping per object, so they should be done separately.
+- 2 new tests; 3 adjusted.
+
+---
+
+### v1.68.0
+---
+**🇩🇰 Dansk**
+
+- **Seks nye faner i Migrér ressourcer: Divisioner, Skills, Grupper, Åbningstider, Åbningstidsgrupper og Køer.** Hver har en liste fra kilde-org'en, søgning, *Vælg alle* og *Migrér valgte*. De bruger de samme ruter som flow-migreringen, så en kø eller åbningstidsgruppe opfører sig ens begge steder: køer og grupper kopieres som definition (uden medlemmer), en åbningstidsgruppe får målets egne åbningstider og opretter dem der mangler, divisioner og skills er blot navnet. Listerne hentes først, når fanen åbnes.
+- **Fanerne står i afhængighedsrækkefølge og er nummereret.** Ingen fane afhænger af en fane efter sig: 1 Divisioner · 2 Skills · 3 Grupper · 4 User Prompts · 5 Scripts · 6 Wrap-up-koder · 7 Roller · 8 Åbningstider · 9 Åbningstidsgrupper · 10 Data Tabeller · 11 Køer · 12 Integrationer · 13 Data Actions · 14 OAuth-klienter, og flows til sidst på Migrer Flow. Under fanerne står, hvad den aktive fane afhænger af.
+- **Indsæt liste på alle faner.** Knappen *Indsæt liste* gælder den aktive fane (hver fane husker sin egen tekst): ét navn pr. linje, en afsluttende parentes ignores, og resultatet viser hvor mange der blev valgt og hvilke navne der ikke findes.
+- Ny rute `/api/skills/migrate`; skrivende ruter står bag prod-vagten. 3 nye tests.
+
+**🇬🇧 English**
+- **Six new tabs in Migrate resources: Divisions, Skills, Groups, Schedules, Schedule groups and Queues.** Each has a list from the source org, search, *Select all* and *Migrate selected*. They use the same routes as the flow migration, so a queue or schedule group behaves the same in both places: queues and groups are copied as a definition (no members), a schedule group gets the target's own schedules and creates the missing ones, divisions and skills are just the name. The lists are fetched only when the tab is opened.
+- **The tabs are in dependency order and numbered.** No tab depends on a tab after it: 1 Divisions · 2 Skills · 3 Groups · 4 User Prompts · 5 Scripts · 6 Wrap-up codes · 7 Roles · 8 Schedules · 9 Schedule groups · 10 Data Tables · 11 Queues · 12 Integrations · 13 Data Actions · 14 OAuth clients, and flows last on Migrate Flow. Under the tabs it says what the active tab depends on.
+- **Paste list on every tab.** The *Paste list* button applies to the active tab (each tab remembers its own text): one name per line, a trailing parenthesis is ignored, and the result shows how many were selected and which names do not exist.
+- New route `/api/skills/migrate`; the writing routes are behind the prod guard. 3 new tests.
+
+---
+
 ### v1.67.0
 ---
 **🇩🇰 Dansk**

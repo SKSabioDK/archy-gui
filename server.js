@@ -1747,6 +1747,9 @@ const PROD_WRITE_ROUTES = {
   '/api/prompts/migrate':         'targetId',
   '/api/scripts/migrate':         'targetId',
   '/api/queues/migrate':          'targetId',
+  '/api/skills/migrate':          'targetId',
+  '/api/resources/create':        'targetId',
+  '/api/resources/migrate':       'targetId',
   '/api/groups/migrate':          'targetId',
   '/api/schedules/migrate':       'targetId',
   '/api/schedulegroups/migrate':  'targetId',
@@ -7169,13 +7172,17 @@ const queueCreateBody = (full, divisionId) =>
 const groupCreateBody = full => pickFields(full, GROUP_COPY_FIELDS);
 
 async function pagedList(base, url, token, params = {}) {
-  const all = [];
-  for (let page = 1; ; page++) {
+  const all = [], seen = new Set();
+  for (let page = 1; page <= 200; page++) {
     const r = await axios.get(`${base}${url}`, { headers: { Authorization: `Bearer ${token}` }, params: { ...params, pageSize: 100, pageNumber: page } });
     const e = r.data.entities || [];
-    all.push(...e);
-    if (e.length < 100) return all;
+    // En liste med cursor ignorerer pageNumber og giver side 1 igen — så tager vi kun det nye
+    const nye = e.filter(x => !x.id || !seen.has(x.id));
+    nye.forEach(x => x.id && seen.add(x.id));
+    all.push(...nye);
+    if (e.length < 100 || !nye.length) return all;
   }
+  return all;
 }
 
 app.post('/api/queues/migrate', async (req, res) => {
@@ -7333,6 +7340,195 @@ async function migrateScheduleLike(req, res, kind) {
 }
 app.post('/api/schedules/migrate', (req, res) => migrateScheduleLike(req, res, 'schedule'));
 app.post('/api/schedulegroups/migrate', (req, res) => migrateScheduleLike(req, res, 'schedulegroup'));
+
+// ── Migrér ressourcer: køer, grupper, skills, åbningstider, divisioner ─────────
+// Ét sæt ruter til de ressourcer der kun har et navn og en lille definition:
+// listen hentes ens, og migreringen genbruger de enkelte ruter (en kø, en gruppe,
+// en åbningstid …) som også flow-migreringen bruger — så de to veje aldrig
+// opfører sig forskelligt.
+
+const RESOURCE_KINDS = {
+  divisions:      { url: '/api/v2/authorization/divisions', keep: d => !d.homeDivision && d.name !== 'Home', sub: () => '' },
+  skills:         { url: '/api/v2/routing/skills',          keep: () => true, sub: () => '' },
+  groups:         { url: '/api/v2/groups',                  keep: () => true,
+                    sub: g => [g.type, g.memberCount != null ? `${g.memberCount} 👥` : ''].filter(Boolean).join(' · ') },
+  schedules:      { url: '/api/v2/architect/schedules',     keep: () => true, sub: x => (x.division && x.division.name) || '' },
+  schedulegroups: { url: '/api/v2/architect/schedulegroups', keep: () => true, sub: x => (x.division && x.division.name) || '' },
+  queues:         { url: '/api/v2/routing/queues',          keep: () => true,
+                    sub: q => [q.division && q.division.name, q.memberCount != null ? `${q.memberCount} 👥` : ''].filter(Boolean).join(' · ') },
+  teams:          { url: '/api/v2/teams',                   keep: () => true,
+                    sub: x => [x.division && x.division.name, x.memberCount != null ? `${x.memberCount} 👥` : ''].filter(Boolean).join(' · ') },
+  locations:      { url: '/api/v2/locations',               keep: () => true, sub: x => (x.address && (x.address.city || x.address.country)) || '' },
+  utilization:    { url: '/api/v2/routing/utilization/labels', keep: () => true, sub: () => '' },
+  skillgroups:    { url: '/api/v2/routing/skillgroups',     keep: () => true, sub: x => x.description || '' },
+  knowledgebases: { url: '/api/v2/knowledge/knowledgebases', keep: () => true, sub: x => x.coreLanguage || '' },
+  responselibs:   { url: '/api/v2/responsemanagement/libraries', keep: () => true, sub: () => '' },
+  surveyforms:    { url: '/api/v2/quality/forms/surveys',   keep: () => true, sub: x => x.published ? 'published' : '' },
+  evalforms:      { url: '/api/v2/quality/forms/evaluations', keep: () => true, sub: x => x.published ? 'published' : '' },
+  emergencygroups:{ url: '/api/v2/architect/emergencygroups', keep: () => true, sub: x => (x.division && x.division.name) || '' },
+  contactlists:   { url: '/api/v2/outbound/contactlists',   keep: () => true, sub: x => (x.division && x.division.name) || '' },
+  dnclists:       { url: '/api/v2/outbound/dnclists',       keep: () => true, sub: x => [x.dncSourceType, x.contactMethod].filter(Boolean).join(' · ') }
+};
+// Ruten der opretter ét element i målet, ved navn
+const RESOURCE_MIGRATE = {
+  divisions: '/api/divisions/create', skills: '/api/skills/migrate', groups: '/api/groups/migrate',
+  schedules: '/api/schedules/migrate', schedulegroups: '/api/schedulegroups/migrate', queues: '/api/queues/migrate',
+  surveyforms: '/api/surveyforms/migrate'
+};
+// Resten oprettes af én fælles rute (SIMPLE_CREATE nedenfor)
+for (const k of ['teams', 'locations', 'utilization', 'skillgroups', 'knowledgebases', 'responselibs', 'evalforms',
+                 'emergencygroups', 'contactlists', 'dnclists']) RESOURCE_MIGRATE[k] = '/api/resources/create';
+
+async function listResources(customer, kind) {
+  const spec = RESOURCE_KINDS[kind];
+  const { token, apiBase } = await getToken(customer);
+  const all = await pagedList(apiBase, spec.url, token);
+  return all.filter(spec.keep)
+    .map(x => ({ id: x.id, name: x.name, sub: spec.sub(x) }))
+    .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+}
+
+app.get('/api/customers/:id/resources/:kind', async (req, res) => {
+  const customer = loadCustomers().find(c => c.id === req.params.id);
+  if (!customer) return res.status(404).json({ error: 'Not found' });
+  if (!RESOURCE_KINDS[req.params.kind]) return res.status(400).json({ error: `Ukendt type "${req.params.kind}"` });
+  try { res.json(await listResources(customer, req.params.kind)); }
+  catch (e) { res.status(500).json({ error: archyHint(describeApiError(e)) }); }
+});
+
+app.post('/api/resources/migrate', async (req, res) => {
+  const { kind, sourceId, targetId, ids } = req.body;
+  const source = loadCustomers().find(c => c.id === sourceId);
+  const target = loadCustomers().find(c => c.id === targetId);
+  if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
+  if (!RESOURCE_KINDS[kind]) return res.status(400).json({ error: `Ukendt type "${kind}"` });
+  if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error: 'Intet valgt' });
+  try {
+    const byId = new Map((await listResources(source, kind)).map(x => [x.id, x]));
+    const results = [];
+    for (const id of ids) {
+      const item = byId.get(id);
+      if (!item) { results.push({ id, status: 'error', message: `findes ikke i ${source.name}` }); continue; }
+      const resp = await fetch(`http://127.0.0.1:${PORT}${RESOURCE_MIGRATE[kind]}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceId, targetId, name: item.name, kind })
+      }).then(r => r.json()).catch(e => ({ error: e.message }));
+      if (resp.error === 'already_exists') results.push({ id, name: item.name, status: 'exists' });
+      else if (resp.error) results.push({ id, name: item.name, status: 'error', message: resp.error });
+      else results.push({ id, name: item.name, status: 'created', trail: resp.trail || [] });
+    }
+    res.json({ ok: true, results });
+  } catch (e) { res.status(500).json({ error: describeApiError(e) }); }
+});
+
+// ── Oprettelse af de enkle ressourcer, ved navn ──────────────────────────────
+// Kun definitionen kopieres. Medlemmer, brugere og referencer til andre objekter
+// har andre id'er i målet og sættes dér; trail siger hvad der ikke fulgte med.
+const hasDivision = x => x && x.division && x.division.name;
+const SIMPLE_CREATE = {
+  teams: { create: '/api/v2/teams', division: true,
+    body: f => pickFields(f, ['name', 'description']), note: 'medlemmer sættes i målet' },
+  locations: { create: '/api/v2/locations',
+    body: f => pickFields(f, ['name', 'notes', 'emergencyNumber', 'address']) },
+  utilization: { create: '/api/v2/routing/utilization/labels',
+    body: f => pickFields(f, ['name']) },
+  skillgroups: { create: '/api/v2/routing/skillgroups',
+    body: f => pickFields(f, ['name', 'description']), note: 'betingelser (skills) sættes i målet' },
+  knowledgebases: { create: '/api/v2/knowledge/knowledgebases',
+    body: f => pickFields(f, ['name', 'description', 'coreLanguage']), note: 'dokumenter følger ikke med' },
+  responselibs: { create: '/api/v2/responsemanagement/libraries',
+    body: f => pickFields(f, ['name']), after: copyResponses },
+  evalforms: { create: '/api/v2/quality/forms/evaluations', detail: id => `/api/v2/quality/forms/evaluations/${id}`,
+    body: f => ({ name: f.name, published: false, questionGroups: stripFormIds(f.questionGroups || []) }),
+    note: 'oprettet som ikke-publiceret' },
+  emergencygroups: { create: '/api/v2/architect/emergencygroups', division: true,
+    body: f => ({ ...pickFields(f, ['name', 'description']), enabled: false, emergencyCallFlows: [] }),
+    note: 'oprettet slået fra, uden nødflows — sættes i målet' },
+  contactlists: { create: '/api/v2/outbound/contactlists', division: true,
+    body: f => pickFields(f, ['name', 'columnNames', 'phoneColumns', 'emailColumns', 'previewModeColumnName',
+      'previewModeAcceptedValues', 'automaticTimeZoneMapping', 'zipCodeColumnName', 'identifierColumnName',
+      'columnDataTypeSpecifications']), note: 'kontakterne følger ikke med' },
+  dnclists: { create: '/api/v2/outbound/dnclists', division: true,
+    check: f => f.dncSourceType && f.dncSourceType !== 'rds'
+      ? `kilden er «${f.dncSourceType}», som kræver login til udbyderen — opret listen i målet` : null,
+    body: f => ({ ...pickFields(f, ['name', 'contactMethod']), dncSourceType: 'rds' }), note: 'numrene følger ikke med' }
+};
+
+// Standardsvar: biblioteket oprettes, og svarene i det kopieres så godt det går
+async function copyResponses(ctx, srcLib, newLib, trail) {
+  const list = await pagedList(ctx.sb, '/api/v2/responsemanagement/responses', ctx.st, { libraryId: srcLib.id });
+  let ok = 0;
+  for (const r of list) {
+    try {
+      await axios.post(`${ctx.tb}/api/v2/responsemanagement/responses`,
+        { ...pickFields(r, ['name', 'texts', 'responseType', 'interactionType', 'substitutions', 'substitutionsSchema']),
+          libraries: [{ id: newLib.id }] },
+        { headers: { Authorization: `Bearer ${ctx.tt}`, 'Content-Type': 'application/json' } });
+      ok++;
+    } catch (e) { trail.push(`⚠ svaret «${r.name}»: ${describeApiError(e)}`); }
+  }
+  trail.push(`✓ ${ok} af ${list.length} standardsvar kopieret`);
+}
+
+app.post('/api/resources/create', async (req, res) => {
+  const { kind, sourceId, targetId, name } = req.body;
+  const source = loadCustomers().find(c => c.id === sourceId);
+  const target = loadCustomers().find(c => c.id === targetId);
+  const spec = SIMPLE_CREATE[kind];
+  if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
+  if (!spec || !RESOURCE_KINDS[kind]) return res.status(400).json({ error: `Ukendt type "${kind}"` });
+  if (!name) return res.status(400).json({ error: 'name mangler' });
+  const trail = [];
+  try {
+    const { token: st, apiBase: sb } = await getToken(source);
+    const { token: tt, apiBase: tb } = await getToken(target);
+    const ctx = { st, sb, tt, tb };
+    const list = RESOURCE_KINDS[kind].url;
+    const hit = (await pagedList(sb, list, st)).find(x => x.name === name);
+    if (!hit) return res.status(400).json({ error: `"${name}" findes ikke i ${source.name}` });
+    if ((await pagedList(tb, list, tt)).some(x => x.name === name))
+      return res.status(409).json({ error: 'already_exists', message: `"${name}" findes allerede i ${target.name}` });
+    const full = spec.detail ? (await axios.get(`${sb}${spec.detail(hit.id)}`, { headers: { Authorization: `Bearer ${st}` } })).data : hit;
+    const problem = spec.check && spec.check(full);
+    if (problem) return res.status(400).json({ error: problem });
+    const body = spec.body(full);
+    if (spec.division && hasDivision(full)) {
+      const id = await targetDivisionIdByName(tb, tt, full.division.name, trail);
+      if (id) body.division = { id };
+    }
+    const r = await axios.post(`${tb}${spec.create}`, body, { headers: { Authorization: `Bearer ${tt}`, 'Content-Type': 'application/json' } });
+    trail.push(`✓ oprettet${spec.note ? ' — ' + spec.note : ''}`);
+    if (spec.after) await spec.after(ctx, hit, r.data, trail);
+    addLog('SUCCESS', `${kind} "${name}" created in ${target.name}`, target.name, 'MIGRATE');
+    res.json({ ok: true, id: r.data.id, name, trail });
+  } catch (e) {
+    const msg = archyHint(describeApiError(e));
+    addLog('ERROR', `Could not create ${kind} "${name}" in ${target.name}: ${msg}`, target.name, 'MIGRATE');
+    res.status(500).json({ error: msg, trail });
+  }
+});
+
+// En skill er kun et navn. Brugernes skills (hvem der har den) følger ikke med —
+// brugere har andre id'er i målet.
+app.post('/api/skills/migrate', async (req, res) => {
+  const { sourceId, targetId, name } = req.body;
+  const target = loadCustomers().find(c => c.id === targetId);
+  if (!loadCustomers().find(c => c.id === sourceId) || !target) return res.status(404).json({ error: 'Customer not found' });
+  if (!name) return res.status(400).json({ error: 'name mangler' });
+  try {
+    const { token: tt, apiBase: tb } = await getToken(target);
+    if ((await pagedList(tb, '/api/v2/routing/skills', tt)).some(x => x.name === name))
+      return res.status(409).json({ error: 'already_exists', message: `Skill "${name}" findes allerede i ${target.name}` });
+    const r = await axios.post(`${tb}/api/v2/routing/skills`, { name },
+      { headers: { Authorization: `Bearer ${tt}`, 'Content-Type': 'application/json' } });
+    addLog('SUCCESS', `Skill "${name}" created in ${target.name}`, target.name, 'MIGRATE');
+    res.json({ ok: true, id: r.data.id, name, trail: [] });
+  } catch (e) {
+    const msg = describeApiError(e);
+    addLog('ERROR', `Could not create skill "${name}" in ${target.name}: ${msg}`, target.name, 'MIGRATE');
+    res.status(500).json({ error: msg });
+  }
+});
 
 // Et script flyttes som helhed: eksportér fra kilden, importér i målet og
 // publicér, hvis det var publiceret i kilden. Et flow peger på den publicerede
@@ -8457,12 +8653,14 @@ app.post('/api/import', async (req, res) => {
 // som alt andet — et common module er bare et flow af typen COMMONMODULE.
 const FLOW_KINDS = new Set(['commonmodule', 'botflow', 'targetflow', 'inqueueflow']);
 // Ressourcer der kopieres hele fra kilden ved navn: user prompts (med lyd) og scripts
-const COPYABLE_KINDS = new Set(['prompt', 'script', 'queue', 'group', 'schedule', 'schedulegroup']);
+const COPYABLE_KINDS = new Set(['prompt', 'script', 'queue', 'group', 'schedule', 'schedulegroup', 'skill', 'utilizationlabel', 'knowledgebase']);
 // Endpoint og navnefelt for hver slags der kopieres ved navn
 const COPY_ENDPOINT = {
   prompt: ['/api/prompts/migrate', 'promptName'], script: ['/api/scripts/migrate', 'scriptName'],
   queue: ['/api/queues/migrate', 'name'], group: ['/api/groups/migrate', 'name'],
-  schedule: ['/api/schedules/migrate', 'name'], schedulegroup: ['/api/schedulegroups/migrate', 'name']
+  schedule: ['/api/schedules/migrate', 'name'], schedulegroup: ['/api/schedulegroups/migrate', 'name'],
+  skill: ['/api/skills/migrate', 'name'],
+  utilizationlabel: ['/api/resources/create', 'name', 'utilization'], knowledgebase: ['/api/resources/create', 'name', 'knowledgebases']
 };
 
 // ── Talesyntese (TTS) ────────────────────────────────────────────────────────
@@ -8686,9 +8884,9 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
       let url, body;
       if (COPYABLE_KINDS.has(kind)) {
         // Kopieres ved navn — endpointet slår selv kilden op
-        const [ep, felt] = COPY_ENDPOINT[kind];
+        const [ep, felt, resKind] = COPY_ENDPOINT[kind];
         url = ep;
-        body = { sourceId: source.id, targetId: target.id, [felt]: n };
+        body = { sourceId: source.id, targetId: target.id, [felt]: n, ...(resKind ? { kind: resKind } : {}) };
       } else if (kind === 'datatable') {
         const r = await axios.get(`${srcBase}/api/v2/flows/datatables`, { ...SH, params: { pageSize: 200 } });
         const hit = (r.data.entities || []).find(t => t.name === n);
@@ -9883,7 +10081,7 @@ if (require.main === module) {
 // eneste der kan efterprøves uden en rigtig org. Se test/*.test.js.
 module.exports = {
   logLevelFor,
-  nodeSecurityStatus, countsAsExisting, scanTtsEngines, missingTtsEngines, replaceTtsEngines, applyClientScopes, dropRejectedLogin, flowOwnDivision, divisionProblem, appsBaseOf, COPYABLE_KINDS, noteUnavailableType, typeUnavailableHere, scanDefaultLanguage, archyHint, scheduleCreateBody, scheduleGroupCreateBody, scanSupportedLanguages, watchForUpdates, identicalInTarget, promptHasContent, queueCreateBody, groupCreateBody, credentialChangeError, forgetLogin, keepsOrgOnClientChange,
+  nodeSecurityStatus, countsAsExisting, scanTtsEngines, missingTtsEngines, replaceTtsEngines, applyClientScopes, dropRejectedLogin, flowOwnDivision, divisionProblem, appsBaseOf, COPYABLE_KINDS, RESOURCE_KINDS, RESOURCE_MIGRATE, SIMPLE_CREATE, noteUnavailableType, typeUnavailableHere, scanDefaultLanguage, archyHint, scheduleCreateBody, scheduleGroupCreateBody, scanSupportedLanguages, watchForUpdates, identicalInTarget, promptHasContent, queueCreateBody, groupCreateBody, credentialChangeError, forgetLogin, keepsOrgOnClientChange,
   sanitizeDatatableSchema, mapRoleDivisions, buildOauthClientBody, buildRolePolicies, missingRolesFor, missingDivisionsFor,
   app, tokenStore, getToken, loadSessions, saveSessions, setSessionPersist, SESSION_FILE,
   // konventioner
