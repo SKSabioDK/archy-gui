@@ -294,7 +294,7 @@ test('Fra-org og Mål-org gælder på tværs af siderne og spørges ved et nyt l
 
 test('fanerne i Migrér ressourcer står så ingen afhænger af en fane der kommer efter den', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-  const order = [...html.matchAll(/id="da-tab-([a-z]+)" onclick="daSetTab\('([a-z]+)'\)"/g)].map(m => m[1]).filter(k => k !== 'check' && k !== 'plan');
+  const order = [...html.matchAll(/id="da-tab-([a-z]+)" onclick="daSetTab\('([a-z]+)'\)"/g)].map(m => m[1]).filter(k => !['check', 'plan', 'rtc'].includes(k));
   const deps = JSON.parse(html.match(/const DA_DEPS = (\{[\s\S]*?\});/)[1].replace(/([a-z]+):/g, '"$1":').replace(/'/g, '"'));
   assert.deepEqual([...order].sort(), Object.keys(deps).sort(), 'hver fane har en afhængighedsliste');
   for (const [k, d] of Object.entries(deps))
@@ -335,4 +335,18 @@ test('de enkle ressourcer kopierer kun definitionen — ikke id, medlemmer eller
 test('en fejl om manglende OAuth-scope på en liste forklares', () => {
   const src = SERVER.slice(SERVER.indexOf("app.get('/api/customers/:id/resources/:kind'"), SERVER.indexOf("app.post('/api/resources/migrate'"));
   assert.ok(src.includes('archyHint(describeApiError(e))'));
+});
+
+test('Tjek mål-org og totaltjek af alle ressourcer findes, og totaltjek giver en CSV', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  for (const f of ['daCheckTarget', 'daApplyBadges', 'rtcRun', 'rtcRender', 'rtcCsv', 'daTargetName'])
+    assert.ok(html.includes(`function ${f}(`) || html.includes(`async function ${f}(`), f);
+  // Alle fanerne i afhængighedslisten er med, og flows til sidst
+  assert.ok(html.includes("const rtcKinds = () => [...Object.keys(DA_DEPS), 'flows'];"));
+  // CSV til Excel: semikolon og UTF-8 med BOM
+  const csv = html.slice(html.indexOf('function rtcCsv()'), html.indexOf('function rtcCsv()') + 1400);
+  assert.ok(csv.includes("join(';')") && csv.includes("'\uFEFF'"), 'semikolon og BOM');
+  // De gamle faner hedder DA-… så det er tydeligt at de kun gælder data actions
+  assert.ok(html.includes("da_tab_check:'DA-Totaltjek'") && html.includes("da_tab_plan:'DA-Setup-forslag'"));
+  assert.ok(html.includes("da_tab_check:'DA full check'"));
 });

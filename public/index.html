@@ -539,7 +539,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.69.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.70.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1031,6 +1031,7 @@
         <div class="da-tab" id="da-tab-integ" onclick="daSetTab('integ')" data-i18n="da_tab_integ">Integrationer</div>
         <div class="da-tab" id="da-tab-actions" onclick="daSetTab('actions')" data-i18n="da_tab_actions">Data Actions</div>
         <div class="da-tab" id="da-tab-oauth" onclick="daSetTab('oauth')" data-i18n="da_tab_oauth">OAuth-klienter</div>
+        <div class="da-tab da-tab-x" id="da-tab-rtc" onclick="daSetTab('rtc')" data-i18n="da_tab_rtc">Totaltjek (alle ressourcer)</div>
         <div class="da-tab da-tab-x" id="da-tab-check" onclick="daSetTab('check')" data-i18n="da_tab_check">Totaltjek</div>
         <div class="da-tab da-tab-x" id="da-tab-plan" onclick="daSetTab('plan')" data-i18n="da_tab_plan">Setup-forslag</div>
       </div>
@@ -1064,6 +1065,8 @@
 
       <div id="da-paste-bar" style="display:none;margin-bottom:12px">
         <button class="btn btn-secondary btn-sm" onclick="daTogglePaste()" data-i18n="fbc_paste_link">📋 Indsæt liste</button>
+        <button class="btn btn-secondary btn-sm" onclick="daCheckTarget()" data-i18n="da_chk_target">🔎 Tjek mål-org</button>
+        <span id="da-tgt-summary" style="font-size:12px;margin-left:8px"></span>
         <div id="da-paste-box" style="display:none;margin-top:8px">
           <div style="font-size:11px;color:var(--muted);margin-bottom:4px" data-i18n="da_paste_hint">Ét navn pr. linje.</div>
           <textarea id="da-paste-text" rows="8" style="width:100%;font-family:var(--mono);font-size:12px" spellcheck="false"></textarea>
@@ -1227,6 +1230,18 @@
         </div>
         <div style="font-size:11px;color:var(--muted);margin-bottom:10px" data-i18n="sc_note">Scriptet eksporteres og importeres i sin helhed og publiceres, hvis det er publiceret i kilden.</div>
         <div id="sc-list"></div>
+      </div>
+      <div class="card" id="da-rtc-card" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap">
+          <div class="card-title" style="margin:0" data-i18n="rtc_title">TOTALTJEK AF ALLE RESSOURCER</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary btn-sm" id="rtc-csv-btn" onclick="rtcCsv()" data-i18n="rtc_csv" disabled>⬇ Download CSV</button>
+            <button class="btn btn-primary btn-sm" id="rtc-run-btn" onclick="rtcRun()" data-i18n="rtc_run">Kør totaltjek</button>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px" data-i18n="rtc_intro"></div>
+        <div id="rtc-status" style="font-size:12px;margin-bottom:12px"></div>
+        <div id="rtc-body"></div>
       </div>
       <div class="card" id="da-check-card" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -1915,7 +1930,7 @@ const LANGS = {
     dam_continue:'Fortsæt',
     dam_err_pick:'Vælg en action, eller Behold som den er, på de gule rækker.',
     dam_err_unknown:'En valgt action findes ikke i mål-org\'en.',
-    da_tab_check:'Totaltjek',
+    da_tab_check:'DA-Totaltjek',
     dc_title:'TOTALTJEK AF DATA ACTIONS',
     dc_intro:'Sætter hver data action i kilden op mod mål-org\'en, på kategori og navn, så du kan afklare navnene før du migrerer flows. Valgene gemmes og bruges af listen i flowet.',
     dc_run:'Kør totaltjek',
@@ -1949,7 +1964,7 @@ const LANGS = {
     dc_fda_manual:'Function Data Action: skal oprettes manuelt i målet.',
     dc_more:'Viser de første {n}. Brug søgning eller et filter for at se resten.',
     dc_migrate_note:'Actions der mangler, migreres på fanen Data Actions.',
-    da_tab_plan:'Setup-forslag',
+    da_tab_plan:'DA-Setup-forslag',
     dp_title:'SETUP-FORSLAG FOR DATA ACTIONS',
     dp_intro:'Foreslår hvilke integrationer i mål-org\'en de data actions, der mangler, skal ligge i — ud fra hvor der er plads. Flyt rundt på forslaget, og eksportér det til kunden.',
     dp_cap_label:'Højst pr. integration',
@@ -2131,7 +2146,7 @@ const LANGS = {
     pl_no_groups:'Ingen grupper endnu. Sæt kunde, gruppe og trin på miljøerne under Kunder.',
     pl_search:'🔍  Filtrér flows…',
     pl_only_gaps:'Kun dem der mangler i et senere trin',
-    migrate_only_selected:'Vis kun valgte', migrate_none_selected:'Ingen flows valgt endnu — klik på dem du vil migrere.', migrate_done_badge:'✓ migreret', paste_list_link:'Indsæt liste', retry_msg:'prøver igen', col_in_target:'I mål', fbc_paste_link:'📋 Indsæt liste', fbc_check_btn:'🔍 Tjek indhold', fbc_apply_list:'Vis kun disse', fbc_clear_list:'Fjern listen', fbc_missing:'mangler i mål', fbc_there:'findes', fbc_identical:'identisk', fbc_diff:'{n} forskelle', fbc_differ:'forskellige', fbc_unchecked:'ikke tjekket', fbc_fetched:'mållisten hentet', work_from:'Fra-org', work_to:'Mål-org', work_none:'Ingen', da_tab_divisions:'Divisioner', da_tab_skills:'Skills', da_tab_groups:'Grupper', da_tab_schedules:'Åbningstider', da_tab_schedulegroups:'Åbningstidsgrupper', da_tab_queues:'Køer', da_tab_skillgroups:'Skill-grupper', da_tab_teams:'Teams', da_tab_locations:'Lokationer', da_tab_utilization:'Utilization labels', da_tab_knowledgebases:'Vidensbaser', da_tab_responselibs:'Standardsvar', da_tab_surveyforms:'Survey forms', da_tab_evalforms:'Evalueringsformularer', da_tab_emergencygroups:'Nødgrupper', da_tab_contactlists:'Kontaktlister', da_tab_dnclists:'DNC-lister', da_order_note:'Rækkefølgen følger afhængighederne: hver fane afhænger kun af fanerne før den. Migrér oppefra og ned, og slut med flows på Migrer Flow.', da_depends_on:'Afhænger af', da_depends_none:'Ingen afhængigheder — kan migreres først', da_paste_hint:'Ét navn pr. linje. Tekst i parentes til sidst ignoreres, hvis hele linjen ikke findes.', da_paste_apply:'Vælg disse', ml_search_generic:'🔍 Søg…', work_swap:'Byt Fra og Mål', work_clear:'Ryd valget', work_login_q:'{name} er logget ind. Skal den bruges som Fra-org eller Mål-org?', fbc_failed:'kunne ikke tjekkes', fbc_not_in_source:'på listen, men ikke i kilden', fbc_stop:'Stop', fbc_many:'Indholdet af {n} flows sammenlignes — det kan tage et par minutter. Fortsæt?', paste_list_hint:'Ét flownavn pr. linje. Tekst i parentes til sidst (fx «(latest …)») ignoreres, hvis hele linjen ikke findes.', paste_list_apply:'Vælg disse flows', paste_list_result:'{n} fundet og valgt, {m} ikke fundet', skip_identical_label:'Spring flows over, der allerede er identiske i målet', reload_available:'En ny version er startet', reload_now:'Genindlæs siden', identical_skipped:'identisk med målet — springes over',
+    migrate_only_selected:'Vis kun valgte', migrate_none_selected:'Ingen flows valgt endnu — klik på dem du vil migrere.', migrate_done_badge:'✓ migreret', paste_list_link:'Indsæt liste', retry_msg:'prøver igen', col_in_target:'I mål', fbc_paste_link:'📋 Indsæt liste', fbc_check_btn:'🔍 Tjek indhold', fbc_apply_list:'Vis kun disse', fbc_clear_list:'Fjern listen', fbc_missing:'mangler i mål', fbc_there:'findes', fbc_identical:'identisk', fbc_diff:'{n} forskelle', fbc_differ:'forskellige', fbc_unchecked:'ikke tjekket', fbc_fetched:'mållisten hentet', work_from:'Fra-org', work_to:'Mål-org', work_none:'Ingen', da_tab_divisions:'Divisioner', da_tab_skills:'Skills', da_tab_groups:'Grupper', da_tab_schedules:'Åbningstider', da_tab_schedulegroups:'Åbningstidsgrupper', da_tab_queues:'Køer', da_tab_skillgroups:'Skill-grupper', da_tab_teams:'Teams', da_tab_locations:'Lokationer', da_tab_utilization:'Utilization labels', da_tab_knowledgebases:'Vidensbaser', da_tab_responselibs:'Standardsvar', da_tab_surveyforms:'Survey forms', da_tab_evalforms:'Evalueringsformularer', da_tab_emergencygroups:'Nødgrupper', da_tab_contactlists:'Kontaktlister', da_tab_dnclists:'DNC-lister', da_tab_rtc:'Totaltjek (alle ressourcer)', rtc_title:'TOTALTJEK AF ALLE RESSOURCER', rtc_intro:'Sætter alle ressourcer i kilden op mod mål-org\'en: hvad der findes i begge, hvad der mangler i målet, og hvad der kun findes i målet. Hent resultatet som CSV til dokumentation og kontrol.', rtc_run:'Kør totaltjek', rtc_csv:'⬇ Download CSV', rtc_running:'Tjekker {kind} ({n}/{m})…', rtc_ok:'I orden', rtc_missing:'Mangler i mål', rtc_extra:'Kun i mål', rtc_error:'Kunne ikke tjekkes', rtc_col_type:'Type', rtc_col_name:'Navn', rtc_col_src:'Findes i kilde', rtc_col_tgt:'Findes i mål', rtc_col_status:'Status', rtc_col_detail:'Detalje', rtc_col_srcorg:'Kilde-org', rtc_col_tgtorg:'Mål-org', rtc_col_time:'Tidspunkt', rtc_col_inboth:'I begge', rtc_yes:'Ja', rtc_no:'Nej', rtc_only_diff:'Vis kun forskelle', rtc_flows:'Flows', rtc_file:'ressource-totaltjek', rtc_cat_diff:'anden kategori i målet: {cat}', rtc_need_orgs:'Vælg kilde og mål først.', rtc_done:'Færdig: {n} ressourcer i kilden, {m} mangler i målet.', rtc_more:'… og {n} flere (alle står i CSV-filen)', da_chk_target:'🔎 Tjek mål-org', da_tgt_result:'{n} af {m} findes i {org} — {x} mangler', da_tgt_in:'✓ i mål', da_tgt_out:'✗ mangler i mål', da_order_note:'Rækkefølgen følger afhængighederne: hver fane afhænger kun af fanerne før den. Migrér oppefra og ned, og slut med flows på Migrer Flow.', da_depends_on:'Afhænger af', da_depends_none:'Ingen afhængigheder — kan migreres først', da_paste_hint:'Ét navn pr. linje. Tekst i parentes til sidst ignoreres, hvis hele linjen ikke findes.', da_paste_apply:'Vælg disse', ml_search_generic:'🔍 Søg…', work_swap:'Byt Fra og Mål', work_clear:'Ryd valget', work_login_q:'{name} er logget ind. Skal den bruges som Fra-org eller Mål-org?', fbc_failed:'kunne ikke tjekkes', fbc_not_in_source:'på listen, men ikke i kilden', fbc_stop:'Stop', fbc_many:'Indholdet af {n} flows sammenlignes — det kan tage et par minutter. Fortsæt?', paste_list_hint:'Ét flownavn pr. linje. Tekst i parentes til sidst (fx «(latest …)») ignoreres, hvis hele linjen ikke findes.', paste_list_apply:'Vælg disse flows', paste_list_result:'{n} fundet og valgt, {m} ikke fundet', skip_identical_label:'Spring flows over, der allerede er identiske i målet', reload_available:'En ny version er startet', reload_now:'Genindlæs siden', identical_skipped:'identisk med målet — springes over',
     migrate_no_match:'Ingen flows passer til filteret.',
     pl_flow:'FLOW',
     pl_missing:'mangler',
@@ -2963,7 +2978,7 @@ const LANGS = {
     dam_continue:'Continue',
     dam_err_pick:'Choose an action, or Keep as it is, on the yellow rows.',
     dam_err_unknown:'A chosen action does not exist in the target org.',
-    da_tab_check:'Full check',
+    da_tab_check:'DA full check',
     dc_title:'FULL CHECK OF DATA ACTIONS',
     dc_intro:'Sets every data action in the source against the target org, by category and name, so you can sort out the names before migrating flows. The choices are saved and used by the list in the flow.',
     dc_run:'Run full check',
@@ -2997,7 +3012,7 @@ const LANGS = {
     dc_fda_manual:'Function Data Action: must be created by hand in the target.',
     dc_more:'Showing the first {n}. Use search or a filter to see the rest.',
     dc_migrate_note:'Actions that are missing are migrated on the Data Actions tab.',
-    da_tab_plan:'Setup proposal',
+    da_tab_plan:'DA setup proposal',
     dp_title:'SETUP PROPOSAL FOR DATA ACTIONS',
     dp_intro:'Proposes which integrations in the target org the missing data actions should live in, based on where there is room. Move things around in the proposal, and export it to the customer.',
     dp_cap_label:'Max per integration',
@@ -3179,7 +3194,7 @@ const LANGS = {
     pl_no_groups:'No groups yet. Set customer, group and stage on the environments under Customers.',
     pl_search:'🔍  Filter flows…',
     pl_only_gaps:'Only those missing in a later stage',
-    migrate_only_selected:'Show only selected', migrate_none_selected:'No flows selected yet — click the ones you want to migrate.', migrate_done_badge:'✓ migrated', paste_list_link:'Paste list', retry_msg:'retrying', col_in_target:'In target', fbc_paste_link:'📋 Paste list', fbc_check_btn:'🔍 Check content', fbc_apply_list:'Show only these', fbc_clear_list:'Clear the list', fbc_missing:'missing in target', fbc_there:'exists', fbc_identical:'identical', fbc_diff:'{n} differences', fbc_differ:'different', fbc_unchecked:'not checked', fbc_fetched:'target list fetched', work_from:'From org', work_to:'Target org', work_none:'Neither', da_tab_divisions:'Divisions', da_tab_skills:'Skills', da_tab_groups:'Groups', da_tab_schedules:'Schedules', da_tab_schedulegroups:'Schedule groups', da_tab_queues:'Queues', da_tab_skillgroups:'Skill groups', da_tab_teams:'Teams', da_tab_locations:'Locations', da_tab_utilization:'Utilization labels', da_tab_knowledgebases:'Knowledge bases', da_tab_responselibs:'Response libraries', da_tab_surveyforms:'Survey forms', da_tab_evalforms:'Evaluation forms', da_tab_emergencygroups:'Emergency groups', da_tab_contactlists:'Contact lists', da_tab_dnclists:'DNC lists', da_order_note:'The order follows the dependencies: each tab depends only on the tabs before it. Migrate from top to bottom and finish with flows on Migrate Flow.', da_depends_on:'Depends on', da_depends_none:'No dependencies — can be migrated first', da_paste_hint:'One name per line. A trailing parenthesis is ignored if the whole line is not found.', da_paste_apply:'Select these', ml_search_generic:'🔍 Search…', work_swap:'Swap From and Target', work_clear:'Clear the choice', work_login_q:'{name} is logged in. Use it as the From org or the Target org?', fbc_failed:'could not be checked', fbc_not_in_source:'on the list but not in the source', fbc_stop:'Stop', fbc_many:'The content of {n} flows will be compared — this may take a few minutes. Continue?', paste_list_hint:'One flow name per line. A trailing parenthesis (e.g. "(latest …)") is ignored if the whole line is not found.', paste_list_apply:'Select these flows', paste_list_result:'{n} found and selected, {m} not found', skip_identical_label:'Skip flows that are already identical in the target', reload_available:'A new version has started', reload_now:'Reload the page', identical_skipped:'identical to the target — skipped',
+    migrate_only_selected:'Show only selected', migrate_none_selected:'No flows selected yet — click the ones you want to migrate.', migrate_done_badge:'✓ migrated', paste_list_link:'Paste list', retry_msg:'retrying', col_in_target:'In target', fbc_paste_link:'📋 Paste list', fbc_check_btn:'🔍 Check content', fbc_apply_list:'Show only these', fbc_clear_list:'Clear the list', fbc_missing:'missing in target', fbc_there:'exists', fbc_identical:'identical', fbc_diff:'{n} differences', fbc_differ:'different', fbc_unchecked:'not checked', fbc_fetched:'target list fetched', work_from:'From org', work_to:'Target org', work_none:'Neither', da_tab_divisions:'Divisions', da_tab_skills:'Skills', da_tab_groups:'Groups', da_tab_schedules:'Schedules', da_tab_schedulegroups:'Schedule groups', da_tab_queues:'Queues', da_tab_skillgroups:'Skill groups', da_tab_teams:'Teams', da_tab_locations:'Locations', da_tab_utilization:'Utilization labels', da_tab_knowledgebases:'Knowledge bases', da_tab_responselibs:'Response libraries', da_tab_surveyforms:'Survey forms', da_tab_evalforms:'Evaluation forms', da_tab_emergencygroups:'Emergency groups', da_tab_contactlists:'Contact lists', da_tab_dnclists:'DNC lists', da_tab_rtc:'Full check (all resources)', rtc_title:'FULL CHECK OF ALL RESOURCES', rtc_intro:'Compares every resource in the source with the target org: what exists in both, what is missing in the target and what exists only in the target. Download the result as CSV for documentation and verification.', rtc_run:'Run full check', rtc_csv:'⬇ Download CSV', rtc_running:'Checking {kind} ({n}/{m})…', rtc_ok:'OK', rtc_missing:'Missing in target', rtc_extra:'Only in target', rtc_error:'Could not be checked', rtc_col_type:'Type', rtc_col_name:'Name', rtc_col_src:'In source', rtc_col_tgt:'In target', rtc_col_status:'Status', rtc_col_detail:'Detail', rtc_col_srcorg:'Source org', rtc_col_tgtorg:'Target org', rtc_col_time:'Time', rtc_col_inboth:'In both', rtc_yes:'Yes', rtc_no:'No', rtc_only_diff:'Show differences only', rtc_flows:'Flows', rtc_file:'resource-full-check', rtc_cat_diff:'different category in the target: {cat}', rtc_need_orgs:'Choose source and target first.', rtc_done:'Done: {n} resources in the source, {m} missing in the target.', rtc_more:'… and {n} more (all are in the CSV file)', da_chk_target:'🔎 Check target org', da_tgt_result:'{n} of {m} exist in {org} — {x} missing', da_tgt_in:'✓ in target', da_tgt_out:'✗ missing in target', da_order_note:'The order follows the dependencies: each tab depends only on the tabs before it. Migrate from top to bottom and finish with flows on Migrate Flow.', da_depends_on:'Depends on', da_depends_none:'No dependencies — can be migrated first', da_paste_hint:'One name per line. A trailing parenthesis is ignored if the whole line is not found.', da_paste_apply:'Select these', ml_search_generic:'🔍 Search…', work_swap:'Swap From and Target', work_clear:'Clear the choice', work_login_q:'{name} is logged in. Use it as the From org or the Target org?', fbc_failed:'could not be checked', fbc_not_in_source:'on the list but not in the source', fbc_stop:'Stop', fbc_many:'The content of {n} flows will be compared — this may take a few minutes. Continue?', paste_list_hint:'One flow name per line. A trailing parenthesis (e.g. "(latest …)") is ignored if the whole line is not found.', paste_list_apply:'Select these flows', paste_list_result:'{n} found and selected, {m} not found', skip_identical_label:'Skip flows that are already identical in the target', reload_available:'A new version has started', reload_now:'Reload the page', identical_skipped:'identical to the target — skipped',
     migrate_no_match:'No flows match the filter.',
     pl_flow:'FLOW',
     pl_missing:'missing',
@@ -4011,7 +4026,7 @@ const LANGS = {
     dam_continue:'Continuer',
     dam_err_pick:'Choisissez une action, ou Garder tel quel, sur les lignes jaunes.',
     dam_err_unknown:'Une action choisie n\'existe pas dans l\'org cible.',
-    da_tab_check:'Contrôle complet',
+    da_tab_check:'DA Contrôle complet',
     dc_title:'CONTRÔLE COMPLET DES DATA ACTIONS',
     dc_intro:'Compare chaque data action de la source à l\'org cible, par catégorie et nom, pour régler les noms avant de migrer des flows. Les choix sont enregistrés et utilisés par la liste dans le flow.',
     dc_run:'Lancer le contrôle',
@@ -4045,7 +4060,7 @@ const LANGS = {
     dc_fda_manual:'Function Data Action : à créer manuellement dans la cible.',
     dc_more:'Affichage des {n} premières. Utilisez la recherche ou un filtre pour voir le reste.',
     dc_migrate_note:'Les actions manquantes se migrent dans l\'onglet Data Actions.',
-    da_tab_plan:'Proposition de setup',
+    da_tab_plan:'DA Proposition de setup',
     dp_title:'PROPOSITION DE SETUP DES DATA ACTIONS',
     dp_intro:'Propose dans quelles intégrations de l\'org cible placer les data actions manquantes, selon la place disponible. Déplacez des éléments dans la proposition et exportez-la pour le client.',
     dp_cap_label:'Maximum par intégration',
@@ -4227,7 +4242,7 @@ const LANGS = {
     pl_no_groups:'Aucun groupe. Renseignez client, groupe et étape sur les environnements sous Clients.',
     pl_search:'🔍  Filtrer les flows…',
     pl_only_gaps:'Uniquement ceux absents d\'une étape ultérieure',
-    migrate_only_selected:'Afficher uniquement la sélection', migrate_none_selected:'Aucun flow sélectionné — cliquez sur ceux à migrer.', migrate_done_badge:'✓ migré', paste_list_link:'Coller une liste', retry_msg:'nouvel essai', col_in_target:'Dans la cible', fbc_paste_link:'📋 Coller une liste', fbc_check_btn:'🔍 Vérifier le contenu', fbc_apply_list:'Afficher seulement ceux-ci', fbc_clear_list:'Effacer la liste', fbc_missing:'absent de la cible', fbc_there:'existe', fbc_identical:'identique', fbc_diff:'{n} différences', fbc_differ:'différents', fbc_unchecked:'non vérifié', fbc_fetched:'liste de la cible récupérée', work_from:'Org source', work_to:'Org cible', work_none:'Aucune', da_tab_divisions:'Divisions', da_tab_skills:'Compétences', da_tab_groups:'Groupes', da_tab_schedules:'Horaires', da_tab_schedulegroups:'Groupes d’horaires', da_tab_queues:'Files d’attente', da_tab_skillgroups:'Groupes de compétences', da_tab_teams:'Équipes', da_tab_locations:'Sites', da_tab_utilization:'Utilization labels', da_tab_knowledgebases:'Bases de connaissances', da_tab_responselibs:'Réponses prédéfinies', da_tab_surveyforms:'Formulaires d’enquête', da_tab_evalforms:'Formulaires d’évaluation', da_tab_emergencygroups:'Groupes d’urgence', da_tab_contactlists:'Listes de contacts', da_tab_dnclists:'Listes DNC', da_order_note:'L’ordre suit les dépendances : chaque onglet ne dépend que des précédents. Migrez de haut en bas et terminez par les flows sur Migrer Flow.', da_depends_on:'Dépend de', da_depends_none:'Aucune dépendance — à migrer en premier', da_paste_hint:'Un nom par ligne. Une parenthèse finale est ignorée si la ligne entière est introuvable.', da_paste_apply:'Sélectionner', ml_search_generic:'🔍 Rechercher…', work_swap:'Inverser source et cible', work_clear:'Effacer le choix', work_login_q:'{name} est connectée. L’utiliser comme org source ou org cible ?', fbc_failed:'vérification impossible', fbc_not_in_source:'dans la liste mais pas dans la source', fbc_stop:'Arrêter', fbc_many:'Le contenu de {n} flows sera comparé — cela peut prendre quelques minutes. Continuer ?', paste_list_hint:'Un nom de flow par ligne. Une parenthèse finale est ignorée si la ligne entière est introuvable.', paste_list_apply:'Sélectionner ces flows', paste_list_result:'{n} trouvés et sélectionnés, {m} introuvables', skip_identical_label:'Ignorer les flows déjà identiques dans la cible', reload_available:'Une nouvelle version a démarré', reload_now:'Recharger la page', identical_skipped:'identique à la cible — ignoré',
+    migrate_only_selected:'Afficher uniquement la sélection', migrate_none_selected:'Aucun flow sélectionné — cliquez sur ceux à migrer.', migrate_done_badge:'✓ migré', paste_list_link:'Coller une liste', retry_msg:'nouvel essai', col_in_target:'Dans la cible', fbc_paste_link:'📋 Coller une liste', fbc_check_btn:'🔍 Vérifier le contenu', fbc_apply_list:'Afficher seulement ceux-ci', fbc_clear_list:'Effacer la liste', fbc_missing:'absent de la cible', fbc_there:'existe', fbc_identical:'identique', fbc_diff:'{n} différences', fbc_differ:'différents', fbc_unchecked:'non vérifié', fbc_fetched:'liste de la cible récupérée', work_from:'Org source', work_to:'Org cible', work_none:'Aucune', da_tab_divisions:'Divisions', da_tab_skills:'Compétences', da_tab_groups:'Groupes', da_tab_schedules:'Horaires', da_tab_schedulegroups:'Groupes d’horaires', da_tab_queues:'Files d’attente', da_tab_skillgroups:'Groupes de compétences', da_tab_teams:'Équipes', da_tab_locations:'Sites', da_tab_utilization:'Utilization labels', da_tab_knowledgebases:'Bases de connaissances', da_tab_responselibs:'Réponses prédéfinies', da_tab_surveyforms:'Formulaires d’enquête', da_tab_evalforms:'Formulaires d’évaluation', da_tab_emergencygroups:'Groupes d’urgence', da_tab_contactlists:'Listes de contacts', da_tab_dnclists:'Listes DNC', da_tab_rtc:'Contrôle complet (toutes les ressources)', rtc_title:'CONTRÔLE COMPLET DE TOUTES LES RESSOURCES', rtc_intro:'Compare chaque ressource de la source avec l’org cible : ce qui existe dans les deux, ce qui manque dans la cible et ce qui n’existe que dans la cible. Téléchargez le résultat en CSV pour la documentation et la vérification.', rtc_run:'Lancer le contrôle', rtc_csv:'⬇ Télécharger le CSV', rtc_running:'Vérification de {kind} ({n}/{m})…', rtc_ok:'OK', rtc_missing:'Absent de la cible', rtc_extra:'Seulement dans la cible', rtc_error:'Vérification impossible', rtc_col_type:'Type', rtc_col_name:'Nom', rtc_col_src:'Dans la source', rtc_col_tgt:'Dans la cible', rtc_col_status:'Statut', rtc_col_detail:'Détail', rtc_col_srcorg:'Org source', rtc_col_tgtorg:'Org cible', rtc_col_time:'Heure', rtc_col_inboth:'Dans les deux', rtc_yes:'Oui', rtc_no:'Non', rtc_only_diff:'Afficher seulement les différences', rtc_flows:'Flows', rtc_file:'controle-complet', rtc_cat_diff:'autre catégorie dans la cible : {cat}', rtc_need_orgs:'Choisissez d’abord la source et la cible.', rtc_done:'Terminé : {n} ressources dans la source, {m} absentes de la cible.', rtc_more:'… et {n} de plus (tout est dans le fichier CSV)', da_chk_target:'🔎 Vérifier l’org cible', da_tgt_result:'{n} sur {m} existent dans {org} — {x} manquent', da_tgt_in:'✓ dans la cible', da_tgt_out:'✗ absent de la cible', da_order_note:'L’ordre suit les dépendances : chaque onglet ne dépend que des précédents. Migrez de haut en bas et terminez par les flows sur Migrer Flow.', da_depends_on:'Dépend de', da_depends_none:'Aucune dépendance — à migrer en premier', da_paste_hint:'Un nom par ligne. Une parenthèse finale est ignorée si la ligne entière est introuvable.', da_paste_apply:'Sélectionner', ml_search_generic:'🔍 Rechercher…', work_swap:'Inverser source et cible', work_clear:'Effacer le choix', work_login_q:'{name} est connectée. L’utiliser comme org source ou org cible ?', fbc_failed:'vérification impossible', fbc_not_in_source:'dans la liste mais pas dans la source', fbc_stop:'Arrêter', fbc_many:'Le contenu de {n} flows sera comparé — cela peut prendre quelques minutes. Continuer ?', paste_list_hint:'Un nom de flow par ligne. Une parenthèse finale est ignorée si la ligne entière est introuvable.', paste_list_apply:'Sélectionner ces flows', paste_list_result:'{n} trouvés et sélectionnés, {m} introuvables', skip_identical_label:'Ignorer les flows déjà identiques dans la cible', reload_available:'Une nouvelle version a démarré', reload_now:'Recharger la page', identical_skipped:'identique à la cible — ignoré',
     migrate_no_match:'Aucun flow ne correspond au filtre.',
     pl_flow:'FLOW',
     pl_missing:'absent',
@@ -5059,7 +5074,7 @@ const LANGS = {
     dam_continue:'Doorgaan',
     dam_err_pick:'Kies een actie, of Laten zoals het is, bij de gele rijen.',
     dam_err_unknown:'Een gekozen actie bestaat niet in de doel-org.',
-    da_tab_check:'Volledige controle',
+    da_tab_check:'DA Volledige controle',
     dc_title:'VOLLEDIGE CONTROLE VAN DATA ACTIONS',
     dc_intro:'Zet elke data action in de bron naast de doel-org, op categorie en naam, zodat je de namen kunt regelen voordat je flows migreert. De keuzes worden bewaard en gebruikt door de lijst in de flow.',
     dc_run:'Controle uitvoeren',
@@ -5093,7 +5108,7 @@ const LANGS = {
     dc_fda_manual:'Function Data Action: handmatig aanmaken in het doel.',
     dc_more:'De eerste {n} worden getoond. Gebruik zoeken of een filter voor de rest.',
     dc_migrate_note:'Ontbrekende acties migreer je op het tabblad Data Actions.',
-    da_tab_plan:'Setupvoorstel',
+    da_tab_plan:'DA Setupvoorstel',
     dp_title:'SETUPVOORSTEL VOOR DATA ACTIONS',
     dp_intro:'Stelt voor in welke integraties van de doel-org de ontbrekende data actions komen, op basis van waar ruimte is. Schuif in het voorstel en exporteer het voor de klant.',
     dp_cap_label:'Maximaal per integratie',
@@ -5275,7 +5290,7 @@ const LANGS = {
     pl_no_groups:'Nog geen groepen. Stel klant, groep en fase in bij de omgevingen onder Klanten.',
     pl_search:'🔍  Flows filteren…',
     pl_only_gaps:'Alleen die ontbreken in een latere fase',
-    migrate_only_selected:'Alleen geselecteerde tonen', migrate_none_selected:'Nog geen flows geselecteerd — klik op wat je wilt migreren.', migrate_done_badge:'✓ gemigreerd', paste_list_link:'Lijst plakken', retry_msg:'opnieuw proberen', col_in_target:'In doel', fbc_paste_link:'📋 Lijst plakken', fbc_check_btn:'🔍 Inhoud controleren', fbc_apply_list:'Alleen deze tonen', fbc_clear_list:'Lijst wissen', fbc_missing:'ontbreekt in doel', fbc_there:'bestaat', fbc_identical:'identiek', fbc_diff:'{n} verschillen', fbc_differ:'verschillend', fbc_unchecked:'niet gecontroleerd', fbc_fetched:'doellijst opgehaald', work_from:'Bron-org', work_to:'Doel-org', work_none:'Geen', da_tab_divisions:'Divisies', da_tab_skills:'Skills', da_tab_groups:'Groepen', da_tab_schedules:'Roosters', da_tab_schedulegroups:'Roostergroepen', da_tab_queues:'Wachtrijen', da_tab_skillgroups:'Skillgroepen', da_tab_teams:'Teams', da_tab_locations:'Locaties', da_tab_utilization:'Utilization labels', da_tab_knowledgebases:'Kennisbanken', da_tab_responselibs:'Standaardantwoorden', da_tab_surveyforms:'Surveyformulieren', da_tab_evalforms:'Evaluatieformulieren', da_tab_emergencygroups:'Noodgroepen', da_tab_contactlists:'Contactlijsten', da_tab_dnclists:'DNC-lijsten', da_order_note:'De volgorde volgt de afhankelijkheden: elk tabblad hangt alleen af van de tabbladen ervoor. Migreer van boven naar beneden en eindig met flows op Migrate Flow.', da_depends_on:'Hangt af van', da_depends_none:'Geen afhankelijkheden — kan als eerste', da_paste_hint:'Eén naam per regel. Een afsluitend haakje wordt genegeerd als de hele regel niet gevonden wordt.', da_paste_apply:'Selecteren', ml_search_generic:'🔍 Zoeken…', work_swap:'Bron en doel wisselen', work_clear:'Keuze wissen', work_login_q:'{name} is ingelogd. Gebruiken als bron-org of doel-org?', fbc_failed:'kon niet worden gecontroleerd', fbc_not_in_source:'op de lijst maar niet in de bron', fbc_stop:'Stop', fbc_many:'De inhoud van {n} flows wordt vergeleken — dit kan enkele minuten duren. Doorgaan?', paste_list_hint:'Eén flownaam per regel. Een afsluitend haakje wordt genegeerd als de hele regel niet gevonden wordt.', paste_list_apply:'Deze flows selecteren', paste_list_result:'{n} gevonden en geselecteerd, {m} niet gevonden', skip_identical_label:'Flows overslaan die al identiek zijn in het doel', reload_available:'Er is een nieuwe versie gestart', reload_now:'Pagina herladen', identical_skipped:'identiek aan het doel — overgeslagen',
+    migrate_only_selected:'Alleen geselecteerde tonen', migrate_none_selected:'Nog geen flows geselecteerd — klik op wat je wilt migreren.', migrate_done_badge:'✓ gemigreerd', paste_list_link:'Lijst plakken', retry_msg:'opnieuw proberen', col_in_target:'In doel', fbc_paste_link:'📋 Lijst plakken', fbc_check_btn:'🔍 Inhoud controleren', fbc_apply_list:'Alleen deze tonen', fbc_clear_list:'Lijst wissen', fbc_missing:'ontbreekt in doel', fbc_there:'bestaat', fbc_identical:'identiek', fbc_diff:'{n} verschillen', fbc_differ:'verschillend', fbc_unchecked:'niet gecontroleerd', fbc_fetched:'doellijst opgehaald', work_from:'Bron-org', work_to:'Doel-org', work_none:'Geen', da_tab_divisions:'Divisies', da_tab_skills:'Skills', da_tab_groups:'Groepen', da_tab_schedules:'Roosters', da_tab_schedulegroups:'Roostergroepen', da_tab_queues:'Wachtrijen', da_tab_skillgroups:'Skillgroepen', da_tab_teams:'Teams', da_tab_locations:'Locaties', da_tab_utilization:'Utilization labels', da_tab_knowledgebases:'Kennisbanken', da_tab_responselibs:'Standaardantwoorden', da_tab_surveyforms:'Surveyformulieren', da_tab_evalforms:'Evaluatieformulieren', da_tab_emergencygroups:'Noodgroepen', da_tab_contactlists:'Contactlijsten', da_tab_dnclists:'DNC-lijsten', da_tab_rtc:'Volledige controle (alle resources)', rtc_title:'VOLLEDIGE CONTROLE VAN ALLE RESOURCES', rtc_intro:'Vergelijkt elke resource in de bron met de doel-org: wat in beide bestaat, wat in het doel ontbreekt en wat alleen in het doel bestaat. Download het resultaat als CSV voor documentatie en verificatie.', rtc_run:'Controle starten', rtc_csv:'⬇ CSV downloaden', rtc_running:'{kind} controleren ({n}/{m})…', rtc_ok:'OK', rtc_missing:'Ontbreekt in doel', rtc_extra:'Alleen in doel', rtc_error:'Kon niet worden gecontroleerd', rtc_col_type:'Type', rtc_col_name:'Naam', rtc_col_src:'In bron', rtc_col_tgt:'In doel', rtc_col_status:'Status', rtc_col_detail:'Detail', rtc_col_srcorg:'Bron-org', rtc_col_tgtorg:'Doel-org', rtc_col_time:'Tijd', rtc_col_inboth:'In beide', rtc_yes:'Ja', rtc_no:'Nee', rtc_only_diff:'Alleen verschillen tonen', rtc_flows:'Flows', rtc_file:'volledige-controle', rtc_cat_diff:'andere categorie in het doel: {cat}', rtc_need_orgs:'Kies eerst bron en doel.', rtc_done:'Klaar: {n} resources in de bron, {m} ontbreken in het doel.', rtc_more:'… en {n} meer (alles staat in het CSV-bestand)', da_chk_target:'🔎 Doel-org controleren', da_tgt_result:'{n} van {m} bestaan in {org} — {x} ontbreken', da_tgt_in:'✓ in doel', da_tgt_out:'✗ ontbreekt in doel', da_order_note:'De volgorde volgt de afhankelijkheden: elk tabblad hangt alleen af van de tabbladen ervoor. Migreer van boven naar beneden en eindig met flows op Migrate Flow.', da_depends_on:'Hangt af van', da_depends_none:'Geen afhankelijkheden — kan als eerste', da_paste_hint:'Eén naam per regel. Een afsluitend haakje wordt genegeerd als de hele regel niet gevonden wordt.', da_paste_apply:'Selecteren', ml_search_generic:'🔍 Zoeken…', work_swap:'Bron en doel wisselen', work_clear:'Keuze wissen', work_login_q:'{name} is ingelogd. Gebruiken als bron-org of doel-org?', fbc_failed:'kon niet worden gecontroleerd', fbc_not_in_source:'op de lijst maar niet in de bron', fbc_stop:'Stop', fbc_many:'De inhoud van {n} flows wordt vergeleken — dit kan enkele minuten duren. Doorgaan?', paste_list_hint:'Eén flownaam per regel. Een afsluitend haakje wordt genegeerd als de hele regel niet gevonden wordt.', paste_list_apply:'Deze flows selecteren', paste_list_result:'{n} gevonden en geselecteerd, {m} niet gevonden', skip_identical_label:'Flows overslaan die al identiek zijn in het doel', reload_available:'Er is een nieuwe versie gestart', reload_now:'Pagina herladen', identical_skipped:'identiek aan het doel — overgeslagen',
     migrate_no_match:'Geen flows voldoen aan het filter.',
     pl_flow:'FLOW',
     pl_missing:'ontbreekt',
@@ -6107,7 +6122,7 @@ const LANGS = {
     dam_continue:'Continuar',
     dam_err_pick:'Elija una acción, o Dejar como está, en las filas amarillas.',
     dam_err_unknown:'Una acción elegida no existe en la org de destino.',
-    da_tab_check:'Comprobación total',
+    da_tab_check:'DA Comprobación total',
     dc_title:'COMPROBACIÓN TOTAL DE DATA ACTIONS',
     dc_intro:'Compara cada data action del origen con la org de destino, por categoría y nombre, para resolver los nombres antes de migrar flows. Las elecciones se guardan y las usa la lista del flow.',
     dc_run:'Ejecutar comprobación',
@@ -6141,7 +6156,7 @@ const LANGS = {
     dc_fda_manual:'Function Data Action: debe crearse a mano en el destino.',
     dc_more:'Se muestran las primeras {n}. Use la búsqueda o un filtro para ver el resto.',
     dc_migrate_note:'Las acciones que faltan se migran en la pestaña Data Actions.',
-    da_tab_plan:'Propuesta de setup',
+    da_tab_plan:'DA Propuesta de setup',
     dp_title:'PROPUESTA DE SETUP DE DATA ACTIONS',
     dp_intro:'Propone en qué integraciones de la org de destino deben ir las data actions que faltan, según dónde haya sitio. Mueva cosas en la propuesta y expórtela para el cliente.',
     dp_cap_label:'Máximo por integración',
@@ -6323,7 +6338,7 @@ const LANGS = {
     pl_no_groups:'Aún no hay grupos. Defina cliente, grupo y etapa en los entornos en Clientes.',
     pl_search:'🔍  Filtrar flows…',
     pl_only_gaps:'Solo los que faltan en una etapa posterior',
-    migrate_only_selected:'Mostrar solo lo seleccionado', migrate_none_selected:'Ningún flow seleccionado todavía: haga clic en los que quiera migrar.', migrate_done_badge:'✓ migrado', paste_list_link:'Pegar lista', retry_msg:'reintentando', col_in_target:'En destino', fbc_paste_link:'📋 Pegar lista', fbc_check_btn:'🔍 Comprobar contenido', fbc_apply_list:'Mostrar solo estos', fbc_clear_list:'Borrar la lista', fbc_missing:'falta en destino', fbc_there:'existe', fbc_identical:'idéntico', fbc_diff:'{n} diferencias', fbc_differ:'diferentes', fbc_unchecked:'sin comprobar', fbc_fetched:'lista del destino obtenida', work_from:'Org de origen', work_to:'Org de destino', work_none:'Ninguna', da_tab_divisions:'Divisiones', da_tab_skills:'Habilidades', da_tab_groups:'Grupos', da_tab_schedules:'Horarios', da_tab_schedulegroups:'Grupos de horarios', da_tab_queues:'Colas', da_tab_skillgroups:'Grupos de habilidades', da_tab_teams:'Equipos', da_tab_locations:'Ubicaciones', da_tab_utilization:'Utilization labels', da_tab_knowledgebases:'Bases de conocimiento', da_tab_responselibs:'Respuestas predefinidas', da_tab_surveyforms:'Formularios de encuesta', da_tab_evalforms:'Formularios de evaluación', da_tab_emergencygroups:'Grupos de emergencia', da_tab_contactlists:'Listas de contactos', da_tab_dnclists:'Listas DNC', da_order_note:'El orden sigue las dependencias: cada pestaña solo depende de las anteriores. Migre de arriba abajo y termine con los flows en Migrar Flow.', da_depends_on:'Depende de', da_depends_none:'Sin dependencias — se puede migrar primero', da_paste_hint:'Un nombre por línea. Un paréntesis final se ignora si no se encuentra la línea completa.', da_paste_apply:'Seleccionar', ml_search_generic:'🔍 Buscar…', work_swap:'Intercambiar origen y destino', work_clear:'Borrar la selección', work_login_q:'{name} ha iniciado sesión. ¿Usarla como org de origen o de destino?', fbc_failed:'no se pudo comprobar', fbc_not_in_source:'en la lista pero no en el origen', fbc_stop:'Parar', fbc_many:'Se comparará el contenido de {n} flows; puede tardar unos minutos. ¿Continuar?', paste_list_hint:'Un nombre de flow por línea. Un paréntesis final se ignora si no se encuentra la línea completa.', paste_list_apply:'Seleccionar estos flows', paste_list_result:'{n} encontrados y seleccionados, {m} no encontrados', skip_identical_label:'Omitir los flows que ya son idénticos en el destino', reload_available:'Se ha iniciado una nueva versión', reload_now:'Recargar la página', identical_skipped:'idéntico al destino — omitido',
+    migrate_only_selected:'Mostrar solo lo seleccionado', migrate_none_selected:'Ningún flow seleccionado todavía: haga clic en los que quiera migrar.', migrate_done_badge:'✓ migrado', paste_list_link:'Pegar lista', retry_msg:'reintentando', col_in_target:'En destino', fbc_paste_link:'📋 Pegar lista', fbc_check_btn:'🔍 Comprobar contenido', fbc_apply_list:'Mostrar solo estos', fbc_clear_list:'Borrar la lista', fbc_missing:'falta en destino', fbc_there:'existe', fbc_identical:'idéntico', fbc_diff:'{n} diferencias', fbc_differ:'diferentes', fbc_unchecked:'sin comprobar', fbc_fetched:'lista del destino obtenida', work_from:'Org de origen', work_to:'Org de destino', work_none:'Ninguna', da_tab_divisions:'Divisiones', da_tab_skills:'Habilidades', da_tab_groups:'Grupos', da_tab_schedules:'Horarios', da_tab_schedulegroups:'Grupos de horarios', da_tab_queues:'Colas', da_tab_skillgroups:'Grupos de habilidades', da_tab_teams:'Equipos', da_tab_locations:'Ubicaciones', da_tab_utilization:'Utilization labels', da_tab_knowledgebases:'Bases de conocimiento', da_tab_responselibs:'Respuestas predefinidas', da_tab_surveyforms:'Formularios de encuesta', da_tab_evalforms:'Formularios de evaluación', da_tab_emergencygroups:'Grupos de emergencia', da_tab_contactlists:'Listas de contactos', da_tab_dnclists:'Listas DNC', da_tab_rtc:'Comprobación total (todos los recursos)', rtc_title:'COMPROBACIÓN TOTAL DE TODOS LOS RECURSOS', rtc_intro:'Compara cada recurso del origen con la org de destino: lo que existe en ambos, lo que falta en el destino y lo que solo existe en el destino. Descargue el resultado como CSV para documentación y verificación.', rtc_run:'Ejecutar comprobación', rtc_csv:'⬇ Descargar CSV', rtc_running:'Comprobando {kind} ({n}/{m})…', rtc_ok:'Correcto', rtc_missing:'Falta en destino', rtc_extra:'Solo en destino', rtc_error:'No se pudo comprobar', rtc_col_type:'Tipo', rtc_col_name:'Nombre', rtc_col_src:'En origen', rtc_col_tgt:'En destino', rtc_col_status:'Estado', rtc_col_detail:'Detalle', rtc_col_srcorg:'Org de origen', rtc_col_tgtorg:'Org de destino', rtc_col_time:'Hora', rtc_col_inboth:'En ambos', rtc_yes:'Sí', rtc_no:'No', rtc_only_diff:'Mostrar solo diferencias', rtc_flows:'Flows', rtc_file:'comprobacion-total', rtc_cat_diff:'otra categoría en el destino: {cat}', rtc_need_orgs:'Elija primero origen y destino.', rtc_done:'Terminado: {n} recursos en el origen, {m} faltan en el destino.', rtc_more:'… y {n} más (todo está en el archivo CSV)', da_chk_target:'🔎 Comprobar org de destino', da_tgt_result:'{n} de {m} existen en {org} — faltan {x}', da_tgt_in:'✓ en destino', da_tgt_out:'✗ falta en destino', da_order_note:'El orden sigue las dependencias: cada pestaña solo depende de las anteriores. Migre de arriba abajo y termine con los flows en Migrar Flow.', da_depends_on:'Depende de', da_depends_none:'Sin dependencias — se puede migrar primero', da_paste_hint:'Un nombre por línea. Un paréntesis final se ignora si no se encuentra la línea completa.', da_paste_apply:'Seleccionar', ml_search_generic:'🔍 Buscar…', work_swap:'Intercambiar origen y destino', work_clear:'Borrar la selección', work_login_q:'{name} ha iniciado sesión. ¿Usarla como org de origen o de destino?', fbc_failed:'no se pudo comprobar', fbc_not_in_source:'en la lista pero no en el origen', fbc_stop:'Parar', fbc_many:'Se comparará el contenido de {n} flows; puede tardar unos minutos. ¿Continuar?', paste_list_hint:'Un nombre de flow por línea. Un paréntesis final se ignora si no se encuentra la línea completa.', paste_list_apply:'Seleccionar estos flows', paste_list_result:'{n} encontrados y seleccionados, {m} no encontrados', skip_identical_label:'Omitir los flows que ya son idénticos en el destino', reload_available:'Se ha iniciado una nueva versión', reload_now:'Recargar la página', identical_skipped:'idéntico al destino — omitido',
     migrate_no_match:'Ningún flow coincide con el filtro.',
     pl_flow:'FLOW',
     pl_missing:'falta',
@@ -11667,8 +11682,12 @@ function daSetTab(tab) {
     // Hentes først når fanen åbnes — ellers hentes alle køer, grupper og skills for hver kilde
     if (tab === k && srcPicked && ML[k].loadedFor !== document.getElementById('da-source').value) mlLoad(k);
   });
+  document.getElementById('da-tab-rtc').classList.toggle('active', tab === 'rtc');
+  document.getElementById('da-rtc-card').style.display = (tab === 'rtc' && srcPicked) ? 'block' : 'none';
   daUpdateDepNote(tab);
   daUpdatePasteBar();
+  daTgtSummary();
+  if (daTgt[tab]) daApplyBadges();
 }
 
 // ── Totaltjek af data actions ────────────────────────────────────────────────
@@ -12432,6 +12451,175 @@ function applyDaPaste() {
     + (missing.length ? ': ' + missing.join(', ') : '');
 }
 
+// ── Tjek mål-org og totaltjek af alle ressourcer ─────────────────────────────
+// «Tjek mål-org» sætter et mærke på hver række i den aktive fane: findes den i
+// målet eller ej. Totaltjek-fanen gør det for ALLE ressourcer på én gang og kan
+// hentes som CSV — dokumentation for hvad der er migreret, og kontrol af det.
+const DA_LIST_URL = { actions: 'actions', tables: 'datatables', wrapup: 'wrapupcodes', prompts: 'prompts', scripts: 'scripts', flows: 'flows' };
+const daListUrl = k => (ML[k] && ML[k].list) || DA_LIST_URL[k] || null;
+const DA_CARD_ID = { actions: 'da-action-card', tables: 'da-table-card', wrapup: 'da-wrapup-card', prompts: 'da-prompt-card', scripts: 'da-script-card' };
+const daCardId = k => DA_CARD_ID[k] || `da-${k}-card`;
+
+// Tabeller og flows hedder noget andet i et miljø med præfiks (DEV_ ↔ intet)
+function daTargetName(kind, name) {
+  if (kind !== 'tables' && kind !== 'flows') return name;
+  const s = customers.find(c => c.id === document.getElementById('da-source').value) || {};
+  const g = customers.find(c => c.id === document.getElementById('da-target').value) || {};
+  const ps = s.prefix || '', pt = g.prefix || '';
+  return pt + (ps && name.startsWith(ps) ? name.slice(ps.length) : name);
+}
+const daOrgName = id => (customers.find(c => c.id === id) || {}).name || id;
+const daLow = x => String(x).trim().toLowerCase();
+
+const daTgt = {};            // fane → { id, names:Set } fra sidste «Tjek mål-org»
+let daTgtObserver = null;
+
+function daTgtSummary() {
+  const el = document.getElementById('da-tgt-summary');
+  if (!el) return;
+  const d = daTgt[daTab], spec = DA_LISTS[daTab];
+  if (!d || !spec || d.id !== document.getElementById('da-target').value) { el.textContent = ''; return; }
+  const items = spec().items;
+  const found = items.filter(x => d.names.has(daLow(daTargetName(daTab, x.name)))).length;
+  el.style.color = found === items.length ? 'var(--green)' : 'var(--yellow)';
+  el.textContent = t('da_tgt_result').replace('{n}', found).replace('{m}', items.length)
+    .replace('{org}', daOrgName(d.id)).replace('{x}', items.length - found);
+}
+
+function daApplyBadges() {
+  const d = daTgt[daTab];
+  const card = document.getElementById(daCardId(daTab));
+  if (!d || !card) return;
+  if (daTgtObserver) daTgtObserver.disconnect();
+  card.querySelectorAll('.migrate-flow-item').forEach(row => {
+    const nameEl = row.querySelector(':scope > div:first-child > div:first-child');
+    if (!nameEl) return;
+    const base = nameEl.dataset.name || (nameEl.dataset.name = nameEl.textContent.replace(/[✓✗].*$/, '').trim());
+    const there = d.names.has(daLow(daTargetName(daTab, base)));
+    let b = nameEl.querySelector('.da-tgt');
+    if (!b) { b = document.createElement('span'); b.className = 'da-tgt'; b.style.cssText = 'margin-left:10px;font-size:11px;font-weight:400'; nameEl.appendChild(b); }
+    b.style.color = there ? 'var(--green)' : 'var(--red)';
+    b.textContent = there ? t('da_tgt_in') : t('da_tgt_out');
+  });
+  if (!daTgtObserver) daTgtObserver = new MutationObserver(() => daApplyBadges());
+  daTgtObserver.observe(card, { childList: true, subtree: true });
+}
+
+async function daCheckTarget() {
+  const sid = document.getElementById('da-source').value, tid = document.getElementById('da-target').value;
+  const el = document.getElementById('da-tgt-summary');
+  const url = daListUrl(daTab);
+  if (!sid || !tid || sid === tid) { el.style.color = 'var(--yellow)'; el.textContent = t('rtc_need_orgs'); return; }
+  if (!url) return;
+  el.style.color = 'var(--muted)'; el.innerHTML = '<span class="spin"></span>';
+  const r = await fetch(`/api/customers/${tid}/${url}`).then(x => x.json()).catch(e => ({ error: e.message }));
+  if (r.error) { el.style.color = 'var(--red)'; el.textContent = r.error; return; }
+  daTgt[daTab] = { id: tid, names: new Set(r.map(x => daLow(x.name))) };
+  daApplyBadges();
+  daTgtSummary();
+}
+
+// ── Totaltjek af alle ressourcer ─────────────────────────────────────────────
+let rtcRows = [], rtcSummary = [], rtcMeta = null, rtcRunning = false;
+const rtcKinds = () => [...Object.keys(DA_DEPS), 'flows'];
+const rtcLabel = k => k === 'flows' ? t('rtc_flows') : (document.getElementById('da-tab-' + k)?.textContent || k).trim();
+const rtcKey = (k, x) => k === 'flows' ? daLow(x.name) + '|' + String(x.type || '').toUpperCase() : daLow(x.name);
+const rtcFetch = (id, k) => fetch(`/api/customers/${id}/${daListUrl(k)}`).then(r => r.json()).catch(e => ({ error: e.message }));
+
+async function rtcRun() {
+  if (rtcRunning) return;
+  const sid = document.getElementById('da-source').value, tid = document.getElementById('da-target').value;
+  const st = document.getElementById('rtc-status');
+  if (!sid || !tid || sid === tid) { st.style.color = 'var(--yellow)'; st.textContent = t('rtc_need_orgs'); return; }
+  rtcRunning = true; rtcRows = []; rtcSummary = [];
+  rtcMeta = { src: daOrgName(sid), tgt: daOrgName(tid), at: new Date() };
+  document.getElementById('rtc-csv-btn').disabled = true;
+  document.getElementById('rtc-run-btn').disabled = true;
+  const kinds = rtcKinds();
+  for (const [i, k] of kinds.entries()) {
+    st.style.color = 'var(--muted)';
+    st.innerHTML = `<span class="spin"></span> ${escapeHtml(t('rtc_running').replace('{kind}', rtcLabel(k)).replace('{n}', i + 1).replace('{m}', kinds.length))}`;
+    const [s, g] = await Promise.all([rtcFetch(sid, k), rtcFetch(tid, k)]);
+    const label = rtcLabel(k);
+    if (!Array.isArray(s) || !Array.isArray(g)) {
+      const err = (s && s.error) || (g && g.error) || '?';
+      rtcSummary.push({ k, label, error: err });
+      rtcRows.push({ k, label, name: '', inSrc: null, inTgt: null, status: 'error', detail: err });
+      continue;
+    }
+    const tgt = new Map(g.map(x => [rtcKey(k, x), x]));
+    const seen = new Set();
+    let ok = 0, missing = 0, extra = 0;
+    for (const x of s) {
+      const key = rtcKey(k, { name: daTargetName(k, x.name), type: x.type });
+      const hit = tgt.get(key);
+      seen.add(key);
+      let detail = x.sub || '';
+      if (hit && k === 'flows') detail = `v${x.publishedVersion || x.savedVersion || '?'} → v${hit.publishedVersion || hit.savedVersion || '?'}`;
+      if (hit && k === 'actions' && x.category && hit.category && x.category !== hit.category)
+        detail = t('rtc_cat_diff').replace('{cat}', hit.category);
+      const fname = k === 'flows' ? `${x.name} (${x.type})` : x.name;
+      if (hit) { ok++; rtcRows.push({ k, label, name: fname, inSrc: true, inTgt: true, status: 'ok', detail }); }
+      else { missing++; rtcRows.push({ k, label, name: fname, inSrc: true, inTgt: false, status: 'missing', detail }); }
+    }
+    for (const [key, x] of tgt) if (!seen.has(key)) {
+      extra++;
+      rtcRows.push({ k, label, name: k === 'flows' ? `${x.name} (${x.type})` : x.name, inSrc: false, inTgt: true, status: 'extra', detail: x.sub || '' });
+    }
+    rtcSummary.push({ k, label, src: s.length, tgt: g.length, ok, missing, extra });
+  }
+  rtcRunning = false;
+  document.getElementById('rtc-run-btn').disabled = false;
+  document.getElementById('rtc-csv-btn').disabled = false;
+  const miss = rtcRows.filter(r => r.status === 'missing').length;
+  st.style.color = miss ? 'var(--yellow)' : 'var(--green)';
+  st.textContent = t('rtc_done').replace('{n}', rtcRows.filter(r => r.inSrc).length).replace('{m}', miss);
+  rtcRender();
+}
+
+const rtcStatusText = s => ({ ok: t('rtc_ok'), missing: t('rtc_missing'), extra: t('rtc_extra'), error: t('rtc_error') }[s]);
+const rtcStatusColor = s => ({ ok: 'green', missing: 'red', extra: 'muted', error: 'red' }[s]);
+const RTC_MAX_ROWS = 400;
+
+function rtcRender() {
+  const th = c => `<th style="text-align:left;padding:6px 10px;font-size:11px;color:var(--muted);font-family:var(--mono)">${escapeHtml(c)}</th>`;
+  const td = (c, col, extra = '') => `<td style="padding:5px 10px;border-bottom:1px solid var(--border);font-size:12px;${col ? `color:var(--${col});` : ''}${extra}">${c}</td>`;
+  const sumRows = rtcSummary.map(r => r.error
+    ? `<tr>${td(escapeHtml(r.label))}${td(escapeHtml(r.error), 'red', 'font-size:11px')}${td('')}${td('')}${td('')}${td('✗', 'red')}</tr>`
+    : `<tr>${td(escapeHtml(r.label))}${td(r.src)}${td(r.ok, 'green')}${td(r.missing, r.missing ? 'red' : 'muted')}${td(r.extra, 'muted')}${td(r.missing ? '⚠' : '✓', r.missing ? 'yellow' : 'green')}</tr>`).join('');
+  const onlyDiff = document.getElementById('rtc-only-diff')?.checked !== false;
+  const shown = rtcRows.filter(r => !onlyDiff ? true : r.status !== 'ok');
+  const detRows = shown.slice(0, RTC_MAX_ROWS).map(r =>
+    `<tr>${td(escapeHtml(r.label))}${td(escapeHtml(r.name))}${td(rtcStatusText(r.status), rtcStatusColor(r.status))}${td(escapeHtml(r.detail || ''), 'muted', 'font-size:11px')}</tr>`).join('');
+  document.getElementById('rtc-body').innerHTML = `
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px"><thead><tr>
+      ${th(t('rtc_col_type'))}${th(t('rtc_col_src'))}${th(t('rtc_col_inboth'))}${th(t('rtc_missing'))}${th(t('rtc_extra'))}${th(t('rtc_col_status'))}
+    </tr></thead><tbody>${sumRows}</tbody></table>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;margin:0 0 8px;cursor:pointer">
+      <input type="checkbox" id="rtc-only-diff" style="width:auto" ${onlyDiff ? 'checked' : ''} onchange="rtcRender()"/> ${escapeHtml(t('rtc_only_diff'))}
+    </label>
+    <table style="width:100%;border-collapse:collapse"><thead><tr>
+      ${th(t('rtc_col_type'))}${th(t('rtc_col_name'))}${th(t('rtc_col_status'))}${th(t('rtc_col_detail'))}
+    </tr></thead><tbody>${detRows}</tbody></table>
+    ${shown.length > RTC_MAX_ROWS ? `<div style="font-size:11px;color:var(--muted);margin-top:6px">${escapeHtml(t('rtc_more').replace('{n}', shown.length - RTC_MAX_ROWS))}</div>` : ''}`;
+}
+
+// CSV til Excel: semikolon som skilletegn og UTF-8 med BOM, så æ/ø/å læses rigtigt
+function rtcCsv() {
+  if (!rtcMeta) return;
+  const q = v => { const s = String(v ?? ''); return /[;"\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const yn = v => v === null ? '' : (v ? t('rtc_yes') : t('rtc_no'));
+  const head = ['rtc_col_type', 'rtc_col_name', 'rtc_col_src', 'rtc_col_tgt', 'rtc_col_status', 'rtc_col_detail', 'rtc_col_srcorg', 'rtc_col_tgtorg', 'rtc_col_time'].map(t);
+  const lines = [head, ...rtcRows.map(r => [r.label, r.name, yn(r.inSrc), yn(r.inTgt), rtcStatusText(r.status), r.detail || '',
+    rtcMeta.src, rtcMeta.tgt, rtcMeta.at.toISOString()])].map(l => l.map(q).join(';'));
+  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${t('rtc_file')}_${rtcMeta.src}_${rtcMeta.tgt}_${rtcMeta.at.toISOString().slice(0, 10)}.csv`.replace(/[^\w.\-à-ÿ]+/gi, '_');
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+}
+
 let mlSecrets = [];   // {name, clientId, secret} fra sidste OAuth-migrering — kun i denne fane, aldrig gemt
 
 function mlSub(k, x) {
@@ -12614,6 +12802,7 @@ async function mlMigrate(k) {
   log(logBox, `\n\u2500\u2500 ${t('da_done')} \u2500\u2500 ${ok} ${t('da_sum_ok')} \u00b7 ${skipped} ${t('da_sum_skipped')} \u00b7 ${failed} ${t('da_sum_failed')}`,
       failed ? 'err' : 'info');
   mlUpdateReady(k);
+  if (daTgt[k]) daCheckTarget();   // mærkerne vises igen med det nye
 }
 
 // ── Kunde → gruppe → miljø ────────────────────────────────────────────────────

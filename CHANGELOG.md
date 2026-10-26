@@ -5,6 +5,25 @@
 
 ---
 
+### v1.70.0
+---
+**🇩🇰 Dansk**
+
+- **Tjek mål-org på hver fane.** Knappen *🔎 Tjek mål-org* ved siden af *Indsæt liste* henter målets ressourcer og sætter et mærke på hver række — *✓ i mål* eller *✗ mangler i mål* — og skriver «N af M findes i … — X mangler». Mærkerne bliver stående, når listen søges eller vælges i, og opdateres efter en migrering. Virker på alle faner, også de gamle (data tabeller, wrap-up-koder, prompts, scripts, roller, OAuth, integrationer og data actions). Tabeller sammenlignes under målets præfiks.
+- **Ny fane: Totaltjek (alle ressourcer).** Sætter alle ressourcer i kilden op mod mål-org'en — alle faner plus flows — og viser pr. type hvor mange der findes i begge, mangler i målet eller kun findes i målet, med en detaljeliste. Flows vises med version i kilde og mål; data actions med en anden kategori i målet markeres. En type der ikke kan hentes (fx manglende OAuth-scope) står som *Kunne ikke tjekkes* med årsagen i stedet for at stoppe hele tjekket.
+- **⬇ Download CSV** med alle rækker — type, navn, findes i kilde, findes i mål, status, detalje, kilde-org, mål-org og tidspunkt. Semikolon og UTF-8 med BOM, så Excel åbner den rigtigt; filnavnet har begge org-navne og datoen. Det er dokumentationen af hvad der er migreret og kontrollen af det.
+- **De gamle faner hedder nu DA-Totaltjek og DA-Setup-forslag**, så det er tydeligt, at de kun gælder data actions.
+- En ny test.
+
+**🇬🇧 English**
+- **Check target org on every tab.** The *🔎 Check target org* button next to *Paste list* fetches the target's resources and marks each row — *✓ in target* or *✗ missing in target* — and writes "N of M exist in … — X missing". The marks stay when the list is searched or selected in, and refresh after a migration. Works on every tab, including the old ones (data tables, wrap-up codes, prompts, scripts, roles, OAuth, integrations and data actions). Tables are compared under the target's prefix.
+- **New tab: Full check (all resources).** Compares every resource in the source with the target org — all tabs plus flows — and shows per type how many exist in both, are missing in the target or exist only in the target, with a detail list. Flows show the version in source and target; a data action in another category in the target is marked. A type that cannot be fetched (e.g. a missing OAuth scope) shows as *Could not be checked* with the reason instead of stopping the whole check.
+- **⬇ Download CSV** with every row — type, name, in source, in target, status, detail, source org, target org and time. Semicolon and UTF-8 with BOM so Excel opens it correctly; the file name has both org names and the date. It is the documentation of what has been migrated and the check of it.
+- **The old tabs are now called DA full check and DA setup proposal**, so it is clear they apply to data actions only.
+- One new test.
+
+---
+
 ### v1.69.0
 ---
 **🇩🇰 Dansk**
