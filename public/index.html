@@ -533,7 +533,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.61.1 · Archy GUI</div>
+    <div class="version" id="app-version">v1.62.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -833,6 +833,10 @@
             <option value="publish" data-i18n="migrate_action_publish">publish (opret+publish)</option>
           </select>
           <span id="m-action-note" style="font-size:11px;color:var(--muted)"></span>
+          <label style="margin:0;display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+            <input type="checkbox" id="m-skip-identical" style="width:auto" checked />
+            <span data-i18n="skip_identical_label">Spring flows over, der allerede er identiske i målet</span>
+          </label>
           <label id="m-align-box" style="margin:0;display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
             <input type="checkbox" id="m-align" style="width:auto" />
             <span data-i18n="align_label">Udlign versionsnummer med kilden</span>
@@ -1562,6 +1566,11 @@ function fillColors() {
 let customers = [];
 let allFlows = [];
 let selectedMigrateFlows = new Set();
+// Flows der er migreret til et bestemt mål i denne session: «flow-nøgle>mål-id».
+// De fjernes fra valget efter migreringen og vælges ikke af «Vælg alle», så de
+// ikke migreres igen når man vælger nye. Man kan stadig vælge dem med hånden.
+const migratedFlows = new Set();
+const migratedKey = (f) => migrateKey(f) + '>' + (document.getElementById('m-target')?.value || '');
 
 // ── Translations ──────────────────────────────────────────────────────────────
 const LANGS = {
@@ -2062,7 +2071,7 @@ const LANGS = {
     pl_no_groups:'Ingen grupper endnu. Sæt kunde, gruppe og trin på miljøerne under Kunder.',
     pl_search:'🔍  Filtrér flows…',
     pl_only_gaps:'Kun dem der mangler i et senere trin',
-    migrate_only_selected:'Vis kun valgte', migrate_none_selected:'Ingen flows valgt endnu — klik på dem du vil migrere.',
+    migrate_only_selected:'Vis kun valgte', migrate_none_selected:'Ingen flows valgt endnu — klik på dem du vil migrere.', migrate_done_badge:'✓ migreret', skip_identical_label:'Spring flows over, der allerede er identiske i målet', identical_skipped:'identisk med målet — springes over',
     migrate_no_match:'Ingen flows passer til filteret.',
     pl_flow:'FLOW',
     pl_missing:'mangler',
@@ -3110,7 +3119,7 @@ const LANGS = {
     pl_no_groups:'No groups yet. Set customer, group and stage on the environments under Customers.',
     pl_search:'🔍  Filter flows…',
     pl_only_gaps:'Only those missing in a later stage',
-    migrate_only_selected:'Show only selected', migrate_none_selected:'No flows selected yet — click the ones you want to migrate.',
+    migrate_only_selected:'Show only selected', migrate_none_selected:'No flows selected yet — click the ones you want to migrate.', migrate_done_badge:'✓ migrated', skip_identical_label:'Skip flows that are already identical in the target', identical_skipped:'identical to the target — skipped',
     migrate_no_match:'No flows match the filter.',
     pl_flow:'FLOW',
     pl_missing:'missing',
@@ -4158,7 +4167,7 @@ const LANGS = {
     pl_no_groups:'Aucun groupe. Renseignez client, groupe et étape sur les environnements sous Clients.',
     pl_search:'🔍  Filtrer les flows…',
     pl_only_gaps:'Uniquement ceux absents d\'une étape ultérieure',
-    migrate_only_selected:'Afficher uniquement la sélection', migrate_none_selected:'Aucun flow sélectionné — cliquez sur ceux à migrer.',
+    migrate_only_selected:'Afficher uniquement la sélection', migrate_none_selected:'Aucun flow sélectionné — cliquez sur ceux à migrer.', migrate_done_badge:'✓ migré', skip_identical_label:'Ignorer les flows déjà identiques dans la cible', identical_skipped:'identique à la cible — ignoré',
     migrate_no_match:'Aucun flow ne correspond au filtre.',
     pl_flow:'FLOW',
     pl_missing:'absent',
@@ -5206,7 +5215,7 @@ const LANGS = {
     pl_no_groups:'Nog geen groepen. Stel klant, groep en fase in bij de omgevingen onder Klanten.',
     pl_search:'🔍  Flows filteren…',
     pl_only_gaps:'Alleen die ontbreken in een latere fase',
-    migrate_only_selected:'Alleen geselecteerde tonen', migrate_none_selected:'Nog geen flows geselecteerd — klik op wat je wilt migreren.',
+    migrate_only_selected:'Alleen geselecteerde tonen', migrate_none_selected:'Nog geen flows geselecteerd — klik op wat je wilt migreren.', migrate_done_badge:'✓ gemigreerd', skip_identical_label:'Flows overslaan die al identiek zijn in het doel', identical_skipped:'identiek aan het doel — overgeslagen',
     migrate_no_match:'Geen flows voldoen aan het filter.',
     pl_flow:'FLOW',
     pl_missing:'ontbreekt',
@@ -6254,7 +6263,7 @@ const LANGS = {
     pl_no_groups:'Aún no hay grupos. Defina cliente, grupo y etapa en los entornos en Clientes.',
     pl_search:'🔍  Filtrar flows…',
     pl_only_gaps:'Solo los que faltan en una etapa posterior',
-    migrate_only_selected:'Mostrar solo lo seleccionado', migrate_none_selected:'Ningún flow seleccionado todavía: haga clic en los que quiera migrar.',
+    migrate_only_selected:'Mostrar solo lo seleccionado', migrate_none_selected:'Ningún flow seleccionado todavía: haga clic en los que quiera migrar.', migrate_done_badge:'✓ migrado', skip_identical_label:'Omitir los flows que ya son idénticos en el destino', identical_skipped:'idéntico al destino — omitido',
     migrate_no_match:'Ningún flow coincide con el filtro.',
     pl_flow:'FLOW',
     pl_missing:'falta',
@@ -7687,6 +7696,7 @@ function renderMigrateFlows(flows, kunValgte) {
         <div style="font-size:11px;font-family:var(--mono);margin-top:2px">${f.type}&nbsp;&nbsp;${versions}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+        ${migratedFlows.has(migratedKey(f)) ? `<span class="badge badge-blue">${t('migrate_done_badge')}</span>` : ''}
         ${f.active ? '<span class="badge badge-green">Pub</span>' : '<span class="badge badge-gray">Draft</span>'}
         <span style="color:var(--accent);font-size:16px;width:18px;text-align:center">${sel ? '✓' : ''}</span>
       </div>
@@ -7727,6 +7737,7 @@ function selectAllMigrateFlows() {
   const type = (document.getElementById('m-type-filter')?.value || '').toLowerCase();
   migrateFlows
     .filter(f => (!q || f.name.toLowerCase().includes(q)) && (!type || f.type.toLowerCase() === type))
+    .filter(f => !migratedFlows.has(migratedKey(f)))
     .forEach(f => selectedMigrateFlows.add(migrateKey(f)));
   applyMigrateFilter();
   updateMigrateBtn();
@@ -7852,8 +7863,10 @@ async function _runMigration() {
   document.getElementById('m-log').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   let ok = 0, skipped = 0, failed = 0;
+  // Versionsudligning kræver at målet publiceres, så identiske flows springes ikke over dér
+  const skipIdentical = !alignVersion && !!document.getElementById('m-skip-identical')?.checked;
 
-  for (const key of selectedMigrateFlows) {
+  for (const key of [...selectedMigrateFlows]) {
     const [id, name, type] = key.split('|');
     log(logBox, `\n⟶ ${t('migrating_msg')} ${name} (${type})`, 'info');
     try {
@@ -7867,9 +7880,11 @@ async function _runMigration() {
       for (;;) {
         prep = await fetch('/api/migrate/prepare', {
           method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ sourceId, targetId, flowName: name, flowType: type, confirmProd })
+          body: JSON.stringify({ sourceId, targetId, flowName: name, flowType: type, confirmProd, skipIdentical })
         }).then(r => r.json());
         if (prep.error) break;
+        // Målet kører allerede det samme indhold: der er intet at migrere
+        if (prep.identical) break;
         // Hedder en data action noget andet i målet, vises flowets data actions
         // med det navn de har dér, og brugeren vælger. Én gang pr. flow.
         if (!mapDone && (prep.actionRefs || []).some(r => r.status === 'choose' || r.status === 'absent')) {
@@ -7890,6 +7905,13 @@ async function _runMigration() {
         spring = true; break;
       }
       if (prep.error) { log(logBox, `  ✗ ${prep.error}`, 'err'); failed++; continue; }
+      if (prep.identical) {
+        log(logBox, `  ⊘ ${t('identical_skipped')} (v${prep.identical.version})`, 'info');
+        skipped++;
+        migratedFlows.add(key + '>' + targetId);
+        selectedMigrateFlows.delete(key);
+        continue;
+      }
       if (spring) { log(logBox, `  ⊘ ${t('dep_skipped_flow')}`, 'info'); skipped++; continue; }
 
       const missing = (prep.deps || []).filter(d => !d.ok && aktiv(d));
@@ -7939,6 +7961,9 @@ async function _runMigration() {
       if (data.error) { log(logBox, `  ✗ ${data.error}`, 'err'); failed++; }
       else {
         log(logBox, `  ✓ ${data.fileName} → ${action} OK`, 'ok'); ok++;
+        // Færdig: ud af valget, så næste kørsel ikke tager det med igen
+        migratedFlows.add(key + '>' + targetId);
+        selectedMigrateFlows.delete(key);
         if (data.aligned) log(logBox, '  ' + alignText(data.aligned), data.aligned.error ? 'err' : 'info');
         if (data.diff) log(logBox, data.diff.noPrevious
           ? `  📝 ${t('rel_title')}: ${t('rel_new')}`
@@ -7956,6 +7981,8 @@ async function _runMigration() {
     }
   }
   pipelineDirty = true;
+  applyMigrateFilter();
+  updateMigrateBtn();
   log(logBox, `\n${t('migration_done')} — ${ok} ${t('da_sum_ok')} · ${skipped} ${t('da_sum_skipped')} · ${failed} ${t('da_sum_failed')}`,
       failed ? 'err' : 'info');
 }

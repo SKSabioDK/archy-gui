@@ -147,3 +147,20 @@ test('en prompt uden lyd eller TTS tæller ikke som at den findes', () => {
   assert.equal(s.countsAsExisting('prompt', { resources: [] }), false);
   assert.equal(s.countsAsExisting('queue', { name: 'Q' }), true);
 });
+
+test('et migreret flow fjernes fra valget og tages ikke med af «Vælg alle»', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  assert.ok(html.includes("for (const key of [...selectedMigrateFlows])"), 'løkken skal gå over en kopi af valget');
+  assert.ok(html.includes("migratedFlows.add(key + '>' + targetId);\n        selectedMigrateFlows.delete(key);".replace(/\n/g, html.includes('\r\n') ? '\r\n' : '\n')));
+  assert.ok(html.includes('.filter(f => !migratedFlows.has(migratedKey(f)))'));
+});
+
+test('identiske flows springes over i prepare, men aldrig ved versionsudligning', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  const fn = SERVER.slice(SERVER.indexOf('async function identicalInTarget('), SERVER.indexOf('// Vagterne før en flytning'));
+  // Sammenlignes på det PUBLICEREDE i målet, med miljøpræfikser normaliseret væk
+  assert.ok(fn.includes('publishedVersionOf(target, nyName') && fn.includes('flowContentHash(') && fn.includes('stripEnvPrefixesInYaml') === false);
+  assert.ok(fn.includes('if (!found || !published) return null;'));
+  assert.ok(html.includes("const skipIdentical = !alignVersion && !!document.getElementById('m-skip-identical')?.checked;"));
+  assert.ok(SERVER.includes('if (req.body.skipIdentical && analysis.filePath)'));
+});

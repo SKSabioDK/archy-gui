@@ -8755,12 +8755,34 @@ app.post('/api/migrate/prepare', async (req, res) => {
     if (analysis.divisionDenied)
       return res.status(409).json({ code: 'division-denied', division: analysis.divisionDenied,
                                     error: divisionDeniedText(analysis.divisionDenied, target) });
-    res.json({ ok: true, ...analysis });
+    // Står målet allerede på samme indhold, er der intet at migrere. Sparer
+    // tjek af afhængigheder, import og publicering — og undgår en ny version
+    // i målet uden at noget har ændret sig.
+    let identical = null;
+    if (req.body.skipIdentical && analysis.filePath) {
+      try { identical = await identicalInTarget(source, target, flowName, flowType, analysis.filePath); }
+      catch (e) { addLog('WARN', `Could not compare "${flowName}" with ${target.name}: ${describeApiError(e)} — migrating normally`, target.name, 'MIGRATE'); }
+      if (identical) addLog('INFO', `"${flowName}" is identical in ${target.name} (v${identical.version}) — skipped`, target.name, 'MIGRATE');
+    }
+    res.json({ ok: true, ...analysis, identical });
   } catch (e) {
     addLog('ERROR', `Migration prepare failed for "${flowName}": ${e.message}`, source.name, 'MIGRATE');
     res.status(500).json({ error: e.message });
   }
 });
+
+// Har målet allerede en PUBLICERET udgave med samme indhold som den eksporterede
+// fil? Samme sammenligning som pipelinen bruger: miljøpræfikser og division
+// normaliseres væk, så DEV_Main og Main kan kendes som samme flow. Alt andet
+// end et sikkert ja giver null — så migreres der som sædvanligt.
+async function identicalInTarget(source, target, flowName, flowType, filePath) {
+  const nyName = targetFlowName(flowName, source, target);
+  const { found, published } = await publishedVersionOf(target, nyName, flowType);
+  if (!found || !published) return null;
+  const tgt = await exportFlowToYaml(target, nyName, flowType, published);
+  const same = flowContentHash(fs.readFileSync(filePath, 'utf8'), source) === flowContentHash(tgt.yaml, target);
+  return same ? { version: published, name: nyName } : null;
+}
 
 // Vagterne før en flytning, og hvilken udgave der skal eksporteres. Delt mellem
 // prepare og tjekket, så de to aldrig er uenige om hvad der må lade sig gøre.
@@ -9599,7 +9621,7 @@ if (require.main === module) {
 // eneste der kan efterprøves uden en rigtig org. Se test/*.test.js.
 module.exports = {
   logLevelFor,
-  nodeSecurityStatus, countsAsExisting, scanTtsEngines, missingTtsEngines, replaceTtsEngines, applyClientScopes, dropRejectedLogin, flowOwnDivision, divisionProblem, appsBaseOf, COPYABLE_KINDS, promptHasContent, queueCreateBody, groupCreateBody, credentialChangeError, forgetLogin, keepsOrgOnClientChange,
+  nodeSecurityStatus, countsAsExisting, scanTtsEngines, missingTtsEngines, replaceTtsEngines, applyClientScopes, dropRejectedLogin, flowOwnDivision, divisionProblem, appsBaseOf, COPYABLE_KINDS, identicalInTarget, promptHasContent, queueCreateBody, groupCreateBody, credentialChangeError, forgetLogin, keepsOrgOnClientChange,
   sanitizeDatatableSchema, mapRoleDivisions, buildOauthClientBody, buildRolePolicies, missingRolesFor, missingDivisionsFor,
   app, tokenStore, getToken, loadSessions, saveSessions, setSessionPersist, SESSION_FILE,
   // konventioner

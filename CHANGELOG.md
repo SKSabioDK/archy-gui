@@ -5,6 +5,38 @@
 
 ---
 
+### v1.62.0
+---
+**🇩🇰 Dansk**
+
+- **Identiske flows springes over.** Står målet allerede på præcis det indhold, der ville blive migreret (samme sammenligning som pipelinen, med miljøpræfikser og division normaliseret), migreres flowet ikke igen. Det sparer tjek af afhængigheder, import og publicering — og undgår en ny version i målet, hvor intet er ændret (*Release notes: +0 / −0 linjer*). Loggen siger *identisk med målet — springes over* med målets version.
+- **Kan slås fra** med afkrydsningsfeltet *Spring flows over, der allerede er identiske i målet* (slået til som standard). Er *Udlign versionsnummer* valgt, springes intet over, fordi udligningen kræver en publicering.
+- Sammenlignes kun med målets **publicerede** udgave. Kan den ikke læses, eller er der tvivl, migreres der som før.
+- En ny test.
+
+**🇬🇧 English**
+- **Identical flows are skipped.** If the target already holds exactly the content that would be migrated (same comparison as the pipeline, with environment prefixes and division normalised), the flow is not migrated again. This saves the dependency check, import and publish — and avoids a new version in the target where nothing changed (*Release notes: +0 / −0 lines*). The log says *identical to the target — skipped* with the target's version.
+- **Can be turned off** with the checkbox *Skip flows that are already identical in the target* (on by default). If *Align version number* is chosen, nothing is skipped, because alignment needs a publish.
+- Compared only against the target's **published** version. If it cannot be read, or in any doubt, it migrates as before.
+- One new test.
+
+---
+
+### v1.61.2
+---
+**🇩🇰 Dansk**
+
+- **Migrerede flows blev migreret igen.** Efter en migrering stod flowene stadig valgt i listen, så en ny kørsel tog dem med — spildt tid og unødige skrivninger i målet. Nu fjernes et flow fra valget, så snart det er migreret, og det får mærket *✓ migreret* i listen.
+- **«Vælg alle» springer migrerede flows over** (for det valgte mål). Vil man alligevel køre et igen, klikker man på det. Fejlede og sprungne flows bliver stående, så de er lette at prøve igen. Skifter man mål, forsvinder mærket.
+- En ny test.
+
+**🇬🇧 English**
+- **Migrated flows were migrated again.** After a migration the flows stayed selected in the list, so the next run included them — wasted time and needless writes in the target. A flow is now removed from the selection as soon as it is migrated and gets a *✓ migrated* badge in the list.
+- **"Select all" skips migrated flows** (for the chosen target). To run one again anyway, click it. Failed and skipped flows stay selected so they are easy to retry. Changing the target clears the badge.
+- One new test.
+
+---
+
 ### v1.61.1
 ---
 **🇩🇰 Dansk**
