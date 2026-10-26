@@ -164,3 +164,43 @@ test('identiske flows springes over i prepare, men aldrig ved versionsudligning'
   assert.ok(html.includes("const skipIdentical = !alignVersion && !!document.getElementById('m-skip-identical')?.checked;"));
   assert.ok(SERVER.includes('if (req.body.skipIdentical && analysis.filePath)'));
 });
+
+test('serveren genstarter sig selv ved en opdatering — men først når ingen skrivning kører', () => {
+  assert.equal(typeof s.watchForUpdates, 'function');
+  const fn = SERVER.slice(SERVER.indexOf('function watchForUpdates('), SERVER.indexOf('function retryOnPortBusy('));
+  assert.ok(fn.includes("['--check', files[0]]"), 'koden skal kunne parses før genstart');
+  assert.ok(fn.includes('inflightWrites > 0'), 'en skrivning i gang skal afvente');
+  assert.ok(fn.includes('ARCHY_NO_AUTORESTART'));
+  // Tælleren skal sidde FØR første rute, ellers tæller den intet
+  assert.ok(SERVER.indexOf('inflightWrites++') < SERVER.search(/app\.(get|post)\('/));
+});
+
+// Falck: P1435 fandt i målet med indhold — men ikke på noget af flowets sprog.
+test('en prompt skal have indhold på ET AF FLOWETS sprog', () => {
+  const y = ['inboundCall:', '  name: F', '  supportedLanguages:', '    da-dk:', '      defaultLanguageSkill:', '        noValue: true', '    en-gb:', '      x: 1', '  startUpRef: y', ''].join('\n');
+  const l = s.scanSupportedLanguages(y);
+  assert.deepEqual([...l].sort(), ['da-dk', 'en-gb']);
+  assert.equal(s.promptHasContent({ resources: [{ language: 'nl-NL', ttsString: 'hej' }] }, l), false, 'kun nl-NL: ingen af flowets sprog');
+  assert.equal(s.promptHasContent({ resources: [{ language: 'en-GB', ttsString: 'hello' }] }, l), true);
+  assert.equal(s.promptHasContent({ resources: [{ language: 'nl-NL', ttsString: 'hej' }] }, new Set()), true, 'uden kendte sprog filtreres der ikke');
+  assert.equal(s.countsAsExisting('prompt', { resources: [{ language: 'nl-NL', ttsString: 'hej' }] }, l), false);
+});
+
+test('en åbningstidsgruppe oprettes med målets egne åbningstids-id\'er', () => {
+  const full = { id: 'g1', name: 'Åbent', timeZone: 'Europe/Copenhagen', description: 'd',
+    openSchedules: [{ id: 'k1', name: 'Hverdage' }], closedSchedules: [{ id: 'k2', name: 'Nat' }],
+    holidaySchedules: [{ id: 'k3', name: 'Helligdage' }, { id: 'k4', name: 'Mangler' }], division: { id: 'old' } };
+  const body = s.scheduleGroupCreateBody(full, { Hverdage: 'm1', Nat: 'm2', Helligdage: 'm3' }, 'newDiv');
+  assert.deepEqual(body, { name: 'Åbent', description: 'd', timeZone: 'Europe/Copenhagen',
+    openSchedules: [{ id: 'm1' }], closedSchedules: [{ id: 'm2' }], holidaySchedules: [{ id: 'm3' }], division: { id: 'newDiv' } });
+  assert.deepEqual(s.scheduleCreateBody({ id: 'x', name: 'A', start: '2025-01-01T08:00:00.000', end: '2025-01-01T16:00:00.000', rrule: 'FREQ=DAILY', division: { id: 'o' } }, null),
+    { name: 'A', start: '2025-01-01T08:00:00.000', end: '2025-01-01T16:00:00.000', rrule: 'FREQ=DAILY' });
+  assert.ok(s.COPYABLE_KINDS.has('schedule') && s.COPYABLE_KINDS.has('schedulegroup'));
+});
+
+test('en flowtype målets org ikke har produktet til, forklares', () => {
+  const m = "the flow type 'inboundshortmessage' is not available. This happens when you are attempting to create a flow";
+  const ud = s.archyHint(m);
+  assert.ok(ud.startsWith(m) && ud.includes('INBOUNDSHORTMESSAGE') && ud.includes('produkt'));
+  assert.equal(s.archyHint('noget andet'), 'noget andet');
+});

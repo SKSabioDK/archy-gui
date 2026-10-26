@@ -16,6 +16,17 @@ const app = express();
 app.use(express.json({ limit: '25mb' }));
 // Før alle ruter: skrivning til prod kræver et personligt login med
 // rettigheden. Selve vagten står ved OAuth-koden længere nede.
+// Tæller skrivninger i gang, så en selv-genstart (se watchForUpdates) venter på dem.
+let inflightWrites = 0;
+app.use((req, res, next) => {
+  if (req.method === 'GET') return next();
+  inflightWrites++;
+  let talt = false;
+  const frem = () => { if (!talt) { talt = true; inflightWrites--; } };
+  res.on('finish', frem); res.on('close', frem);
+  next();
+});
+
 app.use((req, res, next) => prodWriteGate(req, res, next));
 app.use(express.static(path.join(__dirname, 'public')));
 // Skærmbilleder og infografik som README'en viser — også på README-siden i
@@ -1737,6 +1748,8 @@ const PROD_WRITE_ROUTES = {
   '/api/scripts/migrate':         'targetId',
   '/api/queues/migrate':          'targetId',
   '/api/groups/migrate':          'targetId',
+  '/api/schedules/migrate':       'targetId',
+  '/api/schedulegroups/migrate':  'targetId',
   '/api/surveyforms/migrate':     'targetId',
   '/api/divisions/create':        'targetId',
   '/api/prefix/apply':            'envId'
@@ -6430,15 +6443,34 @@ function notMeta(n) {
 // kan ikke afspilles, og Archy afviser flowet med "does not have audio or text
 // to speech for at least one supported language". Svarer listen ikke med
 // ressourcerne, ved vi det ikke, og så regnes den for at findes.
-const promptHasContent = e => !Array.isArray(e?.resources) ||
-  e.resources.some(r => r && (r.mediaUri || r.ttsString || r.text));
-const countsAsExisting = (kind, entity) =>
-  kind === 'prompt' ? promptHasContent(entity)
+//
+// Archy kræver indhold på MINDST ÉT AF FLOWETS SPROG. En prompt med lyd på fx
+// nl-nl alene dur ikke til et flow, der kun taler da-dk og en-gb — så er
+// 'languages' (flowets sprog, små bogstaver) givet, tæller kun de sprog.
+const promptHasContent = (e, languages = null) => !Array.isArray(e?.resources) ||
+  e.resources.some(r => r && (r.mediaUri || r.ttsString || r.text) &&
+    (!languages || !languages.size || languages.has(String(r.language || '').toLowerCase())));
+
+// Sprogene et flow understøtter: nøglerne under «supportedLanguages:».
+function scanSupportedLanguages(yaml) {
+  const out = new Set();
+  let inBlock = false;
+  for (const l of String(yaml).split(/\r?\n/)) {
+    if (/^[ \t]{2}supportedLanguages:[ \t]*$/.test(l)) { inBlock = true; continue; }
+    if (!inBlock) continue;
+    if (/^[ \t]{0,2}\S/.test(l)) break;
+    const m = l.match(/^[ \t]{4}([A-Za-z]{2,3}-[A-Za-z0-9]{2,4}):[ \t]*$/);
+    if (m) out.add(m[1].toLowerCase());
+  }
+  return out;
+}
+const countsAsExisting = (kind, entity, languages = null) =>
+  kind === 'prompt' ? promptHasContent(entity, languages)
   : (!FLOW_KINDS.has(kind) || !!(entity && entity.publishedVersion));
 
 // Hvilke af 'names' findes allerede i org'en? Store lister (758 køer, 350 skills)
 // slås op pr. navn; små lister hentes i ét hug.
-async function lookupExisting(kind, names, token, apiBase) {
+async function lookupExisting(kind, names, token, apiBase, ctx = {}) {
   const found = new Set();
   if (!names.length) return found;
   const H = { headers: { Authorization: `Bearer ${token}` } };
@@ -6503,7 +6535,12 @@ async function lookupExisting(kind, names, token, apiBase) {
   for (const n of names) {
     try {
       const r = await axios.get(`${apiBase}${url}`, { ...H, params: { pageSize: 50, name: n } });
-      if ((r.data.entities || []).some(x => x.name === n && countsAsExisting(kind, x))) found.add(n);
+      let hit = (r.data.entities || []).find(x => x.name === n);
+      // Svarer listen ikke med ressourcerne, hentes promptens egen post — ellers
+      // kan vi ikke se om den har indhold, og "ved ikke" blev læst som "findes".
+      if (hit && kind === 'prompt' && !Array.isArray(hit.resources))
+        hit = (await axios.get(`${apiBase}${url}/${hit.id}`, H)).data;
+      if (hit && countsAsExisting(kind, hit, ctx.languages)) found.add(n);
     } catch (_) { /* uafklaret — tælles som manglende og markeres i rapporten */ }
   }
   return found;
@@ -6993,16 +7030,21 @@ app.post('/api/prompts/migrate', async (req, res) => {
     // Findes den med indhold, er den færdig. En skal uden lyd eller TTS (fx fra en
     // migrering der fejlede midtvejs) fyldes op i stedet — ellers blev den ved med
     // at "findes", og flowet kunne ikke importeres.
-    if (there && promptHasContent(there))
+    // Findes den allerede, kopieres kun de sprog målet mangler indhold på. Er der
+    // intet at tilføje, er den færdig.
+    const harIndhold = r => !!(r && (r.mediaUri || r.ttsString || r.text));
+    const mangler = (src.resources || []).filter(r => harIndhold(r) &&
+      !(there?.resources || []).some(x => x.language === r.language && harIndhold(x)));
+    if (there && !mangler.length)
       return res.status(409).json({ error: 'already_exists', message: `Prompt "${promptName}" findes allerede i ${target.name}` });
 
     const created = there || (await axios.post(`${tgtBase}/api/v2/architect/prompts`,
       { name: src.name, description: src.description || '' }, TJ)).data;
-    if (there) trail.push('· prompten fandtes uden lyd/TTS — udfyldes');
+    if (there) trail.push(`· prompten fandtes — mangler indhold på ${mangler.map(r => r.language).join(', ')}`);
     const haves = new Map((there?.resources || []).map(r => [r.language, r]));
 
     let ok = 0, audioOk = 0, audioFail = 0;
-    for (const r of src.resources || []) {
+    for (const r of (there ? mangler : (src.resources || []))) {
       try {
         const felter = { language: r.language, ttsString: r.ttsString || undefined, text: r.text || undefined };
         const nr = haves.has(r.language)
@@ -7180,6 +7222,95 @@ app.post('/api/groups/migrate', async (req, res) => {
     res.status(500).json({ error: msg, trail });
   }
 });
+
+// ── Åbningstider og åbningstidsgrupper ───────────────────────────────────────
+// En åbningstidsgruppe peger på åbningstider (schedules) med id. Id'erne er
+// forskellige i målet, så gruppen oprettes med målets egne: de åbningstider den
+// bruger findes i målet på navn, og de der mangler oprettes først.
+
+const SCHEDULE_COPY_FIELDS = ['name', 'description', 'start', 'end', 'rrule'];
+const SCHEDULE_GROUP_COPY_FIELDS = ['name', 'description', 'timeZone'];
+const SCHEDULE_GROUP_LISTS = ['openSchedules', 'closedSchedules', 'holidaySchedules'];
+
+const scheduleCreateBody = (full, divisionId) =>
+  ({ ...pickFields(full, SCHEDULE_COPY_FIELDS), ...(divisionId ? { division: { id: divisionId } } : {}) });
+
+// idByName: navn → id i MÅLET. En åbningstid uden id i målet udelades.
+function scheduleGroupCreateBody(full, idByName, divisionId) {
+  const body = pickFields(full, SCHEDULE_GROUP_COPY_FIELDS);
+  for (const l of SCHEDULE_GROUP_LISTS)
+    body[l] = (full[l] || []).map(x => idByName[x.name]).filter(Boolean).map(id => ({ id }));
+  if (divisionId) body.division = { id: divisionId };
+  return body;
+}
+
+// Division i målet med samme navn som i kilden — ellers null (målets standard).
+async function targetDivisionIdByName(tb, tt, name, trail) {
+  if (!name) return null;
+  const divs = await pagedList(tb, '/api/v2/authorization/divisions', tt);
+  const id = (divs.find(d => d.name === name) || {}).id || null;
+  trail.push(id ? `✓ division "${name}"` : `⚠ divisionen "${name}" findes ikke i målet — lægges i målets standarddivision`);
+  return id;
+}
+
+async function listByName(base, url, token, name) {
+  const r = await axios.get(`${base}${url}`, { headers: { Authorization: `Bearer ${token}` }, params: { name, pageSize: 50 } });
+  return (r.data.entities || []).find(x => x.name === name) || null;
+}
+
+// Sikrer at en åbningstid findes i målet. Returnerer id'et dér.
+async function ensureScheduleInTarget(ctx, name, trail) {
+  const there = await listByName(ctx.tb, '/api/v2/architect/schedules', ctx.tt, name);
+  if (there) return there.id;
+  const hit = await listByName(ctx.sb, '/api/v2/architect/schedules', ctx.st, name);
+  if (!hit) { trail.push(`⚠ åbningstiden "${name}" findes ikke i kilden`); return null; }
+  const full = (await axios.get(`${ctx.sb}/api/v2/architect/schedules/${hit.id}`, { headers: { Authorization: `Bearer ${ctx.st}` } })).data;
+  const divisionId = await targetDivisionIdByName(ctx.tb, ctx.tt, full.division && full.division.name, trail);
+  const r = await axios.post(`${ctx.tb}/api/v2/architect/schedules`, scheduleCreateBody(full, divisionId),
+    { headers: { Authorization: `Bearer ${ctx.tt}`, 'Content-Type': 'application/json' } });
+  trail.push(`✓ åbningstid "${name}"`);
+  return r.data.id;
+}
+
+async function migrateScheduleLike(req, res, kind) {
+  const { sourceId, targetId, name } = req.body;
+  const source = loadCustomers().find(c => c.id === sourceId);
+  const target = loadCustomers().find(c => c.id === targetId);
+  if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
+  if (!name) return res.status(400).json({ error: 'name mangler' });
+  const isGroup = kind === 'schedulegroup';
+  const url = isGroup ? '/api/v2/architect/schedulegroups' : '/api/v2/architect/schedules';
+  const label = isGroup ? 'Schedule group' : 'Schedule';
+  const trail = [];
+  try {
+    const { token: st, apiBase: sb } = await getToken(source);
+    const { token: tt, apiBase: tb } = await getToken(target);
+    const ctx = { st, sb, tt, tb };
+    const hit = await listByName(sb, url, st, name);
+    if (!hit) return res.status(400).json({ error: `${label} "${name}" findes ikke i ${source.name}` });
+    if (await listByName(tb, url, tt, name))
+      return res.status(409).json({ error: 'already_exists', message: `${label} "${name}" findes allerede i ${target.name}` });
+    const full = (await axios.get(`${sb}${url}/${hit.id}`, { headers: { Authorization: `Bearer ${st}` } })).data;
+    const divisionId = await targetDivisionIdByName(tb, tt, full.division && full.division.name, trail);
+    let body;
+    if (isGroup) {
+      const idByName = {};
+      for (const l of SCHEDULE_GROUP_LISTS)
+        for (const x of full[l] || []) if (!idByName[x.name]) idByName[x.name] = await ensureScheduleInTarget(ctx, x.name, trail);
+      body = scheduleGroupCreateBody(full, idByName, divisionId);
+    } else body = scheduleCreateBody(full, divisionId);
+    const r = await axios.post(`${tb}${url}`, body, { headers: { Authorization: `Bearer ${tt}`, 'Content-Type': 'application/json' } });
+    trail.push(`✓ ${isGroup ? 'åbningstidsgruppe' : 'åbningstid'} oprettet`);
+    addLog('SUCCESS', `${label} "${name}" created in ${target.name}`, target.name, 'MIGRATE');
+    res.json({ ok: true, id: r.data.id, name, trail });
+  } catch (e) {
+    const msg = describeApiError(e);
+    addLog('ERROR', `Could not create ${label.toLowerCase()} "${name}" in ${target.name}: ${msg}`, target.name, 'MIGRATE');
+    res.status(500).json({ error: msg, trail });
+  }
+}
+app.post('/api/schedules/migrate', (req, res) => migrateScheduleLike(req, res, 'schedule'));
+app.post('/api/schedulegroups/migrate', (req, res) => migrateScheduleLike(req, res, 'schedulegroup'));
 
 // Et script flyttes som helhed: eksportér fra kilden, importér i målet og
 // publicér, hvis det var publiceret i kilden. Et flow peger på den publicerede
@@ -7587,6 +7718,17 @@ function parseArchyOutput(raw) {
     prevBlank = isBlank;
   }
   return result.join('\n').trim();
+}
+
+// Archy afviser en flowtype, målets org ikke har produktet til (fx beskeder/SMS
+// til INBOUNDSHORTMESSAGE). Det kan ikke løses herfra, så beskeden siger hvad
+// der er galt og hvad man kan gøre — i stedet for kun Archys engelske tekst.
+function archyHint(msg) {
+  const m = String(msg || '').match(/the flow type '([a-z]+)' is not available/i);
+  if (!m) return msg;
+  return `${msg}
+  — ${m[1].toUpperCase()} kræver et produkt, mål-org'en ikke har (fx Messaging for SMS/beskeder). ` +
+         `Aktivér det i mål-org'en, eller fjern flowet fra migreringen.`;
 }
 
 const ARCHY_LOG_TAIL = 30; // Max lines shown from Archy error output
@@ -8270,11 +8412,12 @@ app.post('/api/import', async (req, res) => {
 // som alt andet — et common module er bare et flow af typen COMMONMODULE.
 const FLOW_KINDS = new Set(['commonmodule', 'botflow', 'targetflow', 'inqueueflow']);
 // Ressourcer der kopieres hele fra kilden ved navn: user prompts (med lyd) og scripts
-const COPYABLE_KINDS = new Set(['prompt', 'script', 'queue', 'group']);
+const COPYABLE_KINDS = new Set(['prompt', 'script', 'queue', 'group', 'schedule', 'schedulegroup']);
 // Endpoint og navnefelt for hver slags der kopieres ved navn
 const COPY_ENDPOINT = {
   prompt: ['/api/prompts/migrate', 'promptName'], script: ['/api/scripts/migrate', 'scriptName'],
-  queue: ['/api/queues/migrate', 'name'], group: ['/api/groups/migrate', 'name']
+  queue: ['/api/queues/migrate', 'name'], group: ['/api/groups/migrate', 'name'],
+  schedule: ['/api/schedules/migrate', 'name'], schedulegroup: ['/api/schedulegroups/migrate', 'name']
 };
 
 // ── Talesyntese (TTS) ────────────────────────────────────────────────────────
@@ -8466,7 +8609,9 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
 
   // Modulets egne afhængigheder først — ellers fejler dets import af samme
   // grund som flowets ville have gjort.
-  const deps = scanYamlDependencies(fs.readFileSync(filePath, 'utf8'));
+  const depYaml = fs.readFileSync(filePath, 'utf8');
+  const deps = scanYamlDependencies(depYaml);
+  const ctx = { languages: scanSupportedLanguages(depYaml) };
   const { token: tgtToken, apiBase: tgtBase } = await getToken(target);
 
   // 1) Tabeller, data actions, prompts og scripts modulet bruger
@@ -8481,7 +8626,7 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
     // ser en tabel i prod (samme org) ud som om den allerede var i dev.
     const wanted = names.map(n => depNameIn(kind, n, target, source));
     let existing;
-    try { existing = await lookupExisting(kind, wanted, tgtToken, tgtBase); }
+    try { existing = await lookupExisting(kind, wanted, tgtToken, tgtBase, ctx); }
     catch (e) {
       const besked = `Could not look up ${kind} in "${target.name}": ${describeApiError(e)}`;
       trail.push(`✗ ${besked}`);
@@ -8540,7 +8685,7 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
     // migrerer vi ikke oveni i blinde.
     const wanted = names.map(n => depNameIn(kind, n, target, source));
     let existing;
-    try { existing = await lookupExisting(kind, wanted, tgtToken, tgtBase); }
+    try { existing = await lookupExisting(kind, wanted, tgtToken, tgtBase, ctx); }
     catch (e) {
       const besked = `Could not look up ${kind} in "${target.name}": ${describeApiError(e)}`;
       trail.push(`✗ ${besked}`);
@@ -8634,7 +8779,7 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
     return { ok: true };
   } catch (e) {
     if (/already exists/i.test(e.message || '')) return { ok: true, skipped: 'exists' };
-    return { ok: false, error: e.message };
+    return { ok: false, error: archyHint(e.message) };
   } finally {
     if (importFile !== filePath) { try { fs.unlinkSync(importFile); } catch (_) {} }
   }
@@ -8849,6 +8994,7 @@ async function analyzeFlowForMigration(source, target, flowName, flowType, kilde
     addLog('SUCCESS', `Export ok: ${yamlFile}`, source.name, 'MIGRATE');
 
     const deps = scanYamlDependencies(yaml);
+    const ctx = { languages: scanSupportedLanguages(yaml) };
     const { token: tgtToken, apiBase: tgtBase } = await getToken(target);
 
     // Kilde-opslag bruges kun til at finde id'er på det der kan auto-migreres
@@ -8865,7 +9011,7 @@ async function analyzeFlowForMigration(source, target, flowName, flowType, kilde
       const wanted = names.map(n => depNameIn(kind, n, target, source));
       let existing;
       try {
-        existing = await lookupExisting(kind, wanted, tgtToken, tgtBase);
+        existing = await lookupExisting(kind, wanted, tgtToken, tgtBase, ctx);
       } catch (e) {
         // Kunne målet ikke læses (fx et manglende scope på OAuth-klienten), ved
         // vi ikke om ressourcen mangler. Før blev den regnet for manglende og
@@ -8934,7 +9080,7 @@ async function analyzeFlowForMigration(source, target, flowName, flowType, kilde
       const names = results.filter(r => r.kind === kind && !r.ok).map(r => r.name);
       if (!names.length) continue;
       const { token: srcToken, apiBase: srcBase } = await getToken(source);
-      try { inSource[kind] = await lookupExisting(kind, names, srcToken, srcBase); }
+      try { inSource[kind] = await lookupExisting(kind, names, srcToken, srcBase, ctx); }
       catch (e) {
         const checkError = describeApiError(e);
         addLog('WARN', `Could not look up ${kind} in ${source.name}: ${checkError}`, source.name, 'MIGRATE');
@@ -9384,6 +9530,7 @@ app.post('/api/migrate/commit', async (req, res) => {
     if (/already exists/i.test(msg) && (action || 'create') === 'create') {
       msg += ' — vælg "update" eller "publish" i Handling for at overskrive det eksisterende flow.';
     }
+    msg = archyHint(msg);
     addLog('ERROR', `Migration failed for "${flowName}": ${msg}`, target.name, 'MIGRATE');
     res.status(500).json({ error: msg });
   }
@@ -9597,6 +9744,67 @@ const PORT = process.env.PORT || 3737;
 // adgangskontrol foran. Sæt HOST hvis den bevidst skal nås udefra.
 const HOST = process.env.HOST || '127.0.0.1';
 
+// ── Genstart af sig selv ved en opdatering ──────────────────────────────────
+// Ændres server.js eller package.json på disken (git pull, en ny version), starter
+// serveren sig selv op igen — man skal ikke køre start.bat. Logins huskes på
+// tværs af en genstart, så ingen skal logge ind igen.
+//
+// Tre sikkerheder: koden skal kunne parses (en halvt gemt fil må ikke tage
+// serveren ned), der må ikke køre en skrivning (en migrering må ikke dræbes
+// midtvejs — den afventer), og den nye proces overtager de samme logfiler.
+// Slås fra med ARCHY_NO_AUTORESTART=1.
+function watchForUpdates(httpServer, { intervalMs = 2000, maxWaitMs = 15 * 60 * 1000 } = {}) {
+  if (process.env.ARCHY_NO_AUTORESTART) return;
+  const files = ['server.js', 'package.json'].map(f => path.join(__dirname, f));
+  const stamp = f => { try { const st = fs.statSync(f); return `${st.mtimeMs}:${st.size}`; } catch (_) { return ''; } };
+  const seen = new Map(files.map(f => [f, stamp(f)]));
+  let pending = false;
+
+  const restart = () => {
+    addLog('INFO', 'Update on disk — restarting the server', null, 'SYSTEM');
+    httpServer.close(() => {
+      try {
+        const out = fs.openSync(path.join(__dirname, 'server.log'), 'a');
+        const err = fs.openSync(path.join(__dirname, 'server.err.log'), 'a');
+        const child = require('child_process').spawn(process.execPath,
+          [...process.execArgv, ...process.argv.slice(1)],
+          { cwd: process.cwd(), env: process.env, detached: true, windowsHide: true, stdio: ['ignore', out, err] });
+        child.unref();
+      } catch (e) { console.error('Could not restart:', e.message); }
+      process.exit(0);
+    });
+    if (httpServer.closeAllConnections) httpServer.closeAllConnections();
+  };
+
+  const tryRestart = (waited = 0) => {
+    if (inflightWrites > 0 && waited < maxWaitMs) return setTimeout(() => tryRestart(waited + intervalMs), intervalMs);
+    restart();
+  };
+
+  setInterval(() => {
+    if (pending) return;
+    if (!files.some(f => stamp(f) !== seen.get(f))) return;
+    pending = true;
+    // Vent til filen er skrevet færdig, og tjek at den kan parses
+    setTimeout(() => {
+      require('child_process').execFile(process.execPath, ['--check', files[0]], (e) => {
+        for (const f of files) seen.set(f, stamp(f));
+        pending = false;
+        if (e) return addLog('WARN', `server.js changed but does not parse — not restarting: ${String(e.message).slice(0, 200)}`, null, 'SYSTEM');
+        tryRestart();
+      });
+    }, 1500);
+  }, intervalMs).unref();
+}
+
+// Den nye proces kan nå at starte før den gamle har sluppet porten
+function retryOnPortBusy(httpServer, tries = 20) {
+  httpServer.on('error', (e) => {
+    if (e.code === 'EADDRINUSE' && tries-- > 0) setTimeout(() => httpServer.listen(PORT, HOST), 500);
+    else throw e;
+  });
+}
+
 // Kun når filen KØRES. Bliver den i stedet indlæst med require — det gør
 // testene — må den hverken lytte på porten eller sætte et døgn-interval i gang;
 // så ville `node --test` aldrig afslutte af sig selv.
@@ -9606,13 +9814,15 @@ if (require.main === module) {
   saveSessions();      // rydder det der er udløbet
   setInterval(saveSessions, 60 * 1000).unref();
   if (huskede) setTimeout(() => addLog('INFO', `${huskede} login(s) from the last session restored — no new login needed`, null, 'SYSTEM'), 0);
-  app.listen(PORT, HOST, () => {
+  const httpServer = app.listen(PORT, HOST, () => {
     console.log(`Archy GUI running on http://${HOST === '127.0.0.1' ? 'localhost' : HOST}:${PORT}`);
+    watchForUpdates(httpServer);
     addLog('INFO', `Archy GUI started on ${HOST}:${PORT}`, null, 'SYSTEM');
     // Check for updates on startup, then once every 24 hours
     checkForUpdate();
     setInterval(checkForUpdate, 24 * 60 * 60 * 1000);
   });
+  retryOnPortBusy(httpServer);
 }
 
 // ── Til testene ──────────────────────────────────────────────────────────────
@@ -9621,7 +9831,7 @@ if (require.main === module) {
 // eneste der kan efterprøves uden en rigtig org. Se test/*.test.js.
 module.exports = {
   logLevelFor,
-  nodeSecurityStatus, countsAsExisting, scanTtsEngines, missingTtsEngines, replaceTtsEngines, applyClientScopes, dropRejectedLogin, flowOwnDivision, divisionProblem, appsBaseOf, COPYABLE_KINDS, identicalInTarget, promptHasContent, queueCreateBody, groupCreateBody, credentialChangeError, forgetLogin, keepsOrgOnClientChange,
+  nodeSecurityStatus, countsAsExisting, scanTtsEngines, missingTtsEngines, replaceTtsEngines, applyClientScopes, dropRejectedLogin, flowOwnDivision, divisionProblem, appsBaseOf, COPYABLE_KINDS, archyHint, scheduleCreateBody, scheduleGroupCreateBody, scanSupportedLanguages, watchForUpdates, identicalInTarget, promptHasContent, queueCreateBody, groupCreateBody, credentialChangeError, forgetLogin, keepsOrgOnClientChange,
   sanitizeDatatableSchema, mapRoleDivisions, buildOauthClientBody, buildRolePolicies, missingRolesFor, missingDivisionsFor,
   app, tokenStore, getToken, loadSessions, saveSessions, setSessionPersist, SESSION_FILE,
   // konventioner

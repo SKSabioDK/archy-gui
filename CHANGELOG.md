@@ -5,6 +5,59 @@
 
 ---
 
+### v1.64.0
+---
+**🇩🇰 Dansk**
+
+- **Åbningstidsgrupper og åbningstider migreres automatisk.** Et flow, der bruger en åbningstidsgruppe (*Check Schedule* / *Schedule Group*) eller en enkelt åbningstid, der mangler i målet, tilbyder nu at oprette den — før stod den som *opret i mål-org først*. Også for common modules og in-queue-flows.
+- **Gruppen får målets egne åbningstider.** Id'er er forskellige mellem org'er, så de åbningstider gruppen bruger (åbent, lukket, helligdage) slås op i målet på navn, og dem der mangler oprettes først. Tidszone, beskrivelse og reglerne (start, slut, gentagelse) kopieres; divisionen følger med, hvis målet har en med samme navn, ellers målets standard.
+- Kræver `architect:schedule:add` og `architect:scheduleGroup:add` på mål-klienten. Prod-vagten gælder for begge ruter.
+- Nødgrupper (emergency groups) er ikke med.
+- **En flowtype målet ikke har produktet til forklares.** *the flow type 'inboundshortmessage' is not available* betyder, at mål-org'en mangler det produkt, typen kræver (fx Messaging). Beskeden siger det og hvad man kan gøre; det kan ikke løses herfra.
+- 2 nye tests; en eksisterende tilpasset.
+
+**🇬🇧 English**
+- **Schedule groups and schedules are migrated automatically.** A flow that uses a schedule group (*Check Schedule* / *Schedule Group*) or a single schedule that is missing in the target now offers to create it — it used to show as *create in the target org first*. For common modules and in-queue flows too.
+- **The group gets the target's own schedules.** Ids differ between orgs, so the schedules the group uses (open, closed, holiday) are looked up in the target by name, and any that are missing are created first. Time zone, description and the rules (start, end, recurrence) are copied; the division follows if the target has one with the same name, otherwise the target's default.
+- Needs `architect:schedule:add` and `architect:scheduleGroup:add` on the target client. The prod guard covers both routes.
+- Emergency groups are not included.
+- **A flow type the target has no product for is explained.** *the flow type 'inboundshortmessage' is not available* means the target org lacks the product the type needs (e.g. Messaging). The message says so and what to do; it cannot be fixed from here.
+- 2 new tests; one existing one adjusted.
+
+---
+
+### v1.63.1
+---
+**🇩🇰 Dansk**
+
+- **En prompt skal have indhold på et af flowets sprog.** SelfService Menu06_UK fejlede stadig med *'P1435' does not have audio or text to speech for at least one supported language*, selvom tjekket sagde "alle afhængigheder findes". Archy kræver lyd eller TTS på **mindst ét af flowets sprog** (her ca-es, da-dk, de-de, en-gb, en-us, es-es); v1.61.1 kiggede kun efter indhold på *et hvilket som helst* sprog. Nu læses flowets sprog fra YAML'en, og en prompt, der kun har indhold på andre sprog, regnes for manglende.
+- **Migrér prompt fylder kun det op, målet mangler.** Findes prompten, kopieres de sprog fra kilden, målet ikke har indhold på; har målet allerede alt, er den færdig. Lyd uploades som før.
+- Fundet i Archys debug-log. En ny test.
+
+**🇬🇧 English**
+- **A prompt must have content in one of the flow's languages.** SelfService Menu06_UK still failed with *'P1435' does not have audio or text to speech for at least one supported language*, although the check said all dependencies exist. Archy requires audio or TTS in **at least one of the flow's languages** (here ca-es, da-dk, de-de, en-gb, en-us, es-es); v1.61.1 only looked for content in *any* language. The flow's languages are now read from the YAML, and a prompt with content only in other languages counts as missing.
+- **Migrate prompt only fills in what the target lacks.** If the prompt exists, the languages from the source that the target has no content for are copied; if the target already has everything, it is done. Audio is uploaded as before.
+- Found in Archy's debug log. One new test.
+
+---
+
+### v1.63.0
+---
+**🇩🇰 Dansk**
+
+- **Serveren genstarter sig selv ved en opdatering.** Ændres `server.js` eller `package.json` på disken (git pull, ny version), starter den op igen uden `start.bat`. Den **venter, hvis en migrering eller anden skrivning kører**, tjekker først at koden kan parses (en halvt gemt fil tager ikke serveren ned), og den nye proces overtager logfilerne. Logins huskes, så ingen skal logge ind igen.
+- **Browseren tilbyder en genindlæsning**, når serverens version skifter — et banner med *Genindlæs siden*. Aldrig automatisk, for der kan køre en migrering i vinduet.
+- Slås fra med `ARCHY_NO_AUTORESTART=1`. **Første gang** skal serveren stadig startes med `start.bat`, så den får funktionen.
+- En ny test.
+
+**🇬🇧 English**
+- **The server restarts itself on an update.** If `server.js` or `package.json` changes on disk (git pull, new version), it starts again without `start.bat`. It **waits if a migration or other write is running**, first checks that the code parses (a half-saved file does not take the server down), and the new process takes over the log files. Logins are remembered, so nobody has to sign in again.
+- **The browser offers a reload** when the server's version changes — a banner with *Reload the page*. Never automatic, since a migration may be running in the window.
+- Turn off with `ARCHY_NO_AUTORESTART=1`. **The first time**, the server still has to be started with `start.bat` to get the feature.
+- One new test.
+
+---
+
 ### v1.62.0
 ---
 **🇩🇰 Dansk**
