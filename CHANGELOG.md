@@ -5,6 +5,25 @@
 
 ---
 
+### v1.66.0
+---
+**🇩🇰 Dansk**
+
+- **Flow Browser viser hvad der allerede er i mål-org'en.** Vælges en org under *Sammenlign mod org*, får tabellen en kolonne **I mål**: *findes* (med målets version) eller *mangler i mål*. Det er ét kald mod målets flowliste, så det er med det samme — og flows med miljøpræfiks (DEV_ ↔ intet) findes under målets navn.
+- **Tjek indhold** sammenligner selve indholdet pr. flow (samme sammenligning som pipelinen: præfiks og division ses bort fra) og skriver *✓ identisk* eller *⚠ N forskelle* i kolonnen. Klik på resultatet for at se forskellene. Kan stoppes undervejs; over 40 flows spørges der først.
+- **Indsæt liste** afgrænser tabellen til de flows på en liste (samme læsning som på Migrer Flow, inkl. «(latest …)»). Over tabellen står en optælling — identiske, forskellige, mangler i mål, ikke tjekket — og de navne på listen, der ikke findes i kilden. Det er tjekket af, at alt er migreret, uden at pipelinen er sat op.
+- Sammenligningen (`/api/flows/compare`) bruger nu målets navn, når miljøerne har hvert sit præfiks; før søgte den efter kildens navn i målet og meldte «findes ikke».
+- Listelæsningen er fælles for Migrer Flow og Flow Browser. 2 nye tests, 1 tilpasset.
+
+**🇬🇧 English**
+- **Flow Browser shows what is already in the target org.** If an org is chosen under *Compare against org*, the table gets an **In target** column: *exists* (with the target's version) or *missing in target*. It is a single call to the target's flow list, so it is instant — and flows with an environment prefix (DEV_ ↔ none) are found under the target's name.
+- **Check content** compares the actual content per flow (same comparison as the pipeline: prefix and division are ignored) and writes *✓ identical* or *⚠ N differences* in the column. Click the result to see the differences. Can be stopped midway; above 40 flows it asks first.
+- **Paste list** limits the table to the flows on a list (read the same way as on Migrate Flow, incl. "(latest …)"). Above the table is a count — identical, different, missing in target, not checked — and the names on the list that do not exist in the source. It is the check that everything has been migrated, without the pipeline being set up.
+- The comparison (`/api/flows/compare`) now uses the target's name when the environments have different prefixes; before, it looked for the source's name in the target and reported "does not exist".
+- The list parsing is shared between Migrate Flow and Flow Browser. 2 new tests, 1 adjusted.
+
+---
+
 ### v1.65.2
 ---
 **🇩🇰 Dansk**

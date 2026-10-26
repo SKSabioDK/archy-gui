@@ -6274,12 +6274,14 @@ app.post('/api/flows/compare', async (req, res) => {
   const source = loadCustomers().find(c => c.id === sourceId);
   const target = loadCustomers().find(c => c.id === targetId);
   if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
+  // Flowet hedder noget andet i et miljø med præfiks (DEV_Main ↔ Main)
+  const tName = req.body.targetName || targetFlowName(flowName, source, target);
 
   try {
     let src, tgt, missingInTarget = false;
     src = await exportFlowToYaml(source, flowName, flowType);
     try {
-      tgt = await exportFlowToYaml(target, flowName, flowType);
+      tgt = await exportFlowToYaml(target, tName, flowType);
     } catch (e) {
       if (/does not exist/i.test(e.message || '')) missingInTarget = true;
       else throw e;
@@ -6288,7 +6290,7 @@ app.post('/api/flows/compare', async (req, res) => {
     // Publiceringsoplysninger — hentes uafhængigt af indholdssammenligningen
     const [srcPub, tgtPub] = await Promise.all([
       getFlowPublishInfo(source, flowName, flowType).catch(() => null),
-      missingInTarget ? Promise.resolve(null) : getFlowPublishInfo(target, flowName, flowType).catch(() => null)
+      missingInTarget ? Promise.resolve(null) : getFlowPublishInfo(target, tName, flowType).catch(() => null)
     ]);
 
     if (missingInTarget) {
@@ -6296,7 +6298,10 @@ app.post('/api/flows/compare', async (req, res) => {
         sourceVersion: src.version, sourceHash: flowContentHash(src.yaml), srcPub });
     }
 
-    const nsrc = normalizeFlowYaml(src.yaml), ntgt = normalizeFlowYaml(tgt.yaml);
+    // Miljøpræfiks og division normaliseres væk på begge sider — samme regel som
+    // hashen og pipelinen, så DEV_Main og Main kan kendes som samme flow.
+    const nsrc = normalizeFlowYaml(stripEnvPrefixesInYaml(src.yaml, source)),
+          ntgt = normalizeFlowYaml(stripEnvPrefixesInYaml(tgt.yaml, target));
     const same = nsrc === ntgt;
 
     // Første håndfuld reelle forskelle, så man kan se hvad der adskiller dem

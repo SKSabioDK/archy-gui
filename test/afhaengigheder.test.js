@@ -207,7 +207,7 @@ test('en flowtype målets org ikke har produktet til, forklares', () => {
 
 test('en indsat liste med flownavne vælger flowene — også med «(latest …)» bagpå', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-  const fn = html.slice(html.indexOf('function applyMigratePaste()'), html.indexOf('function selectAllMigrateFlows()'));
+  const fn = html.slice(html.indexOf('function matchFlowList('), html.indexOf('function selectAllMigrateFlows()'));
   const names = ['Main_25', 'Ecall'];
   const flows = names.map((n, k) => ({ id: k, name: n, type: 'INBOUNDCALL' }));
   const valgt = new Set(), el = { value: 'Main_25 (latest Main_[version])\r\nEcall\nIkke her', style: {}, textContent: '', checked: false };
@@ -259,4 +259,14 @@ test('alle processer serveren starter skjules — ellers åbner en selv-genstart
   assert.ok(kald.length >= 4, 'fandt ikke exec-kaldene');
   for (const k of kald) assert.ok(k[0].includes('windowsHide: true'), `mangler windowsHide: ${k[0].slice(0, 80)}`);
   assert.ok(SERVER.includes("detached: true, windowsHide: true"));
+});
+
+test('Flow Browser viser hvad der er i målet, og sammenligningen tager præfikset med', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  for (const f of ['onFbCompareChange', 'fbCheckContent', 'applyFbList', 'fbTargetName', 'matchFlowList'])
+    assert.ok(html.includes(`function ${f}(`) || html.includes(`async function ${f}(`), f);
+  assert.ok(html.includes('targetName: fbTargetName(f)'));
+  const cmp = SERVER.slice(SERVER.indexOf("app.post('/api/flows/compare'"), SERVER.indexOf('const sourceHash = flowContentHash(src.yaml, source);'));
+  assert.ok(cmp.includes('targetFlowName(flowName, source, target)') && cmp.includes('exportFlowToYaml(target, tName'));
+  assert.ok(cmp.includes('stripEnvPrefixesInYaml(src.yaml, source)') && cmp.includes('stripEnvPrefixesInYaml(tgt.yaml, target)'));
 });

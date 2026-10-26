@@ -533,7 +533,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.65.2 · Archy GUI</div>
+    <div class="version" id="app-version">v1.66.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -718,7 +718,7 @@
           </div>
           <div style="flex:1">
             <label data-i18n="cmp_against">Sammenlign mod org (valgfrit)</label>
-            <select id="fb-compare" onchange="applyFlowFilter()"></select>
+            <select id="fb-compare" onchange="onFbCompareChange()"></select>
           </div>
           <button class="btn btn-secondary" onclick="setBaseline()" id="fb-baseline-btn" data-i18n="fb_baseline">📌 Sæt nulpunkt</button>
           <button class="btn btn-secondary" onclick="loadFlows()" data-i18n="btn_reload">🔄 Genindlæs</button>
@@ -729,16 +729,29 @@
       <div class="card" id="flowTableCard" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <div class="card-title" style="margin:0">FLOWS (<span id="flowCount">0</span>)</div>
-          <div style="display:flex;gap:8px">
+          <div style="display:flex;gap:8px;align-items:center">
+            <span id="fb-cmp-tools" style="display:none;gap:8px;align-items:center">
+              <button class="btn btn-secondary btn-sm" onclick="toggleFbPaste()" data-i18n="fbc_paste_link">📋 Indsæt liste</button>
+              <button class="btn btn-secondary btn-sm" id="fb-check-btn" onclick="fbCheckContent()" data-i18n="fbc_check_btn">🔍 Tjek indhold</button>
+            </span>
             <select id="fb-type-filter" style="width:170px" onchange="applyFlowFilter()">
               <option value="" data-i18n="fb_all_types">Alle typer</option>
             </select>
             <input id="fb-search" style="width:220px" data-i18n-placeholder="ph_search_flow" placeholder="🔍  Søg flow…" oninput="applyFlowFilter()" />
           </div>
         </div>
+        <div id="fb-paste-box" style="display:none;margin-bottom:12px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px" data-i18n="paste_list_hint">Ét flownavn pr. linje.</div>
+          <textarea id="fb-paste-text" rows="8" style="width:100%;font-family:var(--mono);font-size:12px" spellcheck="false"></textarea>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+            <button class="btn btn-primary btn-sm" onclick="applyFbList()" data-i18n="fbc_apply_list">Vis kun disse</button>
+            <button class="btn btn-secondary btn-sm" onclick="clearFbList()" data-i18n="fbc_clear_list">Fjern listen</button>
+          </div>
+        </div>
+        <div id="fb-cmp-summary" style="display:none;font-size:12px;margin-bottom:12px"></div>
         <table class="flow-table">
           <thead><tr>
-            <th data-i18n="col_name">Navn</th><th data-i18n="col_type">Type</th><th data-i18n="col_status">Status</th><th data-i18n="col_version">Version</th><th data-i18n="col_action">Handling</th>
+            <th data-i18n="col_name">Navn</th><th data-i18n="col_type">Type</th><th data-i18n="col_status">Status</th><th data-i18n="col_version">Version</th><th id="fb-th-target" style="display:none" data-i18n="col_in_target">I mål</th><th data-i18n="col_action">Handling</th>
           </tr></thead>
           <tbody id="flowTableBody"></tbody>
         </table>
@@ -2081,7 +2094,7 @@ const LANGS = {
     pl_no_groups:'Ingen grupper endnu. Sæt kunde, gruppe og trin på miljøerne under Kunder.',
     pl_search:'🔍  Filtrér flows…',
     pl_only_gaps:'Kun dem der mangler i et senere trin',
-    migrate_only_selected:'Vis kun valgte', migrate_none_selected:'Ingen flows valgt endnu — klik på dem du vil migrere.', migrate_done_badge:'✓ migreret', paste_list_link:'Indsæt liste', retry_msg:'prøver igen', paste_list_hint:'Ét flownavn pr. linje. Tekst i parentes til sidst (fx «(latest …)») ignoreres, hvis hele linjen ikke findes.', paste_list_apply:'Vælg disse flows', paste_list_result:'{n} fundet og valgt, {m} ikke fundet', skip_identical_label:'Spring flows over, der allerede er identiske i målet', reload_available:'En ny version er startet', reload_now:'Genindlæs siden', identical_skipped:'identisk med målet — springes over',
+    migrate_only_selected:'Vis kun valgte', migrate_none_selected:'Ingen flows valgt endnu — klik på dem du vil migrere.', migrate_done_badge:'✓ migreret', paste_list_link:'Indsæt liste', retry_msg:'prøver igen', col_in_target:'I mål', fbc_paste_link:'📋 Indsæt liste', fbc_check_btn:'🔍 Tjek indhold', fbc_apply_list:'Vis kun disse', fbc_clear_list:'Fjern listen', fbc_missing:'mangler i mål', fbc_there:'findes', fbc_identical:'identisk', fbc_diff:'{n} forskelle', fbc_differ:'forskellige', fbc_unchecked:'ikke tjekket', fbc_failed:'kunne ikke tjekkes', fbc_not_in_source:'på listen, men ikke i kilden', fbc_stop:'Stop', fbc_many:'Indholdet af {n} flows sammenlignes — det kan tage et par minutter. Fortsæt?', paste_list_hint:'Ét flownavn pr. linje. Tekst i parentes til sidst (fx «(latest …)») ignoreres, hvis hele linjen ikke findes.', paste_list_apply:'Vælg disse flows', paste_list_result:'{n} fundet og valgt, {m} ikke fundet', skip_identical_label:'Spring flows over, der allerede er identiske i målet', reload_available:'En ny version er startet', reload_now:'Genindlæs siden', identical_skipped:'identisk med målet — springes over',
     migrate_no_match:'Ingen flows passer til filteret.',
     pl_flow:'FLOW',
     pl_missing:'mangler',
@@ -3129,7 +3142,7 @@ const LANGS = {
     pl_no_groups:'No groups yet. Set customer, group and stage on the environments under Customers.',
     pl_search:'🔍  Filter flows…',
     pl_only_gaps:'Only those missing in a later stage',
-    migrate_only_selected:'Show only selected', migrate_none_selected:'No flows selected yet — click the ones you want to migrate.', migrate_done_badge:'✓ migrated', paste_list_link:'Paste list', retry_msg:'retrying', paste_list_hint:'One flow name per line. A trailing parenthesis (e.g. "(latest …)") is ignored if the whole line is not found.', paste_list_apply:'Select these flows', paste_list_result:'{n} found and selected, {m} not found', skip_identical_label:'Skip flows that are already identical in the target', reload_available:'A new version has started', reload_now:'Reload the page', identical_skipped:'identical to the target — skipped',
+    migrate_only_selected:'Show only selected', migrate_none_selected:'No flows selected yet — click the ones you want to migrate.', migrate_done_badge:'✓ migrated', paste_list_link:'Paste list', retry_msg:'retrying', col_in_target:'In target', fbc_paste_link:'📋 Paste list', fbc_check_btn:'🔍 Check content', fbc_apply_list:'Show only these', fbc_clear_list:'Clear the list', fbc_missing:'missing in target', fbc_there:'exists', fbc_identical:'identical', fbc_diff:'{n} differences', fbc_differ:'different', fbc_unchecked:'not checked', fbc_failed:'could not be checked', fbc_not_in_source:'on the list but not in the source', fbc_stop:'Stop', fbc_many:'The content of {n} flows will be compared — this may take a few minutes. Continue?', paste_list_hint:'One flow name per line. A trailing parenthesis (e.g. "(latest …)") is ignored if the whole line is not found.', paste_list_apply:'Select these flows', paste_list_result:'{n} found and selected, {m} not found', skip_identical_label:'Skip flows that are already identical in the target', reload_available:'A new version has started', reload_now:'Reload the page', identical_skipped:'identical to the target — skipped',
     migrate_no_match:'No flows match the filter.',
     pl_flow:'FLOW',
     pl_missing:'missing',
@@ -4177,7 +4190,7 @@ const LANGS = {
     pl_no_groups:'Aucun groupe. Renseignez client, groupe et étape sur les environnements sous Clients.',
     pl_search:'🔍  Filtrer les flows…',
     pl_only_gaps:'Uniquement ceux absents d\'une étape ultérieure',
-    migrate_only_selected:'Afficher uniquement la sélection', migrate_none_selected:'Aucun flow sélectionné — cliquez sur ceux à migrer.', migrate_done_badge:'✓ migré', paste_list_link:'Coller une liste', retry_msg:'nouvel essai', paste_list_hint:'Un nom de flow par ligne. Une parenthèse finale est ignorée si la ligne entière est introuvable.', paste_list_apply:'Sélectionner ces flows', paste_list_result:'{n} trouvés et sélectionnés, {m} introuvables', skip_identical_label:'Ignorer les flows déjà identiques dans la cible', reload_available:'Une nouvelle version a démarré', reload_now:'Recharger la page', identical_skipped:'identique à la cible — ignoré',
+    migrate_only_selected:'Afficher uniquement la sélection', migrate_none_selected:'Aucun flow sélectionné — cliquez sur ceux à migrer.', migrate_done_badge:'✓ migré', paste_list_link:'Coller une liste', retry_msg:'nouvel essai', col_in_target:'Dans la cible', fbc_paste_link:'📋 Coller une liste', fbc_check_btn:'🔍 Vérifier le contenu', fbc_apply_list:'Afficher seulement ceux-ci', fbc_clear_list:'Effacer la liste', fbc_missing:'absent de la cible', fbc_there:'existe', fbc_identical:'identique', fbc_diff:'{n} différences', fbc_differ:'différents', fbc_unchecked:'non vérifié', fbc_failed:'vérification impossible', fbc_not_in_source:'dans la liste mais pas dans la source', fbc_stop:'Arrêter', fbc_many:'Le contenu de {n} flows sera comparé — cela peut prendre quelques minutes. Continuer ?', paste_list_hint:'Un nom de flow par ligne. Une parenthèse finale est ignorée si la ligne entière est introuvable.', paste_list_apply:'Sélectionner ces flows', paste_list_result:'{n} trouvés et sélectionnés, {m} introuvables', skip_identical_label:'Ignorer les flows déjà identiques dans la cible', reload_available:'Une nouvelle version a démarré', reload_now:'Recharger la page', identical_skipped:'identique à la cible — ignoré',
     migrate_no_match:'Aucun flow ne correspond au filtre.',
     pl_flow:'FLOW',
     pl_missing:'absent',
@@ -5225,7 +5238,7 @@ const LANGS = {
     pl_no_groups:'Nog geen groepen. Stel klant, groep en fase in bij de omgevingen onder Klanten.',
     pl_search:'🔍  Flows filteren…',
     pl_only_gaps:'Alleen die ontbreken in een latere fase',
-    migrate_only_selected:'Alleen geselecteerde tonen', migrate_none_selected:'Nog geen flows geselecteerd — klik op wat je wilt migreren.', migrate_done_badge:'✓ gemigreerd', paste_list_link:'Lijst plakken', retry_msg:'opnieuw proberen', paste_list_hint:'Eén flownaam per regel. Een afsluitend haakje wordt genegeerd als de hele regel niet gevonden wordt.', paste_list_apply:'Deze flows selecteren', paste_list_result:'{n} gevonden en geselecteerd, {m} niet gevonden', skip_identical_label:'Flows overslaan die al identiek zijn in het doel', reload_available:'Er is een nieuwe versie gestart', reload_now:'Pagina herladen', identical_skipped:'identiek aan het doel — overgeslagen',
+    migrate_only_selected:'Alleen geselecteerde tonen', migrate_none_selected:'Nog geen flows geselecteerd — klik op wat je wilt migreren.', migrate_done_badge:'✓ gemigreerd', paste_list_link:'Lijst plakken', retry_msg:'opnieuw proberen', col_in_target:'In doel', fbc_paste_link:'📋 Lijst plakken', fbc_check_btn:'🔍 Inhoud controleren', fbc_apply_list:'Alleen deze tonen', fbc_clear_list:'Lijst wissen', fbc_missing:'ontbreekt in doel', fbc_there:'bestaat', fbc_identical:'identiek', fbc_diff:'{n} verschillen', fbc_differ:'verschillend', fbc_unchecked:'niet gecontroleerd', fbc_failed:'kon niet worden gecontroleerd', fbc_not_in_source:'op de lijst maar niet in de bron', fbc_stop:'Stop', fbc_many:'De inhoud van {n} flows wordt vergeleken — dit kan enkele minuten duren. Doorgaan?', paste_list_hint:'Eén flownaam per regel. Een afsluitend haakje wordt genegeerd als de hele regel niet gevonden wordt.', paste_list_apply:'Deze flows selecteren', paste_list_result:'{n} gevonden en geselecteerd, {m} niet gevonden', skip_identical_label:'Flows overslaan die al identiek zijn in het doel', reload_available:'Er is een nieuwe versie gestart', reload_now:'Pagina herladen', identical_skipped:'identiek aan het doel — overgeslagen',
     migrate_no_match:'Geen flows voldoen aan het filter.',
     pl_flow:'FLOW',
     pl_missing:'ontbreekt',
@@ -6273,7 +6286,7 @@ const LANGS = {
     pl_no_groups:'Aún no hay grupos. Defina cliente, grupo y etapa en los entornos en Clientes.',
     pl_search:'🔍  Filtrar flows…',
     pl_only_gaps:'Solo los que faltan en una etapa posterior',
-    migrate_only_selected:'Mostrar solo lo seleccionado', migrate_none_selected:'Ningún flow seleccionado todavía: haga clic en los que quiera migrar.', migrate_done_badge:'✓ migrado', paste_list_link:'Pegar lista', retry_msg:'reintentando', paste_list_hint:'Un nombre de flow por línea. Un paréntesis final se ignora si no se encuentra la línea completa.', paste_list_apply:'Seleccionar estos flows', paste_list_result:'{n} encontrados y seleccionados, {m} no encontrados', skip_identical_label:'Omitir los flows que ya son idénticos en el destino', reload_available:'Se ha iniciado una nueva versión', reload_now:'Recargar la página', identical_skipped:'idéntico al destino — omitido',
+    migrate_only_selected:'Mostrar solo lo seleccionado', migrate_none_selected:'Ningún flow seleccionado todavía: haga clic en los que quiera migrar.', migrate_done_badge:'✓ migrado', paste_list_link:'Pegar lista', retry_msg:'reintentando', col_in_target:'En destino', fbc_paste_link:'📋 Pegar lista', fbc_check_btn:'🔍 Comprobar contenido', fbc_apply_list:'Mostrar solo estos', fbc_clear_list:'Borrar la lista', fbc_missing:'falta en destino', fbc_there:'existe', fbc_identical:'idéntico', fbc_diff:'{n} diferencias', fbc_differ:'diferentes', fbc_unchecked:'sin comprobar', fbc_failed:'no se pudo comprobar', fbc_not_in_source:'en la lista pero no en el origen', fbc_stop:'Parar', fbc_many:'Se comparará el contenido de {n} flows; puede tardar unos minutos. ¿Continuar?', paste_list_hint:'Un nombre de flow por línea. Un paréntesis final se ignora si no se encuentra la línea completa.', paste_list_apply:'Seleccionar estos flows', paste_list_result:'{n} encontrados y seleccionados, {m} no encontrados', skip_identical_label:'Omitir los flows que ya son idénticos en el destino', reload_available:'Se ha iniciado una nueva versión', reload_now:'Recargar la página', identical_skipped:'idéntico al destino — omitido',
     migrate_no_match:'Ningún flow coincide con el filtro.',
     pl_flow:'FLOW',
     pl_missing:'falta',
@@ -7494,9 +7507,11 @@ async function loadFlows() {
   allFlows = data;
   showAlert('flowAlert', '');
   fbStale = { modules: new Map(), flows: new Map() };
+  fbChecks = new Map();
   populateFlowTypeFilter();
   applyFlowFilter();
   checkStaleModules(id);
+  if (document.getElementById('fb-compare').value) onFbCompareChange();
 }
 
 // Er et common module publiceret EFTER de flows der bruger det, kører flowene
@@ -7565,6 +7580,7 @@ function renderFlowTable(flows) {
       <td style="color:var(--muted)">${f.publishedVersion || f.savedVersion
         ? 'v' + (f.publishedVersion || f.savedVersion)
         : (f.checkedOut ? `<span class="badge badge-gray">${t('col_checked_out')}</span>` : '—')}</td>
+      ${fbTargetCell(f)}
       <td>
         <button class="btn btn-secondary btn-sm" data-tip="tip_btn_export_flow" onclick="prefillExport(${jsAttr(f.name)},${jsAttr(f.type)})">${t('btn_export_flow')}</button>
         ${document.getElementById('fb-compare')?.value ? `<button class="btn btn-secondary btn-sm" data-tip="tip_compare" onclick="compareFlow(${jsAttr(encodeURIComponent(f.name))},${jsAttr(f.type)})">⇄</button>` : ''}
@@ -7574,14 +7590,142 @@ function renderFlowTable(flows) {
     </tr>`).join('');
 }
 
+// ── Flow Browser: hvad er allerede i mål-org'en ──────────────────────────────
+// «Sammenlign mod org» viser pr. flow om det findes i målet (fra målets flowliste
+// — ét kald), og «Tjek indhold» sammenligner selve indholdet. Med «Indsæt liste»
+// kan man afgrænse til de flows man har migreret og se, at alle er med og er ens
+// — uden at pipelinen er sat op.
+let fbTarget = null;                 // { id, byKey: Map('navn|TYPE' → flow), error }
+let fbChecks = new Map();            // 'navn|TYPE' → { verdict, diffCount } | { error }
+let fbList = null;                   // null | { keys:Set, missing:[], count }
+let fbChecking = false, fbStop = false;
+const fbKey = (name, type) => name + '|' + String(type || '').toUpperCase();
+
+// Navnet flowet har i målet: kildens præfiks af, målets på
+function fbTargetName(f) {
+  const s = customers.find(c => c.id === document.getElementById('fb-customer').value) || {};
+  const tg = customers.find(c => c.id === document.getElementById('fb-compare').value) || {};
+  const ps = s.prefix || '', pt = tg.prefix || '';
+  const base = ps && f.name.startsWith(ps) ? f.name.slice(ps.length) : f.name;
+  return pt + base;
+}
+
+async function onFbCompareChange() {
+  const tid = document.getElementById('fb-compare').value;
+  fbTarget = null; fbChecks = new Map();
+  document.getElementById('fb-cmp-tools').style.display = tid ? 'flex' : 'none';
+  document.getElementById('fb-th-target').style.display = tid ? '' : 'none';
+  if (!tid) { fbList = null; applyFlowFilter(); return; }
+  applyFlowFilter();
+  const r = await fetch('/api/customers/' + tid + '/flows').then(x => x.json()).catch(e => ({ error: e.message }));
+  if (document.getElementById('fb-compare').value !== tid) return;
+  fbTarget = r.error ? { id: tid, byKey: new Map(), error: r.error }
+                     : { id: tid, byKey: new Map(r.map(f => [fbKey(f.name, f.type), f])) };
+  applyFlowFilter();
+}
+
+function fbTargetCell(f) {
+  if (!document.getElementById('fb-compare').value) return '';
+  if (!fbTarget) return '<td><span class="spin"></span></td>';
+  if (fbTarget.error) return '<td style="color:var(--red);font-size:11px">—</td>';
+  const there = fbTarget.byKey.get(fbKey(fbTargetName(f), f.type));
+  const chk = fbChecks.get(fbKey(f.name, f.type));
+  const badge = (txt, col) => `<span class="badge" style="background:color-mix(in srgb, var(--${col}) 18%, transparent);color:var(--${col})">${txt}</span>`;
+  const open = `compareFlow(${jsAttr(encodeURIComponent(f.name))},${jsAttr(f.type)});return false`;
+  let html;
+  if (!there) html = badge(t('fbc_missing'), 'red');
+  else {
+    const v = there.publishedVersion ? 'v' + there.publishedVersion
+            : (there.savedVersion ? 'v' + there.savedVersion + ' ' + t('badge_draft') : '');
+    html = badge(t('fbc_there'), 'green') + ` <span style="color:var(--muted);font-size:11px">${v}</span>`;
+    if (chk && chk.error) html += ` <span style="color:var(--red);font-size:11px" title="${escapeHtml(chk.error)}">✗</span>`;
+    else if (chk && chk.verdict === 'identical')
+      html += ` <a href="#" onclick="${open}" style="color:var(--green);font-size:11px;text-decoration:none">✓ ${t('fbc_identical')}</a>`;
+    else if (chk && chk.verdict === 'different')
+      html += ` <a href="#" onclick="${open}" style="color:var(--yellow);font-size:11px;text-decoration:none">⚠ ${t('fbc_diff').replace('{n}', chk.diffCount)}</a>`;
+  }
+  return `<td>${html}</td>`;
+}
+
+function toggleFbPaste() {
+  const box = document.getElementById('fb-paste-box');
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  if (box.style.display === 'block') document.getElementById('fb-paste-text').focus();
+}
+
+function applyFbList() {
+  const text = document.getElementById('fb-paste-text').value;
+  if (!text.trim()) return clearFbList();
+  const { matched, missing, lines } = matchFlowList(text, allFlows);
+  fbList = { keys: new Set(matched.map(f => fbKey(f.name, f.type))), missing, count: lines.length };
+  applyFlowFilter();
+}
+
+function clearFbList() {
+  fbList = null;
+  document.getElementById('fb-paste-text').value = '';
+  applyFlowFilter();
+}
+
+function fbSummary(shown) {
+  const el = document.getElementById('fb-cmp-summary');
+  if (!document.getElementById('fb-compare').value || !fbTarget) { el.style.display = 'none'; return; }
+  if (fbTarget.error) { el.style.display = 'block'; el.innerHTML = `<span style="color:var(--red)">${escapeHtml(fbTarget.error)}</span>`; return; }
+  let same = 0, diff = 0, missing = 0, unchecked = 0, failed = 0;
+  for (const f of shown) {
+    if (!fbTarget.byKey.get(fbKey(fbTargetName(f), f.type))) { missing++; continue; }
+    const c = fbChecks.get(fbKey(f.name, f.type));
+    if (!c) unchecked++; else if (c.error) failed++; else if (c.verdict === 'identical') same++; else diff++;
+  }
+  const part = (n, txt, col) => `<span style="color:var(--${col})">${n} ${txt}</span>`;
+  el.style.display = 'block';
+  el.innerHTML = `<b>${shown.length}</b> flows &nbsp;·&nbsp; ` +
+    [part(same, t('fbc_identical'), 'green'), part(diff, t('fbc_differ'), 'yellow'), part(missing, t('fbc_missing'), 'red'),
+     part(unchecked, t('fbc_unchecked'), 'muted'), ...(failed ? [part(failed, t('fbc_failed'), 'red')] : [])].join(' &nbsp;·&nbsp; ') +
+    (fbList && fbList.missing.length
+      ? `<div style="color:var(--yellow);margin-top:6px">⚠ ${fbList.missing.length} ${t('fbc_not_in_source')}: ${escapeHtml(fbList.missing.join(', '))}</div>` : '');
+}
+
+async function fbCheckContent() {
+  if (fbChecking) { fbStop = true; return; }
+  const sourceId = document.getElementById('fb-customer').value, targetId = document.getElementById('fb-compare').value;
+  if (!sourceId || !targetId || !fbTarget || fbTarget.error) return;
+  const shown = fbShownFlows().filter(f => fbTarget.byKey.get(fbKey(fbTargetName(f), f.type)));
+  if (shown.length > 40 && !confirm(t('fbc_many').replace('{n}', shown.length))) return;
+  const btn = document.getElementById('fb-check-btn');
+  fbChecking = true; fbStop = false;
+  let done = 0;
+  for (const f of shown) {
+    if (fbStop) break;
+    btn.textContent = `⏹ ${t('fbc_stop')} (${done}/${shown.length})`;
+    try {
+      const r = await fetch('/api/flows/compare', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceId, targetId, flowName: f.name, flowType: f.type, targetName: fbTargetName(f) })
+      }).then(x => x.json());
+      fbChecks.set(fbKey(f.name, f.type), r.error ? { error: r.error } : { verdict: r.verdict, diffCount: r.diffCount || 0 });
+    } catch (e) { fbChecks.set(fbKey(f.name, f.type), { error: e.message }); }
+    done++;
+    applyFlowFilter();
+  }
+  fbChecking = false; fbStop = false;
+  btn.textContent = t('fbc_check_btn');
+}
+
 // Fælles filter for Flow Browser: fritekst OG flowtype.
-function applyFlowFilter() {
+function fbShownFlows() {
   const q    = (document.getElementById('fb-search')?.value || '').toLowerCase();
   const type = document.getElementById('fb-type-filter')?.value || '';
-  renderFlowTable(allFlows.filter(f =>
+  return allFlows.filter(f =>
     (!type || f.type === type) &&
-    (!q    || f.name.toLowerCase().includes(q))
-  ));
+    (!q    || f.name.toLowerCase().includes(q)) &&
+    (!fbList || fbList.keys.has(fbKey(f.name, f.type)))
+  );
+}
+function applyFlowFilter() {
+  const shown = fbShownFlows();
+  renderFlowTable(shown);
+  fbSummary(shown);
 }
 
 async function prefillExport(name, type) {
@@ -7756,6 +7900,27 @@ function applyMigrateFilter() {
   renderMigrateFlows(filtered, kunValgte);
 }
 
+// Matcher en indsat liste mod flows. Først hele linjen; findes den ikke, tages en
+// afsluttende parentes af («Main_25 (latest Main_[version])» → «Main_25»). Hedder
+// flere flows det samme (forskellige typer), tages alle. Fælles for Migrer Flow og
+// Flow Browser, så de to aldrig læser en liste forskelligt.
+function matchFlowList(text, flows) {
+  const lines = String(text || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+  const byName = new Map();
+  for (const f of flows) {
+    const k = f.name.trim().toLowerCase();
+    if (!byName.has(k)) byName.set(k, []);
+    byName.get(k).push(f);
+  }
+  const matched = [], missing = [];
+  for (const line of lines) {
+    const kandidater = [line, line.replace(/\s*\([^)]*\)\s*$/, '').trim()];
+    const hit = kandidater.map(k => byName.get(k.toLowerCase())).find(Boolean);
+    if (hit) matched.push(...hit); else missing.push(line);
+  }
+  return { matched, missing, lines };
+}
+
 // Indsæt en liste med flownavne og vælg dem. Først prøves hele linjen; findes den
 // ikke, tages en afsluttende parentes af («Main_25 (latest Main_[version])» →
 // «Main_25»). Hedder flere flows det samme (forskellige typer), vælges alle.
@@ -7766,22 +7931,9 @@ function toggleMigratePaste() {
 }
 
 function applyMigratePaste() {
-  const lines = document.getElementById('m-paste-text').value.split(/\r?\n/)
-    .map(x => x.trim()).filter(Boolean);
-  const byName = new Map();
-  for (const f of migrateFlows) {
-    const k = f.name.trim().toLowerCase();
-    if (!byName.has(k)) byName.set(k, []);
-    byName.get(k).push(f);
-  }
-  let found = 0; const missing = [];
-  for (const line of lines) {
-    const kandidater = [line, line.replace(/\s*\([^)]*\)\s*$/, '').trim()];
-    const hit = kandidater.map(k => byName.get(k.toLowerCase())).find(Boolean);
-    if (!hit) { missing.push(line); continue; }
-    for (const f of hit) selectedMigrateFlows.add(migrateKey(f));
-    found++;
-  }
+  const { matched, missing, lines } = matchFlowList(document.getElementById('m-paste-text').value, migrateFlows);
+  for (const f of matched) selectedMigrateFlows.add(migrateKey(f));
+  const found = lines.length - missing.length;
   const kunValgte = document.getElementById('m-only-selected'); if (kunValgte) kunValgte.checked = true;
   applyMigrateFilter();
   updateMigrateBtn();
