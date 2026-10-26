@@ -124,3 +124,13 @@ test('en timeout efter en gennemført publicering regnes ikke for en fejl', () =
   assert.ok(dep.includes('importFinishedDespiteTimeout('), 'afhængigheder skal også tjekke målet efter en timeout');
   assert.ok(SERVER.includes('e.timedOut = true'));
 });
+
+test('køer og grupper kopieres som definition — uden medlemmer, id\'er og referencer', () => {
+  const q = s.queueCreateBody({ id: 'x', name: 'Q', description: 'd', memberCount: 9, queueFlow: { id: 'f' },
+    whisperPrompt: { id: 'p' }, mediaSettings: { call: { alertingTimeoutSeconds: 8 } }, division: { id: 'old' } }, 'newDiv');
+  assert.deepEqual(q, { name: 'Q', description: 'd', mediaSettings: { call: { alertingTimeoutSeconds: 8 } }, division: { id: 'newDiv' } });
+  assert.equal(s.queueCreateBody({ name: 'Q' }, null).division, undefined);
+  assert.deepEqual(s.groupCreateBody({ id: 'g', name: 'G', type: 'official', visibility: 'public', rolesEnabled: true, memberCount: 3, owners: [{}] }),
+    { name: 'G', type: 'official', visibility: 'public', rolesEnabled: true });
+  assert.ok(s.COPYABLE_KINDS.has('queue') && s.COPYABLE_KINDS.has('group'));
+});

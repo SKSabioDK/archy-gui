@@ -1735,6 +1735,8 @@ const PROD_WRITE_ROUTES = {
   '/api/data-actions/map':        'targetId',
   '/api/prompts/migrate':         'targetId',
   '/api/scripts/migrate':         'targetId',
+  '/api/queues/migrate':          'targetId',
+  '/api/groups/migrate':          'targetId',
   '/api/surveyforms/migrate':     'targetId',
   '/api/divisions/create':        'targetId',
   '/api/prefix/apply':            'envId'
@@ -7073,6 +7075,97 @@ app.get('/api/customers/:id/scripts', async (req, res) => {
   }
 });
 
+// ── Køer og grupper ──────────────────────────────────────────────────────────
+// Kopieres som definition — ikke medlemmer. Brugere, skills og flows har andre
+// id'er i målet, så medlemmer, bullseye, hold-/whisper-prompts og kø-flows
+// følger ikke med; de sættes i målet. Selve køen/gruppen findes dermed, så et
+// flow der peger på den kan importeres.
+
+const QUEUE_COPY_FIELDS = ['name', 'description', 'mediaSettings', 'acwSettings', 'skillEvaluationMethod',
+  'autoAnswerOnly', 'enableTranscription', 'enableManualAssignment', 'routingRules', 'suppressInQueueCallRecording'];
+const GROUP_COPY_FIELDS = ['name', 'description', 'type', 'visibility', 'rolesEnabled'];
+
+function pickFields(src, fields) {
+  const out = {};
+  for (const f of fields) if (src && src[f] !== undefined && src[f] !== null) out[f] = src[f];
+  return out;
+}
+const queueCreateBody = (full, divisionId) =>
+  ({ ...pickFields(full, QUEUE_COPY_FIELDS), ...(divisionId ? { division: { id: divisionId } } : {}) });
+const groupCreateBody = full => pickFields(full, GROUP_COPY_FIELDS);
+
+async function pagedList(base, url, token, params = {}) {
+  const all = [];
+  for (let page = 1; ; page++) {
+    const r = await axios.get(`${base}${url}`, { headers: { Authorization: `Bearer ${token}` }, params: { ...params, pageSize: 100, pageNumber: page } });
+    const e = r.data.entities || [];
+    all.push(...e);
+    if (e.length < 100) return all;
+  }
+}
+
+app.post('/api/queues/migrate', async (req, res) => {
+  const { sourceId, targetId, name } = req.body;
+  const source = loadCustomers().find(c => c.id === sourceId);
+  const target = loadCustomers().find(c => c.id === targetId);
+  if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
+  if (!name) return res.status(400).json({ error: 'name mangler' });
+  const trail = [];
+  try {
+    const { token: st, apiBase: sb } = await getToken(source);
+    const { token: tt, apiBase: tb } = await getToken(target);
+    const byName = (list) => list.find(q => q.name === name);
+    const hit = byName((await axios.get(`${sb}/api/v2/routing/queues`, { headers: { Authorization: `Bearer ${st}` }, params: { name, pageSize: 50 } })).data.entities || []);
+    if (!hit) return res.status(400).json({ error: `Queue "${name}" findes ikke i ${source.name}` });
+    const ex = byName((await axios.get(`${tb}/api/v2/routing/queues`, { headers: { Authorization: `Bearer ${tt}` }, params: { name, pageSize: 50 } })).data.entities || []);
+    if (ex) return res.status(409).json({ error: 'already_exists', message: `Queue "${name}" findes allerede i ${target.name}` });
+
+    const full = (await axios.get(`${sb}/api/v2/routing/queues/${hit.id}`, { headers: { Authorization: `Bearer ${st}` } })).data;
+    // Samme division, hvis målet har en med samme navn; ellers målets standard.
+    let divisionId = null;
+    if (full.division?.name) {
+      const divs = await pagedList(tb, '/api/v2/authorization/divisions', tt);
+      divisionId = (divs.find(d => d.name === full.division.name) || {}).id || null;
+      trail.push(divisionId ? `✓ division "${full.division.name}"` : `⚠ divisionen "${full.division.name}" findes ikke i ${target.name} — køen lægges i målets standarddivision`);
+    }
+    const r = await axios.post(`${tb}/api/v2/routing/queues`, queueCreateBody(full, divisionId),
+      { headers: { Authorization: `Bearer ${tt}`, 'Content-Type': 'application/json' } });
+    trail.push('✓ kø oprettet — medlemmer, skills og prompts sættes i målet');
+    addLog('SUCCESS', `Queue "${name}" created in ${target.name} (definition only, no members)`, target.name, 'MIGRATE');
+    res.json({ ok: true, id: r.data.id, name, trail });
+  } catch (e) {
+    const msg = describeApiError(e);
+    addLog('ERROR', `Could not create queue "${name}" in ${target.name}: ${msg}`, target.name, 'MIGRATE');
+    res.status(500).json({ error: msg, trail });
+  }
+});
+
+app.post('/api/groups/migrate', async (req, res) => {
+  const { sourceId, targetId, name } = req.body;
+  const source = loadCustomers().find(c => c.id === sourceId);
+  const target = loadCustomers().find(c => c.id === targetId);
+  if (!source || !target) return res.status(404).json({ error: 'Customer not found' });
+  if (!name) return res.status(400).json({ error: 'name mangler' });
+  const trail = [];
+  try {
+    const { token: st, apiBase: sb } = await getToken(source);
+    const { token: tt, apiBase: tb } = await getToken(target);
+    const hit = (await pagedList(sb, '/api/v2/groups', st)).find(g => g.name === name);
+    if (!hit) return res.status(400).json({ error: `Group "${name}" findes ikke i ${source.name}` });
+    if ((await pagedList(tb, '/api/v2/groups', tt)).some(g => g.name === name))
+      return res.status(409).json({ error: 'already_exists', message: `Group "${name}" findes allerede i ${target.name}` });
+    const r = await axios.post(`${tb}/api/v2/groups`, groupCreateBody(hit),
+      { headers: { Authorization: `Bearer ${tt}`, 'Content-Type': 'application/json' } });
+    trail.push('✓ gruppe oprettet — medlemmer og ejere sættes i målet');
+    addLog('SUCCESS', `Group "${name}" created in ${target.name} (definition only, no members)`, target.name, 'MIGRATE');
+    res.json({ ok: true, id: r.data.id, name, trail });
+  } catch (e) {
+    const msg = describeApiError(e);
+    addLog('ERROR', `Could not create group "${name}" in ${target.name}: ${msg}`, target.name, 'MIGRATE');
+    res.status(500).json({ error: msg, trail });
+  }
+});
+
 // Et script flyttes som helhed: eksportér fra kilden, importér i målet og
 // publicér, hvis det var publiceret i kilden. Et flow peger på den publicerede
 // udgave, så et upubliceret script ville stadig mangle for flowet.
@@ -8162,7 +8255,12 @@ app.post('/api/import', async (req, res) => {
 // som alt andet — et common module er bare et flow af typen COMMONMODULE.
 const FLOW_KINDS = new Set(['commonmodule', 'botflow', 'targetflow', 'inqueueflow']);
 // Ressourcer der kopieres hele fra kilden ved navn: user prompts (med lyd) og scripts
-const COPYABLE_KINDS = new Set(['prompt', 'script']);
+const COPYABLE_KINDS = new Set(['prompt', 'script', 'queue', 'group']);
+// Endpoint og navnefelt for hver slags der kopieres ved navn
+const COPY_ENDPOINT = {
+  prompt: ['/api/prompts/migrate', 'promptName'], script: ['/api/scripts/migrate', 'scriptName'],
+  queue: ['/api/queues/migrate', 'name'], group: ['/api/groups/migrate', 'name']
+};
 
 // ── Talesyntese (TTS) ────────────────────────────────────────────────────────
 // Et flow siger pr. sprog hvilken TTS-motor og stemme det taler med:
@@ -8383,8 +8481,9 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
       let url, body;
       if (COPYABLE_KINDS.has(kind)) {
         // Kopieres ved navn — endpointet slår selv kilden op
-        url = kind === 'prompt' ? '/api/prompts/migrate' : '/api/scripts/migrate';
-        body = { sourceId: source.id, targetId: target.id, [kind === 'prompt' ? 'promptName' : 'scriptName']: n };
+        const [ep, felt] = COPY_ENDPOINT[kind];
+        url = ep;
+        body = { sourceId: source.id, targetId: target.id, [felt]: n };
       } else if (kind === 'datatable') {
         const r = await axios.get(`${srcBase}/api/v2/flows/datatables`, { ...SH, params: { pageSize: 200 } });
         const hit = (r.data.entities || []).find(t => t.name === n);
@@ -9485,7 +9584,7 @@ if (require.main === module) {
 // eneste der kan efterprøves uden en rigtig org. Se test/*.test.js.
 module.exports = {
   logLevelFor,
-  nodeSecurityStatus, countsAsExisting, scanTtsEngines, missingTtsEngines, replaceTtsEngines, applyClientScopes, dropRejectedLogin, flowOwnDivision, divisionProblem, appsBaseOf, COPYABLE_KINDS, credentialChangeError, forgetLogin, keepsOrgOnClientChange,
+  nodeSecurityStatus, countsAsExisting, scanTtsEngines, missingTtsEngines, replaceTtsEngines, applyClientScopes, dropRejectedLogin, flowOwnDivision, divisionProblem, appsBaseOf, COPYABLE_KINDS, queueCreateBody, groupCreateBody, credentialChangeError, forgetLogin, keepsOrgOnClientChange,
   sanitizeDatatableSchema, mapRoleDivisions, buildOauthClientBody, buildRolePolicies, missingRolesFor, missingDivisionsFor,
   app, tokenStore, getToken, loadSessions, saveSessions, setSessionPersist, SESSION_FILE,
   // konventioner

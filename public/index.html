@@ -533,7 +533,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.60.1 · Archy GUI</div>
+    <div class="version" id="app-version">v1.61.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -10953,7 +10953,9 @@ async function migrateOneDep(dep, sourceId, targetId, logBox, opts = {}) {
     datatable:  ['/api/datatables/migrate', { tableId: dep.sourceRefId }],
     dataaction: ['/api/actions/migrate',    { actionId: dep.sourceRefId, targetIntegrationId: '' }],
     prompt:     ['/api/prompts/migrate',    { promptName: dep.name }],
-    script:     ['/api/scripts/migrate',    { scriptName: dep.name }]
+    script:     ['/api/scripts/migrate',    { scriptName: dep.name }],
+    queue:      ['/api/queues/migrate',     { name: dep.name }],
+    group:      ['/api/groups/migrate',     { name: dep.name }]
   };
   const [url, extra] = REQ[dep.kind] || REQ.dataaction;
   const body = { sourceId, targetId, ...extra };

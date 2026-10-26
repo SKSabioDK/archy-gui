@@ -54,7 +54,8 @@ test('secure-flaget følger med, når en data action migreres', () => {
 test('moduler tager prompts og scripts med', () => {
   const fn = SERVER.slice(SERVER.indexOf('async function migrateFlowDependency('), SERVER.indexOf("app.post('/api/divisions/create'"));
   assert.match(fn, /for \(const kind of \['datatable', 'dataaction', \.\.\.COPYABLE_KINDS\]\)/);
-  assert.match(fn, /url = kind === 'prompt' \? '\/api\/prompts\/migrate' : '\/api\/scripts\/migrate'/);
+  assert.match(fn, /const \[ep, felt\] = COPY_ENDPOINT\[kind\]/);
+  assert.ok(SERVER.includes("prompt: ['/api/prompts/migrate', 'promptName']") && SERVER.includes("queue: ['/api/queues/migrate', 'name']"));
 });
 
 // Falck US: den migrerede action fik målintegrationens navn som kategori, men

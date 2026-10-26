@@ -5,6 +5,23 @@
 
 ---
 
+### v1.61.0
+---
+**🇩🇰 Dansk**
+
+- **Køer og grupper kan migreres sammen med flowet.** Før stod en manglende kø eller gruppe som *opret i mål-org først*, og flowet kunne ikke importeres, før man havde gjort det i hånden. Nu tilbydes de som resten af afhængighederne, og de oprettes i målet, før flowet importeres. Også for common modules og in-queue-flows.
+- **Kun definitionen kopieres.** Køen får navn, beskrivelse, medie- og ACW-indstillinger, routingregler og samme division, hvis målet har en med samme navn (ellers målets standarddivision). Gruppen får navn, type, synlighed og roller. **Medlemmer, ejere, skills, bullseye, hold-/whisper-prompts og kø-flows følger ikke med** — brugere, skills og flows har andre id'er i målet, så de sættes dér.
+- Kræver rettighederne `routing:queue:add` og `group:add` på mål-klienten. Mangler de, står Genesys' egen besked i loggen. Prod-vagten gælder for begge ruter.
+- 2 nye tests; 3 eksisterende tilpasset.
+
+**🇬🇧 English**
+- **Queues and groups can be migrated with the flow.** A missing queue or group used to show as *create in the target org first*, and the flow could not be imported until you had done it by hand. They are now offered like the other dependencies and created in the target before the flow is imported — for common modules and in-queue flows too.
+- **Only the definition is copied.** A queue gets its name, description, media and ACW settings, routing rules and the same division if the target has one with that name (otherwise the target's default). A group gets its name, type, visibility and roles. **Members, owners, skills, bullseye, hold/whisper prompts and queue flows do not come along** — users, skills and flows have other ids in the target, so they are set there.
+- Needs `routing:queue:add` and `group:add` on the target client. If missing, Genesys' own message is in the log. The prod guard covers both routes.
+- 2 new tests; 3 existing ones adjusted.
+
+---
+
 ### v1.60.1
 ---
 **🇩🇰 Dansk**
