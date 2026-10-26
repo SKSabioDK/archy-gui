@@ -253,3 +253,10 @@ test('en afvist flowtype huskes, og manglende OAuth-scope forklares', () => {
   const h = s.archyHint('status: 403, App not authorized to use scope [outbound, outbound:readonly] (app.not.authorized.for.scope)');
   assert.ok(h.includes('mangler scope [outbound, outbound:readonly]'));
 });
+
+test('alle processer serveren starter skjules — ellers åbner en selv-genstartet server et cmd-vindue pr. kald', () => {
+  const kald = [...SERVER.matchAll(/(?:\bexec|execSync|execFile)\((?:'[^']*'|process\.execPath, \[[^\]]*\]|cmd),?[^;]*?\{[^}]*\}/g)];
+  assert.ok(kald.length >= 4, 'fandt ikke exec-kaldene');
+  for (const k of kald) assert.ok(k[0].includes('windowsHide: true'), `mangler windowsHide: ${k[0].slice(0, 80)}`);
+  assert.ok(SERVER.includes("detached: true, windowsHide: true"));
+});

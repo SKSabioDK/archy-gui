@@ -119,14 +119,14 @@ function checkForUpdate() {
   // Uses git directly — no token needed, git is already authenticated.
   return new Promise((resolve) => {
     // Step 1: fetch latest remote state (no checkout, no working-tree changes).
-    exec('git fetch origin main --quiet', { cwd: __dirname, shell: 'cmd.exe', timeout: 20000 }, (fetchErr) => {
+    exec('git fetch origin main --quiet', { cwd: __dirname, shell: 'cmd.exe', timeout: 20000, windowsHide: true }, (fetchErr) => {
       if (fetchErr) {
         versionInfo = { current: CURRENT_VERSION, latest: null, updateAvailable: false, checkedAt: new Date().toISOString() };
         addLog('WARN', `Version check: git fetch failed — ${fetchErr.message.split('\n')[0]}`, null, 'SYSTEM');
         return resolve(versionInfo);
       }
       // Step 2: read package.json from the remote ref — no disk write.
-      exec('git show origin/main:package.json', { cwd: __dirname, shell: 'cmd.exe', timeout: 5000 }, (showErr, stdout) => {
+      exec('git show origin/main:package.json', { cwd: __dirname, shell: 'cmd.exe', timeout: 5000, windowsHide: true }, (showErr, stdout) => {
         if (showErr) {
           versionInfo = { current: CURRENT_VERSION, latest: null, updateAvailable: false, checkedAt: new Date().toISOString() };
           addLog('WARN', `Version check: could not read remote package.json — ${showErr.message.split('\n')[0]}`, null, 'SYSTEM');
@@ -7626,7 +7626,7 @@ function archyDirIn(dir) {
 
 try {
   const { execSync } = require('child_process');
-  const archyBat = execSync('where archy', { shell: 'cmd.exe', stdio: ['ignore', 'pipe', 'ignore'] })
+  const archyBat = execSync('where archy', { shell: 'cmd.exe', windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] })
     .toString().split(/\r?\n/)[0].trim();
   ARCHY_DIR = path.dirname(archyBat);
   console.log(`[archy] Found at: ${ARCHY_DIR}`);
@@ -8071,7 +8071,9 @@ function runArchy(args, customer) {
     const env = { ...process.env };
     if (bundle) env.NODE_EXTRA_CA_CERTS = bundle;
     exec(cmd, {
-      cwd: ARCHY_DIR, shell: 'cmd.exe', timeout: archyTimeoutMs(),
+      // windowsHide: serveren er startet skjult (eller har genstartet sig selv uden
+      // konsol), og så åbner hver cmd.exe ellers et synligt, tomt vindue.
+      cwd: ARCHY_DIR, shell: 'cmd.exe', windowsHide: true, timeout: archyTimeoutMs(),
       maxBuffer: 20 * 1024 * 1024,      // Archys debug-output kan være stort
       env
     }, (err, stdout, stderr) => {
@@ -9832,7 +9834,7 @@ function watchForUpdates(httpServer, { intervalMs = 2000, maxWaitMs = 15 * 60 * 
     pending = true;
     // Vent til filen er skrevet færdig, og tjek at den kan parses
     setTimeout(() => {
-      require('child_process').execFile(process.execPath, ['--check', files[0]], (e) => {
+      require('child_process').execFile(process.execPath, ['--check', files[0]], { windowsHide: true }, (e) => {
         for (const f of files) seen.set(f, stamp(f));
         pending = false;
         if (e) return addLog('WARN', `server.js changed but does not parse — not restarting: ${String(e.message).slice(0, 200)}`, null, 'SYSTEM');

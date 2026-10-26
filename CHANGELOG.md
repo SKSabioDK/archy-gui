@@ -5,6 +5,19 @@
 
 ---
 
+### v1.65.2
+---
+**🇩🇰 Dansk**
+
+- **Ingen tomme cmd-vinduer under en migrering.** Efter at serveren havde genstartet sig selv (v1.63.0) åbnede hvert kald til Archy, git og Node et synligt, tomt cmd-vindue. En server startet med `start.bat` har en skjult konsol, som underprocesserne arver; en genstartet server har ingen, og så opretter Windows en ny konsol til hver `cmd.exe`. Alle processer startes nu med `windowsHide`, så ingen vinduer vises, uanset hvordan serveren blev startet.
+- En ny test.
+
+**🇬🇧 English**
+- **No empty cmd windows during a migration.** After the server restarted itself (v1.63.0), every call to Archy, git and Node opened a visible, empty cmd window. A server started with `start.bat` has a hidden console that child processes inherit; a restarted server has none, so Windows creates a new console for each `cmd.exe`. All processes are now started with `windowsHide`, so no windows appear however the server was started.
+- One new test.
+
+---
+
 ### v1.65.1
 ---
 **🇩🇰 Dansk**
