@@ -7466,6 +7466,7 @@ function parseArchyOutput(raw) {
     if (/Changelog:.*genesys/.test(t)) return false;
     if (/Run archy version.*to upgrade/.test(t)) return false;
     if (t === 'execution complete.') return false;
+    if (/^TRACE:\[/.test(t) || /^flowId: .*opName: /.test(t)) return false;   // Archys interne sporing
     if (/^exit code:/.test(t)) return false;
     return true;
   });
@@ -7741,6 +7742,33 @@ function ensureArchyCaBundle() {
   return ARCHY_CA_BUNDLE;
 }
 
+// Et stort flow (tusindvis af actions) bruger flere minutter på validering og
+// publicering. 120 s dræbte Archy midt i en publicering af et in-queue-flow, og
+// fejlen fremstod som 14.000 linjer TRACE-støj.
+// Kan ændres med archyTimeoutMinutes i settings.json (1–60).
+const ARCHY_TIMEOUT_DEFAULT_MIN = 10;
+function archyTimeoutMs() {
+  let min = ARCHY_TIMEOUT_DEFAULT_MIN;
+  try { min = Number(loadSettings().archyTimeoutMinutes) || min; } catch (_) {}
+  return Math.min(60, Math.max(1, min)) * 60 * 1000;
+}
+
+// Blev Archy dræbt af tidsgrænsen, er det ikke det samme som at importen
+// fejlede: Genesys kan have publiceret færdigt. Ser vi flowet i målet med en
+// publicering efter at vi startede (publish), eller et flow der ikke fandtes
+// før (create), regnes importen for gennemført — ellers mangler manifest og
+// release-note for noget der ER i drift. Update kan ikke afgøres og regnes
+// for fejlet.
+async function importFinishedDespiteTimeout(target, name, flowType, cmd, startedAt, hadBefore) {
+  try {
+    const info = await getFlowPublishInfo(target, name, flowType);
+    if (!info) return false;
+    if (cmd === 'publish') return !!info.publishedAt && info.publishedAt > startedAt - 5000;
+    if (cmd === 'create') return !hadBefore;
+    return false;
+  } catch (_) { return false; }
+}
+
 function runArchy(args, customer) {
   return new Promise((resolve, reject) => {
     // Samme vagt som i getToken. Archy-vejene går ikke gennem getToken, så et
@@ -7755,7 +7783,7 @@ function runArchy(args, customer) {
     const env = { ...process.env };
     if (bundle) env.NODE_EXTRA_CA_CERTS = bundle;
     exec(cmd, {
-      cwd: ARCHY_DIR, shell: 'cmd.exe', timeout: 120000,
+      cwd: ARCHY_DIR, shell: 'cmd.exe', timeout: archyTimeoutMs(),
       maxBuffer: 20 * 1024 * 1024,      // Archys debug-output kan være stort
       env
     }, (err, stdout, stderr) => {
@@ -7776,6 +7804,15 @@ function runArchy(args, customer) {
       const afvis = (grund) =>
         reject(new Error(redactSecrets(withArchyLog(truncateArchyError(grund), combined))));
 
+      // Dræbt af tidsgrænsen: ingen banner, og Genesys kan sagtens have færdiggjort
+      // publiceringen. Det skal stå klart, så man tjekker målet i stedet for at gentage blindt.
+      if (err && err.killed && !failed && !finished)
+      {
+        const e = new Error(`Archy was stopped after ${Math.round(archyTimeoutMs() / 60000)} minutes without finishing. ` +
+          `The flow may still have been published in the target — check it there before running again.`);
+        e.timedOut = true;
+        return reject(e);
+      }
       if (failed)               return afvis(archyErrorReason(combined) || parsed || 'Archy failed');
       if (finished || !err)     return resolve(parsed || 'OK');
       afvis(archyErrorReason(combined) || parsed || err.message);
@@ -8472,7 +8509,13 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
 
   // Publicér — et modul skal være publiceret for at kunne refereres af et flow
   try {
-    await runArchy(`publish --file ${archyArg(importFile, 'File path')}`, target);
+    const startedAt = Date.now();
+    try {
+      await runArchy(`publish --file ${archyArg(importFile, 'File path')}`, target);
+    } catch (e) {
+      if (!(e.timedOut && await importFinishedDespiteTimeout(target, nyName, flowType, 'publish', startedAt, false))) throw e;
+      addLog('WARN', `Archy timed out on dependency "${nyName}" but it is published in ${target.name} — treated as migrated`, target.name, 'MIGRATE');
+    }
     addLog('SUCCESS', `Flow dependency "${nyName}" (${flowType}) migrated to ${target.name}`, target.name, 'MIGRATE');
     return { ok: true };
   } catch (e) {
@@ -9073,8 +9116,13 @@ app.post('/api/migrate/commit', async (req, res) => {
     // der en ".import-…"-fil tilbage i eksportmappen efter hver mislykket
     // migrering.
     let out;
+    const startedAt = Date.now();
     try {
       out = await runArchy(`${cmd} --file ${archyArg(importFile, 'File path')}`, target);
+    } catch (e) {
+      if (!(e.timedOut && await importFinishedDespiteTimeout(target, nyName, rodType, cmd, startedAt, !!prevVersion))) throw e;
+      out = '';
+      addLog('WARN', `Archy timed out on "${nyName}" but the flow is in ${target.name} — treated as migrated`, target.name, 'MIGRATE');
     } finally {
       if (importFile !== resolved) { try { fs.unlinkSync(importFile); } catch (_) {} }
     }
@@ -9473,7 +9521,7 @@ module.exports = {
   // common modules
   isBehindModule, staleModules,
   // Archy og fejltekster
-  parseArchyOutput, truncateArchyError, archyErrorReason, describeApiError,
+  archyTimeoutMs, parseArchyOutput, truncateArchyError, archyErrorReason, describeApiError,
   archyDebugLog, withArchyLog,
   explainRepublishFailure,
   archyCredFlags, archyArg, archyBareArg, archyVerb, archyVersionFlag,

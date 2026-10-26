@@ -109,3 +109,18 @@ test('uden præfiks på begge miljøer omskrives intet — heller ikke InQueue_2
   assert.equal(s.depNameIn('inqueueflow', 'InQueue_26_Dev', b, a), 'InQueue_26_Dev');
   assert.equal(s.targetFlowName('Main_26_Dev', a, b), 'Main_26_Dev');
 });
+
+test('Archys TRACE-støj ender ikke i fejlteksten, og tidsgrænsen er ikke 2 minutter', () => {
+  const raa = ['TRACE:[architect.tracking] next tracking number', 'flowId: x, flowType: inqueuecall, opName: VALIDATE, opId: 1', 'rigtig fejl'].join('\n');
+  assert.equal(s.parseArchyOutput(raa), 'rigtig fejl');
+  assert.equal(s.archyTimeoutMs(), 10 * 60 * 1000);
+  assert.ok(!/timeout: 120000/.test(SERVER.slice(SERVER.indexOf('function runArchy('))));
+});
+
+test('en timeout efter en gennemført publicering regnes ikke for en fejl', () => {
+  const commit = SERVER.slice(SERVER.indexOf("app.post('/api/migrate/commit'"));
+  assert.ok(commit.includes('importFinishedDespiteTimeout(target, nyName, rodType, cmd, startedAt'), 'commit skal tjekke målet efter en timeout');
+  const dep = SERVER.slice(SERVER.indexOf('async function migrateFlowDependency('), SERVER.indexOf('// Opretter en manglende division'));
+  assert.ok(dep.includes('importFinishedDespiteTimeout('), 'afhængigheder skal også tjekke målet efter en timeout');
+  assert.ok(SERVER.includes('e.timedOut = true'));
+});

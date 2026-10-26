@@ -5,6 +5,27 @@
 
 ---
 
+### v1.60.1
+---
+**🇩🇰 Dansk**
+
+- **Store flows bliver ikke længere dræbt efter 2 minutter.** Archy fik 120 sekunder, og et stort in-queue-flow nåede ikke at blive valideret og publiceret. Archy blev dræbt midt i publiceringen, og migreringen meldte en fejl uden årsag. Tidsgrænsen er nu 10 minutter.
+- **Timeout siges, som den er.** Bliver Archy alligevel stoppet, står der at den blev stoppet uden at blive færdig, og at flowet kan være publiceret i målet — tjek dér, før du kører igen.
+- **Archys TRACE-linjer er væk fra fejlteksten.** Fejlen bestod af 14.000 linjer intern sporing, og årsagen forsvandt i dem.
+- **En timeout efter en gennemført publicering er ikke en fejl.** Blev Archy stoppet, men flowet var nået ind i målet (publiceret efter start, eller oprettet ved *create*), regnes migreringen for gennemført, så manifest og release-note bliver skrevet. *Update* kan ikke afgøres og regnes stadig for fejlet. Gælder også afhængigheder.
+- **Tidsgrænsen kan ændres:** `archyTimeoutMinutes` i settings.json (1–60, standard 10).
+- 2 nye tests.
+
+**🇬🇧 English**
+- **Large flows are no longer killed after 2 minutes.** Archy was given 120 seconds, and a large in-queue flow could not be validated and published in time. Archy was killed mid-publish and the migration reported an error with no reason. The limit is now 10 minutes.
+- **A timeout says so.** If Archy is stopped anyway, the message says it did not finish and that the flow may still have been published in the target — check there before running again.
+- **Archy's TRACE lines are gone from the error text.** The error was 14,000 lines of internal tracing that buried the cause.
+- **A timeout after a completed publish is not an error.** If Archy was stopped but the flow had reached the target (published after the start, or created by *create*), the migration counts as done, so the manifest and release note get written. *Update* cannot be told and still counts as failed. Applies to dependencies too.
+- **The time limit is configurable:** `archyTimeoutMinutes` in settings.json (1–60, default 10).
+- 2 new tests.
+
+---
+
 ### v1.60.0
 ---
 **🇩🇰 Dansk**
