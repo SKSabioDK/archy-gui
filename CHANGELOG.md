@@ -5,6 +5,51 @@
 
 ---
 
+### v1.65.1
+---
+**🇩🇰 Dansk**
+
+Rettelser fra Falck-kørslen med 33 flows.
+
+- **En prompt skal have indhold på flowets standardsprog.** SelfService Menu06_UK fejlede stadig på *'P1435' does not have audio or text to speech*: prompten havde lyd på en-us, som flowet understøtter, men flowets standardsprog er en-gb, og Archy afviste den. Nu kræves indhold på standardsproget (når det kendes), og mangler det, kopieres de manglende sprog fra kilden. Et forkert «mangler» koster kun en kopi; et forkert «findes» stopper hele migreringen.
+- **Scripts med punktum i navnet findes nu.** *MSF Test 1.0* blev ikke læst som afhængighed (punktum var ikke tilladt), så importen fejlede med det uforklarlige *Error details: no matches*. Scriptet tilbydes nu migreret, og den generiske fejl erstattes af den manglende ressources navn.
+- **Åbningstider med «/» i navnet** (fx *24/7*) blev ikke fundet i målet, og oprettelsen fejlede med *name already assigned*. Opslaget gennemgår nu hele listen.
+- **En afvist flowtype huskes i en halv time.** Efter første *flow type … is not available* migreres næste SMS/bot-flow ikke først sine køer, åbningstider og prompts over for så at fejle alligevel — det får en kort besked med det samme.
+- **Manglende OAuth-scope forklares.** *App not authorized to use scope [outbound …]* (outbound- og survey-flows) siger nu at mål-klienten mangler scopet og hvor det tilføjes.
+- **Prepare prøver igen ved netværksfejl** (op til 5 gange, 5 s imellem). *Failed to fetch* tog 12 flows i træk efter at maskinen havde sovet midt i kørslen.
+- **Indsæt liste** på Migrer Flow (fra v1.65.0): ét flownavn pr. linje vælger flowene; en afsluttende parentes som *(latest …)* ignoreres, hvis hele linjen ikke findes.
+- 6 nye tests.
+
+**🇬🇧 English**
+
+Fixes from the Falck run of 33 flows.
+
+- **A prompt must have content in the flow's default language.** SelfService Menu06_UK still failed on *'P1435' does not have audio or text to speech*: the prompt had audio in en-us, which the flow supports, but the flow's default language is en-gb and Archy rejected it. Content in the default language is now required (when known), and if it is missing the absent languages are copied from the source. A wrong "missing" only costs a copy; a wrong "exists" stops the whole migration.
+- **Scripts with a dot in the name are now found.** *MSF Test 1.0* was not read as a dependency (a dot was not allowed), so the import failed with the unhelpful *Error details: no matches*. The script is now offered for migration, and the generic error is replaced by the name of the missing resource.
+- **Schedules with "/" in the name** (e.g. *24/7*) were not found in the target and creation failed with *name already assigned*. The lookup now walks the whole list.
+- **A refused flow type is remembered for half an hour.** After the first *flow type … is not available*, the next SMS/bot flow no longer migrates its queues, schedules and prompts first only to fail anyway — it gets a short message straight away.
+- **A missing OAuth scope is explained.** *App not authorized to use scope [outbound …]* (outbound and survey flows) now says the target client lacks the scope and where to add it.
+- **Prepare retries on network errors** (up to 5 times, 5 s apart). *Failed to fetch* took 12 flows in a row after the machine had slept mid-run.
+- **Paste list** on Migrate Flow (from v1.65.0): one flow name per line selects the flows; a trailing parenthesis like *(latest …)* is ignored if the whole line is not found.
+- 6 new tests.
+
+---
+
+### v1.65.0
+---
+**🇩🇰 Dansk**
+
+- **Indsæt en liste med flownavne.** På Migrer Flow findes nu *Indsæt liste* ved siden af *Vælg alle*. Indsæt ét flownavn pr. linje, og flowene i kilde-org'en vælges. Findes hele linjen ikke, prøves den uden en afsluttende parentes — så *Main_25 (latest Main_[version])* finder *Main_25*. Hedder flere flows det samme (forskellige typer), vælges alle.
+- Resultatet står under feltet: hvor mange der blev fundet, og navnene på dem der ikke blev. *Vis kun valgte* slås til, så man ser præcis hvad der er valgt, før man kører.
+- En ny test.
+
+**🇬🇧 English**
+- **Paste a list of flow names.** Migrate Flow now has *Paste list* next to *Select all*. Paste one flow name per line and the flows in the source org are selected. If the whole line is not found, it is tried without a trailing parenthesis — so *Main_25 (latest Main_[version])* finds *Main_25*. If several flows share a name (different types), all are selected.
+- The result is shown under the field: how many were found, and the names of those that were not. *Show only selected* is switched on so you see exactly what is selected before running.
+- One new test.
+
+---
+
 ### v1.64.0
 ---
 **🇩🇰 Dansk**

@@ -6391,7 +6391,7 @@ function scanYamlDependencies(yaml) {
     // wrapupCode: \n lit: \n name: X
     wrapupcode: grab(/wrapupCode:\s*\n\s*lit:\s*\n\s*name:[ \t]*["']?([^'"\n]+)["']?/gmi),
     // screenPopScript: \n <ScriptNavn>:
-    script:     grab(new RegExp(`screenPopScript:\\s*\\n\\s+([${ORD}][${ORD} _\\-]+):`, 'gm')),
+    script:     grab(new RegExp(`screenPopScript:\\s*\\n\\s+([${ORD}][${ORD} _\\-.()]*):`, 'gm')),
     // Kun statiske skill-navne. FindSkill(Task.Skills) slås op på kørselstidspunktet
     // og kan ikke tjekkes her — det siges eksplicit i rapporten.
     skill:      grab(/FindSkill\(\s*["']([^"']+)["']\s*\)/gm),
@@ -6447,9 +6447,21 @@ function notMeta(n) {
 // Archy kræver indhold på MINDST ÉT AF FLOWETS SPROG. En prompt med lyd på fx
 // nl-nl alene dur ikke til et flow, der kun taler da-dk og en-gb — så er
 // 'languages' (flowets sprog, små bogstaver) givet, tæller kun de sprog.
-const promptHasContent = (e, languages = null) => !Array.isArray(e?.resources) ||
+//
+// Er flowets standardsprog kendt, kræves indhold DÉR. Falck: P1435 havde lyd på
+// en-us, som flowet understøtter — men standardsproget er en-gb, og Archy
+// afviste prompten alligevel. Forkert "mangler" koster kun en kopi af de sprog
+// der mangler; forkert "findes" stopper hele migreringen.
+const promptHasContent = (e, languages = null, defaultLanguage = null) => !Array.isArray(e?.resources) ||
   e.resources.some(r => r && (r.mediaUri || r.ttsString || r.text) &&
-    (!languages || !languages.size || languages.has(String(r.language || '').toLowerCase())));
+    (defaultLanguage ? String(r.language || '').toLowerCase() === defaultLanguage
+     : (!languages || !languages.size || languages.has(String(r.language || '').toLowerCase()))));
+
+// Flowets standardsprog: «defaultLanguage: en-gb» øverst i YAML'en.
+function scanDefaultLanguage(yaml) {
+  const m = String(yaml).match(/^[ "+B+"t]{2}defaultLanguage:[ "+B+"t]*([A-Za-z]{2,3}-[A-Za-z0-9]{2,4})/m);
+  return m ? m[1].toLowerCase() : null;
+}
 
 // Sprogene et flow understøtter: nøglerne under «supportedLanguages:».
 function scanSupportedLanguages(yaml) {
@@ -6464,8 +6476,8 @@ function scanSupportedLanguages(yaml) {
   }
   return out;
 }
-const countsAsExisting = (kind, entity, languages = null) =>
-  kind === 'prompt' ? promptHasContent(entity, languages)
+const countsAsExisting = (kind, entity, languages = null, defaultLanguage = null) =>
+  kind === 'prompt' ? promptHasContent(entity, languages, defaultLanguage)
   : (!FLOW_KINDS.has(kind) || !!(entity && entity.publishedVersion));
 
 // Hvilke af 'names' findes allerede i org'en? Store lister (758 køer, 350 skills)
@@ -6485,6 +6497,8 @@ async function lookupExisting(kind, names, token, apiBase, ctx = {}) {
     botflow:      { url: '/api/v2/flows', size: 100 },
     targetflow:   { url: '/api/v2/flows', size: 100 },
     inqueueflow:  { url: '/api/v2/flows', size: 100 },
+    schedule:      { url: '/api/v2/architect/schedules', size: 100 },
+    schedulegroup: { url: '/api/v2/architect/schedulegroups', size: 100 },
     knowledgebase:{ url: '/api/v2/knowledge/knowledgebases', size: 100 },
     sttengine:    { url: '/api/v2/integrations/speech/stt/engines', size: 100 },
     group:        { url: '/api/v2/groups', size: 100 },
@@ -6527,8 +6541,6 @@ async function lookupExisting(kind, names, token, apiBase, ctx = {}) {
     prompt:        '/api/v2/architect/prompts',
     wrapupcode:    '/api/v2/routing/wrapupcodes',
     skill:         '/api/v2/routing/skills',
-    schedule:      '/api/v2/architect/schedules',
-    schedulegroup: '/api/v2/architect/schedulegroups'
   };
   const url = byName[kind];
   if (!url) return found;
@@ -6540,7 +6552,7 @@ async function lookupExisting(kind, names, token, apiBase, ctx = {}) {
       // kan vi ikke se om den har indhold, og "ved ikke" blev læst som "findes".
       if (hit && kind === 'prompt' && !Array.isArray(hit.resources))
         hit = (await axios.get(`${apiBase}${url}/${hit.id}`, H)).data;
-      if (hit && countsAsExisting(kind, hit, ctx.languages)) found.add(n);
+      if (hit && countsAsExisting(kind, hit, ctx.languages, ctx.defaultLanguage)) found.add(n);
     } catch (_) { /* uafklaret — tælles som manglende og markeres i rapporten */ }
   }
   return found;
@@ -7253,9 +7265,14 @@ async function targetDivisionIdByName(tb, tt, name, trail) {
   return id;
 }
 
+// Navnefilteret finder ikke altid navne med tegn som «/» ('24/7' blev ikke fundet,
+// og oprettelsen fejlede så med «name already assigned»). Findes navnet ikke med
+// filteret, gennemgås hele listen.
 async function listByName(base, url, token, name) {
   const r = await axios.get(`${base}${url}`, { headers: { Authorization: `Bearer ${token}` }, params: { name, pageSize: 50 } });
-  return (r.data.entities || []).find(x => x.name === name) || null;
+  const hit = (r.data.entities || []).find(x => x.name === name);
+  if (hit) return hit;
+  return (await pagedList(base, url, token)).find(x => x.name === name) || null;
 }
 
 // Sikrer at en åbningstid findes i målet. Returnerer id'et dér.
@@ -7724,11 +7741,32 @@ function parseArchyOutput(raw) {
 // til INBOUNDSHORTMESSAGE). Det kan ikke løses herfra, så beskeden siger hvad
 // der er galt og hvad man kan gøre — i stedet for kun Archys engelske tekst.
 function archyHint(msg) {
+  const scope = String(msg || '').match(/App not authorized to use scope \[([^\]]+)\]/i);
+  if (scope && !/OAuth-klienten/.test(msg))
+    return `${msg}
+  — OAuth-klienten i mål-org'en mangler scope [${scope[1]}]. Tilføj det under Admin → Integrations → OAuth, ` +
+           `og log ind igen. Outbound-flows (og survey-flows med kontaktlister) kræver det.`;
   const m = String(msg || '').match(/the flow type '([a-z]+)' is not available/i);
   if (!m) return msg;
   return `${msg}
   — ${m[1].toUpperCase()} kræver et produkt, mål-org'en ikke har (fx Messaging for SMS/beskeder). ` +
          `Aktivér det i mål-org'en, eller fjern flowet fra migreringen.`;
+}
+
+// Flowtyper et mål har afvist («flow type … is not available»), pr. org. Uden den
+// huskede værktøjet intet: hvert SMS-flow i en liste migrerede først sine køer,
+// åbningstider og prompts over — og fejlede så alligevel på typen. Gælder i en
+// halv time, så et produkt der aktiveres imens, ikke blokerer for evigt.
+const UNAVAILABLE_TYPES = new Map();
+const UNAVAILABLE_TYPE_MS = 30 * 60 * 1000;
+const unavailableKey = (target, type) => `${orgKeyOf(target)}|${String(type || '').toLowerCase()}`;
+function noteUnavailableType(target, msg) {
+  const m = String(msg || '').match(/the flow type '([a-z]+)' is not available/i);
+  if (m) UNAVAILABLE_TYPES.set(unavailableKey(target, m[1]), Date.now());
+}
+function typeUnavailableHere(target, type) {
+  const at = UNAVAILABLE_TYPES.get(unavailableKey(target, type));
+  return !!at && Date.now() - at < UNAVAILABLE_TYPE_MS;
 }
 
 const ARCHY_LOG_TAIL = 30; // Max lines shown from Archy error output
@@ -7942,7 +7980,7 @@ function archyErrorReason(out) {
   // - no matches", men opsummerer det som "Architect Scripting session ended in
   // error ( code: 99 )". Den generiske linje siger intet, så vi foretrækker den
   // specifikke.
-  if (!summary || /session ended in error/i.test(summary)) {
+  if (!summary || /session ended in error|^Error details:\s*no matches\.?$/i.test(summary)) {
     const miss = lines.find(l => /find '[^']+' by value of '[^']+'\s*-\s*no matches/i.test(l));
     const m = miss && miss.match(/find '([^']+)' by value of '([^']+)'/i);
     if (m) summary = `${m[1]} "${m[2]}" does not exist in the target org`;
@@ -8611,7 +8649,7 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
   // grund som flowets ville have gjort.
   const depYaml = fs.readFileSync(filePath, 'utf8');
   const deps = scanYamlDependencies(depYaml);
-  const ctx = { languages: scanSupportedLanguages(depYaml) };
+  const ctx = { languages: scanSupportedLanguages(depYaml), defaultLanguage: scanDefaultLanguage(depYaml) };
   const { token: tgtToken, apiBase: tgtBase } = await getToken(target);
 
   // 1) Tabeller, data actions, prompts og scripts modulet bruger
@@ -8892,6 +8930,12 @@ app.post('/api/migrate/prepare', async (req, res) => {
   const pre = await migrationPreflight(source, target, flowName, flowType, req.body);
   if (pre.refused) return res.status(pre.refused.status).json(pre.refused.body);
 
+  if (typeUnavailableHere(target, flowType)) {
+    addLog('WARN', `"${flowName}" not prepared: ${String(flowType).toUpperCase()} was refused by ${target.name} earlier`, target.name, 'MIGRATE');
+    return res.status(409).json({ code: 'type-unavailable', error:
+      `${String(flowType).toUpperCase()} blev afvist af ${target.name} for lidt siden — målet mangler det produkt, typen kræver. ` +
+      `Intet er migreret for dette flow. Aktivér produktet og prøv igen (spærringen udløber af sig selv efter en halv time, eller ved genstart).` });
+  }
   addLog('INFO', `Migration prepared: "${flowName}" from ${source.name} → ${target.name}`, source.name, 'MIGRATE');
   try {
     const analysis = await analyzeFlowForMigration(source, target, flowName, flowType, pre.kildeVersion);
@@ -8994,7 +9038,7 @@ async function analyzeFlowForMigration(source, target, flowName, flowType, kilde
     addLog('SUCCESS', `Export ok: ${yamlFile}`, source.name, 'MIGRATE');
 
     const deps = scanYamlDependencies(yaml);
-    const ctx = { languages: scanSupportedLanguages(yaml) };
+    const ctx = { languages: scanSupportedLanguages(yaml), defaultLanguage: scanDefaultLanguage(yaml) };
     const { token: tgtToken, apiBase: tgtBase } = await getToken(target);
 
     // Kilde-opslag bruges kun til at finde id'er på det der kan auto-migreres
@@ -9530,6 +9574,7 @@ app.post('/api/migrate/commit', async (req, res) => {
     if (/already exists/i.test(msg) && (action || 'create') === 'create') {
       msg += ' — vælg "update" eller "publish" i Handling for at overskrive det eksisterende flow.';
     }
+    noteUnavailableType(target, msg);
     msg = archyHint(msg);
     addLog('ERROR', `Migration failed for "${flowName}": ${msg}`, target.name, 'MIGRATE');
     res.status(500).json({ error: msg });
@@ -9831,7 +9876,7 @@ if (require.main === module) {
 // eneste der kan efterprøves uden en rigtig org. Se test/*.test.js.
 module.exports = {
   logLevelFor,
-  nodeSecurityStatus, countsAsExisting, scanTtsEngines, missingTtsEngines, replaceTtsEngines, applyClientScopes, dropRejectedLogin, flowOwnDivision, divisionProblem, appsBaseOf, COPYABLE_KINDS, archyHint, scheduleCreateBody, scheduleGroupCreateBody, scanSupportedLanguages, watchForUpdates, identicalInTarget, promptHasContent, queueCreateBody, groupCreateBody, credentialChangeError, forgetLogin, keepsOrgOnClientChange,
+  nodeSecurityStatus, countsAsExisting, scanTtsEngines, missingTtsEngines, replaceTtsEngines, applyClientScopes, dropRejectedLogin, flowOwnDivision, divisionProblem, appsBaseOf, COPYABLE_KINDS, noteUnavailableType, typeUnavailableHere, scanDefaultLanguage, archyHint, scheduleCreateBody, scheduleGroupCreateBody, scanSupportedLanguages, watchForUpdates, identicalInTarget, promptHasContent, queueCreateBody, groupCreateBody, credentialChangeError, forgetLogin, keepsOrgOnClientChange,
   sanitizeDatatableSchema, mapRoleDivisions, buildOauthClientBody, buildRolePolicies, missingRolesFor, missingDivisionsFor,
   app, tokenStore, getToken, loadSessions, saveSessions, setSessionPersist, SESSION_FILE,
   // konventioner

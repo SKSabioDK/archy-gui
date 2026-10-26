@@ -204,3 +204,52 @@ test('en flowtype målets org ikke har produktet til, forklares', () => {
   assert.ok(ud.startsWith(m) && ud.includes('INBOUNDSHORTMESSAGE') && ud.includes('produkt'));
   assert.equal(s.archyHint('noget andet'), 'noget andet');
 });
+
+test('en indsat liste med flownavne vælger flowene — også med «(latest …)» bagpå', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  const fn = html.slice(html.indexOf('function applyMigratePaste()'), html.indexOf('function selectAllMigrateFlows()'));
+  const names = ['Main_25', 'Ecall'];
+  const flows = names.map((n, k) => ({ id: k, name: n, type: 'INBOUNDCALL' }));
+  const valgt = new Set(), el = { value: 'Main_25 (latest Main_[version])\r\nEcall\nIkke her', style: {}, textContent: '', checked: false };
+  new Function('migrateFlows', 'selectedMigrateFlows', 'migrateKey', 'document', 'applyMigrateFilter', 'updateMigrateBtn', 't',
+    fn + '; applyMigratePaste();')(flows, valgt, f => f.name, { getElementById: () => el }, () => {}, () => {}, () => '{n}/{m}');
+  assert.deepEqual([...valgt].sort(), ['Ecall', 'Main_25']);
+  assert.ok(el.textContent.startsWith('2/1') && el.textContent.includes('Ikke her'));
+});
+
+// Falck-kørslen: seks forskellige fejl i én liste.
+test('et script med punktum i navnet («MSF Test 1.0») læses som afhængighed', () => {
+  const yaml = ['      screenPopScript:', '        MSF Test 1.0:', '          inputs: {}', ''].join('\n');
+  assert.deepEqual(s.scanYamlDependencies(yaml).script, ['MSF Test 1.0']);
+});
+
+test('«Error details: no matches» erstattes af den manglende ressource', () => {
+  const out = ["ERROR! find 'screen pop script' by value of 'MSF Test 1.0' - no matches for 'MSF Test 1.0'.",
+               'Error details: no matches'].join('\n');
+  assert.equal(s.archyErrorReason(out), 'screen pop script "MSF Test 1.0" does not exist in the target org');
+});
+
+test('en prompt skal have indhold på flowets STANDARDSPROG', () => {
+  const y = ['inboundCall:', '  name: F', '  defaultLanguage: en-gb', '  supportedLanguages:', '    en-us:', '      x: 1', ''].join('\n');
+  assert.equal(s.scanDefaultLanguage(y), 'en-gb');
+  const l = s.scanSupportedLanguages(y), d = s.scanDefaultLanguage(y);
+  const enUs = { resources: [{ language: 'en-us', mediaUri: 'u' }] };
+  assert.equal(s.promptHasContent(enUs, l, d), false, 'en-us alene: Archy afviste P1435 selvom en-us er understøttet');
+  assert.equal(s.promptHasContent({ resources: [{ language: 'en-gb', mediaUri: 'u' }] }, l, d), true);
+  assert.equal(s.promptHasContent(enUs, l, null), true, 'uden kendt standardsprog: et af flowets sprog');
+});
+
+test('åbningstider slås op i hele listen, ikke med navnefilter', () => {
+  const src = SERVER.slice(SERVER.indexOf('async function listByName('), SERVER.indexOf('// Sikrer at en åbningstid findes i målet'));
+  assert.ok(src.includes('pagedList(base, url, token)'), '«24/7» blev ikke fundet med navnefilteret');
+  assert.ok(SERVER.includes("schedule:      { url: '/api/v2/architect/schedules', size: 100 }"));
+});
+
+test('en afvist flowtype huskes, og manglende OAuth-scope forklares', () => {
+  const t1 = { id: 'a', name: 'US', clientId: 'x', region: 'r' };
+  s.noteUnavailableType(t1, "the flow type 'inboundshortmessage' is not available. This happens");
+  assert.equal(s.typeUnavailableHere(t1, 'INBOUNDSHORTMESSAGE'), true);
+  assert.equal(s.typeUnavailableHere(t1, 'INBOUNDCALL'), false);
+  const h = s.archyHint('status: 403, App not authorized to use scope [outbound, outbound:readonly] (app.not.authorized.for.scope)');
+  assert.ok(h.includes('mangler scope [outbound, outbound:readonly]'));
+});

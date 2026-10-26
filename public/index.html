@@ -533,7 +533,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.64.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.65.1 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -807,6 +807,8 @@
               <a href="#" onclick="selectAllMigrateFlows();return false" style="color:var(--accent);text-decoration:none" data-i18n="migrate_select_all">Vælg alle</a>
               &nbsp;·&nbsp;
               <a href="#" onclick="clearMigrateSelection();return false" style="color:var(--muted);text-decoration:none" data-i18n="migrate_clear_sel">Nulstil valg</a>
+              &nbsp;·&nbsp;
+              <a href="#" onclick="toggleMigratePaste();return false" style="color:var(--accent);text-decoration:none" data-i18n="paste_list_link">Indsæt liste</a>
             </div>
           </div>
           <div style="display:flex;gap:8px">
@@ -821,6 +823,14 @@
             </select>
             <input id="m-search" style="width:200px" data-i18n-placeholder="placeholder_filter"
               placeholder="🔍  Skriv for at filtrere…" oninput="applyMigrateFilter()"/>
+          </div>
+        </div>
+        <div id="m-paste-box" style="display:none;margin-bottom:12px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px" data-i18n="paste_list_hint">Ét flownavn pr. linje. Tekst i parentes til sidst (fx «(latest …)») ignoreres, hvis hele linjen ikke findes.</div>
+          <textarea id="m-paste-text" rows="8" style="width:100%;font-family:var(--mono);font-size:12px" spellcheck="false"></textarea>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+            <button class="btn btn-primary btn-sm" onclick="applyMigratePaste()" data-i18n="paste_list_apply">Vælg disse flows</button>
+            <span id="m-paste-result" style="font-size:12px"></span>
           </div>
         </div>
         <!-- Handling og Kør står over listen: med flere hundrede flows lå knappen
@@ -2071,7 +2081,7 @@ const LANGS = {
     pl_no_groups:'Ingen grupper endnu. Sæt kunde, gruppe og trin på miljøerne under Kunder.',
     pl_search:'🔍  Filtrér flows…',
     pl_only_gaps:'Kun dem der mangler i et senere trin',
-    migrate_only_selected:'Vis kun valgte', migrate_none_selected:'Ingen flows valgt endnu — klik på dem du vil migrere.', migrate_done_badge:'✓ migreret', skip_identical_label:'Spring flows over, der allerede er identiske i målet', reload_available:'En ny version er startet', reload_now:'Genindlæs siden', identical_skipped:'identisk med målet — springes over',
+    migrate_only_selected:'Vis kun valgte', migrate_none_selected:'Ingen flows valgt endnu — klik på dem du vil migrere.', migrate_done_badge:'✓ migreret', paste_list_link:'Indsæt liste', retry_msg:'prøver igen', paste_list_hint:'Ét flownavn pr. linje. Tekst i parentes til sidst (fx «(latest …)») ignoreres, hvis hele linjen ikke findes.', paste_list_apply:'Vælg disse flows', paste_list_result:'{n} fundet og valgt, {m} ikke fundet', skip_identical_label:'Spring flows over, der allerede er identiske i målet', reload_available:'En ny version er startet', reload_now:'Genindlæs siden', identical_skipped:'identisk med målet — springes over',
     migrate_no_match:'Ingen flows passer til filteret.',
     pl_flow:'FLOW',
     pl_missing:'mangler',
@@ -3119,7 +3129,7 @@ const LANGS = {
     pl_no_groups:'No groups yet. Set customer, group and stage on the environments under Customers.',
     pl_search:'🔍  Filter flows…',
     pl_only_gaps:'Only those missing in a later stage',
-    migrate_only_selected:'Show only selected', migrate_none_selected:'No flows selected yet — click the ones you want to migrate.', migrate_done_badge:'✓ migrated', skip_identical_label:'Skip flows that are already identical in the target', reload_available:'A new version has started', reload_now:'Reload the page', identical_skipped:'identical to the target — skipped',
+    migrate_only_selected:'Show only selected', migrate_none_selected:'No flows selected yet — click the ones you want to migrate.', migrate_done_badge:'✓ migrated', paste_list_link:'Paste list', retry_msg:'retrying', paste_list_hint:'One flow name per line. A trailing parenthesis (e.g. "(latest …)") is ignored if the whole line is not found.', paste_list_apply:'Select these flows', paste_list_result:'{n} found and selected, {m} not found', skip_identical_label:'Skip flows that are already identical in the target', reload_available:'A new version has started', reload_now:'Reload the page', identical_skipped:'identical to the target — skipped',
     migrate_no_match:'No flows match the filter.',
     pl_flow:'FLOW',
     pl_missing:'missing',
@@ -4167,7 +4177,7 @@ const LANGS = {
     pl_no_groups:'Aucun groupe. Renseignez client, groupe et étape sur les environnements sous Clients.',
     pl_search:'🔍  Filtrer les flows…',
     pl_only_gaps:'Uniquement ceux absents d\'une étape ultérieure',
-    migrate_only_selected:'Afficher uniquement la sélection', migrate_none_selected:'Aucun flow sélectionné — cliquez sur ceux à migrer.', migrate_done_badge:'✓ migré', skip_identical_label:'Ignorer les flows déjà identiques dans la cible', reload_available:'Une nouvelle version a démarré', reload_now:'Recharger la page', identical_skipped:'identique à la cible — ignoré',
+    migrate_only_selected:'Afficher uniquement la sélection', migrate_none_selected:'Aucun flow sélectionné — cliquez sur ceux à migrer.', migrate_done_badge:'✓ migré', paste_list_link:'Coller une liste', retry_msg:'nouvel essai', paste_list_hint:'Un nom de flow par ligne. Une parenthèse finale est ignorée si la ligne entière est introuvable.', paste_list_apply:'Sélectionner ces flows', paste_list_result:'{n} trouvés et sélectionnés, {m} introuvables', skip_identical_label:'Ignorer les flows déjà identiques dans la cible', reload_available:'Une nouvelle version a démarré', reload_now:'Recharger la page', identical_skipped:'identique à la cible — ignoré',
     migrate_no_match:'Aucun flow ne correspond au filtre.',
     pl_flow:'FLOW',
     pl_missing:'absent',
@@ -5215,7 +5225,7 @@ const LANGS = {
     pl_no_groups:'Nog geen groepen. Stel klant, groep en fase in bij de omgevingen onder Klanten.',
     pl_search:'🔍  Flows filteren…',
     pl_only_gaps:'Alleen die ontbreken in een latere fase',
-    migrate_only_selected:'Alleen geselecteerde tonen', migrate_none_selected:'Nog geen flows geselecteerd — klik op wat je wilt migreren.', migrate_done_badge:'✓ gemigreerd', skip_identical_label:'Flows overslaan die al identiek zijn in het doel', reload_available:'Er is een nieuwe versie gestart', reload_now:'Pagina herladen', identical_skipped:'identiek aan het doel — overgeslagen',
+    migrate_only_selected:'Alleen geselecteerde tonen', migrate_none_selected:'Nog geen flows geselecteerd — klik op wat je wilt migreren.', migrate_done_badge:'✓ gemigreerd', paste_list_link:'Lijst plakken', retry_msg:'opnieuw proberen', paste_list_hint:'Eén flownaam per regel. Een afsluitend haakje wordt genegeerd als de hele regel niet gevonden wordt.', paste_list_apply:'Deze flows selecteren', paste_list_result:'{n} gevonden en geselecteerd, {m} niet gevonden', skip_identical_label:'Flows overslaan die al identiek zijn in het doel', reload_available:'Er is een nieuwe versie gestart', reload_now:'Pagina herladen', identical_skipped:'identiek aan het doel — overgeslagen',
     migrate_no_match:'Geen flows voldoen aan het filter.',
     pl_flow:'FLOW',
     pl_missing:'ontbreekt',
@@ -6263,7 +6273,7 @@ const LANGS = {
     pl_no_groups:'Aún no hay grupos. Defina cliente, grupo y etapa en los entornos en Clientes.',
     pl_search:'🔍  Filtrar flows…',
     pl_only_gaps:'Solo los que faltan en una etapa posterior',
-    migrate_only_selected:'Mostrar solo lo seleccionado', migrate_none_selected:'Ningún flow seleccionado todavía: haga clic en los que quiera migrar.', migrate_done_badge:'✓ migrado', skip_identical_label:'Omitir los flows que ya son idénticos en el destino', reload_available:'Se ha iniciado una nueva versión', reload_now:'Recargar la página', identical_skipped:'idéntico al destino — omitido',
+    migrate_only_selected:'Mostrar solo lo seleccionado', migrate_none_selected:'Ningún flow seleccionado todavía: haga clic en los que quiera migrar.', migrate_done_badge:'✓ migrado', paste_list_link:'Pegar lista', retry_msg:'reintentando', paste_list_hint:'Un nombre de flow por línea. Un paréntesis final se ignora si no se encuentra la línea completa.', paste_list_apply:'Seleccionar estos flows', paste_list_result:'{n} encontrados y seleccionados, {m} no encontrados', skip_identical_label:'Omitir los flows que ya son idénticos en el destino', reload_available:'Se ha iniciado una nueva versión', reload_now:'Recargar la página', identical_skipped:'idéntico al destino — omitido',
     migrate_no_match:'Ningún flow coincide con el filtro.',
     pl_flow:'FLOW',
     pl_missing:'falta',
@@ -7746,6 +7756,41 @@ function applyMigrateFilter() {
   renderMigrateFlows(filtered, kunValgte);
 }
 
+// Indsæt en liste med flownavne og vælg dem. Først prøves hele linjen; findes den
+// ikke, tages en afsluttende parentes af («Main_25 (latest Main_[version])» →
+// «Main_25»). Hedder flere flows det samme (forskellige typer), vælges alle.
+function toggleMigratePaste() {
+  const box = document.getElementById('m-paste-box');
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  if (box.style.display === 'block') document.getElementById('m-paste-text').focus();
+}
+
+function applyMigratePaste() {
+  const lines = document.getElementById('m-paste-text').value.split(/\r?\n/)
+    .map(x => x.trim()).filter(Boolean);
+  const byName = new Map();
+  for (const f of migrateFlows) {
+    const k = f.name.trim().toLowerCase();
+    if (!byName.has(k)) byName.set(k, []);
+    byName.get(k).push(f);
+  }
+  let found = 0; const missing = [];
+  for (const line of lines) {
+    const kandidater = [line, line.replace(/\s*\([^)]*\)\s*$/, '').trim()];
+    const hit = kandidater.map(k => byName.get(k.toLowerCase())).find(Boolean);
+    if (!hit) { missing.push(line); continue; }
+    for (const f of hit) selectedMigrateFlows.add(migrateKey(f));
+    found++;
+  }
+  const kunValgte = document.getElementById('m-only-selected'); if (kunValgte) kunValgte.checked = true;
+  applyMigrateFilter();
+  updateMigrateBtn();
+  const el = document.getElementById('m-paste-result');
+  el.style.color = missing.length ? 'var(--yellow)' : 'var(--green)';
+  el.textContent = t('paste_list_result').replace('{n}', found).replace('{m}', missing.length)
+    + (missing.length ? ': ' + missing.join(', ') : '');
+}
+
 function selectAllMigrateFlows() {
   // Kun dem der er synlige lige nu — "Vælg alle" må ikke tage 191 flows med
   // når listen viser tre. "Vis kun valgte" er udeladt her: de er jo valgt.
@@ -7841,6 +7886,20 @@ function updateMigrateAuthStatus() {
 // Knappen låses mens migreringen kører, så et ekstra klik ikke starter den én
 // gang til, og viser at der arbejdes. Loggen får en tydelig slutlinje.
 let migrationRunning = false;
+// Prepare skriver intet, så den kan prøves igen uden risiko. «Failed to fetch» kom
+// fx når maskinen havde sovet, eller serveren genstartede — og tog alle de
+// efterfølgende flows med sig, selvom hver ville have virket få sekunder senere.
+async function fetchRetry(url, opts, logBox, tries = 6, waitMs = 5000) {
+  for (let i = 1; ; i++) {
+    try { return await fetch(url, opts); }
+    catch (e) {
+      if (i >= tries) throw e;
+      if (logBox) log(logBox, `  ↻ ${e.message} — ${t('retry_msg')} (${i}/${tries - 1})`, 'info');
+      await new Promise(r => setTimeout(r, waitMs));
+    }
+  }
+}
+
 async function runMigration() {
   if (migrationRunning) return;
   const btn = document.getElementById('m-runBtn');
@@ -7894,10 +7953,10 @@ async function _runMigration() {
       let actionMap = [], rememberMap = true, mapDone = false;
       const aktiv = d => !(d.kind === 'dataaction' && actionMap.some(e => e.from.name === d.name));
       for (;;) {
-        prep = await fetch('/api/migrate/prepare', {
+        prep = await fetchRetry('/api/migrate/prepare', {
           method: 'POST', headers: {'Content-Type':'application/json'},
           body: JSON.stringify({ sourceId, targetId, flowName: name, flowType: type, confirmProd, skipIdentical })
-        }).then(r => r.json());
+        }, logBox).then(r => r.json());
         if (prep.error) break;
         // Målet kører allerede det samme indhold: der er intet at migrere
         if (prep.identical) break;
