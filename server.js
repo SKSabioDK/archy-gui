@@ -1908,6 +1908,40 @@ const READ_PROBES = {
   queues:       ['routing:queue:view',              '/api/v2/routing/queues'],
   users:        ['directory:user:view',             '/api/v2/users'],
 };
+// Nyere faner — org-indstillinger, Terraform, roller, OAuth, vidensbaser m.fl. — prøves ved at læse
+// deres liste med brugerens eget login. Et 403 siger selv hvad der mangler (scope eller rettighed), og
+// det er mere pålideligt end en liste over rettighedsstrenge der kunne være stavet forkert. Navnene
+// er de samme som fanerne i Migrér ressourcer, så brugerfladen kan bruge deres tekster.
+const LIVE_PROBES = [
+  ['presence', '/api/v2/presencedefinitions'], ['orgset', '/api/v2/organizations/me'],
+  ['skills', '/api/v2/routing/skills'], ['groups', '/api/v2/groups'], ['teams', '/api/v2/teams'],
+  ['locations', '/api/v2/locations'], ['utilization', '/api/v2/routing/utilization/labels'],
+  ['knowledgebases', '/api/v2/knowledge/knowledgebases'], ['responselibs', '/api/v2/responsemanagement/libraries'],
+  ['schedules', '/api/v2/architect/schedules'], ['emergencygroups', '/api/v2/architect/emergencygroups'],
+  ['contactlists', '/api/v2/outbound/contactlists'], ['wrapup', '/api/v2/routing/wrapupcodes'],
+  ['roles', '/api/v2/authorization/roles'], ['oauth', '/api/v2/oauth/clients'],
+  ['integ', '/api/v2/integrations'], ['evalforms', '/api/v2/quality/forms/evaluations'],
+];
+
+// Ren: hvad et afvist kald mangler. 403 → "scope x" eller den rettighed Genesys nævner; andre fejl → ukendt.
+function liveProbeResult(area, status, data) {
+  if (!status) return { area, ok: true, missing: [] };
+  if (status !== 403) return { area, ok: false, unknown: true, missing: [] };
+  const text = String((data && (data.message || data.error)) || '');
+  const scope = text.match(/scope \[([^\]]+)\]/);
+  if (scope) return { area, ok: false, missing: ['scope ' + scope[1].split(/[,\s]+/)[0]] };
+  const perm = text.match(/permission[^\[]*\[([^\]]+)\]/i) || text.match(/([a-z]+:[A-Za-z]+:[a-z]+)/);
+  return { area, ok: false, missing: [perm ? perm[1] : 'HTTP 403'] };
+}
+
+async function liveProbes(apiBase, token, skip = new Set()) {
+  const H = { headers: { Authorization: `Bearer ${token}` }, params: { pageSize: 1 } };
+  return Promise.all(LIVE_PROBES.filter(([area]) => !skip.has(area)).map(async ([area, path]) => {
+    try { await axios.get(apiBase + path, H); return liveProbeResult(area); }
+    catch (e) { return liveProbeResult(area, e.response && e.response.status, e.response && e.response.data); }
+  }));
+}
+
 async function probePermissions(customer, token, apiBase) {
   const H = { headers: { Authorization: `Bearer ${token}` }, params: { pageSize: 1 } };
   const out = [];
@@ -2395,6 +2429,7 @@ app.post('/api/customers/:id/test', async (req, res) => {
         addLog('WARN', `Could not read the scopes of the OAuth client for ${customer.name}: ${describeApiError(e)}`, customer.name, 'TEST');
       }
     }
+    checks = checks.concat(await liveProbes(apiBase, token, new Set(checks.map(c => c.area))));
     const source = customer.authType === 'oauth' ? 'user' : held ? 'roles' : 'probe';
     const missing = checks.filter(c => !c.ok && !c.unknown);
     const unknown = checks.filter(c => c.unknown);
@@ -10607,7 +10642,7 @@ if (require.main === module) {
 // især haft mindst én fejl der nåede ud til brugeren, og de er samtidig de
 // eneste der kan efterprøves uden en rigtig org. Se test/*.test.js.
 module.exports = {
-  logLevelFor, keyMatches, issueRepo, ISSUE_REPO_RE, presenceLabel, presenceKeep, presenceCreateBody, languagePutBody, orgSettingRows, settingText,
+  logLevelFor, keyMatches, liveProbeResult, LIVE_PROBES, issueRepo, ISSUE_REPO_RE, presenceLabel, presenceKeep, presenceCreateBody, languagePutBody, orgSettingRows, settingText,
   nodeSecurityStatus, countsAsExisting, scanTtsEngines, missingTtsEngines, replaceTtsEngines, applyClientScopes, dropRejectedLogin, flowOwnDivision, divisionProblem, appsBaseOf, COPYABLE_KINDS, RESOURCE_KINDS, RESOURCE_MIGRATE, SIMPLE_CREATE, noteUnavailableType, typeUnavailableHere, scanDefaultLanguage, archyHint, scheduleCreateBody, scheduleGroupCreateBody, scanSupportedLanguages, watchForUpdates, identicalInTarget, promptHasContent, queueCreateBody, groupCreateBody, credentialChangeError, forgetLogin, keepsOrgOnClientChange,
   sanitizeDatatableSchema, mapRoleDivisions, buildOauthClientBody, buildRolePolicies, missingRolesFor, missingDivisionsFor,
   app, tokenStore, getToken, loadSessions, saveSessions, setSessionPersist, SESSION_FILE,

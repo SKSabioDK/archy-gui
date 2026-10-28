@@ -5,6 +5,18 @@
 
 ---
 
+### v1.79.1
+---
+**🇩🇰 Dansk**
+
+- **🔌 Test kender nu de nyere funktioner.** Den tjekkede kun de oprindelige områder (flows, tabeller, prompts, scripts …), så den kunne sige «alt i orden», mens Status Management, roller, OAuth-klienter, vidensbaser, kontaktlister, lokationer m.fl. fejlede på et manglende scope. Nu læses hver af dem med dit eget login, og et afvist kald siger selv hvad der mangler — fx `scope presence` — så man ved, hvad der skal tilføjes på OAuth-klienten. Områder testen ikke kan afgøre, står som ukendt, aldrig som i orden.
+- 4 nye tests.
+
+**🇬🇧 English**
+- **🔌 Test now knows the newer features.** It only checked the original areas (flows, tables, prompts, scripts …), so it could say "all fine" while Status Management, roles, OAuth clients, knowledge bases, contact lists, locations and more failed on a missing scope. Each is now read with your own login, and a rejected call says what is missing — e.g. `scope presence` — so you know what to add on the OAuth client. Areas the test cannot decide show as unknown, never as fine.
+- 4 new tests.
+
+---
 ### v1.79.0
 ---
 **🇩🇰 Dansk**

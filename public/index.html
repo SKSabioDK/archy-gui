@@ -551,7 +551,7 @@
       <a onclick="openIssue('idea')" data-i18n="iss_link_idea">💡 Foreslå et ønske</a>
     </div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.79.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.79.1 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -9879,7 +9879,7 @@ async function testCustomer(id) {
   const missingAreas = data.checks.filter(c => !c.ok && !c.unknown);
   const unknownAreas  = data.checks.filter(c => c.unknown);
   const row = c => {
-    const label = t('perm_area_' + c.area);
+    const label = permAreaLabel(c.area);
     if (c.ok) return `<div style="color:var(--green)">✓ ${label}</div>`;
     if (c.unknown) return `<div style="color:var(--muted)">? ${label} — ${t('perm_unknown')}</div>`;
     return `<div style="color:var(--red)">✗ ${label} — ${t('perm_missing')}: ${c.missing.map(escapeHtml).join(', ')}</div>`;
@@ -14185,6 +14185,16 @@ function tfRenderResult(r) {
       <ul style="font-size:12px;color:var(--muted);margin:6px 0 0 18px">${r.notes.map(n => '<li>' + escapeHtml(n) + '</li>').join('')}</ul></details>` : ''}`;
 }
 
+// Teksten til et område i forbindelsestesten: de ældre har deres egen, de nyere låner fanens navn.
+function permAreaLabel(area) {
+  for (const k of ['perm_area_' + area, 'da_tab_' + area, area === 'presence' ? 'os_sec_presence' : '']) {
+    if (!k) continue;
+    const v = t(k);
+    if (v !== k) return v;
+  }
+  return area;
+}
+
 // ── Org-indstillinger ─────────────────────────────────────────────────────────
 // Sammenligner det man ser under Admin → Organization Settings. Kun statusser og
 // standardsprog/-land kan migreres; resten vises til sammenligning.
@@ -15782,7 +15792,7 @@ function renderGuide(id) {
   const doneCount = krav.filter(x => st[x.k]).length;
   const oauth = env.authType === 'oauth';
   const permHtml = (K?.permissionChecks || []).filter(c => !(c.credsOnly && oauth))
-    .map(c => `<div>• ${escapeHtml(t('perm_area_' + c.area))}: <span style="font-family:var(--mono)">${c.perms.map(escapeHtml).join(', ')}</span></div>`).join('');
+    .map(c => `<div>• ${escapeHtml(permAreaLabel(c.area))}: <span style="font-family:var(--mono)">${c.perms.map(escapeHtml).join(', ')}</span></div>`).join('');
   const body = k => {
     const v = { uri: K?.redirectUri || '', div: env.division || '', table: (env.prefix || '') + 'ArchyGUI_Manifest',
                 perm: env.deployPermission || 'architect:flow:publish' };
