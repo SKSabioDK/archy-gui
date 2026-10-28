@@ -5,6 +5,52 @@
 
 ---
 
+### v1.79.0
+---
+**🇩🇰 Dansk**
+
+- **Ny fane: AI-assistent (beta)** — en chat, hvor modellen kan læse og forstå flows og lave udkast til YAML. Bag samme aktiveringsnøgle og kun når AI-funktionen er slået til og en udbyder (se v1.78.0) er klar. Serveren kører værktøjsløkken mod den valgte udbyders EU-endpoint og sender hændelserne som Server-Sent Events.
+- **Værktøjer** (`ai-agent.js`): liste miljøer og flows, eksportere et flow, søge i det, se opbygning og afhængigheder, lave et udkast til YAML og validere det — alle skrivebeskyttede og bygget på appens egne funktioner og dit eget login. Ingen ekstern MCP-server: den kunne gå uden om prod-vagten.
+- **Udkastet lander i Importér YAML**, hvor 🔍 Valider YAML og 🌐 Tjek mod org kører som altid.
+- **Publicering og import kræver dit klik, hver gang.** Kortet viser org, trin, flow, handling, tjek mod org, advarsler og hele YAML'en. Kaldet går gennem de eksisterende ruter (`/api/import`, `/api/flows/publish`), så prod-vagten, divisionstjekket og afhængighedstjekket gælder; afviser vagten, spørges du ikke. Intet modellen skriver kan bekræfte for den.
+- **Persondata:** før hvert kald til udbyderen vises præcis hvad der sendes (slået til som standard), og hemmeligheder renses. Prompts og svar logges ikke.
+- **Indhold fra orgs er data:** pakkes ind som utroværdigt, og modellen er bedt om ikke at følge det. Det er ikke en garanti, derfor står skrivning altid bag klikket.
+- Hjælpetekst og alle tekster på seks sprog. 24 nye tests.
+- **Ikke afprøvet mod en rigtig udbyder eller en rigtig org.** Afprøvet i browseren mod en simuleret udbyder og de lokale demo-miljøer: løkken, forhåndsvisningen, udkast til Importér YAML, bekræftelseskortet og et godkendt kald (som demo-miljøet afviste). Svaret kommer trin for trin, ikke ord for ord.
+
+**🇬🇧 English**
+- **New tab: AI assistant (beta)** — a chat where the model can read and understand flows and draft YAML. Behind the same activation key, and only when the AI feature is switched on and a provider (see v1.78.0) is ready. The server runs the tool loop against the selected provider's EU endpoint and sends the events as Server-Sent Events.
+- **Tools** (`ai-agent.js`): list environments and flows, export a flow, search in it, see structure and dependencies, draft YAML and validate it — all read-only and built on the app's own functions and your own login. No external MCP server: it could bypass the prod guard.
+- **The draft lands in Import YAML**, where 🔍 Validate YAML and 🌐 Check against org run as usual.
+- **Publishing and importing need your click, every time.** The card shows org, stage, flow, action, checks against the org, warnings and the whole YAML. The call goes through the existing routes (`/api/import`, `/api/flows/publish`), so the prod guard, division check and dependency check apply; if the guard refuses, you are not asked. Nothing the model writes can confirm for it.
+- **Personal data:** before each call to the provider, exactly what is sent is shown (on by default), and secrets are redacted. Prompts and answers are not logged.
+- **Content from orgs is data:** wrapped as untrusted, and the model is told not to follow it. This is not a guarantee, which is why writing always sits behind the click.
+- Help text and all strings in six languages. 24 new tests.
+- **Not tried against a real provider or a real org.** Tried in the browser against a simulated provider and the local demo environments: the loop, the preview, draft into Import YAML, the confirmation card and an approved call (which the demo environment refused). The answer arrives step by step, not word by word.
+
+---
+
+### v1.78.0
+---
+**🇩🇰 Dansk**
+
+- **Egne API-nøgler til AI-udbydere med EU-hosting (beta).** Nyt kort under *Kunder → AI-udbydere*, kun synligt med aktiveringsnøglen og slået fra som standard. Udbydere: Mistral (kun EU-adressen `api.eu.mistral.ai`), Azure OpenAI i en EU-region, Claude via Amazon Bedrock i en EU-region og en egen OpenAI-kompatibel endpoint. Ét udbyderlag (`ai-providers.js`) med samme grænseflade for dem alle: beskeder, værktøjskald og svar.
+- **Nøgler:** gemmes kun på serveren, krypteret med AES-256-GCM i profilmappen, og sendes aldrig tilbage til browseren. Det beskytter mod kopiering og commit af filen, men ikke mod en person med adgang til Windows-kontoen — det står også i appen og i README. Nøglerne renses fra loggen.
+- **GDPR:** hver udbyder viser region og grundlag (dokumentation eller din egen erklæring); en databehandleraftale skal bekræftes, før udbyderen kan bruges, og nulstilles hvis endpoint, region eller model ændres; Bedrock afviser modeller, der kan sende data ud af EU; testen sender kun «ping», og *Vis hvad testen sender* viser adresse og indhold uden nøglen. Prompts og svar logges ikke.
+- Ny log-kategori AI. Hjælpetekst og alle tekster på seks sprog.
+- **Ikke afprøvet mod en rigtig udbyder** — der var ingen nøgler; udbyderen er simuleret i testene. Chat-fanen kommer i næste version.
+- 15 nye tests.
+
+**🇬🇧 English**
+- **Own API keys for AI providers hosted in the EU (beta).** New card under *Customers → AI providers*, visible only with the activation key and off by default. Providers: Mistral (only the EU address `api.eu.mistral.ai`), Azure OpenAI in an EU region, Claude via Amazon Bedrock in an EU region, and an own OpenAI-compatible endpoint. One provider layer (`ai-providers.js`) with the same interface for all: messages, tool calls and answers.
+- **Keys:** stored only on the server, encrypted with AES-256-GCM in the profile folder, and never sent back to the browser. This protects against the file being copied or committed, but not against someone with access to the Windows account — the app and README say so. Keys are redacted from the log.
+- **GDPR:** each provider shows region and basis (documentation or your own statement); a data processing agreement must be confirmed before the provider can be used, and is reset if endpoint, region or model changes; Bedrock refuses models that could send data out of the EU; the test sends only "ping", and *Show what the test sends* shows address and content without the key. Prompts and answers are not logged.
+- New log category AI. Help text and all strings in six languages.
+- **Not tried against a real provider** — there were no keys; the provider is simulated in the tests. The chat tab comes in the next version.
+- 15 new tests.
+
+---
+
 ### v1.77.1
 ---
 **🇩🇰 Dansk**

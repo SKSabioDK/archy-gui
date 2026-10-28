@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.77.1
+# Archy GUI — Flow Manager · v1.79.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.77.1**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.77.1**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.79.0**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.79.0**.
 
 ---
 
@@ -375,6 +375,20 @@ Siden migrerer det der ikke er flows mellem to orgs, fordelt på otte faner: **D
 
 **Fanen Terraform** genererer en Terraform-opsætning (genesyscloud-provideren) ud fra kilde-org'ens objekter og gemmer den automatisk i `terraform/<fra>_<til>/<dato>/` (vælg også et mål, så navngives mappen efter begge orgs, README og provider nævner begge, og målets region bliver standard; uden mål hedder mappen kun efter kilden). Filerne følger appens sprog (dansk, engelsk eller tysk — andre sprog får engelsk). Kunden kører selv `terraform apply` mod den org, der skal ændres — fx fra Falck Global til US — og `terraform plan` viser forskellen. Man vælger typer eller tager alle med. Med er: divisioner, skills, skill-grupper, grupper, teams, lokationer, utilization-labels, vidensbaser, svarbiblioteker, åbningstider og -grupper, nødgrupper, kontaktlister, DNC-lister, wrap-up-koder, roller, OAuth-klienter, integrationer, data actions, data tabeller, user prompts, køer og flows (nyeste lokale YAML kopieres til `architect_flows/`, som i providerens egen eksport). Referencer bliver til Terraform-referencer; Home og standardroller bliver til data-kilder, og en division der ikke er med, bliver en variabel i `terraform.tfvars` som i providerens egen eksport. Provideren følger dens vejledning: `required_version` og providerversion i `versions.tf`, og tomme felter bruger miljøvariablerne `GENESYSCLOUD_*`. Mappen får også `provider.tf`, `variables.tf`, `terraform.tfvars.example` og en `README.md` med det, der ikke er med: hemmeligheder, medlemmer, kontakter, indspillet lyd og betingede rettigheder (samt formularer, scripts og Function Data Actions). Det er en startopsætning — afprøv den i en test-org. Mappen ligger i `.gitignore`, fordi den indeholder kundens opsætning.
 
+**AI-udbydere med EU-hosting (beta).** Under *Kunder → AI-udbydere* — kun synlig med aktiveringsnøglen og slået fra som standard — lægger du dine egne API-nøgler ind til AI-udbydere, der hoster i Europa: **Mistral** (kun EU-adressen `api.eu.mistral.ai`; Mistrals egen dokumentation siger, at den globale `api.mistral.ai` ikke binder sig til en placering), **Azure OpenAI** i en EU-region, **Claude via Amazon Bedrock** i en EU-region (`eu.*` inference profile; `us.`, `apac.` og `global.` afvises) og en **egen endpoint** (OpenAI-kompatibel) til andre EU-udbydere uden kode. Endpoint og autentificering er slået op i udbydernes dokumentation 28. oktober 2026.
+- **Region:** hver udbyder viser sin region og grundlaget. Mistral og Bedrock: udbyderens dokumentation. Azure og egen endpoint: *din egen erklæring* — Archy kan ikke se, hvor en Azure-ressource ligger, så tjek den i portalen (region og udrulningstype).
+- **Databehandleraftale:** en udbyder kan først bruges, når du har bekræftet, at du har en. Ændres endpoint, region, deployment eller model, nulstilles bekræftelsen.
+- **Nøgler:** gemmes kun på serveren, krypteret med AES-256-GCM i din profilmappe (`~/.archy-gui/ai-providers.enc`; nøglen til filen er `ai.key` i samme mappe) — aldrig i projektmappen — og sendes aldrig tilbage til browseren (kun «sat / ikke sat»). **Det beskytter mod, at filen kopieres eller committes, men ikke mod en person med adgang til din Windows-konto**, for dér ligger filens nøgle også. Nøglerne renses fra logfilen som en client secret.
+- **Hvad der sendes:** *Vis hvad testen sender* viser adresse og indhold uden nøglen. Testen sender kun «ping». Prompts og svar logges ikke; en fejl fra udbyderen viser kun HTTP-status og udbyderens korte fejlkode. Flow-YAML, kønavne og logtekst kan indeholde persondata — chatten nedenfor viser det, før det sendes.
+
+**AI-assistent (beta).** Fanen *AI-assistent* — samme aktiveringsnøgle, og kun når AI-funktionen er slået til og en udbyder er klar — er en chat, hvor modellen kan læse og forstå flows og lave udkast til YAML. Serveren kører værktøjsløkken mod den *valgte* udbyders endpoint (og kun den) og sender hændelserne til browseren som Server-Sent Events.
+- **Værktøjer:** `list_customers`, `list_flows`, `export_flow`, `search_in_flow`, `flow_outline` (opbygning), `flow_dependencies`, `draft_yaml`, `validate_draft` — og de to skrivende, `import_flow` og `publish_flow`. De genbruger appens egne ruter og dit eget login (ikke en ekstern MCP-server, som kunne gå uden om prod-vagten).
+- **Udkast:** `draft_yaml` lægger YAML'en i *Importér YAML* (er feltet tomt, straks; ellers efter et klik), hvor 🔍 Valider YAML og 🌐 Tjek mod org kører som altid. Det ændrer intet i nogen org.
+- **Skrivning kræver dit klik.** `import_flow` og `publish_flow` udfører intet selv: de viser org, trin, flow, handling, tjek mod org, advarsler (fx afhængige flows ved et common module) og hele YAML'en, og først dit klik på *Udfør* sender kaldet af sted — gennem de samme ruter som knapperne (`/api/import`, `/api/flows/publish`), så prod-vagten, divisionstjekket og afhængighedstjekket gælder. Vil vagten afvise skrivningen (fx prod uden login), eller mangler divisionen, vises det, og du bliver ikke spurgt. Bekræftelsen afgøres af dit svar i browseren; intet modellen skriver kan give den.
+- **Persondata:** *Spørg mig, før data sendes til udbyderen* (slået til som standard) viser før hvert kald præcis hvad der sendes — det nye i kaldet og hele forespørgslen — og du kan annullere. *Vis hvad der sendes* viser det første kald, før du sender. Hemmeligheder renses. Prompts og svar logges ikke; loggen viser kun at en samtale kørte og hvilke skrivninger du godkendte eller afviste.
+- **Indhold fra orgs er data, ikke instruktioner.** Det pakkes ind i `<untrusted_org_data>`, en lukkekode inde i indholdet fjernes, og modellen er bedt om ikke at følge det. Det er ikke en garanti — en model kan lade sig narre — så skrivning er altid bag dit klik og værktøjerne er skrivebeskyttede som standard.
+- **Begrænsninger:** svaret kommer trin for trin, ikke ord for ord; højst 12 trin pr. besked; værktøjssvar skæres af ved 30.000 tegn; en samtale gemmes ikke på serveren; en stoppet kørsel afbryder ikke et eksport- eller importkald, der allerede er i gang. Meldingerne i bekræftelseskortet kommer fra serveren på engelsk.
+
 **Migreringsrapport (CSV).** Hver migrering — alle ressourcefaner, flows og de afhængigheder der migreres undervejs — skriver en række med tidspunkt, type, navn, status (*Lykkedes*, *Sprunget over*, *Fejlede*), detalje og kilde- og mål-org. Rækkerne samles på tværs af faner og flows og huskes i browseren (højst 5.000). Øverst på *Migrér ressourcer* og *Migrer Flow*: **Gem rapport (CSV) efter hver migrering** henter en fil når kørslen er færdig, **Download samlet rapport** henter alt der er samlet, og **Ryd** tømmer samlingen. Secrets fra OAuth-klienter kommer aldrig med. Semikolon og UTF-8 med BOM, så Excel åbner den rigtigt.
 
 *Eksempel med opdigtede data (Demo A/S — TEST til PROD): billedet viser appens rigtige brugerflade, men svarene er beregnet af appens egne funktioner på en opdigtet org, ikke hentet fra en kunde. Faneblade kræver to forskellige orgs.*
@@ -485,6 +499,8 @@ Tekniske betegnelser oversættes ikke — flow-typer (`InboundCall`, `Workflow` 
 Archy-gui/
 ├── server.js          # Express backend
 ├── terraform.js       # Terraform-generator (ren kode)
+├── ai-providers.js    # AI-udbydere: krypteret nøglelager og adaptere
+├── ai-agent.js        # AI-assistenten: værktøjsløkke, værktøjer og bekræftelser
 ├── start.bat          # Start server skjult i baggrunden + åbn browser
 ├── stop.bat           # Stop serveren
 ├── customers.json     # Kunder (auto-genereret)
@@ -509,7 +525,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-485 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+524 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -875,6 +891,20 @@ This page migrates everything that is not a flow between two orgs, across eight 
 
 **The Terraform tab** generates a Terraform setup (the genesyscloud provider) from the source org's objects and saves it automatically in `terraform/<from>_<to>/<date>/` (also choose a target and the folder is named after both orgs, the README and provider mention both, and the target's region becomes the default; without a target the folder is named after the source only). The files follow the app's language (Danish, English or German — other languages get English). The customer runs `terraform apply` themselves against the org that should change — e.g. from Falck Global to US — and `terraform plan` shows the difference. You pick types or take them all. Included: divisions, skills, skill groups, groups, teams, locations, utilization labels, knowledge bases, response libraries, schedules and groups, emergency groups, contact lists, DNC lists, wrap-up codes, roles, OAuth clients, integrations, data actions, data tables, user prompts, queues and flows (the newest local YAML is copied to `architect_flows/`, as in the provider's own export). References become Terraform references; Home and default roles become data sources, and a division that is not included becomes a variable in `terraform.tfvars` as in the provider's own export. The provider setup follows its guide: `required_version` and the provider version in `versions.tf`, and empty fields use the `GENESYSCLOUD_*` environment variables. The folder also gets `provider.tf`, `variables.tf`, `terraform.tfvars.example` and a `README.md` listing what is not included: secrets, members, contacts, recorded audio and conditional permissions (and forms, scripts and Function Data Actions). It is a starting setup — try it in a test org. The folder is in `.gitignore` because it contains the customer's setup.
 
+**AI providers hosted in the EU (beta).** Under *Customers → AI providers* — visible only with the activation key and off by default — you add your own API keys for AI providers that host in Europe: **Mistral** (only the EU address `api.eu.mistral.ai`; Mistral's own documentation says the global `api.mistral.ai` does not commit to a location), **Azure OpenAI** in an EU region, **Claude via Amazon Bedrock** in an EU region (`eu.*` inference profile; `us.`, `apac.` and `global.` are refused) and an **own endpoint** (OpenAI-compatible) for other EU providers without code. Endpoints and authentication were looked up in the providers' documentation on 28 October 2026.
+- **Region:** each provider shows its region and the basis. Mistral and Bedrock: the provider's documentation. Azure and own endpoint: *your own statement* — Archy cannot see where an Azure resource lives, so check it in the portal (region and deployment type).
+- **Data processing agreement:** a provider can only be used once you have confirmed that you have one. Changing endpoint, region, deployment or model resets the confirmation.
+- **Keys:** stored only on the server, encrypted with AES-256-GCM in your profile folder (`~/.archy-gui/ai-providers.enc`; the file's key is `ai.key` in the same folder) — never in the project folder — and never sent back to the browser (only "set / not set"). **This protects against the file being copied or committed, but not against someone with access to your Windows account**, because the file's key lives there too. Keys are redacted from the log like a client secret.
+- **What is sent:** *Show what the test sends* shows the address and content without the key. The test sends only "ping". Prompts and answers are not logged; an error from the provider shows only the HTTP status and the provider's short error code. Flow YAML, queue names and log text may contain personal data — the chat below shows it before it is sent.
+
+**AI assistant (beta).** The *AI assistant* tab — same activation key, and only when the AI feature is switched on and a provider is ready — is a chat where the model can read and understand flows and draft YAML. The server runs the tool loop against the *selected* provider's endpoint (and only that one) and sends the events to the browser as Server-Sent Events.
+- **Tools:** `list_customers`, `list_flows`, `export_flow`, `search_in_flow`, `flow_outline` (structure), `flow_dependencies`, `draft_yaml`, `validate_draft` — and the two writing ones, `import_flow` and `publish_flow`. They reuse the app's own routes and your own login (not an external MCP server, which could bypass the prod guard).
+- **Drafts:** `draft_yaml` puts the YAML in *Import YAML* (immediately if the field is empty; after a click otherwise), where 🔍 Validate YAML and 🌐 Check against org run as usual. It changes nothing in any org.
+- **Writing needs your click.** `import_flow` and `publish_flow` do nothing by themselves: they show org, stage, flow, action, checks against the org, warnings (e.g. dependent flows for a common module) and the whole YAML, and only your click on *Carry out* sends the call — through the same routes as the buttons (`/api/import`, `/api/flows/publish`), so the prod guard, the division check and the dependency check apply. If the guard would refuse the write (e.g. prod without a login), or the division is missing, that is shown and you are not asked. The confirmation is decided by your answer in the browser; nothing the model writes can give it.
+- **Personal data:** *Ask me before data is sent to the provider* (on by default) shows, before each call, exactly what is sent — what is new in the call and the whole request — and you can cancel. *Show what is sent* shows the first call before you send. Secrets are redacted. Prompts and answers are not logged; the log only shows that a conversation ran and which writes you approved or declined.
+- **Content from orgs is data, not instructions.** It is wrapped in `<untrusted_org_data>`, a closing tag inside the content is removed, and the model is told not to follow it. This is not a guarantee — a model can be fooled — so writing is always behind your click and the tools are read-only by default.
+- **Limits:** the answer arrives step by step, not word by word; at most 12 steps per message; tool answers are cut off at 30,000 characters; a conversation is not stored on the server; stopping a run does not cancel an export or import call that is already running. The messages in the confirmation card come from the server, in English.
+
 **Migration report (CSV).** Every migration — all resource tabs, flows and the dependencies migrated along the way — writes a row with time, type, name, status (*Succeeded*, *Skipped*, *Failed*), detail and source and target org. Rows are collected across tabs and flows and remembered in the browser (at most 5,000). At the top of *Migrate resources* and *Migrate Flow*: **Save a report (CSV) after each migration** downloads a file when the run finishes, **Download combined report** downloads everything collected, and **Clear** empties the collection. OAuth client secrets are never included. Semicolon-separated, UTF-8 with BOM so Excel opens it correctly.
 
 *Example with invented data (Demo A/S — TEST to PROD): the image shows the app's real UI, but the answers are computed by the app's own functions on an invented org, not fetched from a customer. These tabs need two different orgs.*
@@ -985,6 +1015,8 @@ Technical identifiers are not translated — flow types (`InboundCall`, `Workflo
 Archy-gui/
 ├── server.js          # Express backend
 ├── terraform.js       # Terraform generator (pure code)
+├── ai-providers.js    # AI providers: encrypted key store and adapters
+├── ai-agent.js        # AI assistant: tool loop, tools and confirmations
 ├── start.bat          # Start the server hidden in the background + open browser
 ├── stop.bat           # Stop the server
 ├── customers.json     # Customer data (auto-generated)
@@ -1009,7 +1041,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-485 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+524 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 

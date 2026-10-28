@@ -527,6 +527,9 @@
       <div class="nav-item" data-page="import" onclick="nav(this)">
         <span class="nav-icon">📥</span> <span data-i18n="nav_import">Import YAML</span>
       </div>
+      <div class="nav-item" data-page="aichat" data-internal onclick="nav(this)">
+        <span class="nav-icon">🤖</span> <span data-i18n="nav_aichat">AI-assistent</span>
+      </div>
       <div class="nav-divider"></div>
       <div class="nav-item" data-page="files" onclick="nav(this)">
         <span class="nav-icon">🗂</span> <span data-i18n="nav_files">YAML Filer</span>
@@ -548,7 +551,7 @@
       <a onclick="openIssue('idea')" data-i18n="iss_link_idea">💡 Foreslå et ønske</a>
     </div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.77.1 · Archy GUI</div>
+    <div class="version" id="app-version">v1.79.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -661,6 +664,12 @@
         <div style="height:12px"></div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:12px" data-i18n="feat_hint">Låser interne funktioner op.</div>
         <div id="featBox"></div>
+      </details>
+
+      <details class="card" id="aiCard" data-internal>
+        <summary class="card-title" style="cursor:pointer;margin-bottom:0" data-i18n="ai_title">AI-UDBYDERE (BETA)</summary>
+        <div style="height:12px"></div>
+        <div id="aiBox"></div>
       </details>
 
       <details class="card" id="stagesCard">
@@ -1320,6 +1329,27 @@
     </div>
 
     <!-- FILES PAGE -->
+    <!-- AI CHAT PAGE (beta, bag aktiveringsnøglen) -->
+    <div class="page" id="page-aichat">
+      <div style="display:flex;align-items:center"><div class="page-title" data-i18n="aic_title">AI-assistent (beta)</div><button class="help-btn" onclick="showHelp('aichat','aic_title')">?</button></div>
+      <div class="page-sub" data-i18n="aic_sub">Læser flows og laver udkast til YAML — skriver kun efter dit klik</div>
+      <div id="aic-status" style="font-size:12px;margin-bottom:10px"></div>
+      <div class="card">
+        <div id="aic-log" style="min-height:160px;max-height:62vh;overflow:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:12px"></div>
+        <textarea id="aic-input" style="height:80px" data-i18n-placeholder="aic_placeholder" placeholder="Spørg om et flow, eller bed om et udkast…"
+          onkeydown="if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); aiChatSend(); }"></textarea>
+        <label style="display:flex;gap:8px;align-items:center;font-size:12px;margin:8px 0">
+          <input type="checkbox" id="aic-review" style="width:auto" checked /> <span data-i18n="aic_review_label">Spørg mig, før data sendes til udbyderen (anbefalet)</span></label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-primary" id="aic-send" onclick="aiChatSend()" data-i18n="aic_send">Send</button>
+          <button class="btn btn-secondary" id="aic-stop" onclick="aiChatStop()" style="display:none" data-i18n="aic_stop">Stop</button>
+          <button class="btn btn-secondary" onclick="aiChatPreview()" data-i18n="aic_show_sent">Vis hvad der sendes</button>
+          <button class="btn btn-secondary" onclick="aiChatClear()" data-i18n="aic_clear">Ryd samtalen</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px" data-i18n="aic_untrusted">Indhold fra orgs behandles som data, ikke instruktioner. Skrivende handlinger kræver altid dit klik.</div>
+      </div>
+    </div>
+
     <div class="page" id="page-files">
       <div style="display:flex;align-items:center"><div class="page-title" data-i18n="page_files_title">Lokale YAML Filer</div><button class="help-btn" onclick="showHelp('files','nav_files')">?</button></div>
       <div class="page-sub" data-i18n="page_files_sub">Eksporterede flows — fra Export YAML, migreringer og sammenligninger</div>
@@ -1412,6 +1442,7 @@
               <option value="MANIFEST">MANIFEST</option>
               <option value="SECURITY">SECURITY</option>
               <option value="DEMO">DEMO</option>
+              <option value="AI">AI</option>
             </select>
           </div>
           <div>
@@ -2295,6 +2326,83 @@ const LANGS = {
     os_sec_presence:'Status Management', os_sec_language:'Sprog', os_sec_embedded:'Embedded integration', os_sec_whitelist:'Betroede IP-adresser',
     os_st_same:'ens', os_st_differs:'forskellig', os_st_missing:'mangler i mål', os_st_extra:'kun i mål', os_st_unreadable:'kunne ikke læses',
     os_i_defaultLanguage:'Standardsprog', os_i_defaultCountryCode:'Standardland', os_i_supportedLanguages:'Understøttede sprog', os_i_integrationWhiteList:'Tilladte domæner', os_i_whitelist:'Betroede IP-adresser',
+    ai_title:'AI-UDBYDERE (BETA)',
+    ai_intro:'Læg dine egne API-nøgler ind til AI-udbydere, der hoster i Europa (GDPR). Funktionen er slået fra som standard. Intet sendes, før du selv har gemt en nøgle og bekræftet, at du har en databehandleraftale med udbyderen.',
+    ai_honest:'Nøglerne gemmes kun på denne pc, krypteret (AES-256-GCM), i din profilmappe — ikke i projektet — og sendes aldrig tilbage til browseren. Det beskytter mod, at filen kopieres eller committes, men ikke mod en person med adgang til din Windows-konto: den kan læse både filen og nøglen til den.',
+    ai_gdpr_hint:'Flow-YAML, kønavne og logtekst kan indeholde persondata. Prompts og svar logges ikke, og hemmeligheder renses før afsendelse. Du kan se præcis, hvad der sendes, før det forlader maskinen.',
+    ai_enable:'Slå AI-funktionen til',
+    ai_region:'Region',
+    ai_basis_doc:'ifølge udbyderens dokumentation',
+    ai_basis_decl:'din egen erklæring — Archy kan ikke kontrollere den, så tjek den hos udbyderen',
+    ai_key_set:'Nøgle: gemt',
+    ai_key_unset:'Nøgle: ikke sat',
+    ai_key_ph:'Ny nøgle (vises aldrig igen)',
+    ai_dpa:'Jeg har en databehandleraftale med denne udbyder',
+    ai_dpa_since:'bekræftet',
+    ai_save:'Gem',
+    ai_saved:'Gemt',
+    ai_test:'Test (sender kun «ping»)',
+    ai_test_ok:'Svar modtaget',
+    ai_show_payload:'Vis hvad testen sender',
+    ai_payload_title:'Sendes til',
+    ai_delete_key:'Slet nøgle',
+    ai_use:'Brug denne',
+    ai_selected:'Valgt',
+    ai_missing:'Mangler',
+    ai_keylost:'Nøglefilen (ai.key) mangler eller er ændret, så de gemte nøgler kan ikke læses. Gem nøglerne igen.',
+    ai_confirm_delete:'Slet nøglen for denne udbyder?',
+    ai_p_mistral:'Mistral (EU)',
+    ai_p_azure:'Azure OpenAI (EU-region)',
+    ai_p_bedrock:'Claude via Amazon Bedrock (EU)',
+    ai_p_custom:'Egen endpoint (OpenAI-kompatibel)',
+    ai_f_model:'Model',
+    ai_f_endpoint:'Endpoint (https)',
+    ai_f_deployment:'Deployment-navn',
+    ai_f_apiversion:'API-version',
+    ai_f_regiondecl:'Region (din erklæring)',
+    ai_f_awsregion:'AWS-region (EU)',
+    ai_f_modelid:'Model-id / inference profile (eu.…)',
+    ai_f_authheader:'Header-navn til nøglen (valgfri, ellers Bearer)',
+    help_ai:'Dine egne API-nøgler til AI-udbydere med hosting i Europa. **Beta, slået fra som standard**, og synlig med aktiveringsnøglen.\n• Hver udbyder viser sin **region** og på hvilket grundlag: udbyderens dokumentation, eller din egen erklæring (Azure og egen endpoint — Archy kan ikke se, hvor din ressource ligger).\n• Mistral bruger kun EU-adressen `api.eu.mistral.ai`; det globale `api.mistral.ai` binder sig ikke til EU. Bedrock er låst til EU-regioner og afviser `us.`, `apac.` og `global.`-profiler.\n• **Databehandleraftale:** udbyderen kan først bruges, når du har sat flueben ved, at du har en. Ændrer du endpoint, region eller model, nulstilles det.\n• **Nøglen** gemmes krypteret på denne pc (AES-256-GCM, nøglen til filen ligger i din profilmappe) og sendes aldrig tilbage til browseren. Det beskytter ikke mod en der har adgang til din Windows-konto.\n• **Test** sender kun «ping». **Vis hvad testen sender** viser adressen og indholdet, uden nøglen.\n• Prompts og svar logges ikke; hemmeligheder renses før afsendelse.',
+    ai_region_none:'— ikke angivet —',
+    nav_aichat:'AI-assistent',
+    aic_title:'AI-assistent (beta)',
+    aic_sub:'Læser flows og laver udkast til YAML — skriver kun efter dit klik',
+    aic_off:'AI-funktionen er slået fra, eller ingen udbyder er klar. Slå den til, og vælg en udbyder med nøgle og databehandleraftale under Kunder → AI-udbydere.',
+    aic_placeholder:'Spørg om et flow, eller bed om et udkast… (Ctrl+Enter sender)',
+    aic_send:'Send',
+    aic_stop:'Stop',
+    aic_clear:'Ryd samtalen',
+    aic_show_sent:'Vis hvad der sendes',
+    aic_review_label:'Spørg mig, før data sendes til udbyderen (anbefalet)',
+    aic_untrusted:'Indhold fra orgs behandles som data, ikke instruktioner. Skrivende handlinger kræver altid dit klik.',
+    aic_review_title:'Det næste, der sendes til udbyderen',
+    aic_review_new:'Nyt i denne forespørgsel',
+    aic_review_full:'Hele forespørgslen (systemprompt, værktøjer, samtale)',
+    aic_review_send:'Send',
+    aic_review_cancel:'Annullér',
+    aic_review_declined:'Afbrudt — intet blev sendt.',
+    aic_confirm_title:'Bekræft ændring i en org',
+    aic_f_org:'Org',
+    aic_f_stage:'Trin',
+    aic_f_action:'Handling',
+    aic_f_flow:'Flow',
+    aic_f_file:'Fil',
+    aic_f_versions:'Publiceret → gemt',
+    aic_f_checks:'Tjek mod org',
+    aic_f_yaml:'Vis hele YAML',
+    aic_do:'Udfør',
+    aic_decline:'Afvis',
+    aic_approved:'Godkendt — udføres nu',
+    aic_declined:'Afvist — intet er ændret',
+    aic_gone:'Spørgsmålet findes ikke længere (kørslen er stoppet)',
+    aic_blocked:'Ikke udført',
+    aic_draft_title:'Udkast til YAML',
+    aic_draft_open:'📥 Åbn i Importér YAML (så kan du validere)',
+    aic_draft_replace:'Importér YAML indeholder allerede tekst. Erstat den med udkastet?',
+    aic_limit:'Stoppede efter 12 trin — skriv for at fortsætte.',
+    aic_stopped:'Stoppet.',
+    help_aichat:'En chat, hvor modellen kan **læse og forstå flows** og **lave udkast til YAML**. Beta, bag aktiveringsnøglen, og den bruger kun den udbyder, du har valgt under Kunder → AI-udbydere.\n• **Læsning:** modellen kan liste miljøer og flows, eksportere et flow, søge i det, se opbygning og afhængigheder. Det sker med appens egne funktioner og dit eget login — ikke gennem en ekstern server.\n• **Udkast:** et udkast lander i **Importér YAML**, hvor 🔍 Valider YAML og 🌐 Tjek mod org kører som altid. Står der allerede noget dér, spørger chatten først.\n• **Skrivning kræver dit klik.** Modellen kan bede om at importere udkastet eller publicere et flow, men får først lov, når du har set org, trin, flow, handling og tjek, og klikket **Udfør**. Det sker gennem de samme ruter som knapperne, så prod-vagten (prod-login), divisionstjekket og afhængighedstjekket gælder. Afvises en skrivning af dem, vises det, og du bliver ikke spurgt.\n• **Spørg mig, før data sendes:** (anbefalet, slået til som standard) før hvert kald til udbyderen vises præcis hvad der sendes — flow-YAML, kønavne og logtekst kan indeholde persondata. Du kan annullere. **Vis hvad der sendes** viser det første kald, før du sender.\n• **Indhold fra orgs er data, ikke instruktioner.** Det pakkes ind og modellen er bedt om ikke at følge det, men en model kan lade sig narre — derfor er alt skrivende bag dit klik, og du ser selv hvad der sker.\n• Hemmeligheder renses før afsendelse. Prompts og svar logges ikke; loggen viser kun at en samtale kørte, og hvilke skrivninger du godkendte eller afviste.\n• Svaret kommer trin for trin (ikke ord for ord). Højst 12 trin pr. besked.',
     da_tab_terraform:'Terraform', tf_title:'TERRAFORM-OPSÆTNING', tf_run:'Generér Terraform', tf_all:'Vælg alle', tf_none:'Fravælg alle',
     tf_intro:'Laver en Terraform-opsætning (genesyscloud-provideren) ud fra kilde-org\'ens objekter og gemmer den automatisk i mappen terraform/ på denne maskine. Kunden kører selv terraform apply mod den org, der skal ændres — fx fra Falck Global til US.', tf_note:'Det er en startopsætning: hemmeligheder, medlemmer, kontakter og indspillet lyd kommer ikke med, og det udeladte står i README.md i mappen. Prøv den i en test-org først.',
     tf_target_hint:'Vælg også et mål ovenfor: så hedder mappen <fra>_<til>, README og provider nævner begge orgs, og målets region bliver standard. Målet er ikke nødvendigt for selve opsætningen — den beskriver kilden.',
@@ -3385,6 +3493,83 @@ const LANGS = {
     os_sec_presence:'Status Management', os_sec_language:'Language', os_sec_embedded:'Embedded integration', os_sec_whitelist:'Trusted IPs',
     os_st_same:'same', os_st_differs:'differs', os_st_missing:'missing in target', os_st_extra:'only in target', os_st_unreadable:'could not be read',
     os_i_defaultLanguage:'Default language', os_i_defaultCountryCode:'Default country', os_i_supportedLanguages:'Supported languages', os_i_integrationWhiteList:'Allowed domains', os_i_whitelist:'Trusted IPs',
+    ai_title:'AI PROVIDERS (BETA)',
+    ai_intro:'Add your own API keys for AI providers that host in Europe (GDPR). The feature is off by default. Nothing is sent until you have saved a key and confirmed that you have a data processing agreement with the provider.',
+    ai_honest:'The keys are stored only on this PC, encrypted (AES-256-GCM), in your profile folder — not in the project — and are never sent back to the browser. This protects against the file being copied or committed, but not against someone with access to your Windows account: they can read both the file and its key.',
+    ai_gdpr_hint:'Flow YAML, queue names and log text may contain personal data. Prompts and answers are not logged, and secrets are redacted before sending. You can see exactly what is sent before it leaves the machine.',
+    ai_enable:'Switch the AI feature on',
+    ai_region:'Region',
+    ai_basis_doc:'according to the provider\'s documentation',
+    ai_basis_decl:'your own statement — Archy cannot check it, so verify it with the provider',
+    ai_key_set:'Key: saved',
+    ai_key_unset:'Key: not set',
+    ai_key_ph:'New key (never shown again)',
+    ai_dpa:'I have a data processing agreement with this provider',
+    ai_dpa_since:'confirmed',
+    ai_save:'Save',
+    ai_saved:'Saved',
+    ai_test:'Test (sends only “ping”)',
+    ai_test_ok:'Answer received',
+    ai_show_payload:'Show what the test sends',
+    ai_payload_title:'Sent to',
+    ai_delete_key:'Delete key',
+    ai_use:'Use this one',
+    ai_selected:'Selected',
+    ai_missing:'Missing',
+    ai_keylost:'The key file (ai.key) is missing or has changed, so the saved keys cannot be read. Save the keys again.',
+    ai_confirm_delete:'Delete the key for this provider?',
+    ai_p_mistral:'Mistral (EU)',
+    ai_p_azure:'Azure OpenAI (EU region)',
+    ai_p_bedrock:'Claude via Amazon Bedrock (EU)',
+    ai_p_custom:'Own endpoint (OpenAI-compatible)',
+    ai_f_model:'Model',
+    ai_f_endpoint:'Endpoint (https)',
+    ai_f_deployment:'Deployment name',
+    ai_f_apiversion:'API version',
+    ai_f_regiondecl:'Region (your statement)',
+    ai_f_awsregion:'AWS region (EU)',
+    ai_f_modelid:'Model id / inference profile (eu.…)',
+    ai_f_authheader:'Header name for the key (optional, otherwise Bearer)',
+    help_ai:'Your own API keys for AI providers hosted in Europe. **Beta, off by default**, and visible with the activation key.\n• Each provider shows its **region** and on what basis: the provider\'s documentation, or your own statement (Azure and own endpoint — Archy cannot see where your resource lives).\n• Mistral only uses the EU address `api.eu.mistral.ai`; the global `api.mistral.ai` does not commit to the EU. Bedrock is locked to EU regions and refuses `us.`, `apac.` and `global.` profiles.\n• **Data processing agreement:** a provider can only be used once you tick that you have one. Changing endpoint, region or model resets it.\n• **The key** is stored encrypted on this PC (AES-256-GCM, the file\'s key lives in your profile folder) and is never sent back to the browser. It does not protect against someone with access to your Windows account.\n• **Test** sends only “ping”. **Show what the test sends** shows the address and content, without the key.\n• Prompts and answers are not logged; secrets are redacted before sending.',
+    ai_region_none:'— not stated —',
+    nav_aichat:'AI assistant',
+    aic_title:'AI assistant (beta)',
+    aic_sub:'Reads flows and drafts YAML — writes only after your click',
+    aic_off:'The AI feature is off, or no provider is ready. Switch it on and pick a provider with a key and a data processing agreement under Customers → AI providers.',
+    aic_placeholder:'Ask about a flow, or ask for a draft… (Ctrl+Enter sends)',
+    aic_send:'Send',
+    aic_stop:'Stop',
+    aic_clear:'Clear the conversation',
+    aic_show_sent:'Show what is sent',
+    aic_review_label:'Ask me before data is sent to the provider (recommended)',
+    aic_untrusted:'Content from orgs is treated as data, not instructions. Writing actions always need your click.',
+    aic_review_title:'What is sent to the provider next',
+    aic_review_new:'New in this request',
+    aic_review_full:'The whole request (system prompt, tools, conversation)',
+    aic_review_send:'Send',
+    aic_review_cancel:'Cancel',
+    aic_review_declined:'Cancelled — nothing was sent.',
+    aic_confirm_title:'Confirm a change in an org',
+    aic_f_org:'Org',
+    aic_f_stage:'Stage',
+    aic_f_action:'Action',
+    aic_f_flow:'Flow',
+    aic_f_file:'File',
+    aic_f_versions:'Published → saved',
+    aic_f_checks:'Checks against the org',
+    aic_f_yaml:'Show the whole YAML',
+    aic_do:'Carry out',
+    aic_decline:'Decline',
+    aic_approved:'Approved — running now',
+    aic_declined:'Declined — nothing was changed',
+    aic_gone:'The question no longer exists (the run has stopped)',
+    aic_blocked:'Not done',
+    aic_draft_title:'YAML draft',
+    aic_draft_open:'📥 Open in Import YAML (then you can validate)',
+    aic_draft_replace:'Import YAML already contains text. Replace it with the draft?',
+    aic_limit:'Stopped after 12 steps — write to continue.',
+    aic_stopped:'Stopped.',
+    help_aichat:'A chat where the model can **read and understand flows** and **draft YAML**. Beta, behind the activation key, and it only uses the provider you picked under Customers → AI providers.\n• **Reading:** the model can list environments and flows, export a flow, search in it, see its structure and dependencies. This uses the app\'s own functions and your own login — not an external server.\n• **Drafts:** a draft lands in **Import YAML**, where 🔍 Validate YAML and 🌐 Check against org run as usual. If something is already there, the chat asks first.\n• **Writing needs your click.** The model can ask to import the draft or publish a flow, but is only allowed once you have seen org, stage, flow, action and checks and clicked **Carry out**. It goes through the same routes as the buttons, so the prod guard (prod login), the division check and the dependency check apply. If one of them refuses a write, that is shown and you are not asked.\n• **Ask me before data is sent:** (recommended, on by default) before each call to the provider, exactly what is sent is shown — flow YAML, queue names and log text may contain personal data. You can cancel. **Show what is sent** shows the first call before you send.\n• **Content from orgs is data, not instructions.** It is wrapped and the model is told not to follow it, but a model can be fooled — so everything that writes sits behind your click, and you see what happens yourself.\n• Secrets are redacted before sending. Prompts and answers are not logged; the log only shows that a conversation ran, and which writes you approved or declined.\n• The answer arrives step by step (not word by word). At most 12 steps per message.',
     da_tab_terraform:'Terraform', tf_title:'TERRAFORM SETUP', tf_run:'Generate Terraform', tf_all:'Select all', tf_none:'Select none',
     tf_intro:'Builds a Terraform setup (the genesyscloud provider) from the source org\'s objects and saves it automatically in the terraform/ folder on this machine. The customer runs terraform apply themselves against the org that should change — e.g. from Falck Global to US.', tf_note:'It is a starting setup: secrets, members, contacts and recorded audio are not included, and what is left out is listed in README.md in the folder. Try it in a test org first.',
     tf_target_hint:'Also choose a target above: the folder is then named <from>_<to>, the README and provider mention both orgs, and the target\'s region becomes the default. The target is not needed for the setup itself — it describes the source.',
@@ -4475,6 +4660,83 @@ const LANGS = {
     os_sec_presence:'Status Management', os_sec_language:'Langue', os_sec_embedded:'Intégration embarquée', os_sec_whitelist:'IP de confiance',
     os_st_same:'identique', os_st_differs:'différent', os_st_missing:'manquant dans la cible', os_st_extra:'uniquement dans la cible', os_st_unreadable:'illisible',
     os_i_defaultLanguage:'Langue par défaut', os_i_defaultCountryCode:'Pays par défaut', os_i_supportedLanguages:'Langues prises en charge', os_i_integrationWhiteList:'Domaines autorisés', os_i_whitelist:'IP de confiance',
+    ai_title:'FOURNISSEURS D\'IA (BÊTA)',
+    ai_intro:'Ajoutez vos propres clés API pour des fournisseurs d\'IA hébergés en Europe (RGPD). La fonction est désactivée par défaut. Rien n\'est envoyé avant que vous ayez enregistré une clé et confirmé disposer d\'un contrat de sous-traitance avec le fournisseur.',
+    ai_honest:'Les clés sont stockées uniquement sur ce PC, chiffrées (AES-256-GCM), dans votre dossier de profil — pas dans le projet — et ne sont jamais renvoyées au navigateur. Cela protège contre la copie ou le commit du fichier, mais pas contre une personne ayant accès à votre compte Windows : elle peut lire le fichier et sa clé.',
+    ai_gdpr_hint:'Le YAML des flows, les noms de files et les textes de journal peuvent contenir des données personnelles. Les prompts et réponses ne sont pas journalisés et les secrets sont masqués avant l\'envoi. Vous voyez exactement ce qui est envoyé avant que cela quitte la machine.',
+    ai_enable:'Activer la fonction IA',
+    ai_region:'Région',
+    ai_basis_doc:'selon la documentation du fournisseur',
+    ai_basis_decl:'votre propre déclaration — Archy ne peut pas la vérifier, contrôlez-la chez le fournisseur',
+    ai_key_set:'Clé : enregistrée',
+    ai_key_unset:'Clé : non définie',
+    ai_key_ph:'Nouvelle clé (jamais ré-affichée)',
+    ai_dpa:'J\'ai un contrat de sous-traitance avec ce fournisseur',
+    ai_dpa_since:'confirmé',
+    ai_save:'Enregistrer',
+    ai_saved:'Enregistré',
+    ai_test:'Tester (n\'envoie que « ping »)',
+    ai_test_ok:'Réponse reçue',
+    ai_show_payload:'Afficher ce que le test envoie',
+    ai_payload_title:'Envoyé à',
+    ai_delete_key:'Supprimer la clé',
+    ai_use:'Utiliser celui-ci',
+    ai_selected:'Sélectionné',
+    ai_missing:'Manquant',
+    ai_keylost:'Le fichier de clé (ai.key) est absent ou modifié : les clés enregistrées sont illisibles. Enregistrez-les de nouveau.',
+    ai_confirm_delete:'Supprimer la clé de ce fournisseur ?',
+    ai_p_mistral:'Mistral (UE)',
+    ai_p_azure:'Azure OpenAI (région UE)',
+    ai_p_bedrock:'Claude via Amazon Bedrock (UE)',
+    ai_p_custom:'Endpoint personnalisé (compatible OpenAI)',
+    ai_f_model:'Modèle',
+    ai_f_endpoint:'Endpoint (https)',
+    ai_f_deployment:'Nom du déploiement',
+    ai_f_apiversion:'Version de l\'API',
+    ai_f_regiondecl:'Région (votre déclaration)',
+    ai_f_awsregion:'Région AWS (UE)',
+    ai_f_modelid:'Id du modèle / profil d\'inférence (eu.…)',
+    ai_f_authheader:'Nom d\'en-tête pour la clé (facultatif, sinon Bearer)',
+    help_ai:'Vos propres clés API pour des fournisseurs d\'IA hébergés en Europe. **Bêta, désactivée par défaut**, visible avec la clé d\'activation.\n• Chaque fournisseur affiche sa **région** et sur quelle base : la documentation du fournisseur ou votre propre déclaration (Azure et endpoint personnalisé — Archy ne voit pas où se trouve votre ressource).\n• Mistral n\'utilise que l\'adresse UE `api.eu.mistral.ai` ; l\'adresse globale `api.mistral.ai` ne s\'engage pas sur l\'UE. Bedrock est limité aux régions UE et refuse les profils `us.`, `apac.` et `global.`.\n• **Contrat de sous-traitance :** un fournisseur n\'est utilisable que lorsque vous cochez en avoir un. Modifier endpoint, région ou modèle le réinitialise.\n• **La clé** est stockée chiffrée sur ce PC (AES-256-GCM, la clé du fichier est dans votre dossier de profil) et jamais renvoyée au navigateur. Cela ne protège pas contre une personne ayant accès à votre compte Windows.\n• **Tester** n\'envoie que « ping ». **Afficher ce que le test envoie** montre l\'adresse et le contenu, sans la clé.\n• Les prompts et réponses ne sont pas journalisés ; les secrets sont masqués avant l\'envoi.',
+    ai_region_none:'— non indiquée —',
+    nav_aichat:'Assistant IA',
+    aic_title:'Assistant IA (bêta)',
+    aic_sub:'Lit les flows et rédige du YAML — n\'écrit qu\'après votre clic',
+    aic_off:'La fonction IA est désactivée ou aucun fournisseur n\'est prêt. Activez-la et choisissez un fournisseur avec clé et contrat de sous-traitance sous Clients → Fournisseurs d\'IA.',
+    aic_placeholder:'Posez une question sur un flow ou demandez un brouillon… (Ctrl+Entrée envoie)',
+    aic_send:'Envoyer',
+    aic_stop:'Arrêter',
+    aic_clear:'Effacer la conversation',
+    aic_show_sent:'Afficher ce qui est envoyé',
+    aic_review_label:'Me demander avant d\'envoyer des données au fournisseur (recommandé)',
+    aic_untrusted:'Le contenu des orgs est traité comme des données, pas des instructions. Les actions d\'écriture exigent toujours votre clic.',
+    aic_review_title:'Ce qui sera envoyé ensuite au fournisseur',
+    aic_review_new:'Nouveau dans cette requête',
+    aic_review_full:'Toute la requête (prompt système, outils, conversation)',
+    aic_review_send:'Envoyer',
+    aic_review_cancel:'Annuler',
+    aic_review_declined:'Annulé — rien n\'a été envoyé.',
+    aic_confirm_title:'Confirmer une modification dans une org',
+    aic_f_org:'Org',
+    aic_f_stage:'Étape',
+    aic_f_action:'Action',
+    aic_f_flow:'Flow',
+    aic_f_file:'Fichier',
+    aic_f_versions:'Publié → enregistré',
+    aic_f_checks:'Contrôles dans l\'org',
+    aic_f_yaml:'Afficher tout le YAML',
+    aic_do:'Exécuter',
+    aic_decline:'Refuser',
+    aic_approved:'Approuvé — en cours',
+    aic_declined:'Refusé — rien n\'a changé',
+    aic_gone:'La question n\'existe plus (l\'exécution est arrêtée)',
+    aic_blocked:'Non exécuté',
+    aic_draft_title:'Brouillon YAML',
+    aic_draft_open:'📥 Ouvrir dans Importer YAML (puis valider)',
+    aic_draft_replace:'Importer YAML contient déjà du texte. Le remplacer par le brouillon ?',
+    aic_limit:'Arrêté après 12 étapes — écrivez pour continuer.',
+    aic_stopped:'Arrêté.',
+    help_aichat:'Un chat où le modèle peut **lire et comprendre des flows** et **rédiger du YAML**. Bêta, derrière la clé d\'activation, et il n\'utilise que le fournisseur choisi sous Clients → Fournisseurs d\'IA.\n• **Lecture :** le modèle peut lister environnements et flows, exporter un flow, y chercher, voir sa structure et ses dépendances — avec les fonctions de l\'application et votre propre connexion, sans serveur externe.\n• **Brouillons :** un brouillon arrive dans **Importer YAML**, où 🔍 Valider YAML et 🌐 Contrôler dans l\'org fonctionnent comme d\'habitude. S\'il y a déjà du contenu, le chat demande d\'abord.\n• **Écrire exige votre clic.** Le modèle peut demander d\'importer le brouillon ou de publier un flow, mais seulement après que vous avez vu org, étape, flow, action et contrôles et cliqué sur **Exécuter**. Cela passe par les mêmes routes que les boutons : la garde prod (connexion prod), le contrôle de division et celui des dépendances s\'appliquent. Si l\'un d\'eux refuse, c\'est affiché et rien ne vous est demandé.\n• **Me demander avant d\'envoyer des données :** (recommandé, activé par défaut) avant chaque appel au fournisseur, ce qui est envoyé s\'affiche — YAML de flow, noms de files et textes de journal peuvent contenir des données personnelles. Vous pouvez annuler. **Afficher ce qui est envoyé** montre le premier appel avant l\'envoi.\n• **Le contenu des orgs est une donnée, pas une instruction.** Il est encapsulé et le modèle a pour consigne de ne pas le suivre, mais un modèle peut être trompé — donc tout ce qui écrit est derrière votre clic.\n• Les secrets sont masqués avant l\'envoi. Prompts et réponses ne sont pas journalisés ; le journal montre seulement qu\'une conversation a eu lieu et quelles écritures vous avez approuvées ou refusées.\n• La réponse arrive étape par étape (pas mot à mot). 12 étapes au plus par message.',
     da_tab_terraform:'Terraform', tf_title:'CONFIGURATION TERRAFORM', tf_run:'Générer Terraform', tf_all:'Tout sélectionner', tf_none:'Tout désélectionner',
     tf_intro:'Crée une configuration Terraform (fournisseur genesyscloud) à partir des objets de l\'org source et l\'enregistre automatiquement dans le dossier terraform/ de cette machine. Le client exécute lui-même terraform apply sur l\'org à modifier — par ex. de Falck Global vers US.', tf_note:'C\'est une configuration de départ : secrets, membres, contacts et audio enregistré ne sont pas inclus ; ce qui est omis figure dans README.md du dossier. Essayez-la d\'abord dans une org de test.',
     tf_target_hint:'Choisissez aussi une cible ci-dessus : le dossier s\'appelle alors <source>_<cible>, le README et le provider citent les deux orgs, et la région de la cible devient la valeur par défaut. La cible n\'est pas nécessaire à la configuration elle-même — elle décrit la source.',
@@ -5565,6 +5827,83 @@ const LANGS = {
     os_sec_presence:'Status Management', os_sec_language:'Taal', os_sec_embedded:'Embedded integratie', os_sec_whitelist:'Vertrouwde IP\'s',
     os_st_same:'gelijk', os_st_differs:'verschilt', os_st_missing:'ontbreekt in doel', os_st_extra:'alleen in doel', os_st_unreadable:'kon niet worden gelezen',
     os_i_defaultLanguage:'Standaardtaal', os_i_defaultCountryCode:'Standaardland', os_i_supportedLanguages:'Ondersteunde talen', os_i_integrationWhiteList:'Toegestane domeinen', os_i_whitelist:'Vertrouwde IP\'s',
+    ai_title:'AI-AANBIEDERS (BÈTA)',
+    ai_intro:'Voeg je eigen API-sleutels toe voor AI-aanbieders die in Europa hosten (AVG). De functie staat standaard uit. Er wordt niets verstuurd voordat je een sleutel hebt opgeslagen en hebt bevestigd dat je een verwerkersovereenkomst met de aanbieder hebt.',
+    ai_honest:'De sleutels worden alleen op deze pc opgeslagen, versleuteld (AES-256-GCM), in je profielmap — niet in het project — en nooit teruggestuurd naar de browser. Dat beschermt tegen kopiëren of committen van het bestand, maar niet tegen iemand met toegang tot je Windows-account: die kan zowel het bestand als de bijbehorende sleutel lezen.',
+    ai_gdpr_hint:'Flow-YAML, wachtrijnamen en logtekst kunnen persoonsgegevens bevatten. Prompts en antwoorden worden niet gelogd en geheimen worden gemaskeerd vóór verzending. Je ziet precies wat er wordt verstuurd voordat het de machine verlaat.',
+    ai_enable:'AI-functie inschakelen',
+    ai_region:'Regio',
+    ai_basis_doc:'volgens de documentatie van de aanbieder',
+    ai_basis_decl:'jouw eigen opgave — Archy kan die niet controleren, controleer het bij de aanbieder',
+    ai_key_set:'Sleutel: opgeslagen',
+    ai_key_unset:'Sleutel: niet ingesteld',
+    ai_key_ph:'Nieuwe sleutel (wordt nooit meer getoond)',
+    ai_dpa:'Ik heb een verwerkersovereenkomst met deze aanbieder',
+    ai_dpa_since:'bevestigd',
+    ai_save:'Opslaan',
+    ai_saved:'Opgeslagen',
+    ai_test:'Test (stuurt alleen “ping”)',
+    ai_test_ok:'Antwoord ontvangen',
+    ai_show_payload:'Toon wat de test verstuurt',
+    ai_payload_title:'Verstuurd naar',
+    ai_delete_key:'Sleutel verwijderen',
+    ai_use:'Deze gebruiken',
+    ai_selected:'Geselecteerd',
+    ai_missing:'Ontbreekt',
+    ai_keylost:'Het sleutelbestand (ai.key) ontbreekt of is gewijzigd, dus de opgeslagen sleutels zijn onleesbaar. Sla de sleutels opnieuw op.',
+    ai_confirm_delete:'De sleutel van deze aanbieder verwijderen?',
+    ai_p_mistral:'Mistral (EU)',
+    ai_p_azure:'Azure OpenAI (EU-regio)',
+    ai_p_bedrock:'Claude via Amazon Bedrock (EU)',
+    ai_p_custom:'Eigen endpoint (OpenAI-compatibel)',
+    ai_f_model:'Model',
+    ai_f_endpoint:'Endpoint (https)',
+    ai_f_deployment:'Deployment-naam',
+    ai_f_apiversion:'API-versie',
+    ai_f_regiondecl:'Regio (jouw opgave)',
+    ai_f_awsregion:'AWS-regio (EU)',
+    ai_f_modelid:'Model-id / inference profile (eu.…)',
+    ai_f_authheader:'Headernaam voor de sleutel (optioneel, anders Bearer)',
+    help_ai:'Je eigen API-sleutels voor AI-aanbieders die in Europa hosten. **Bèta, standaard uit**, zichtbaar met de activeringssleutel.\n• Elke aanbieder toont zijn **regio** en de grondslag: de documentatie van de aanbieder, of je eigen opgave (Azure en eigen endpoint — Archy kan niet zien waar je resource staat).\n• Mistral gebruikt alleen het EU-adres `api.eu.mistral.ai`; het globale `api.mistral.ai` legt zich niet vast op de EU. Bedrock is beperkt tot EU-regio\'s en weigert `us.`-, `apac.`- en `global.`-profielen.\n• **Verwerkersovereenkomst:** een aanbieder is pas bruikbaar als je aanvinkt dat je er een hebt. Wijzig je endpoint, regio of model, dan wordt dit gewist.\n• **De sleutel** wordt versleuteld op deze pc opgeslagen (AES-256-GCM, de sleutel van het bestand staat in je profielmap) en nooit teruggestuurd naar de browser. Het beschermt niet tegen iemand met toegang tot je Windows-account.\n• **Test** stuurt alleen “ping”. **Toon wat de test verstuurt** toont adres en inhoud, zonder sleutel.\n• Prompts en antwoorden worden niet gelogd; geheimen worden vóór verzending gemaskeerd.',
+    ai_region_none:'— niet opgegeven —',
+    nav_aichat:'AI-assistent',
+    aic_title:'AI-assistent (bèta)',
+    aic_sub:'Leest flows en maakt YAML-concepten — schrijft alleen na jouw klik',
+    aic_off:'De AI-functie staat uit of er is geen aanbieder klaar. Schakel haar in en kies een aanbieder met sleutel en verwerkersovereenkomst onder Klanten → AI-aanbieders.',
+    aic_placeholder:'Vraag naar een flow of vraag om een concept… (Ctrl+Enter verstuurt)',
+    aic_send:'Verstuur',
+    aic_stop:'Stop',
+    aic_clear:'Gesprek wissen',
+    aic_show_sent:'Toon wat er wordt verstuurd',
+    aic_review_label:'Vraag me voordat gegevens naar de aanbieder gaan (aanbevolen)',
+    aic_untrusted:'Inhoud uit orgs wordt behandeld als gegevens, niet als instructies. Schrijfacties vragen altijd om jouw klik.',
+    aic_review_title:'Wat er hierna naar de aanbieder gaat',
+    aic_review_new:'Nieuw in dit verzoek',
+    aic_review_full:'Het hele verzoek (systeemprompt, tools, gesprek)',
+    aic_review_send:'Versturen',
+    aic_review_cancel:'Annuleren',
+    aic_review_declined:'Geannuleerd — er is niets verstuurd.',
+    aic_confirm_title:'Bevestig een wijziging in een org',
+    aic_f_org:'Org',
+    aic_f_stage:'Stap',
+    aic_f_action:'Actie',
+    aic_f_flow:'Flow',
+    aic_f_file:'Bestand',
+    aic_f_versions:'Gepubliceerd → opgeslagen',
+    aic_f_checks:'Controles in de org',
+    aic_f_yaml:'Toon alle YAML',
+    aic_do:'Uitvoeren',
+    aic_decline:'Weigeren',
+    aic_approved:'Goedgekeurd — wordt uitgevoerd',
+    aic_declined:'Geweigerd — er is niets gewijzigd',
+    aic_gone:'De vraag bestaat niet meer (de run is gestopt)',
+    aic_blocked:'Niet uitgevoerd',
+    aic_draft_title:'YAML-concept',
+    aic_draft_open:'📥 Openen in YAML importeren (daarna valideren)',
+    aic_draft_replace:'YAML importeren bevat al tekst. Vervangen door het concept?',
+    aic_limit:'Gestopt na 12 stappen — typ om door te gaan.',
+    aic_stopped:'Gestopt.',
+    help_aichat:'Een chat waarin het model **flows kan lezen en begrijpen** en **YAML kan opstellen**. Bèta, achter de activeringssleutel, en het gebruikt alleen de aanbieder die je onder Klanten → AI-aanbieders koos.\n• **Lezen:** het model kan omgevingen en flows tonen, een flow exporteren, erin zoeken, de opbouw en afhankelijkheden zien — met de eigen functies van de app en je eigen login, niet via een externe server.\n• **Concepten:** een concept komt in **YAML importeren**, waar 🔍 YAML valideren en 🌐 Controleren in org werken zoals altijd. Staat daar al iets, dan vraagt de chat eerst.\n• **Schrijven vraagt jouw klik.** Het model kan vragen het concept te importeren of een flow te publiceren, maar pas nadat je org, stap, flow, actie en controles hebt gezien en op **Uitvoeren** hebt geklikt. Het loopt via dezelfde routes als de knoppen, dus de prod-bewaking (prod-login), de divisiecontrole en de afhankelijkheidscontrole gelden. Weigert een daarvan, dan zie je dat en wordt je niets gevraagd.\n• **Vraag me voordat gegevens worden verstuurd:** (aanbevolen, standaard aan) vóór elke aanroep van de aanbieder wordt getoond wat er precies wordt verstuurd — flow-YAML, wachtrijnamen en logtekst kunnen persoonsgegevens bevatten. Je kunt annuleren. **Toon wat er wordt verstuurd** toont de eerste aanroep vóór verzending.\n• **Inhoud uit orgs is data, geen instructie.** Ze wordt ingepakt en het model moet haar niet volgen, maar een model kan worden misleid — daarom zit alles wat schrijft achter jouw klik.\n• Geheimen worden vóór verzending gemaskeerd. Prompts en antwoorden worden niet gelogd; het log toont alleen dat een gesprek liep en welke schrijfacties je goedkeurde of weigerde.\n• Het antwoord komt stap voor stap (niet woord voor woord). Maximaal 12 stappen per bericht.',
     da_tab_terraform:'Terraform', tf_title:'TERRAFORM-OPZET', tf_run:'Terraform genereren', tf_all:'Alles selecteren', tf_none:'Niets selecteren',
     tf_intro:'Maakt een Terraform-opzet (de genesyscloud-provider) op basis van de objecten van de bronorg en slaat die automatisch op in de map terraform/ op deze machine. De klant voert zelf terraform apply uit op de org die moet veranderen — bijv. van Falck Global naar US.', tf_note:'Het is een startopzet: geheimen, leden, contacten en opgenomen audio zijn niet inbegrepen, en wat is weggelaten staat in README.md in de map. Probeer het eerst in een testorg.',
     tf_target_hint:'Kies hierboven ook een doel: de map heet dan <van>_<naar>, README en provider noemen beide orgs, en de regio van het doel wordt de standaard. Het doel is niet nodig voor de opzet zelf — die beschrijft de bron.',
@@ -6655,6 +6994,83 @@ const LANGS = {
     os_sec_presence:'Status Management', os_sec_language:'Sprache', os_sec_embedded:'Embedded Integration', os_sec_whitelist:'Vertrauenswürdige IPs',
     os_st_same:'gleich', os_st_differs:'abweichend', os_st_missing:'fehlt im Ziel', os_st_extra:'nur im Ziel', os_st_unreadable:'konnte nicht gelesen werden',
     os_i_defaultLanguage:'Standardsprache', os_i_defaultCountryCode:'Standardland', os_i_supportedLanguages:'Unterstützte Sprachen', os_i_integrationWhiteList:'Erlaubte Domains', os_i_whitelist:'Vertrauenswürdige IPs',
+    ai_title:'KI-ANBIETER (BETA)',
+    ai_intro:'Hinterlegen Sie Ihre eigenen API-Schlüssel für KI-Anbieter mit Hosting in Europa (DSGVO). Die Funktion ist standardmäßig aus. Es wird nichts gesendet, bis Sie einen Schlüssel gespeichert und bestätigt haben, dass Sie einen Auftragsverarbeitungsvertrag mit dem Anbieter haben.',
+    ai_honest:'Die Schlüssel werden nur auf diesem PC gespeichert, verschlüsselt (AES-256-GCM), in Ihrem Profilordner — nicht im Projekt — und nie an den Browser zurückgesendet. Das schützt davor, dass die Datei kopiert oder eingecheckt wird, nicht aber vor jemandem mit Zugriff auf Ihr Windows-Konto: Er kann sowohl die Datei als auch ihren Schlüssel lesen.',
+    ai_gdpr_hint:'Flow-YAML, Warteschlangennamen und Logtext können personenbezogene Daten enthalten. Prompts und Antworten werden nicht protokolliert, Geheimnisse werden vor dem Senden maskiert. Sie sehen genau, was gesendet wird, bevor es den Rechner verlässt.',
+    ai_enable:'KI-Funktion einschalten',
+    ai_region:'Region',
+    ai_basis_doc:'laut Dokumentation des Anbieters',
+    ai_basis_decl:'Ihre eigene Angabe — Archy kann sie nicht prüfen, bitte beim Anbieter kontrollieren',
+    ai_key_set:'Schlüssel: gespeichert',
+    ai_key_unset:'Schlüssel: nicht gesetzt',
+    ai_key_ph:'Neuer Schlüssel (wird nie wieder angezeigt)',
+    ai_dpa:'Ich habe einen Auftragsverarbeitungsvertrag mit diesem Anbieter',
+    ai_dpa_since:'bestätigt',
+    ai_save:'Speichern',
+    ai_saved:'Gespeichert',
+    ai_test:'Test (sendet nur „ping“)',
+    ai_test_ok:'Antwort erhalten',
+    ai_show_payload:'Anzeigen, was der Test sendet',
+    ai_payload_title:'Gesendet an',
+    ai_delete_key:'Schlüssel löschen',
+    ai_use:'Diesen verwenden',
+    ai_selected:'Ausgewählt',
+    ai_missing:'Fehlt',
+    ai_keylost:'Die Schlüsseldatei (ai.key) fehlt oder wurde geändert, die gespeicherten Schlüssel sind nicht lesbar. Bitte erneut speichern.',
+    ai_confirm_delete:'Den Schlüssel dieses Anbieters löschen?',
+    ai_p_mistral:'Mistral (EU)',
+    ai_p_azure:'Azure OpenAI (EU-Region)',
+    ai_p_bedrock:'Claude über Amazon Bedrock (EU)',
+    ai_p_custom:'Eigener Endpoint (OpenAI-kompatibel)',
+    ai_f_model:'Modell',
+    ai_f_endpoint:'Endpoint (https)',
+    ai_f_deployment:'Deployment-Name',
+    ai_f_apiversion:'API-Version',
+    ai_f_regiondecl:'Region (Ihre Angabe)',
+    ai_f_awsregion:'AWS-Region (EU)',
+    ai_f_modelid:'Modell-ID / Inference-Profil (eu.…)',
+    ai_f_authheader:'Header-Name für den Schlüssel (optional, sonst Bearer)',
+    help_ai:'Ihre eigenen API-Schlüssel für KI-Anbieter mit Hosting in Europa. **Beta, standardmäßig aus**, sichtbar mit dem Aktivierungsschlüssel.\n• Jeder Anbieter zeigt seine **Region** und die Grundlage: die Dokumentation des Anbieters oder Ihre eigene Angabe (Azure und eigener Endpoint — Archy sieht nicht, wo Ihre Ressource liegt).\n• Mistral nutzt nur die EU-Adresse `api.eu.mistral.ai`; die globale `api.mistral.ai` legt sich nicht auf die EU fest. Bedrock ist auf EU-Regionen beschränkt und lehnt `us.`-, `apac.`- und `global.`-Profile ab.\n• **Auftragsverarbeitungsvertrag:** Ein Anbieter ist erst nutzbar, wenn Sie bestätigen, dass Sie einen haben. Ändern von Endpoint, Region oder Modell setzt dies zurück.\n• **Der Schlüssel** wird verschlüsselt auf diesem PC gespeichert (AES-256-GCM, der Dateischlüssel liegt in Ihrem Profilordner) und nie an den Browser zurückgesendet. Das schützt nicht vor jemandem mit Zugriff auf Ihr Windows-Konto.\n• **Test** sendet nur „ping“. **Anzeigen, was der Test sendet** zeigt Adresse und Inhalt, ohne Schlüssel.\n• Prompts und Antworten werden nicht protokolliert; Geheimnisse werden vor dem Senden maskiert.',
+    ai_region_none:'— nicht angegeben —',
+    nav_aichat:'KI-Assistent',
+    aic_title:'KI-Assistent (Beta)',
+    aic_sub:'Liest Flows und entwirft YAML — schreibt nur nach Ihrem Klick',
+    aic_off:'Die KI-Funktion ist aus oder kein Anbieter ist bereit. Schalten Sie sie ein und wählen Sie unter Kunden → KI-Anbieter einen Anbieter mit Schlüssel und Auftragsverarbeitungsvertrag.',
+    aic_placeholder:'Fragen Sie zu einem Flow oder bitten Sie um einen Entwurf … (Strg+Enter sendet)',
+    aic_send:'Senden',
+    aic_stop:'Stopp',
+    aic_clear:'Unterhaltung löschen',
+    aic_show_sent:'Anzeigen, was gesendet wird',
+    aic_review_label:'Vor dem Senden von Daten an den Anbieter nachfragen (empfohlen)',
+    aic_untrusted:'Inhalte aus Orgs werden als Daten behandelt, nicht als Anweisungen. Schreibende Aktionen erfordern immer Ihren Klick.',
+    aic_review_title:'Was als Nächstes an den Anbieter geht',
+    aic_review_new:'Neu in dieser Anfrage',
+    aic_review_full:'Die ganze Anfrage (Systemprompt, Werkzeuge, Unterhaltung)',
+    aic_review_send:'Senden',
+    aic_review_cancel:'Abbrechen',
+    aic_review_declined:'Abgebrochen — es wurde nichts gesendet.',
+    aic_confirm_title:'Änderung in einer Org bestätigen',
+    aic_f_org:'Org',
+    aic_f_stage:'Stufe',
+    aic_f_action:'Aktion',
+    aic_f_flow:'Flow',
+    aic_f_file:'Datei',
+    aic_f_versions:'Veröffentlicht → gespeichert',
+    aic_f_checks:'Prüfungen gegen die Org',
+    aic_f_yaml:'Ganzes YAML anzeigen',
+    aic_do:'Ausführen',
+    aic_decline:'Ablehnen',
+    aic_approved:'Genehmigt — wird ausgeführt',
+    aic_declined:'Abgelehnt — nichts wurde geändert',
+    aic_gone:'Die Frage existiert nicht mehr (der Lauf wurde beendet)',
+    aic_blocked:'Nicht ausgeführt',
+    aic_draft_title:'YAML-Entwurf',
+    aic_draft_open:'📥 In YAML importieren öffnen (dann validieren)',
+    aic_draft_replace:'YAML importieren enthält bereits Text. Durch den Entwurf ersetzen?',
+    aic_limit:'Nach 12 Schritten gestoppt — schreiben Sie, um fortzufahren.',
+    aic_stopped:'Gestoppt.',
+    help_aichat:'Ein Chat, in dem das Modell **Flows lesen und verstehen** und **YAML entwerfen** kann. Beta, hinter dem Aktivierungsschlüssel, und er nutzt nur den Anbieter, den Sie unter Kunden → KI-Anbieter gewählt haben.\n• **Lesen:** Das Modell kann Umgebungen und Flows auflisten, einen Flow exportieren, darin suchen, Aufbau und Abhängigkeiten ansehen — mit den eigenen Funktionen der App und Ihrem eigenen Login, nicht über einen externen Server.\n• **Entwürfe:** Ein Entwurf landet in **YAML importieren**, wo 🔍 YAML prüfen und 🌐 Gegen Org prüfen wie gewohnt laufen. Steht dort schon etwas, fragt der Chat zuerst.\n• **Schreiben braucht Ihren Klick.** Das Modell kann bitten, den Entwurf zu importieren oder einen Flow zu veröffentlichen, darf es aber erst, nachdem Sie Org, Stufe, Flow, Aktion und Prüfungen gesehen und auf **Ausführen** geklickt haben. Es läuft über dieselben Routen wie die Schaltflächen, daher gelten Prod-Schutz (Prod-Login), Divisionsprüfung und Abhängigkeitsprüfung. Lehnt eine davon ab, wird das angezeigt und Sie werden nicht gefragt.\n• **Vor dem Senden von Daten nachfragen:** (empfohlen, standardmäßig an) vor jedem Aufruf des Anbieters wird genau angezeigt, was gesendet wird — Flow-YAML, Warteschlangennamen und Logtext können personenbezogene Daten enthalten. Sie können abbrechen. **Anzeigen, was gesendet wird** zeigt den ersten Aufruf vor dem Senden.\n• **Inhalte aus Orgs sind Daten, keine Anweisungen.** Sie werden eingepackt und das Modell soll ihnen nicht folgen, aber ein Modell lässt sich täuschen — deshalb steht alles Schreibende hinter Ihrem Klick.\n• Geheimnisse werden vor dem Senden maskiert. Prompts und Antworten werden nicht protokolliert; das Log zeigt nur, dass eine Unterhaltung lief und welche Schreibvorgänge Sie genehmigt oder abgelehnt haben.\n• Die Antwort kommt Schritt für Schritt (nicht Wort für Wort). Höchstens 12 Schritte pro Nachricht.',
     da_tab_terraform:'Terraform', tf_title:'TERRAFORM-SETUP', tf_run:'Terraform erzeugen', tf_all:'Alle auswählen', tf_none:'Keine auswählen',
     tf_intro:'Erzeugt ein Terraform-Setup (genesyscloud-Provider) aus den Objekten der Quell-Org und speichert es automatisch im Ordner terraform/ auf diesem Rechner. Der Kunde führt terraform apply selbst gegen die Org aus, die geändert werden soll — z. B. von Falck Global nach US.', tf_note:'Es ist ein Start-Setup: Geheimnisse, Mitglieder, Kontakte und aufgenommenes Audio sind nicht enthalten, und das Weggelassene steht in der README.md im Ordner. Zuerst in einer Test-Org ausprobieren.',
     tf_target_hint:'Wählen Sie oben auch ein Ziel aus: Der Ordner heißt dann <von>_<nach>, README und Provider nennen beide Orgs, und die Region des Ziels wird zum Standard. Das Ziel ist für das Setup selbst nicht nötig — es beschreibt die Quelle.',
@@ -7745,6 +8161,83 @@ const LANGS = {
     os_sec_presence:'Status Management', os_sec_language:'Idioma', os_sec_embedded:'Integración embebida', os_sec_whitelist:'IP de confianza',
     os_st_same:'igual', os_st_differs:'distinto', os_st_missing:'falta en destino', os_st_extra:'solo en destino', os_st_unreadable:'no se pudo leer',
     os_i_defaultLanguage:'Idioma predeterminado', os_i_defaultCountryCode:'País predeterminado', os_i_supportedLanguages:'Idiomas admitidos', os_i_integrationWhiteList:'Dominios permitidos', os_i_whitelist:'IP de confianza',
+    ai_title:'PROVEEDORES DE IA (BETA)',
+    ai_intro:'Añada sus propias claves API de proveedores de IA alojados en Europa (RGPD). La función está desactivada por defecto. No se envía nada hasta que haya guardado una clave y confirmado que tiene un contrato de encargado del tratamiento con el proveedor.',
+    ai_honest:'Las claves se guardan solo en este PC, cifradas (AES-256-GCM), en su carpeta de perfil —no en el proyecto— y nunca se devuelven al navegador. Esto protege contra la copia o el commit del archivo, pero no contra alguien con acceso a su cuenta de Windows: puede leer el archivo y su clave.',
+    ai_gdpr_hint:'El YAML de los flujos, los nombres de colas y el texto de los registros pueden contener datos personales. Los prompts y las respuestas no se registran y los secretos se enmascaran antes del envío. Puede ver exactamente qué se envía antes de que salga del equipo.',
+    ai_enable:'Activar la función de IA',
+    ai_region:'Región',
+    ai_basis_doc:'según la documentación del proveedor',
+    ai_basis_decl:'su propia declaración — Archy no puede comprobarla, verifíquela con el proveedor',
+    ai_key_set:'Clave: guardada',
+    ai_key_unset:'Clave: no definida',
+    ai_key_ph:'Nueva clave (no se vuelve a mostrar)',
+    ai_dpa:'Tengo un contrato de encargado del tratamiento con este proveedor',
+    ai_dpa_since:'confirmado',
+    ai_save:'Guardar',
+    ai_saved:'Guardado',
+    ai_test:'Probar (solo envía «ping»)',
+    ai_test_ok:'Respuesta recibida',
+    ai_show_payload:'Mostrar lo que envía la prueba',
+    ai_payload_title:'Enviado a',
+    ai_delete_key:'Eliminar clave',
+    ai_use:'Usar este',
+    ai_selected:'Seleccionado',
+    ai_missing:'Falta',
+    ai_keylost:'El archivo de clave (ai.key) falta o ha cambiado, por lo que las claves guardadas no se pueden leer. Guárdelas de nuevo.',
+    ai_confirm_delete:'¿Eliminar la clave de este proveedor?',
+    ai_p_mistral:'Mistral (UE)',
+    ai_p_azure:'Azure OpenAI (región UE)',
+    ai_p_bedrock:'Claude vía Amazon Bedrock (UE)',
+    ai_p_custom:'Endpoint propio (compatible con OpenAI)',
+    ai_f_model:'Modelo',
+    ai_f_endpoint:'Endpoint (https)',
+    ai_f_deployment:'Nombre del despliegue',
+    ai_f_apiversion:'Versión de la API',
+    ai_f_regiondecl:'Región (su declaración)',
+    ai_f_awsregion:'Región de AWS (UE)',
+    ai_f_modelid:'Id del modelo / perfil de inferencia (eu.…)',
+    ai_f_authheader:'Nombre de cabecera para la clave (opcional, si no Bearer)',
+    help_ai:'Sus propias claves API para proveedores de IA alojados en Europa. **Beta, desactivada por defecto**, visible con la clave de activación.\n• Cada proveedor muestra su **región** y su base: la documentación del proveedor o su propia declaración (Azure y endpoint propio — Archy no ve dónde está su recurso).\n• Mistral solo usa la dirección UE `api.eu.mistral.ai`; la global `api.mistral.ai` no se compromete con la UE. Bedrock está limitado a regiones UE y rechaza perfiles `us.`, `apac.` y `global.`.\n• **Contrato de encargado del tratamiento:** un proveedor solo se puede usar cuando marca que lo tiene. Cambiar endpoint, región o modelo lo restablece.\n• **La clave** se guarda cifrada en este PC (AES-256-GCM, la clave del archivo está en su carpeta de perfil) y nunca se devuelve al navegador. No protege contra alguien con acceso a su cuenta de Windows.\n• **Probar** solo envía «ping». **Mostrar lo que envía la prueba** muestra la dirección y el contenido, sin la clave.\n• Los prompts y respuestas no se registran; los secretos se enmascaran antes del envío.',
+    ai_region_none:'— no indicada —',
+    nav_aichat:'Asistente de IA',
+    aic_title:'Asistente de IA (beta)',
+    aic_sub:'Lee flujos y redacta YAML — solo escribe tras su clic',
+    aic_off:'La función de IA está desactivada o no hay proveedor listo. Actívela y elija un proveedor con clave y contrato de encargado del tratamiento en Clientes → Proveedores de IA.',
+    aic_placeholder:'Pregunte por un flujo o pida un borrador… (Ctrl+Intro envía)',
+    aic_send:'Enviar',
+    aic_stop:'Detener',
+    aic_clear:'Borrar la conversación',
+    aic_show_sent:'Mostrar lo que se envía',
+    aic_review_label:'Preguntarme antes de enviar datos al proveedor (recomendado)',
+    aic_untrusted:'El contenido de las orgs se trata como datos, no como instrucciones. Las acciones de escritura siempre requieren su clic.',
+    aic_review_title:'Lo siguiente que se envía al proveedor',
+    aic_review_new:'Nuevo en esta solicitud',
+    aic_review_full:'Toda la solicitud (prompt del sistema, herramientas, conversación)',
+    aic_review_send:'Enviar',
+    aic_review_cancel:'Cancelar',
+    aic_review_declined:'Cancelado — no se envió nada.',
+    aic_confirm_title:'Confirmar un cambio en una org',
+    aic_f_org:'Org',
+    aic_f_stage:'Etapa',
+    aic_f_action:'Acción',
+    aic_f_flow:'Flujo',
+    aic_f_file:'Archivo',
+    aic_f_versions:'Publicado → guardado',
+    aic_f_checks:'Comprobaciones en la org',
+    aic_f_yaml:'Mostrar todo el YAML',
+    aic_do:'Ejecutar',
+    aic_decline:'Rechazar',
+    aic_approved:'Aprobado — en ejecución',
+    aic_declined:'Rechazado — no se cambió nada',
+    aic_gone:'La pregunta ya no existe (la ejecución se detuvo)',
+    aic_blocked:'No realizado',
+    aic_draft_title:'Borrador de YAML',
+    aic_draft_open:'📥 Abrir en Importar YAML (luego validar)',
+    aic_draft_replace:'Importar YAML ya contiene texto. ¿Reemplazarlo por el borrador?',
+    aic_limit:'Se detuvo tras 12 pasos — escriba para continuar.',
+    aic_stopped:'Detenido.',
+    help_aichat:'Un chat donde el modelo puede **leer y entender flujos** y **redactar YAML**. Beta, tras la clave de activación, y solo usa el proveedor elegido en Clientes → Proveedores de IA.\n• **Lectura:** el modelo puede listar entornos y flujos, exportar un flujo, buscar en él, ver su estructura y dependencias — con las funciones de la propia aplicación y su propio login, no mediante un servidor externo.\n• **Borradores:** un borrador llega a **Importar YAML**, donde 🔍 Validar YAML y 🌐 Comprobar en la org funcionan como siempre. Si ya hay algo, el chat pregunta antes.\n• **Escribir requiere su clic.** El modelo puede pedir importar el borrador o publicar un flujo, pero solo se permite cuando usted ha visto org, etapa, flujo, acción y comprobaciones y ha pulsado **Ejecutar**. Pasa por las mismas rutas que los botones, así que rigen la protección de prod (login de prod), la comprobación de división y la de dependencias. Si alguna lo rechaza, se muestra y no se le pregunta.\n• **Preguntarme antes de enviar datos:** (recomendado, activado por defecto) antes de cada llamada al proveedor se muestra exactamente lo que se envía — el YAML de flujos, nombres de colas y texto de registros pueden contener datos personales. Puede cancelar. **Mostrar lo que se envía** muestra la primera llamada antes de enviar.\n• **El contenido de las orgs son datos, no instrucciones.** Se encapsula y se indica al modelo que no lo siga, pero un modelo puede ser engañado — por eso todo lo que escribe está tras su clic.\n• Los secretos se enmascaran antes del envío. Los prompts y respuestas no se registran; el registro solo muestra que hubo una conversación y qué escrituras aprobó o rechazó.\n• La respuesta llega paso a paso (no palabra a palabra). Como máximo 12 pasos por mensaje.',
     da_tab_terraform:'Terraform', tf_title:'CONFIGURACIÓN DE TERRAFORM', tf_run:'Generar Terraform', tf_all:'Seleccionar todo', tf_none:'Quitar selección',
     tf_intro:'Crea una configuración de Terraform (proveedor genesyscloud) a partir de los objetos de la org de origen y la guarda automáticamente en la carpeta terraform/ de este equipo. El cliente ejecuta él mismo terraform apply en la org que debe cambiar — p. ej. de Falck Global a US.', tf_note:'Es una configuración inicial: no incluye secretos, miembros, contactos ni audio grabado, y lo omitido figura en README.md de la carpeta. Pruébela primero en una org de prueba.',
     tf_target_hint:'Elija también un destino arriba: la carpeta se llamará <origen>_<destino>, el README y el provider mencionarán ambas orgs y la región del destino será la predeterminada. El destino no es necesario para la configuración en sí — describe el origen.',
@@ -8453,6 +8946,7 @@ function setLang(lang) {
   renderSidebarCustomers();
   renderCustomerGrid();
   renderFeatBox();
+  aiRender();
   renderMigBars();
   if (document.getElementById('page-flows').classList.contains('active')) {
     const tbody = document.getElementById('flowTableBody');
@@ -8516,6 +9010,7 @@ async function loadFeatures() {
   features = await fetch('/api/features').then(r => r.json()).catch(() => ({ internal: false }));
   document.body.classList.toggle('internal', !!features.internal);
   renderFeatBox();
+  aiLoad();
 }
 
 function renderFeatBox() {
@@ -8547,6 +9042,329 @@ async function featLock() {
   await fetch('/api/features', { method: 'DELETE' });
   await loadFeatures();
   renderDemoButtons();
+}
+
+// ── AI-udbydere (beta, bag aktiveringsnøglen) ────────────────────────────────
+// Nøglerne bliver på serveren: her står kun "sat / ikke sat". Felterne er dem
+// serveren selv beder om (ai-providers.js).
+let aiState = null;
+const AI_FIELDS = {
+  mistral: ['model'],
+  azure:   ['endpoint', 'deployment', 'apiVersion', 'regionDeclared'],
+  bedrock: ['awsRegion', 'modelId'],
+  custom:  ['endpoint', 'model', 'authHeader', 'regionDeclared']
+};
+const AI_FIELD_LABEL = {
+  model: 'ai_f_model', endpoint: 'ai_f_endpoint', deployment: 'ai_f_deployment', apiVersion: 'ai_f_apiversion',
+  regionDeclared: 'ai_f_regiondecl', awsRegion: 'ai_f_awsregion', modelId: 'ai_f_modelid', authHeader: 'ai_f_authheader'
+};
+
+async function aiLoad() {
+  if (!features.internal) { aiState = null; aiRender(); return; }
+  try { aiState = await fetch('/api/ai/providers').then(r => r.json()); } catch (_) { aiState = null; }
+  aiRender();
+  if (typeof aiChatSync === 'function') aiChatSync();
+}
+
+function aiField(p, f) {
+  const id = `ai-${p.id}-${f}`, v = (p.config && p.config[f]) || '';
+  const lbl = `<label>${escapeHtml(t(AI_FIELD_LABEL[f]))}</label>`;
+  if (f === 'awsRegion')
+    return `<div>${lbl}<select id="${id}">${aiState.awsRegions.map(r => `<option value="${r}"${r === v ? ' selected' : ''}>${r}</option>`).join('')}</select></div>`;
+  if (f === 'regionDeclared')
+    return `<div>${lbl}<input id="${id}" list="ai-azure-regions" value="${escapeHtml(v)}" maxlength="60" autocomplete="off" /></div>`;
+  const ph = f === 'apiVersion' ? aiState.azureApiVersion : (f === 'model' && p.id === 'mistral' ? 'mistral-large-latest' : '');
+  return `<div>${lbl}<input id="${id}" value="${escapeHtml(v)}" placeholder="${escapeHtml(ph)}" maxlength="200" autocomplete="off" /></div>`;
+}
+
+function aiRender() {
+  const box = document.getElementById('aiBox');
+  if (!box) return;
+  if (!aiState || !features.internal) { box.innerHTML = ''; return; }
+  const s = aiState;
+  const providers = s.providers.map(p => {
+    const basis = p.region.basis === 'documented' ? t('ai_basis_doc') : t('ai_basis_decl');
+    const sel = s.selected === p.id;
+    return `<div class="card" style="margin:10px 0;padding:12px" id="ai-p-${p.id}">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+        <b>${escapeHtml(t('ai_p_' + p.id))}</b>
+        ${sel ? `<span class="badge badge-green">${t('ai_selected')}</span>` : `<button class="btn btn-secondary btn-sm" onclick="aiSelect('${p.id}')">${t('ai_use')}</button>`}
+        <span style="font-size:11px;color:${p.keySet ? 'var(--green)' : 'var(--muted)'}">${p.keySet ? t('ai_key_set') : t('ai_key_unset')}</span>
+      </div>
+      <div style="font-size:12px;margin-bottom:8px"><b>${t('ai_region')}:</b> ${escapeHtml(p.region.text || t('ai_region_none'))}
+        <span style="color:var(--muted)">— ${escapeHtml(basis)}</span></div>
+      <div class="grid-2" style="margin-bottom:8px">
+        ${(AI_FIELDS[p.id] || []).map(f => aiField(p, f)).join('')}
+        <div><label>API key</label><input id="ai-${p.id}-apiKey" type="password" autocomplete="new-password" placeholder="${escapeHtml(t('ai_key_ph'))}" /></div>
+      </div>
+      <label style="display:flex;gap:8px;align-items:center;font-size:12px;margin-bottom:8px">
+        <input type="checkbox" id="ai-${p.id}-dpa" style="width:auto"${p.dpaConfirmedAt ? ' checked' : ''} />
+        <span>${t('ai_dpa')}${p.dpaConfirmedAt ? ` <span style="color:var(--muted)">(${t('ai_dpa_since')} ${escapeHtml(p.dpaConfirmedAt.slice(0, 10))})</span>` : ''}</span></label>
+      ${p.missing.length ? `<div style="font-size:11px;color:var(--yellow);margin-bottom:6px">${t('ai_missing')}: ${escapeHtml(p.missing.join(', '))}</div>` : ''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-primary btn-sm" onclick="aiSave('${p.id}')">${t('ai_save')}</button>
+        <button class="btn btn-secondary btn-sm" onclick="aiTest('${p.id}', false)"${s.enabled && p.ready ? '' : ' disabled'}>${t('ai_test')}</button>
+        <button class="btn btn-secondary btn-sm" onclick="aiTest('${p.id}', true)"${s.enabled ? '' : ' disabled'}>${t('ai_show_payload')}</button>
+        ${p.keySet ? `<button class="btn btn-secondary btn-sm" onclick="aiDeleteKey('${p.id}')">${t('ai_delete_key')}</button>` : ''}
+        <span id="ai-${p.id}-msg" style="font-size:12px"></span>
+      </div>
+      <pre id="ai-${p.id}-payload" style="display:none;margin-top:8px;font-size:11px;white-space:pre-wrap;max-height:240px;overflow:auto"></pre>
+    </div>`;
+  }).join('');
+  box.innerHTML = `
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">${t('ai_intro')} <button class="help-btn" onclick="showHelp('ai','ai_title')">?</button></div>
+    <div style="font-size:12px;margin-bottom:8px;padding:8px 10px;border:1px solid var(--border);border-radius:6px">🔒 ${t('ai_honest')}</div>
+    <div style="font-size:12px;margin-bottom:10px;color:var(--muted)">${t('ai_gdpr_hint')}</div>
+    ${s.keyLost ? `<div style="font-size:12px;color:var(--red);margin-bottom:8px">${t('ai_keylost')}</div>` : ''}
+    <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:6px">
+      <input type="checkbox" style="width:auto" id="ai-enabled"${s.enabled ? ' checked' : ''} onchange="aiToggle(this.checked)" /> <b>${t('ai_enable')}</b></label>
+    <datalist id="ai-azure-regions">${s.azureRegions.map(r => `<option value="${r}">`).join('')}</datalist>
+    ${providers}`;
+}
+
+async function aiPut(url, body, method = 'PUT') {
+  const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || r.status);
+  return j;
+}
+function aiMsg(id, text, ok) {
+  const el = document.getElementById(`ai-${id}-msg`);
+  if (el) { el.textContent = text; el.style.color = ok ? 'var(--green)' : 'var(--red)'; }
+}
+async function aiToggle(on) { try { aiState = await aiPut('/api/ai/enabled', { enabled: on }); } catch (e) { alert(e.message); } aiRender(); if (typeof aiChatSync === 'function') aiChatSync(); }
+async function aiSelect(id) { try { aiState = await aiPut('/api/ai/selected', { providerId: id }); } catch (e) { alert(e.message); } aiRender(); if (typeof aiChatSync === 'function') aiChatSync(); }
+async function aiSave(id) {
+  const config = {};
+  for (const f of AI_FIELDS[id] || []) config[f] = document.getElementById(`ai-${id}-${f}`).value;
+  const key = document.getElementById(`ai-${id}-apiKey`).value;
+  if (key) config.apiKey = key;
+  const dpa = document.getElementById(`ai-${id}-dpa`).checked;
+  const before = aiState.providers.find(p => p.id === id);
+  const body = { config };
+  if (dpa !== !!before.dpaConfirmedAt) body.dpaConfirmed = dpa;
+  try { aiState = await aiPut(`/api/ai/providers/${id}`, body); aiRender(); aiMsg(id, t('ai_saved'), true); }
+  catch (e) { aiMsg(id, e.message, false); }
+}
+async function aiDeleteKey(id) {
+  if (!confirm(t('ai_confirm_delete'))) return;
+  try { aiState = await aiPut(`/api/ai/providers/${id}/key`, null, 'DELETE'); aiRender(); } catch (e) { aiMsg(id, e.message, false); }
+}
+async function aiTest(id, dryRun) {
+  aiMsg(id, '…', true);
+  try {
+    const j = await aiPut(`/api/ai/providers/${id}/test`, { dryRun }, 'POST');
+    const pre = document.getElementById(`ai-${id}-payload`);
+    if (dryRun) {
+      pre.style.display = 'block';
+      pre.textContent = `${t('ai_payload_title')}: ${j.preview.url}\n${JSON.stringify(j.preview.body, null, 2)}`;
+      aiMsg(id, '', true);
+    } else { aiMsg(id, `${t('ai_test_ok')} (${j.ms} ms)`, true); }
+  } catch (e) { aiMsg(id, e.message, false); }
+}
+
+// ── AI-assistent (chat) ──────────────────────────────────────────────────────
+// Indhold fra modellen og fra orgs sættes altid med textContent, aldrig som HTML.
+// Serveren kører værktøjsløkken og sender hændelser (SSE); to af dem venter på et klik:
+// 'review' (hvad der sendes til udbyderen) og 'confirm' (en skrivning i en org).
+const aiChat = { history: [], runId: null, busy: false, turn: [], draft: null };
+
+function aiEl(tag, text, style, cls) {
+  const e = document.createElement(tag);
+  if (text != null) e.textContent = text;
+  if (style) e.style.cssText = style;
+  if (cls) e.className = cls;
+  return e;
+}
+const AIC_BOX = 'border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px';
+
+function aiChatSync() {
+  const st = document.getElementById('aic-status');
+  if (!st) return;
+  const sel = aiState && aiState.providers.find(p => p.id === aiState.selected);
+  const ok = !!(aiState && aiState.enabled && sel && sel.ready);
+  st.textContent = '';
+  if (!ok) { st.appendChild(aiEl('span', t('aic_off'), 'color:var(--yellow)')); }
+  else {
+    st.appendChild(aiEl('b', t('ai_p_' + sel.id)));
+    st.appendChild(aiEl('span', ' — ' + t('ai_region') + ': ' + (sel.region.text || t('ai_region_none')) + ' (' + (sel.region.basis === 'documented' ? t('ai_basis_doc') : t('ai_basis_decl')) + ')', 'color:var(--muted)'));
+  }
+  const send = document.getElementById('aic-send');
+  if (send) send.disabled = !ok || aiChat.busy;
+}
+
+function aiChatAdd(node) {
+  const log = document.getElementById('aic-log');
+  log.appendChild(node);
+  log.scrollTop = log.scrollHeight;
+  return node;
+}
+
+function aiChatClear() {
+  if (aiChat.busy) return;
+  aiChat.history = [];
+  aiChat.draft = null;
+  document.getElementById('aic-log').textContent = '';
+}
+
+function aiChatBusy(on) {
+  aiChat.busy = on;
+  document.getElementById('aic-stop').style.display = on ? '' : 'none';
+  aiChatSync();
+}
+
+function aiChatInput() {
+  const text = document.getElementById('aic-input').value.trim();
+  return text ? [...aiChat.history, { role: 'user', content: text }] : null;
+}
+
+async function aiChatPreview() {
+  const messages = aiChatInput();
+  if (!messages) return;
+  const r = await fetch('/api/ai/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages }) });
+  const j = await r.json().catch(() => ({}));
+  const box = aiEl('div', null, AIC_BOX);
+  if (!r.ok) box.appendChild(aiEl('div', j.error || r.status, 'color:var(--red)'));
+  else {
+    box.appendChild(aiEl('b', t('ai_payload_title') + ': ' + j.preview.url));
+    box.appendChild(aiEl('pre', JSON.stringify(j.preview.body, null, 2), 'white-space:pre-wrap;max-height:260px;overflow:auto;font-size:11px'));
+  }
+  aiChatAdd(box);
+}
+
+async function aiChatSend() {
+  if (aiChat.busy) return;
+  const messages = aiChatInput();
+  if (!messages) return;
+  document.getElementById('aic-input').value = '';
+  aiChat.history = messages;
+  aiChat.turn = [];
+  aiChatAdd(aiEl('div', messages[messages.length - 1].content, 'align-self:flex-end;background:rgba(127,127,127,.15);padding:8px 12px;border-radius:8px;white-space:pre-wrap;max-width:85%'));
+  aiChatBusy(true);
+  let resp;
+  try {
+    resp = await fetch('/api/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages, review: document.getElementById('aic-review').checked, draft: aiChat.draft }) });
+  } catch (e) { aiChatAdd(aiEl('div', e.message, 'color:var(--red)')); aiChat.history.pop(); aiChatBusy(false); return; }
+  if (!resp.ok) {
+    const j = await resp.json().catch(() => ({}));
+    aiChatAdd(aiEl('div', j.error || resp.status, 'color:var(--red)'));
+    aiChat.history.pop();
+    aiChatBusy(false);
+    return;
+  }
+  const reader = resp.body.getReader(), dec = new TextDecoder();
+  let buf = '';
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf('\n\n')) !== -1) {
+        const chunk = buf.slice(0, i); buf = buf.slice(i + 2);
+        if (chunk.startsWith('data: ')) { try { aiChatEvent(JSON.parse(chunk.slice(6))); } catch (_) { /* en ødelagt hændelse springes over */ } }
+      }
+    }
+  } catch (_) { /* afbrudt */ }
+  if (aiChat.turn.length) aiChat.history.push({ role: 'assistant', content: aiChat.turn.join('\n') });
+  else aiChat.history.pop();
+  aiChat.runId = null;
+  aiChatBusy(false);
+}
+
+async function aiChatStop() {
+  if (aiChat.runId) await fetch('/api/ai/stop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ runId: aiChat.runId }) });
+}
+
+async function aiAnswer(card, ev, approve) {
+  card.querySelectorAll('button').forEach(b => { b.disabled = true; });
+  const r = await fetch('/api/ai/answer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ runId: ev.runId, id: ev.id, approve }) });
+  card.appendChild(aiEl('div', r.ok ? (approve ? t('aic_approved') : t('aic_declined')) : t('aic_gone'), 'margin-top:6px;font-weight:600;color:' + (approve ? 'var(--green)' : 'var(--muted)')));
+}
+
+function aiChatEvent(ev) {
+  switch (ev.type) {
+    case 'start': aiChat.runId = ev.runId; break;
+    case 'text': aiChat.turn.push(ev.text); aiChatAdd(aiEl('div', ev.text, 'white-space:pre-wrap;max-width:92%')); break;
+    case 'tool': aiChatAdd(aiEl('div', '🔧 ' + ev.name + '(' + Object.entries(ev.args || {}).map(([k, v]) => k + '=' + v).join(', ') + ') ' + (ev.ok ? '✓' : '✗'), 'font-size:11px;color:var(--muted);font-family:var(--mono);word-break:break-all')); break;
+    case 'blocked': aiChatAdd(aiEl('div', t('aic_blocked') + ' — ' + ev.org + ': ' + ev.reason, AIC_BOX + ';border-color:var(--red);color:var(--red)')); break;
+    case 'error': aiChatAdd(aiEl('div', ev.message, 'color:var(--red)')); break;
+    case 'done':
+      if (ev.declined) aiChatAdd(aiEl('div', t('aic_review_declined'), 'color:var(--muted)'));
+      else if (ev.limit) aiChatAdd(aiEl('div', t('aic_limit'), 'color:var(--yellow)'));
+      else if (ev.stopped) aiChatAdd(aiEl('div', t('aic_stopped'), 'color:var(--muted)'));
+      break;
+    case 'draft': aiChatDraft(ev.draft); break;
+    case 'review': aiChatReview(ev); break;
+    case 'confirm': aiChatConfirm(ev); break;
+  }
+}
+
+// Det næste der sendes til udbyderen — vist før det forlader maskinen
+function aiChatReview(ev) {
+  const card = aiEl('div', null, AIC_BOX + ';border-color:var(--orange)');
+  card.appendChild(aiEl('b', '📤 ' + t('aic_review_title')));
+  card.appendChild(aiEl('div', ev.url, 'font-family:var(--mono);font-size:11px;margin:4px 0'));
+  card.appendChild(aiEl('div', t('ai_gdpr_hint'), 'color:var(--muted);margin-bottom:6px'));
+  card.appendChild(aiEl('div', t('aic_review_new') + ':', 'font-weight:600'));
+  for (const m of ev.fresh) card.appendChild(aiEl('pre', '[' + m.role + '] ' + (m.content || (m.toolCalls || []).map(c => c.name + '(' + JSON.stringify(c.args) + ')').join('\n')), 'white-space:pre-wrap;max-height:220px;overflow:auto;font-size:11px;margin:4px 0'));
+  const full = aiEl('details'); full.appendChild(aiEl('summary', t('aic_review_full'), 'cursor:pointer'));
+  full.appendChild(aiEl('pre', JSON.stringify(ev.body, null, 2), 'white-space:pre-wrap;max-height:300px;overflow:auto;font-size:11px'));
+  card.appendChild(full);
+  const row = aiEl('div', null, 'display:flex;gap:8px;margin-top:8px');
+  const yes = aiEl('button', t('aic_review_send'), null, 'btn btn-primary btn-sm'); yes.onclick = () => aiAnswer(card, ev, true);
+  const no = aiEl('button', t('aic_review_cancel'), null, 'btn btn-secondary btn-sm'); no.onclick = () => aiAnswer(card, ev, false);
+  row.append(yes, no); card.appendChild(row);
+  aiChatAdd(card);
+}
+
+// En skrivning i en org: præcis hvad der sker, og et klik. Teksterne her kommer fra serveren, ikke fra modellen.
+function aiChatConfirm(ev) {
+  const prod = String(ev.stage || '').toLowerCase() === 'prod';
+  const card = aiEl('div', null, AIC_BOX + ';border:2px solid var(--' + (prod ? 'red' : 'orange') + ')');
+  card.appendChild(aiEl('b', '⚠ ' + t('aic_confirm_title')));
+  const rows = [[t('aic_f_org'), ev.org], [t('aic_f_stage'), ev.stage || '—'], [t('aic_f_action'), ev.tool + ' → ' + ev.action], [t('aic_f_flow'), (ev.flow || '?') + (ev.kind ? ' (' + ev.kind + ')' : '')]];
+  if (ev.fileName) rows.push([t('aic_f_file'), ev.fileName + ' · ' + ev.size + ' chars']);
+  if (ev.published !== undefined) rows.push([t('aic_f_versions'), (ev.published || '—') + ' → ' + (ev.saved || '—')]);
+  const tbl = aiEl('div', null, 'display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin:6px 0');
+  for (const [k, v] of rows) { tbl.appendChild(aiEl('span', k, 'color:var(--muted)')); tbl.appendChild(aiEl('span', String(v), prod && k === t('aic_f_org') ? 'color:var(--red);font-weight:700' : 'font-weight:600')); }
+  card.appendChild(tbl);
+  if ((ev.checks || []).length) {
+    card.appendChild(aiEl('div', t('aic_f_checks') + ':', 'font-weight:600'));
+    for (const c of ev.checks) card.appendChild(aiEl('div', (c.ok === false ? '✗ ' : c.ok === null ? '? ' : '✓ ') + c.message, c.ok === false ? 'color:var(--yellow)' : ''));
+  }
+  for (const w of ev.warnings || []) card.appendChild(aiEl('div', '⚠ ' + w, 'color:var(--yellow);margin-top:4px'));
+  if (ev.yaml) { const d = aiEl('details'); d.appendChild(aiEl('summary', t('aic_f_yaml'), 'cursor:pointer;margin-top:6px')); d.appendChild(aiEl('pre', ev.yaml, 'white-space:pre-wrap;max-height:300px;overflow:auto;font-size:11px')); card.appendChild(d); }
+  const row = aiEl('div', null, 'display:flex;gap:8px;margin-top:8px');
+  const yes = aiEl('button', t('aic_do'), null, 'btn btn-green btn-sm'); yes.onclick = () => aiAnswer(card, ev, true);
+  const no = aiEl('button', t('aic_decline'), null, 'btn btn-secondary btn-sm'); no.onclick = () => aiAnswer(card, ev, false);
+  row.append(yes, no); card.appendChild(row);
+  aiChatAdd(card);
+}
+
+// Udkastet lander i Importér YAML. Står der allerede noget dér, ændres det først efter et klik.
+function aiApplyDraft(d) {
+  document.getElementById('im-yaml').value = d.yaml;
+  document.getElementById('im-filename').value = d.fileName;
+  populateCustomerSelects(['im-customer']);
+  document.getElementById('im-customer').value = d.customerId;
+  document.getElementById('im-action').value = d.action;
+}
+function aiChatDraft(d) {
+  aiChat.draft = d;
+  const card = aiEl('div', null, AIC_BOX);
+  card.appendChild(aiEl('b', '📝 ' + t('aic_draft_title') + ': ' + d.fileName + ' → ' + d.customerName + ' (' + d.yaml.length + ' chars)'));
+  if (!document.getElementById('im-yaml').value.trim()) aiApplyDraft(d);
+  const open = aiEl('button', t('aic_draft_open'), 'margin-top:8px;display:block', 'btn btn-secondary btn-sm');
+  open.onclick = () => {
+    const cur = document.getElementById('im-yaml').value;
+    if (cur.trim() && cur !== d.yaml && !confirm(t('aic_draft_replace'))) return;
+    nav(document.querySelector('.nav-item[data-page=import]'));
+    aiApplyDraft(d);
+  };
+  card.appendChild(open);
+  aiChatAdd(card);
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
@@ -8657,6 +9475,7 @@ function nav(el) {
   if (page === 'dataactions') daInit();
   if (page === 'syslog') { populateSyslogCustomers(); loadLog(); loadLogStats(); }
   if (page === 'readme') loadReadme();
+  if (page === 'aichat') { aiLoad(); }
   applyWorkToPage(page);
 }
 
@@ -10625,6 +11444,7 @@ const ACTION_BADGE = {
   MANIFEST: '<span class="badge badge-gray">MANIFEST</span>',
   SECURITY: '<span class="badge badge-red">SECURITY</span>',
   DEMO:     '<span class="badge badge-gray">DEMO</span>',
+  AI:       '<span class="badge badge-blue">AI</span>',
 };
 
 function populateSyslogCustomers() {
