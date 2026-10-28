@@ -1,0 +1,65 @@
+# Ugentlig sårbarhedsscanning. Finder den noget, oprettes (eller opdateres) en
+# issue med etiketten "security", så du får besked fra GitHub.
+name: Ugentlig sårbarhedsscanning
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # mandag kl. 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Installér afhængigheder
+        run: npm ci || npm install
+      - name: npm audit (kun produktionspakker)
+        id: audit
+        run: |
+          set +e
+          npm audit --omit=dev > audit.txt 2>&1
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+          cat audit.txt
+      - name: Tests (inkl. kravet til Node-versionen)
+        id: tests
+        run: |
+          set +e
+          npm test > tests.txt 2>&1
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+          tail -n 40 tests.txt
+      - name: Opret eller opdatér issue ved fund
+        if: steps.audit.outputs.code != '0' || steps.tests.outputs.code != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "Den ugentlige scanning fandt noget. Kørsel: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo
+            if [ "${{ steps.audit.outputs.code }}" != "0" ]; then
+              echo "### npm audit"
+              echo '```'
+              head -c 20000 audit.txt
+              echo '```'
+            fi
+            if [ "${{ steps.tests.outputs.code }}" != "0" ]; then
+              echo "### Tests fejlede"
+              echo '```'
+              tail -n 60 tests.txt
+              echo '```'
+            fi
+          } > body.md
+          gh label create security --color B60205 --description "Sårbarhedsscanning" 2>/dev/null || true
+          existing=$(gh issue list --label security --state open --search "Ugentlig sårbarhedsscanning" --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file body.md
+          else
+            gh issue create --title "Ugentlig sårbarhedsscanning: fund" --label security --body-file body.md
+          fi

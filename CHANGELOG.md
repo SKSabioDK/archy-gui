@@ -5,6 +5,23 @@
 
 ---
 
+### v1.74.0
+---
+**🇩🇰 Dansk**
+
+- **Rapportér en fejl og foreslå et ønske.** To links nederst i sidebaren åbner en dialog med overskrift og beskrivelse. *Åbn på GitHub* åbner en forudfyldt kladde-issue (etiket *bug* eller *enhancement*) i browseren — du trykker selv på Submit og indsætter skærmbilleder med Ctrl+V i GitHubs editor. En fejlrapport medsender version, Node, styresystem, side, sprog og de seneste logliner (renset for hemmeligheder). Er loggen for lang til adressen, tages de nyeste linjer med, og hele loggen lægges på udklipsholderen; den kan også gemmes som fil. Der gemmes intet token i appen. Mål-repoet kan sættes med `issueRepo` i settings.json.
+- **Ugentlig sårbarhedsscanning.** En GitHub Actions-workflow kører hver mandag `npm audit --omit=dev` og testene (inkl. Node-kravet) og opretter eller opdaterer en issue med etiketten *security*, hvis den finder noget. Dependabot holder npm og Actions opdateret. Derudover er der en planlagt Claude-agent, som gennemgår koden for sårbarheder hver mandag kl. 8 og kun melder fund.
+- Første scanning fandt to sårbarheder i transitive pakker (body-parser og qs); de er rettet med `npm audit fix`.
+- 5 nye tests.
+
+**🇬🇧 English**
+- **Report a bug and suggest a feature.** Two links at the bottom of the sidebar open a dialog with a title and description. *Open on GitHub* opens a prefilled draft issue (label *bug* or *enhancement*) in the browser — you press Submit yourself and paste screenshots with Ctrl+V into GitHub's editor. A bug report includes version, Node, OS, page, language and the latest log lines (cleaned of secrets). If the log is too long for the address, the newest lines are included and the whole log is put on the clipboard; it can also be saved as a file. No token is stored in the app. The target repo can be set with `issueRepo` in settings.json.
+- **Weekly vulnerability scan.** A GitHub Actions workflow runs `npm audit --omit=dev` and the tests (including the Node requirement) every Monday and creates or updates an issue labelled *security* if it finds anything. Dependabot keeps npm and Actions up to date. In addition, a scheduled Claude agent reviews the code for vulnerabilities every Monday at 8:00 and reports only findings.
+- The first scan found two vulnerabilities in transitive packages (body-parser and qs); fixed with `npm audit fix`.
+- 5 new tests.
+
+---
+
 ### v1.73.0
 ---
 **🇩🇰 Dansk**

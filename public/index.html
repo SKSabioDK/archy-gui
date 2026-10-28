@@ -412,6 +412,9 @@
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
 
   .spacer { flex: 1; }
+  .side-links { padding: 0 20px 4px; display: flex; flex-direction: column; gap: 4px; }
+  .side-links a { font-size: 11px; color: var(--muted); cursor: pointer; text-decoration: none; }
+  .side-links a:hover { color: var(--accent); }
   .version { padding: 12px 20px; font-size: 10px; color: var(--muted); font-family: var(--mono); }
 
   .search-bar { padding: 8px 16px; }
@@ -540,8 +543,12 @@
     <div id="sidebarCustomers"></div>
 
     <div class="spacer"></div>
+    <div class="side-links">
+      <a onclick="openIssue('bug')" data-i18n="iss_link_bug">🐞 Rapportér en fejl</a>
+      <a onclick="openIssue('idea')" data-i18n="iss_link_idea">💡 Foreslå et ønske</a>
+    </div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.73.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.74.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1471,6 +1478,31 @@
     </div>
   </div>
 </div>
+<div class="wiz-overlay" id="iss-overlay">
+  <div class="wiz-modal" style="width:640px">
+    <div style="padding:20px 24px 0">
+      <div style="font-size:16px;font-weight:700" id="iss-head"></div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px" id="iss-sub"></div>
+    </div>
+    <div style="padding:16px 24px;overflow-y:auto;flex:1">
+      <label data-i18n="iss_f_title">Overskrift</label>
+      <input id="iss-title" maxlength="140" autocomplete="off" style="margin-bottom:12px" />
+      <label id="iss-desc-label"></label>
+      <textarea id="iss-desc" style="height:150px;margin-bottom:12px"></textarea>
+      <label id="iss-log-row" style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;margin:0 0 6px">
+        <input type="checkbox" id="iss-log" style="width:auto" checked />
+        <span data-i18n="iss_f_log">Medsend loggen (de seneste linjer)</span>
+      </label>
+      <div style="font-size:11px;color:var(--muted)" id="iss-note"></div>
+      <div id="iss-msg" style="font-size:12px;margin-top:8px;color:var(--red)"></div>
+    </div>
+    <div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-secondary btn-sm" onclick="issDownloadLog()" id="iss-dl" data-i18n="iss_dl">⬇ Gem loggen</button>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('iss-overlay').style.display='none'" data-i18n="cmp_close">Luk</button>
+      <button class="btn btn-primary btn-sm" onclick="issOpen()" data-i18n="iss_open">Åbn på GitHub</button>
+    </div>
+  </div>
+</div>
 <div class="wiz-overlay" id="dep-overlay">
   <div class="wiz-modal" style="width:640px">
     <div style="padding:20px 24px 0">
@@ -2199,6 +2231,32 @@ const LANGS = {
     mig_auto:'Gem rapport (CSV) efter hver migrering', mig_download:'⬇ Download samlet rapport', mig_clear:'Ryd', mig_clear_confirm:'Rydde den samlede rapport ({n} rækker)?',
     mig_st_ok:'Lykkedes', mig_st_skipped:'Sprunget over', mig_st_failed:'Fejlede', mig_file:'migreringsrapport', mig_type_flow:'Flow',
     mig_tip:'Rapporten samler alle migreringer i denne browser — ressourcer, flows og deres afhængigheder — med hvad der gik godt og hvad der ikke gjorde. Secrets og adgangskoder kommer aldrig med.',
+    iss_link_bug:'🐞 Rapportér en fejl',
+    iss_link_idea:'💡 Foreslå et ønske',
+    iss_head_bug:'Rapportér en fejl',
+    iss_head_idea:'Foreslå et ønske',
+    iss_f_desc_bug:'Hvad skete der?',
+    iss_f_desc_idea:'Hvad skulle programmet kunne?',
+    iss_ph_bug:'Hvad gjorde du, hvad forventede du, og hvad skete der i stedet?',
+    iss_ph_idea:'Beskriv ønsket og hvorfor det vil hjælpe.',
+    iss_f_title:'Overskrift',
+    iss_f_log:'Medsend loggen (de seneste linjer)',
+    iss_dl:'⬇ Gem loggen',
+    iss_open:'Åbn på GitHub',
+    iss_note_bug:'Der åbnes en kladde på GitHub — du trykker selv på Submit. Indsæt skærmbilleder med Ctrl+V i beskrivelsen dér. Loggen er renset for hemmeligheder, men kan indeholde kundenavne.',
+    iss_note_idea:'Der åbnes en kladde på GitHub — du trykker selv på Submit.',
+    iss_need_title:'Skriv en overskrift først.',
+    iss_no_info:'Kunne ikke hente oplysninger fra serveren.',
+    iss_too_long:'Teksten er for lang til at sendes med adressen. Gør beskrivelsen kortere, og indsæt resten på GitHub.',
+    iss_opened:'Kladden er åbnet på GitHub.',
+    iss_opened_copied:'Kladden er åbnet. Hele loggen er kopieret — indsæt den med Ctrl+V i beskrivelsen på GitHub.',
+    iss_b_version:'Version',
+    iss_b_page:'Side',
+    iss_b_lang:'Sprog',
+    iss_b_browser:'Browser',
+    iss_b_log:'Log',
+    iss_b_trimmed:'Loggen er forkortet til de nyeste linjer.',
+    iss_b_screens:'Skærmbilleder kan indsættes her.',
     btn_demo_create:'+ Opret demo-kunde',
     btn_demo_reset:'↺ Nulstil demo',
     btn_demo_remove:'✕ Fjern demo',
@@ -3252,6 +3310,32 @@ const LANGS = {
     mig_auto:'Save a report (CSV) after each migration', mig_download:'⬇ Download combined report', mig_clear:'Clear', mig_clear_confirm:'Clear the combined report ({n} rows)?',
     mig_st_ok:'Succeeded', mig_st_skipped:'Skipped', mig_st_failed:'Failed', mig_file:'migration-report', mig_type_flow:'Flow',
     mig_tip:'The report collects every migration in this browser — resources, flows and their dependencies — with what went well and what did not. Secrets and passwords are never included.',
+    iss_link_bug:'🐞 Report a bug',
+    iss_link_idea:'💡 Suggest a feature',
+    iss_head_bug:'Report a bug',
+    iss_head_idea:'Suggest a feature',
+    iss_f_desc_bug:'What happened?',
+    iss_f_desc_idea:'What should the program be able to do?',
+    iss_ph_bug:'What did you do, what did you expect, and what happened instead?',
+    iss_ph_idea:'Describe the wish and why it would help.',
+    iss_f_title:'Title',
+    iss_f_log:'Include the log (latest lines)',
+    iss_dl:'⬇ Save the log',
+    iss_open:'Open on GitHub',
+    iss_note_bug:'A draft opens on GitHub — you press Submit yourself. Paste screenshots with Ctrl+V into the description there. The log is cleaned of secrets but may contain customer names.',
+    iss_note_idea:'A draft opens on GitHub — you press Submit yourself.',
+    iss_need_title:'Write a title first.',
+    iss_no_info:'Could not fetch details from the server.',
+    iss_too_long:'The text is too long to send in the address. Shorten the description and paste the rest on GitHub.',
+    iss_opened:'The draft is open on GitHub.',
+    iss_opened_copied:'The draft is open. The whole log is copied — paste it with Ctrl+V into the description on GitHub.',
+    iss_b_version:'Version',
+    iss_b_page:'Page',
+    iss_b_lang:'Language',
+    iss_b_browser:'Browser',
+    iss_b_log:'Log',
+    iss_b_trimmed:'The log is trimmed to the latest lines.',
+    iss_b_screens:'Screenshots can be pasted here.',
     btn_demo_create:'+ Create demo customer',
     btn_demo_reset:'↺ Reset demo',
     btn_demo_remove:'✕ Remove demo',
@@ -4305,6 +4389,32 @@ const LANGS = {
     mig_auto:'Enregistrer un rapport (CSV) après chaque migration', mig_download:'⬇ Télécharger le rapport complet', mig_clear:'Effacer', mig_clear_confirm:'Effacer le rapport complet ({n} lignes) ?',
     mig_st_ok:'Réussi', mig_st_skipped:'Ignoré', mig_st_failed:'Échec', mig_file:'rapport-migration', mig_type_flow:'Flow',
     mig_tip:'Le rapport rassemble toutes les migrations de ce navigateur — ressources, flows et leurs dépendances — avec ce qui a réussi ou non. Les secrets et mots de passe n\'y figurent jamais.',
+    iss_link_bug:'🐞 Signaler un bug',
+    iss_link_idea:'💡 Proposer une idée',
+    iss_head_bug:'Signaler un bug',
+    iss_head_idea:'Proposer une idée',
+    iss_f_desc_bug:'Que s\'est-il passé ?',
+    iss_f_desc_idea:'Que devrait pouvoir faire le programme ?',
+    iss_ph_bug:'Qu\'avez-vous fait, qu\'attendiez-vous, et que s\'est-il passé à la place ?',
+    iss_ph_idea:'Décrivez la demande et en quoi elle aiderait.',
+    iss_f_title:'Titre',
+    iss_f_log:'Joindre le journal (dernières lignes)',
+    iss_dl:'⬇ Enregistrer le journal',
+    iss_open:'Ouvrir sur GitHub',
+    iss_note_bug:'Un brouillon s\'ouvre sur GitHub — vous cliquez vous-même sur Submit. Collez des captures d\'écran avec Ctrl+V dans la description. Le journal est nettoyé des secrets mais peut contenir des noms de clients.',
+    iss_note_idea:'Un brouillon s\'ouvre sur GitHub — vous cliquez vous-même sur Submit.',
+    iss_need_title:'Écrivez d\'abord un titre.',
+    iss_no_info:'Impossible de récupérer les informations du serveur.',
+    iss_too_long:'Le texte est trop long pour l\'adresse. Raccourcissez la description et collez le reste sur GitHub.',
+    iss_opened:'Le brouillon est ouvert sur GitHub.',
+    iss_opened_copied:'Le brouillon est ouvert. Tout le journal est copié — collez-le avec Ctrl+V dans la description sur GitHub.',
+    iss_b_version:'Version',
+    iss_b_page:'Page',
+    iss_b_lang:'Langue',
+    iss_b_browser:'Navigateur',
+    iss_b_log:'Journal',
+    iss_b_trimmed:'Le journal est réduit aux dernières lignes.',
+    iss_b_screens:'Les captures d\'écran peuvent être collées ici.',
     btn_demo_create:'+ Créer le client démo',
     btn_demo_reset:'↺ Réinitialiser la démo',
     btn_demo_remove:'✕ Supprimer la démo',
@@ -5358,6 +5468,32 @@ const LANGS = {
     mig_auto:'Rapport (CSV) opslaan na elke migratie', mig_download:'⬇ Gecombineerd rapport downloaden', mig_clear:'Wissen', mig_clear_confirm:'Het gecombineerde rapport wissen ({n} rijen)?',
     mig_st_ok:'Gelukt', mig_st_skipped:'Overgeslagen', mig_st_failed:'Mislukt', mig_file:'migratierapport', mig_type_flow:'Flow',
     mig_tip:'Het rapport verzamelt alle migraties in deze browser — resources, flows en hun afhankelijkheden — met wat goed ging en wat niet. Secrets en wachtwoorden worden nooit opgenomen.',
+    iss_link_bug:'🐞 Een fout melden',
+    iss_link_idea:'💡 Een wens voorstellen',
+    iss_head_bug:'Een fout melden',
+    iss_head_idea:'Een wens voorstellen',
+    iss_f_desc_bug:'Wat gebeurde er?',
+    iss_f_desc_idea:'Wat zou het programma moeten kunnen?',
+    iss_ph_bug:'Wat deed je, wat verwachtte je en wat gebeurde er in plaats daarvan?',
+    iss_ph_idea:'Beschrijf de wens en waarom die zou helpen.',
+    iss_f_title:'Titel',
+    iss_f_log:'Log meesturen (laatste regels)',
+    iss_dl:'⬇ Log opslaan',
+    iss_open:'Openen op GitHub',
+    iss_note_bug:'Er opent een concept op GitHub — je klikt zelf op Submit. Plak schermafbeeldingen met Ctrl+V in de beschrijving daar. De log is ontdaan van geheimen maar kan klantnamen bevatten.',
+    iss_note_idea:'Er opent een concept op GitHub — je klikt zelf op Submit.',
+    iss_need_title:'Schrijf eerst een titel.',
+    iss_no_info:'Kon geen gegevens van de server ophalen.',
+    iss_too_long:'De tekst is te lang voor het adres. Maak de beschrijving korter en plak de rest op GitHub.',
+    iss_opened:'Het concept is geopend op GitHub.',
+    iss_opened_copied:'Het concept is geopend. De hele log is gekopieerd — plak hem met Ctrl+V in de beschrijving op GitHub.',
+    iss_b_version:'Versie',
+    iss_b_page:'Pagina',
+    iss_b_lang:'Taal',
+    iss_b_browser:'Browser',
+    iss_b_log:'Log',
+    iss_b_trimmed:'De log is ingekort tot de nieuwste regels.',
+    iss_b_screens:'Schermafbeeldingen kunnen hier worden geplakt.',
     btn_demo_create:'+ Demoklant aanmaken',
     btn_demo_reset:'↺ Demo resetten',
     btn_demo_remove:'✕ Demo verwijderen',
@@ -6411,6 +6547,32 @@ const LANGS = {
     mig_auto:'Bericht (CSV) nach jeder Migration speichern', mig_download:'⬇ Gesamtbericht herunterladen', mig_clear:'Leeren', mig_clear_confirm:'Den Gesamtbericht leeren ({n} Zeilen)?',
     mig_st_ok:'Erfolgreich', mig_st_skipped:'Übersprungen', mig_st_failed:'Fehlgeschlagen', mig_file:'migrationsbericht', mig_type_flow:'Flow',
     mig_tip:'Der Bericht sammelt alle Migrationen in diesem Browser — Ressourcen, Flows und ihre Abhängigkeiten — mit dem, was gut ging und was nicht. Secrets und Passwörter sind nie enthalten.',
+    iss_link_bug:'🐞 Fehler melden',
+    iss_link_idea:'💡 Wunsch vorschlagen',
+    iss_head_bug:'Fehler melden',
+    iss_head_idea:'Wunsch vorschlagen',
+    iss_f_desc_bug:'Was ist passiert?',
+    iss_f_desc_idea:'Was soll das Programm können?',
+    iss_ph_bug:'Was haben Sie getan, was erwartet und was ist stattdessen passiert?',
+    iss_ph_idea:'Beschreiben Sie den Wunsch und warum er helfen würde.',
+    iss_f_title:'Titel',
+    iss_f_log:'Protokoll mitsenden (letzte Zeilen)',
+    iss_dl:'⬇ Protokoll speichern',
+    iss_open:'Auf GitHub öffnen',
+    iss_note_bug:'Auf GitHub öffnet sich ein Entwurf — Sie klicken selbst auf Submit. Fügen Sie Screenshots dort mit Strg+V in die Beschreibung ein. Das Protokoll ist von Geheimnissen bereinigt, kann aber Kundennamen enthalten.',
+    iss_note_idea:'Auf GitHub öffnet sich ein Entwurf — Sie klicken selbst auf Submit.',
+    iss_need_title:'Schreiben Sie zuerst einen Titel.',
+    iss_no_info:'Angaben konnten nicht vom Server abgerufen werden.',
+    iss_too_long:'Der Text ist zu lang für die Adresse. Kürzen Sie die Beschreibung und fügen Sie den Rest auf GitHub ein.',
+    iss_opened:'Der Entwurf ist auf GitHub geöffnet.',
+    iss_opened_copied:'Der Entwurf ist geöffnet. Das gesamte Protokoll ist kopiert — fügen Sie es mit Strg+V in die Beschreibung auf GitHub ein.',
+    iss_b_version:'Version',
+    iss_b_page:'Seite',
+    iss_b_lang:'Sprache',
+    iss_b_browser:'Browser',
+    iss_b_log:'Protokoll',
+    iss_b_trimmed:'Das Protokoll wurde auf die neuesten Zeilen gekürzt.',
+    iss_b_screens:'Screenshots können hier eingefügt werden.',
     btn_demo_create:'+ Demo-Kunde anlegen',
     btn_demo_reset:'↺ Demo zurücksetzen',
     btn_demo_remove:'✕ Demo entfernen',
@@ -7464,6 +7626,32 @@ const LANGS = {
     mig_auto:'Guardar un informe (CSV) tras cada migración', mig_download:'⬇ Descargar informe combinado', mig_clear:'Borrar', mig_clear_confirm:'¿Borrar el informe combinado ({n} filas)?',
     mig_st_ok:'Correcto', mig_st_skipped:'Omitido', mig_st_failed:'Error', mig_file:'informe-migracion', mig_type_flow:'Flow',
     mig_tip:'El informe reúne todas las migraciones de este navegador — recursos, flows y sus dependencias — con lo que salió bien y lo que no. Nunca incluye secretos ni contraseñas.',
+    iss_link_bug:'🐞 Informar de un error',
+    iss_link_idea:'💡 Proponer una idea',
+    iss_head_bug:'Informar de un error',
+    iss_head_idea:'Proponer una idea',
+    iss_f_desc_bug:'¿Qué ocurrió?',
+    iss_f_desc_idea:'¿Qué debería poder hacer el programa?',
+    iss_ph_bug:'¿Qué hizo, qué esperaba y qué ocurrió en su lugar?',
+    iss_ph_idea:'Describa la petición y por qué ayudaría.',
+    iss_f_title:'Título',
+    iss_f_log:'Incluir el registro (últimas líneas)',
+    iss_dl:'⬇ Guardar el registro',
+    iss_open:'Abrir en GitHub',
+    iss_note_bug:'Se abre un borrador en GitHub — usted pulsa Submit. Pegue capturas de pantalla con Ctrl+V en la descripción. El registro está limpio de secretos, pero puede contener nombres de clientes.',
+    iss_note_idea:'Se abre un borrador en GitHub — usted pulsa Submit.',
+    iss_need_title:'Escriba primero un título.',
+    iss_no_info:'No se pudo obtener información del servidor.',
+    iss_too_long:'El texto es demasiado largo para la dirección. Acorte la descripción y pegue el resto en GitHub.',
+    iss_opened:'El borrador está abierto en GitHub.',
+    iss_opened_copied:'El borrador está abierto. Todo el registro está copiado — péguelo con Ctrl+V en la descripción en GitHub.',
+    iss_b_version:'Versión',
+    iss_b_page:'Página',
+    iss_b_lang:'Idioma',
+    iss_b_browser:'Navegador',
+    iss_b_log:'Registro',
+    iss_b_trimmed:'El registro se ha recortado a las últimas líneas.',
+    iss_b_screens:'Las capturas de pantalla se pueden pegar aquí.',
     btn_demo_create:'+ Crear cliente demo',
     btn_demo_reset:'↺ Restablecer demo',
     btn_demo_remove:'✕ Eliminar demo',
@@ -12095,6 +12283,88 @@ function daFilter() {
     return;
   }
   daRender(filtered);
+}
+
+// ── Fejlrapporter og ønsker ───────────────────────────────────────────────────
+// Bygger en forudfyldt GitHub-issue og åbner den i browseren. Intet token i
+// appen, og skærmbilleder indsættes direkte i GitHubs editor. Er loggen for lang
+// til adressen, tages de nyeste linjer med, og hele loggen lægges på udklipsholderen.
+let issKind = 'bug';
+let issInfo = null;
+const ISS_URL_BUDGET = 7000;
+
+async function openIssue(kind) {
+  issKind = kind === 'idea' ? 'idea' : 'bug';
+  issInfo = await fetch('/api/report-info').then(r => r.json()).catch(() => null);
+  const bug = issKind === 'bug';
+  document.getElementById('iss-head').textContent = t(bug ? 'iss_head_bug' : 'iss_head_idea');
+  document.getElementById('iss-sub').textContent = issInfo ? issInfo.repo : '';
+  document.getElementById('iss-desc-label').textContent = t(bug ? 'iss_f_desc_bug' : 'iss_f_desc_idea');
+  document.getElementById('iss-desc').placeholder = t(bug ? 'iss_ph_bug' : 'iss_ph_idea');
+  document.getElementById('iss-title').value = '';
+  document.getElementById('iss-desc').value = '';
+  document.getElementById('iss-msg').textContent = '';
+  document.getElementById('iss-log-row').style.display = bug ? 'flex' : 'none';
+  document.getElementById('iss-dl').style.display = bug ? '' : 'none';
+  document.getElementById('iss-note').textContent = t(bug ? 'iss_note_bug' : 'iss_note_idea');
+  document.getElementById('iss-overlay').style.display = 'flex';
+  document.getElementById('iss-title').focus();
+}
+
+function issBody(logLines, trimmed) {
+  const bug = issKind === 'bug';
+  const page = (document.querySelector('.page.active') || {}).id || '';
+  const info = issInfo || {};
+  let b = document.getElementById('iss-desc').value.trim() + '\n';
+  if (bug) {
+    b += `\n---\n**${t('iss_b_version')}:** v${info.version || '?'} · **Node:** ${info.node || '?'} · **OS:** ${info.os || '?'}\n` +
+         `**${t('iss_b_page')}:** ${page.replace('page-', '')} · **${t('iss_b_lang')}:** ${currentLang}\n` +
+         `**${t('iss_b_browser')}:** ${navigator.userAgent.replace(/^Mozilla\/5\.0 /, '').slice(0, 120)}\n`;
+    if (logLines.length) {
+      b += `\n<details><summary>${t('iss_b_log')}</summary>\n\n\`\`\`\n${logLines.join('\n')}\n\`\`\`\n</details>\n`;
+      if (trimmed) b += `\n_${t('iss_b_trimmed')}_\n`;
+    }
+    b += `\n_${t('iss_b_screens')}_\n`;
+  }
+  return b;
+}
+
+function issUrl(title, body) {
+  const labels = issKind === 'bug' ? 'bug' : 'enhancement';
+  return `https://github.com/${issInfo.repo}/issues/new?labels=${labels}&title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
+}
+
+async function issOpen() {
+  const msg = document.getElementById('iss-msg');
+  const title = document.getElementById('iss-title').value.trim();
+  if (!issInfo) { msg.textContent = t('iss_no_info'); return; }
+  if (!title) { msg.textContent = t('iss_need_title'); return; }
+  const bug = issKind === 'bug';
+  const all = bug && document.getElementById('iss-log').checked ? issInfo.log.slice() : [];
+  let lines = all.slice(), trimmed = false;
+  // Fjern de ældste linjer til adressen er kort nok til GitHub
+  while (lines.length && issUrl(title, issBody(lines, trimmed)).length > ISS_URL_BUDGET) {
+    lines = lines.slice(Math.max(1, Math.ceil(lines.length * 0.15)));
+    trimmed = true;
+  }
+  let url = issUrl(title, issBody(lines, trimmed));
+  if (url.length > ISS_URL_BUDGET) { msg.textContent = t('iss_too_long'); return; }
+  if (trimmed) {
+    try { await navigator.clipboard.writeText(all.join('\n')); } catch (_) { /* uden udklipsholder kan loggen gemmes som fil */ }
+  }
+  window.open(url, '_blank', 'noopener');
+  msg.style.color = 'var(--green)';
+  msg.textContent = trimmed ? t('iss_opened_copied') : t('iss_opened');
+}
+
+function issDownloadLog() {
+  if (!issInfo) return;
+  const blob = new Blob(['\uFEFF' + issInfo.log.join('\r\n')], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `archygui-log_${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.txt`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
 // ── Migreringsrapport ─────────────────────────────────────────────────────────

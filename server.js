@@ -9839,6 +9839,30 @@ app.get('/api/logs', (req, res) => {
   res.json(entries.slice(0, maxItems));
 });
 
+// ── Fejlrapport og ønsker ─────────────────────────────────────────────────────
+// Rapporten oprettes som en GitHub-issue i brugerens egen browser: appen bygger
+// en forudfyldt adresse og åbner den. Der gemmes intet token i appen, og
+// skærmbilleder indsættes direkte i GitHubs editor. Loggen er allerede renset for
+// hemmeligheder af addLog; den kan dog indeholde kundenavne.
+const DEFAULT_ISSUE_REPO = 'skndkprivat/ArchyGUI';
+const ISSUE_REPO_RE = /^(?!\.+\/)[A-Za-z0-9_.-]+\/(?!\.+$)[A-Za-z0-9_.-]+$/;
+
+function issueRepo() {
+  const r = loadSettings().issueRepo;
+  return typeof r === 'string' && ISSUE_REPO_RE.test(r) ? r : DEFAULT_ISSUE_REPO;
+}
+
+app.get('/api/report-info', (req, res) => {
+  const tail = logStore.slice(-80).map(e => `${e.ts} [${e.level}] [${e.action}]${e.customer ? ' [' + e.customer + ']' : ''} ${e.message}`);
+  res.json({
+    repo: issueRepo(),
+    version: CURRENT_VERSION,
+    node: process.versions.node,
+    os: `${process.platform} ${require('os').release()}`,
+    log: tail,
+  });
+});
+
 app.get('/api/logs/stats', (req, res) => {
   const stats = { total: logStore.length, INFO: 0, SUCCESS: 0, WARN: 0, ERROR: 0 };
   for (const e of logStore) if (stats[e.level] !== undefined) stats[e.level]++;
@@ -10116,7 +10140,7 @@ if (require.main === module) {
 // især haft mindst én fejl der nåede ud til brugeren, og de er samtidig de
 // eneste der kan efterprøves uden en rigtig org. Se test/*.test.js.
 module.exports = {
-  logLevelFor, keyMatches,
+  logLevelFor, keyMatches, issueRepo, ISSUE_REPO_RE,
   nodeSecurityStatus, countsAsExisting, scanTtsEngines, missingTtsEngines, replaceTtsEngines, applyClientScopes, dropRejectedLogin, flowOwnDivision, divisionProblem, appsBaseOf, COPYABLE_KINDS, RESOURCE_KINDS, RESOURCE_MIGRATE, SIMPLE_CREATE, noteUnavailableType, typeUnavailableHere, scanDefaultLanguage, archyHint, scheduleCreateBody, scheduleGroupCreateBody, scanSupportedLanguages, watchForUpdates, identicalInTarget, promptHasContent, queueCreateBody, groupCreateBody, credentialChangeError, forgetLogin, keepsOrgOnClientChange,
   sanitizeDatatableSchema, mapRoleDivisions, buildOauthClientBody, buildRolePolicies, missingRolesFor, missingDivisionsFor,
   app, tokenStore, getToken, loadSessions, saveSessions, setSessionPersist, SESSION_FILE,

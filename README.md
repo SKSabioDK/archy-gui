@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.73.0
+# Archy GUI — Flow Manager · v1.74.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.73.0**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.73.0**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.74.0**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.74.0**.
 
 ---
 
@@ -367,6 +367,10 @@ Siden migrerer det der ikke er flows mellem to orgs, fordelt på otte faner: **D
 
 ![Totaltjek af data actions](docs/totaltjek.da.png)
 
+**Fejl og ønsker.** Nederst i sidebaren åbner *🐞 Rapportér en fejl* og *💡 Foreslå et ønske* en dialog. *Åbn på GitHub* åbner en forudfyldt kladde-issue — du trykker selv på Submit og indsætter skærmbilleder med Ctrl+V. Fejlrapporten medsender version, Node, styresystem, side og de seneste logliner (renset for hemmeligheder, men kan indeholde kundenavne); er loggen for lang, lægges hele loggen på udklipsholderen, og den kan gemmes som fil. Intet token gemmes. Mål-repo: `issueRepo` i `settings.json`.
+
+**Sårbarhedsscanning.** `.github/workflows/security.yml` kører hver mandag `npm audit --omit=dev` og testene og opretter en issue med etiketten *security* ved fund; Dependabot holder pakkerne opdateret.
+
 **Migreringsrapport (CSV).** Hver migrering — alle ressourcefaner, flows og de afhængigheder der migreres undervejs — skriver en række med tidspunkt, type, navn, status (*Lykkedes*, *Sprunget over*, *Fejlede*), detalje og kilde- og mål-org. Rækkerne samles på tværs af faner og flows og huskes i browseren (højst 5.000). Øverst på *Migrér ressourcer* og *Migrer Flow*: **Gem rapport (CSV) efter hver migrering** henter en fil når kørslen er færdig, **Download samlet rapport** henter alt der er samlet, og **Ryd** tømmer samlingen. Secrets fra OAuth-klienter kommer aldrig med. Semikolon og UTF-8 med BOM, så Excel åbner den rigtigt.
 
 *Eksempel med opdigtede data (Demo A/S — TEST til PROD): billedet viser appens rigtige brugerflade, men svarene er beregnet af appens egne funktioner på en opdigtet org, ikke hentet fra en kunde. Faneblade kræver to forskellige orgs.*
@@ -500,7 +504,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-451 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+456 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -858,6 +862,10 @@ This page migrates everything that is not a flow between two orgs, across eight 
 
 ![Full check of data actions](docs/totaltjek.en.png)
 
+**Bugs and feature requests.** At the bottom of the sidebar, *🐞 Report a bug* and *💡 Suggest a feature* open a dialog. *Open on GitHub* opens a prefilled draft issue — you press Submit yourself and paste screenshots with Ctrl+V. The bug report includes version, Node, OS, page and the latest log lines (cleaned of secrets, but may contain customer names); if the log is too long, the whole log is put on the clipboard, and it can be saved as a file. No token is stored. Target repo: `issueRepo` in `settings.json`.
+
+**Vulnerability scan.** `.github/workflows/security.yml` runs `npm audit --omit=dev` and the tests every Monday and creates an issue labelled *security* if it finds anything; Dependabot keeps the packages up to date.
+
 **Migration report (CSV).** Every migration — all resource tabs, flows and the dependencies migrated along the way — writes a row with time, type, name, status (*Succeeded*, *Skipped*, *Failed*), detail and source and target org. Rows are collected across tabs and flows and remembered in the browser (at most 5,000). At the top of *Migrate resources* and *Migrate Flow*: **Save a report (CSV) after each migration** downloads a file when the run finishes, **Download combined report** downloads everything collected, and **Clear** empties the collection. OAuth client secrets are never included. Semicolon-separated, UTF-8 with BOM so Excel opens it correctly.
 
 *Example with invented data (Demo A/S — TEST to PROD): the image shows the app's real UI, but the answers are computed by the app's own functions on an invented org, not fetched from a customer. These tabs need two different orgs.*
@@ -991,7 +999,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-451 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+456 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 
