@@ -38,3 +38,11 @@ test('hver login-fejltekst i server.js passer til mønsteret', () => {
   assert.ok(tekster.length >= 3, `fandt kun ${tekster.length}`);
   for (const t of tekster) assert.match(t, klientensMoenster(), t);
 });
+
+test('en fejl om manglende login henter den rigtige status først, så en forældet grøn prik ikke skjuler den', () => {
+  const start = HTML.indexOf('window.fetch = async (...args) => {');
+  const blok = HTML.slice(start, HTML.indexOf('// Bjælken øverst', start));
+  assert.match(blok, /updateOAuthStatuses\(\)\.finally\(\(\) => needLogin\(env\.id\)\)/);
+  // …og needLogin ignorerer stadig fejlen, når statussen bekræfter at man er logget ind
+  assert.match(HTML, /function needLogin\(envId, msg\) \{\s*if \(authStatus\[envId\]\?\.authenticated && !msg\) return;/);
+});

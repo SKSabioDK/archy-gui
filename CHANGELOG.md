@@ -5,6 +5,18 @@
 
 ---
 
+### v1.77.1
+---
+**🇩🇰 Dansk**
+
+- **Forældet grøn prik skjulte et manglende login.** Serveren glemmer et login ved genstart og når Genesys afviser tokenet, men siden blev ved med at vise miljøet som logget ind. En fejl som «OAuth token missing for …» blev derfor ignoreret: ingen login-bjælke og en grøn prik. Nu hentes den rigtige status først, så prikken bliver 🔒 og login-bjælken kommer frem.
+- En ny test.
+
+**🇬🇧 English**
+- **A stale green dot hid a missing login.** The server forgets a login on restart and when Genesys rejects the token, but the page kept showing the environment as logged in. An error like "OAuth token missing for …" was therefore ignored: no login bar and a green dot. The real status is now fetched first, so the dot becomes 🔒 and the login bar appears.
+- One new test.
+
+---
 ### v1.77.0
 ---
 **🇩🇰 Dansk**

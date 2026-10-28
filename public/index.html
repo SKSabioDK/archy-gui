@@ -548,7 +548,7 @@
       <a onclick="openIssue('idea')" data-i18n="iss_link_idea">💡 Foreslå et ønske</a>
     </div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.77.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.77.1 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -8294,7 +8294,10 @@ window.fetch = async (...args) => {
       try { saml(JSON.parse(txt)); } catch (_) { strenge.push(txt); }
       for (const str of strenge) for (const m of str.matchAll(LOGIN_NEEDED)) {
         const env = customers.find(c => c.name === m[1]);
-        if (env) needLogin(env.id);
+        // Siden kan stadig tro, at miljøet er logget ind (grøn prik): serveren glemmer tokenet ved
+        // genstart, og når Genesys afviser det. Hent derfor den rigtige status først — ellers
+        // ignorerer needLogin fejlen, og man ser hverken en login-bjælke eller en rød prik.
+        if (env) updateOAuthStatuses().finally(() => needLogin(env.id));
       }
     }).catch(() => {});
   }
