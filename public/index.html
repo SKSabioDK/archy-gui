@@ -548,7 +548,7 @@
       <a onclick="openIssue('idea')" data-i18n="iss_link_idea">💡 Foreslå et ønske</a>
     </div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.76.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.77.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1257,6 +1257,7 @@
           <button class="btn btn-primary btn-sm" id="tf-run-btn" onclick="tfRun()" data-i18n="tf_run">Generér Terraform</button>
         </div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:8px" data-i18n="tf_intro"></div>
+        <div style="font-size:12px;margin-bottom:8px" data-i18n="tf_target_hint"></div>
         <div style="font-size:11px;color:var(--yellow);margin-bottom:12px" data-i18n="tf_note"></div>
         <div style="display:flex;gap:12px;margin-bottom:8px;font-size:12px">
           <a href="#" onclick="tfAll(true);return false" style="color:var(--accent);text-decoration:none" data-i18n="tf_all">Vælg alle</a>
@@ -2296,6 +2297,7 @@ const LANGS = {
     os_i_defaultLanguage:'Standardsprog', os_i_defaultCountryCode:'Standardland', os_i_supportedLanguages:'Understøttede sprog', os_i_integrationWhiteList:'Tilladte domæner', os_i_whitelist:'Betroede IP-adresser',
     da_tab_terraform:'Terraform', tf_title:'TERRAFORM-OPSÆTNING', tf_run:'Generér Terraform', tf_all:'Vælg alle', tf_none:'Fravælg alle',
     tf_intro:'Laver en Terraform-opsætning (genesyscloud-provideren) ud fra kilde-org\'ens objekter og gemmer den automatisk i mappen terraform/ på denne maskine. Kunden kører selv terraform apply mod den org, der skal ændres — fx fra Falck Global til US.', tf_note:'Det er en startopsætning: hemmeligheder, medlemmer, kontakter og indspillet lyd kommer ikke med, og det udeladte står i README.md i mappen. Prøv den i en test-org først.',
+    tf_target_hint:'Vælg også et mål ovenfor: så hedder mappen <fra>_<til>, README og provider nævner begge orgs, og målets region bliver standard. Målet er ikke nødvendigt for selve opsætningen — den beskriver kilden.',
     tf_need_source:'Vælg en kilde først.', tf_need_kind:'Vælg mindst én type.', tf_running:'Henter objekter og skriver filer…', tf_done:'Opsætningen er gemt.',
     tf_saved_in:'Gemt i', tf_copy_path:'Kopiér sti', tf_files:'Filer', tf_col_written:'Med / i alt', tf_unreadable:'kunne ikke læses', tf_skipped:'udeladt', tf_notes:'Bemærkninger',
     btn_demo_create:'+ Opret demo-kunde',
@@ -3385,6 +3387,7 @@ const LANGS = {
     os_i_defaultLanguage:'Default language', os_i_defaultCountryCode:'Default country', os_i_supportedLanguages:'Supported languages', os_i_integrationWhiteList:'Allowed domains', os_i_whitelist:'Trusted IPs',
     da_tab_terraform:'Terraform', tf_title:'TERRAFORM SETUP', tf_run:'Generate Terraform', tf_all:'Select all', tf_none:'Select none',
     tf_intro:'Builds a Terraform setup (the genesyscloud provider) from the source org\'s objects and saves it automatically in the terraform/ folder on this machine. The customer runs terraform apply themselves against the org that should change — e.g. from Falck Global to US.', tf_note:'It is a starting setup: secrets, members, contacts and recorded audio are not included, and what is left out is listed in README.md in the folder. Try it in a test org first.',
+    tf_target_hint:'Also choose a target above: the folder is then named <from>_<to>, the README and provider mention both orgs, and the target\'s region becomes the default. The target is not needed for the setup itself — it describes the source.',
     tf_need_source:'Choose a source first.', tf_need_kind:'Choose at least one type.', tf_running:'Fetching objects and writing files…', tf_done:'The setup is saved.',
     tf_saved_in:'Saved in', tf_copy_path:'Copy path', tf_files:'Files', tf_col_written:'Included / total', tf_unreadable:'could not be read', tf_skipped:'left out', tf_notes:'Notes',
     btn_demo_create:'+ Create demo customer',
@@ -4474,6 +4477,7 @@ const LANGS = {
     os_i_defaultLanguage:'Langue par défaut', os_i_defaultCountryCode:'Pays par défaut', os_i_supportedLanguages:'Langues prises en charge', os_i_integrationWhiteList:'Domaines autorisés', os_i_whitelist:'IP de confiance',
     da_tab_terraform:'Terraform', tf_title:'CONFIGURATION TERRAFORM', tf_run:'Générer Terraform', tf_all:'Tout sélectionner', tf_none:'Tout désélectionner',
     tf_intro:'Crée une configuration Terraform (fournisseur genesyscloud) à partir des objets de l\'org source et l\'enregistre automatiquement dans le dossier terraform/ de cette machine. Le client exécute lui-même terraform apply sur l\'org à modifier — par ex. de Falck Global vers US.', tf_note:'C\'est une configuration de départ : secrets, membres, contacts et audio enregistré ne sont pas inclus ; ce qui est omis figure dans README.md du dossier. Essayez-la d\'abord dans une org de test.',
+    tf_target_hint:'Choisissez aussi une cible ci-dessus : le dossier s\'appelle alors <source>_<cible>, le README et le provider citent les deux orgs, et la région de la cible devient la valeur par défaut. La cible n\'est pas nécessaire à la configuration elle-même — elle décrit la source.',
     tf_need_source:'Choisissez d\'abord une source.', tf_need_kind:'Choisissez au moins un type.', tf_running:'Récupération des objets et écriture des fichiers…', tf_done:'La configuration est enregistrée.',
     tf_saved_in:'Enregistré dans', tf_copy_path:'Copier le chemin', tf_files:'Fichiers', tf_col_written:'Inclus / total', tf_unreadable:'illisible', tf_skipped:'omis', tf_notes:'Remarques',
     btn_demo_create:'+ Créer le client démo',
@@ -5563,6 +5567,7 @@ const LANGS = {
     os_i_defaultLanguage:'Standaardtaal', os_i_defaultCountryCode:'Standaardland', os_i_supportedLanguages:'Ondersteunde talen', os_i_integrationWhiteList:'Toegestane domeinen', os_i_whitelist:'Vertrouwde IP\'s',
     da_tab_terraform:'Terraform', tf_title:'TERRAFORM-OPZET', tf_run:'Terraform genereren', tf_all:'Alles selecteren', tf_none:'Niets selecteren',
     tf_intro:'Maakt een Terraform-opzet (de genesyscloud-provider) op basis van de objecten van de bronorg en slaat die automatisch op in de map terraform/ op deze machine. De klant voert zelf terraform apply uit op de org die moet veranderen — bijv. van Falck Global naar US.', tf_note:'Het is een startopzet: geheimen, leden, contacten en opgenomen audio zijn niet inbegrepen, en wat is weggelaten staat in README.md in de map. Probeer het eerst in een testorg.',
+    tf_target_hint:'Kies hierboven ook een doel: de map heet dan <van>_<naar>, README en provider noemen beide orgs, en de regio van het doel wordt de standaard. Het doel is niet nodig voor de opzet zelf — die beschrijft de bron.',
     tf_need_source:'Kies eerst een bron.', tf_need_kind:'Kies minstens één type.', tf_running:'Objecten ophalen en bestanden schrijven…', tf_done:'De opzet is opgeslagen.',
     tf_saved_in:'Opgeslagen in', tf_copy_path:'Pad kopiëren', tf_files:'Bestanden', tf_col_written:'Opgenomen / totaal', tf_unreadable:'kon niet worden gelezen', tf_skipped:'weggelaten', tf_notes:'Opmerkingen',
     btn_demo_create:'+ Demoklant aanmaken',
@@ -6652,6 +6657,7 @@ const LANGS = {
     os_i_defaultLanguage:'Standardsprache', os_i_defaultCountryCode:'Standardland', os_i_supportedLanguages:'Unterstützte Sprachen', os_i_integrationWhiteList:'Erlaubte Domains', os_i_whitelist:'Vertrauenswürdige IPs',
     da_tab_terraform:'Terraform', tf_title:'TERRAFORM-SETUP', tf_run:'Terraform erzeugen', tf_all:'Alle auswählen', tf_none:'Keine auswählen',
     tf_intro:'Erzeugt ein Terraform-Setup (genesyscloud-Provider) aus den Objekten der Quell-Org und speichert es automatisch im Ordner terraform/ auf diesem Rechner. Der Kunde führt terraform apply selbst gegen die Org aus, die geändert werden soll — z. B. von Falck Global nach US.', tf_note:'Es ist ein Start-Setup: Geheimnisse, Mitglieder, Kontakte und aufgenommenes Audio sind nicht enthalten, und das Weggelassene steht in der README.md im Ordner. Zuerst in einer Test-Org ausprobieren.',
+    tf_target_hint:'Wählen Sie oben auch ein Ziel aus: Der Ordner heißt dann <von>_<nach>, README und Provider nennen beide Orgs, und die Region des Ziels wird zum Standard. Das Ziel ist für das Setup selbst nicht nötig — es beschreibt die Quelle.',
     tf_need_source:'Wählen Sie zuerst eine Quelle aus.', tf_need_kind:'Wählen Sie mindestens einen Typ aus.', tf_running:'Objekte werden abgerufen und Dateien geschrieben…', tf_done:'Das Setup ist gespeichert.',
     tf_saved_in:'Gespeichert in', tf_copy_path:'Pfad kopieren', tf_files:'Dateien', tf_col_written:'Enthalten / gesamt', tf_unreadable:'konnte nicht gelesen werden', tf_skipped:'weggelassen', tf_notes:'Hinweise',
     btn_demo_create:'+ Demo-Kunde anlegen',
@@ -7741,6 +7747,7 @@ const LANGS = {
     os_i_defaultLanguage:'Idioma predeterminado', os_i_defaultCountryCode:'País predeterminado', os_i_supportedLanguages:'Idiomas admitidos', os_i_integrationWhiteList:'Dominios permitidos', os_i_whitelist:'IP de confianza',
     da_tab_terraform:'Terraform', tf_title:'CONFIGURACIÓN DE TERRAFORM', tf_run:'Generar Terraform', tf_all:'Seleccionar todo', tf_none:'Quitar selección',
     tf_intro:'Crea una configuración de Terraform (proveedor genesyscloud) a partir de los objetos de la org de origen y la guarda automáticamente en la carpeta terraform/ de este equipo. El cliente ejecuta él mismo terraform apply en la org que debe cambiar — p. ej. de Falck Global a US.', tf_note:'Es una configuración inicial: no incluye secretos, miembros, contactos ni audio grabado, y lo omitido figura en README.md de la carpeta. Pruébela primero en una org de prueba.',
+    tf_target_hint:'Elija también un destino arriba: la carpeta se llamará <origen>_<destino>, el README y el provider mencionarán ambas orgs y la región del destino será la predeterminada. El destino no es necesario para la configuración en sí — describe el origen.',
     tf_need_source:'Elija primero un origen.', tf_need_kind:'Elija al menos un tipo.', tf_running:'Obteniendo objetos y escribiendo archivos…', tf_done:'La configuración está guardada.',
     tf_saved_in:'Guardado en', tf_copy_path:'Copiar ruta', tf_files:'Archivos', tf_col_written:'Incluidos / total', tf_unreadable:'no se pudo leer', tf_skipped:'omitido', tf_notes:'Notas',
     btn_demo_create:'+ Crear cliente demo',
@@ -13327,7 +13334,7 @@ async function tfRun() {
   let r;
   try {
     r = await fetch('/api/terraform/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sourceId: sid, include: [...tfSel] }) }).then(x => x.json());
+      body: JSON.stringify({ sourceId: sid, targetId: document.getElementById('da-target').value || '', include: [...tfSel], lang: currentLang }) }).then(x => x.json());
   } catch (e) { r = { error: e.message }; }
   tfBusy = false;
   document.getElementById('tf-run-btn').disabled = false;

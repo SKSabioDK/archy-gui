@@ -7521,19 +7521,23 @@ app.post('/api/terraform/generate', async (req, res) => {
     }
     const flowDir = path.join(FLOWS_DIR, sanitizeName(source.name));
     const flows = include.includes('flows') ? latestFlowFiles(flowDir) : [];
-    const result = TERRAFORM.build(data, { include, lookup, errors, orgName: source.name, flows });
+    // Målet er valgfrit: det giver mappen navnet <fra>_<til> og providerens region som standard
+    const target = loadCustomers().find(c => c.id === req.body.targetId && c.id !== source.id) || null;
+    const lang = /^[a-z]{2}$/.test(String(req.body.lang || '')) ? req.body.lang : 'en';
+    const result = TERRAFORM.build(data, { include, lookup, errors, orgName: source.name, targetName: target && target.name, targetRegion: target && target.region, lang, flows });
 
     const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-').replace(/-(\d\d)-(\d\d)$/, '_$1$2');
-    const rel = path.join('terraform', sanitizeName(source.name), stamp);
+    const part = n => sanitizeName(n).trim().replace(/\s+/g, '-').replace(/-{2,}/g, '-');
+    const rel = path.join('terraform', part(source.name) + (target ? '_' + part(target.name) : ''), stamp);
     const dir = path.join(__dirname, rel);
     fs.mkdirSync(dir, { recursive: true });
     for (const [name, text] of Object.entries(result.files)) fs.writeFileSync(path.join(dir, safeFileName(name, 'fil.tf')), text, 'utf8');
     if (flows.length) {
-      fs.mkdirSync(path.join(dir, 'flows'), { recursive: true });
-      for (const f of flows) fs.copyFileSync(path.join(flowDir, f.file), path.join(dir, 'flows', safeFileName(f.file, 'flow.yaml')));
+      fs.mkdirSync(path.join(dir, TERRAFORM.FLOW_DIR), { recursive: true });
+      for (const f of flows) fs.copyFileSync(path.join(flowDir, f.file), path.join(dir, TERRAFORM.FLOW_DIR, safeFileName(f.file, 'flow.yaml')));
     }
     const written = result.summary.reduce((n, s) => n + s.written, 0);
-    addLog('SUCCESS', `Terraform setup written for ${source.name}: ${written} objects in ${rel}`, source.name, 'TERRAFORM');
+    addLog('SUCCESS', `Terraform setup written for ${source.name}${target ? ' → ' + target.name : ''}: ${written} objects in ${rel}`, source.name, 'TERRAFORM');
     res.json({ ok: true, dir: rel.replace(/\\/g, '/'), absolute: dir, files: Object.keys(result.files).sort(), flowsCopied: flows.length,
       summary: result.summary, notes: result.notes, errors });
   } catch (e) { res.status(500).json({ error: archyHint(describeApiError(e)) }); }

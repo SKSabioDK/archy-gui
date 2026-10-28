@@ -26,7 +26,7 @@ const DATA = {
     config: { request: { requestType: 'GET', requestUrlTemplate: 'https://x/${input.id}' }, response: { successTemplate: '{}' } },
     contract: { input: { inputSchema: { $schema: 'x', type: 'object', properties: { id: { type: 'string' } } } }, output: { successSchema: { type: 'object', properties: {} } } } }],
 };
-const build = (extra = {}) => tf.build(DATA, { lookup: { roles: DATA.roles, divisions: DATA.divisions }, orgName: 'Falck Global', ...extra });
+const build = (extra = {}) => tf.build(DATA, { lookup: { roles: DATA.roles, divisions: DATA.divisions }, orgName: 'Falck Global', lang: 'da', ...extra });
 
 test('tekst citeres, så en værdi ikke kan bryde ud af strengen eller blive til interpolation', () => {
   assert.equal(tf.hclString('a"b'), '"a\\"b"');
@@ -70,10 +70,14 @@ test('Home og standardroller får en data-kilde — ikke en reference til en res
   assert.doesNotMatch(all, /genesyscloud_auth_role\.admin\b/, 'ingen reference til den udeladte standardrolle');
 });
 
-test('en reference uden mål udelades i stedet for at pege i tomme luft', () => {
+test('en division der ikke er med, bliver en variabel som i providerens egen eksport', () => {
   const r = build({ include: ['queues'] });          // divisioner er ikke med
   assert.doesNotMatch(r.files['queues.tf'], /genesyscloud_auth_division\./);
-  assert.ok(r.notes.some(n => /ikke er med i opsætningen/.test(n)), 'rapporten siger det');
+  assert.match(r.files['queues.tf'], /division_id\s+= var\.division_dk_support_id/);
+  assert.match(r.files['variables.tf'], /variable "division_dk_support_id" \{/);
+  assert.match(r.files['terraform.tfvars'], /division_dk_support_id = ""/);
+  assert.match(r.files['README.md'], /division_dk_support_id/);
+  assert.equal(build().files['terraform.tfvars'], undefined, 'ingen variabler når alt er med');
 });
 
 test('en wrap-up-kode for alle divisioner (*) får ingen division_id og ingen bemærkning', () => {
@@ -112,6 +116,10 @@ test('opsætningen har provider, variabler og en README der siger hvad der ikke 
   for (const f of ['versions.tf', 'provider.tf', 'variables.tf', 'terraform.tfvars.example', 'README.md', '.gitignore'])
     assert.ok(r.files[f], f);
   assert.match(r.files['provider.tf'], /oauthclient_secret = var\.oauthclient_secret/);
+  assert.match(r.files['versions.tf'], /required_version = ">= 1\.0\.0"/);
+  assert.match(r.files['versions.tf'], /version\s+= ">= 1\.6\.0"/);
+  assert.match(r.files['variables.tf'], /variable "oauthclient_id" \{[^}]*default\s+= null/, 'tom = miljøvariablerne');
+  assert.match(r.files['README.md'], /GENESYSCLOUD_OAUTHCLIENT_SECRET/);
   assert.match(r.files['variables.tf'], /variable "oauthclient_secret" \{[^}]*sensitive\s+= true/);
   assert.match(r.files['versions.tf'], /mypurecloud\/genesyscloud/);
   assert.match(r.files['README.md'], /Det der ikke er med/);
@@ -126,9 +134,9 @@ test('kun de valgte typer skrives', () => {
   assert.deepEqual(r.summary.map(s => s.id), ['skills']);
 });
 
-test('flows peger på YAML-filer i flows/, og en type der ikke kunne læses står i rapporten', () => {
-  const r = tf.build({}, { include: ['flows', 'queues'], errors: { queues: 'HTTP 403' }, flows: [{ name: 'Velkomst', file: 'Velkomst_v2-0.yaml' }] });
-  assert.match(r.files['flows.tf'], /filepath = "\$\{path\.module\}\/flows\/Velkomst_v2-0\.yaml"/);
+test('flows peger på YAML-filer i architect_flows/, og en type der ikke kunne læses står i rapporten', () => {
+  const r = tf.build({}, { lang: 'da', include: ['flows', 'queues'], errors: { queues: 'HTTP 403' }, flows: [{ name: 'Velkomst', file: 'Velkomst_v2-0.yaml' }] });
+  assert.match(r.files['flows.tf'], /filepath = "\$\{path\.module\}\/architect_flows\/Velkomst_v2-0\.yaml"/);
   assert.equal(r.summary.find(s => s.id === 'queues').error, 'HTTP 403');
   assert.match(r.files['README.md'], /kunne ikke læses: HTTP 403/);
 });
@@ -154,7 +162,40 @@ test('serveren skriver kun lokalt, og mappen er holdt ude af git', () => {
 });
 
 test('fanen har tekst på alle seks sprog', () => {
-  for (const k of ['da_tab_terraform', 'tf_title', 'tf_run', 'tf_all', 'tf_none', 'tf_intro', 'tf_note', 'tf_need_source', 'tf_need_kind', 'tf_running', 'tf_done',
+  for (const k of ['da_tab_terraform', 'tf_title', 'tf_run', 'tf_all', 'tf_none', 'tf_intro', 'tf_target_hint', 'tf_note', 'tf_need_source', 'tf_need_kind', 'tf_running', 'tf_done',
     'tf_saved_in', 'tf_copy_path', 'tf_files', 'tf_col_written', 'tf_unreadable', 'tf_skipped', 'tf_notes'])
     assert.equal(HTML.split(k + ':').length - 1, 6, k);
+});
+
+test('filerne følger appens sprog: dansk, engelsk og tysk — andre sprog får engelsk', () => {
+  const da = build({ lang: 'da' }), en = build({ lang: 'en' }), de = build({ lang: 'de' }), fr = build({ lang: 'fr' });
+  assert.match(da.files['README.md'], /Det der ikke er med/);
+  assert.match(en.files['README.md'], /What is not included/);
+  assert.match(de.files['README.md'], /Was nicht enthalten ist/);
+  assert.match(fr.files['README.md'], /What is not included/, 'fransk falder tilbage på engelsk');
+  assert.match(en.files['oauth_clients.tf'], /client secret is never copied/);
+  assert.doesNotMatch(en.files['oauth_clients.tf'], /kopieres aldrig/);
+  assert.match(de.files['variables.tf'], /Ziel-Org/);
+  assert.ok(en.notes.every(n => !/ikke med|er ikke/.test(n)), 'engelske bemærkninger');
+  assert.ok(en.summary.flatMap(s => s.skipped).every(x => !/findes i enhver|ikke med/.test(x.reason)));
+});
+
+test('README og provider nævner både kilde og mål, og målets region bliver standard', () => {
+  const r = build({ targetName: 'Falck US', targetRegion: 'mypurecloud.de' });
+  assert.match(r.files['README.md'], /^# Terraform-opsætning — Falck Global → Falck US/m);
+  assert.match(r.files['README.md'], /\*\*Fra:\*\* Falck Global/);
+  assert.match(r.files['README.md'], /\*\*Til:\*\* Falck US \(`aws_region = eu-central-1`\)/);
+  assert.match(r.files['variables.tf'], /variable "aws_region" \{[^}]*default\s+= "eu-central-1"/);
+  assert.match(r.files['terraform.tfvars.example'], /aws_region\s+= "eu-central-1"/);
+  assert.match(build().files['variables.tf'], /variable "aws_region" \{[^}]*default\s+= null/);
+  assert.equal(tf.awsRegion('mypurecloud.ie'), 'eu-west-1');
+  assert.equal(tf.awsRegion('ukendt'), null);
+});
+
+test('mappen hedder <fra>_<til>, når der er valgt et mål', () => {
+  const start = SERVER.indexOf("app.post('/api/terraform/generate'");
+  const body = SERVER.slice(start, SERVER.indexOf('\n});\n', start));
+  assert.match(body, /part\(source\.name\) \+ \(target \? '_' \+ part\(target\.name\) : ''\)/);
+  assert.match(body, /c\.id !== source\.id/, 'målet må ikke være kilden');
+  assert.match(body, /TERRAFORM\.FLOW_DIR/);
 });

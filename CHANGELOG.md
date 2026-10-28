@@ -5,6 +5,25 @@
 
 ---
 
+### v1.77.0
+---
+**🇩🇰 Dansk**
+
+- **Terraform-filerne følger appens sprog.** README.md, kommentarerne i .tf-filerne, variabelbeskrivelserne og bemærkningerne er nu på dansk, engelsk eller tysk efter det sprog, appen er sat til; andre sprog får engelsk. Før stod de altid på dansk.
+- **Mål-org.** Fanen bruger nu også det valgte *Mål*. Mappen hedder `terraform/<fra>_<til>/<dato>/` (fx `Falck-Global_Falck-US`), README.md og providerkonfigurationen nævner begge orgs, og målets region bliver standard for `aws_region`. Målet er ikke nødvendigt for selve opsætningen — den beskriver kilden — og uden mål hedder mappen kun efter kilden.
+- **Tættere på providerens egen CX as Code-vejledning:** `versions.tf` har `required_version = ">= 1.0.0"` og providerversion `>= 1.6.0`; tomme felter bruger miljøvariablerne `GENESYSCLOUD_OAUTHCLIENT_ID`, `GENESYSCLOUD_OAUTHCLIENT_SECRET` og `GENESYSCLOUD_REGION`; flows ligger i `architect_flows/`; og en division, der ikke er med i opsætningen, bliver en variabel i `terraform.tfvars` (som i providerens eksport) i stedet for at blive udeladt. README-tabellen viser nu ressourcetype og fil.
+- Developer Center-siden om CX as Code kunne ikke læses automatisk (den indlæses med JavaScript), så retningslinjerne er hentet fra providerens egen README og eksportvejledning.
+- 3 nye tests.
+
+**🇬🇧 English**
+- **The Terraform files follow the app's language.** README.md, the comments in the .tf files, the variable descriptions and the remarks are now in Danish, English or German according to the app's language; other languages get English. They used to be Danish always.
+- **Target org.** The tab now also uses the chosen *Target*. The folder is named `terraform/<from>_<to>/<date>/` (e.g. `Falck-Global_Falck-US`), README.md and the provider configuration mention both orgs, and the target's region becomes the default for `aws_region`. The target is not needed for the setup itself — it describes the source — and without a target the folder is named after the source only.
+- **Closer to the provider's own CX as Code guide:** `versions.tf` has `required_version = ">= 1.0.0"` and provider version `>= 1.6.0`; empty fields use the environment variables `GENESYSCLOUD_OAUTHCLIENT_ID`, `GENESYSCLOUD_OAUTHCLIENT_SECRET` and `GENESYSCLOUD_REGION`; flows live in `architect_flows/`; and a division that is not part of the setup becomes a variable in `terraform.tfvars` (as in the provider's export) instead of being left out. The README table now shows resource type and file.
+- The Developer Center page on CX as Code could not be read automatically (it loads with JavaScript), so the guidelines were taken from the provider's own README and export guide.
+- 3 new tests.
+
+---
+
 ### v1.76.0
 ---
 **🇩🇰 Dansk**
