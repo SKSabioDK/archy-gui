@@ -5,6 +5,45 @@
 
 ---
 
+### v1.73.0
+---
+**🇩🇰 Dansk**
+
+- **Migreringsrapport som CSV.** Alle migreringer — hver ressourcefane, flows og de afhængigheder der migreres undervejs — skriver nu en række med tidspunkt, type, navn, status (*Lykkedes*, *Sprunget over*, *Fejlede*), detalje og kilde- og mål-org. Rækkerne samles på tværs af faner og flows og huskes i browseren. Øverst på *Migrér ressourcer* og *Migrer Flow* står en afkrydsning *Gem rapport (CSV) efter hver migrering*, en knap *Download samlet rapport* og *Ryd*. Secrets og adgangskoder kommer aldrig med. Semikolon og UTF-8 med BOM, så Excel åbner den rigtigt.
+- En ny test.
+
+**🇬🇧 English**
+- **Migration report as CSV.** Every migration — each resource tab, flows and the dependencies migrated along the way — now writes a row with time, type, name, status (*Succeeded*, *Skipped*, *Failed*), detail and source and target org. Rows are collected across tabs and flows and remembered in the browser. At the top of *Migrate resources* and *Migrate Flow* there is a checkbox *Save a report (CSV) after each migration*, a *Download combined report* button and *Clear*. Secrets and passwords are never included. Semicolon-separated, UTF-8 with BOM so Excel opens it correctly.
+- One new test.
+
+---
+
+### v1.72.0
+---
+**🇩🇰 Dansk**
+
+- **Tysk.** Hele brugerfladen findes nu på 🇩🇪 Deutsch — menuer, hjælpetekster, tooltips og guiden. Vælges i sprogvælgeren nederst; Genesys-sproget i Flow Builder bliver de-de.
+- Testene kræver nu seks sprog med de samme nøgler.
+
+**🇬🇧 English**
+- **German.** The whole interface is now available in 🇩🇪 Deutsch — menus, help texts, tooltips and the guide. Pick it in the language selector at the bottom; the Genesys language in Flow Builder becomes de-de.
+- The tests now require six languages with the same keys.
+
+---
+
+### v1.71.0
+---
+**🇩🇰 Dansk**
+
+- **Aktiveringsnøgle til interne funktioner.** *Flow Builder* (beta) og *Demo-kunden* er skjult, indtil der er indtastet en nøgle under Kunder → Aktiveringsnøgle. Serveren afviser også demo-kald uden nøglen, så det ikke kun er en skjult knap. Kun nøglens SHA-256 står i koden; nøglen gemmes i settings.json og kan låses igen. Det er funktionsstyring, ikke adgangskontrol.
+- En ny test.
+
+**🇬🇧 English**
+- **Activation key for internal features.** *Flow Builder* (beta) and the *demo customer* stay hidden until a key is entered under Customers → Activation key. The server also rejects demo calls without it, so it is not just a hidden button. Only the key's SHA-256 is in the code; the key is stored in settings.json and can be locked again. This is feature gating, not access control.
+- One new test.
+
+---
+
 ### v1.70.1
 ---
 **🇩🇰 Dansk**

@@ -179,7 +179,7 @@ test('kontrol: opdageren fælder faktisk dansk', () => {
 // Mangler en nøgle i ét sprog, falder t() tilbage på dansk — altså præcis den
 // fejl resten af filen her handler om, bare gemt i ordbogen i stedet.
 
-const SPROG = ['da', 'en', 'fr', 'nl', 'es'];
+const SPROG = ['da', 'en', 'fr', 'nl', 'es', 'de'];
 
 function noeglerFor(sprog) {
   const start = HTML.indexOf(`\n  ${sprog}: {`);
@@ -195,7 +195,7 @@ function noeglerFor(sprog) {
     .filter(Boolean);
 }
 
-test('alle fem sprog har de samme nøgler', () => {
+test('alle seks sprog har de samme nøgler', () => {
   const da = noeglerFor('da');
   assert.ok(da.length > 300, `fandt kun ${da.length} nøgler i da — læsningen er gået i stå`);
   const facit = new Set(da);

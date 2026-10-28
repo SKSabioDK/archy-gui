@@ -255,6 +255,7 @@
   .page-sub { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
 
   /* Cards */
+  body:not(.internal) [data-internal] { display: none !important; }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 16px; }
   .card-title { font-size: 12px; font-weight: 600; letter-spacing: 1px; color: var(--muted); margin-bottom: 16px; }
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -479,12 +480,13 @@
       <span id="work-chip" style="display:none;gap:6px;align-items:center;padding:3px 10px;border:1px solid var(--border);border-radius:14px"></span>
       <span id="archyStatus" class="dot"></span>
       <span id="archyStatusTxt">checking archy…</span>
-      <select id="langSelect" class="lang-select" onchange="setLang(this.value)" title="Language / Sprog / Langue / Taal / Idioma">
+      <select id="langSelect" class="lang-select" onchange="setLang(this.value)" title="Language / Sprog / Langue / Taal / Idioma / Sprache">
         <option value="da">🇩🇰 Dansk</option>
         <option value="en">🇬🇧 English</option>
         <option value="fr">🇫🇷 Français</option>
         <option value="nl">🇳🇱 Nederlands</option>
         <option value="es">🇪🇸 Español</option>
+        <option value="de">🇩🇪 Deutsch</option>
       </select>
       <select id="themeSelect" class="lang-select" onchange="setTheme(this.value)" title="Tema">
         <option value="dark">🌙 Archy Dark</option>
@@ -539,7 +541,7 @@
 
     <div class="spacer"></div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.70.1 · Archy GUI</div>
+    <div class="version" id="app-version">v1.73.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -640,11 +642,18 @@
         <button class="btn btn-primary" onclick="addCustomer()" data-i18n="btn_add_customer">+ Tilføj Kunde</button>
       </details>
 
-      <details class="card" id="demoCard">
+      <details class="card" id="demoCard" data-internal>
         <summary class="card-title" style="cursor:pointer;margin-bottom:0" data-i18n="demo_title">DEMO-KUNDE</summary>
         <div style="height:12px"></div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:12px" data-i18n="demo_hint">Fire miljøer og tre flows der kun findes lokalt.</div>
         <div id="demoButtons"></div>
+      </details>
+
+      <details class="card" id="featCard">
+        <summary class="card-title" style="cursor:pointer;margin-bottom:0" data-i18n="feat_title">AKTIVERINGSNØGLE</summary>
+        <div style="height:12px"></div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px" data-i18n="feat_hint">Låser interne funktioner op.</div>
+        <div id="featBox"></div>
       </details>
 
       <details class="card" id="stagesCard">
@@ -792,6 +801,7 @@
     <div class="page" id="page-migrate">
       <div style="display:flex;align-items:center"><div class="page-title" data-i18n="nav_migrate">Migrer Flow</div><button class="help-btn" onclick="showHelp('migrate','nav_migrate')">?</button></div>
       <div class="page-sub" data-i18n="page_migrate_sub">Export fra én org og importer direkte til en anden</div>
+      <div class="mig-bar" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:-6px 0 14px"></div>
 
       <div class="steps">
         <div class="step active" id="mstep-1" data-i18n="step1">1 · Vælg kunder</div>
@@ -951,10 +961,10 @@
           <div style="display:flex;align-items:center"><div class="page-title" data-i18n="nav_import">Import YAML</div><button class="help-btn" onclick="showHelp('import','nav_import')">?</button></div>
           <div class="page-sub" style="margin-bottom:0" data-i18n="page_import_sub">Opret eller opdater et flow via YAML-fil</div>
         </div>
-        <button class="btn btn-secondary" onclick="openYamlWizard()" style="margin-top:4px;flex-shrink:0" data-i18n="btn_yaml_builder">
+        <button data-internal class="btn btn-secondary" onclick="openYamlWizard()" style="margin-top:4px;flex-shrink:0" data-i18n="btn_yaml_builder">
           📝 Flow Builder
         </button>
-        <button class="help-btn" style="margin-top:10px;flex-shrink:0"
+        <button data-internal class="help-btn" style="margin-top:10px;flex-shrink:0"
           onclick="showHelp('flowbuilder','help_flowbuilder_title')">?</button>
       </div>
       <div class="card">
@@ -1004,6 +1014,7 @@
     <div class="page" id="page-dataactions">
       <div style="display:flex;align-items:center"><div class="page-title" data-i18n="da_title">Migrér ressourcer</div><button class="help-btn" onclick="showHelp('dataactions','nav_dataactions')">?</button></div>
       <div class="page-sub" data-i18n="da_sub">Migrér Data Actions mellem Genesys Cloud orgs</div>
+      <div class="mig-bar" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:-6px 0 14px"></div>
 
       <div class="da-tabs">
         <div class="da-tab active" id="da-tab-divisions" onclick="daSetTab('divisions')" data-i18n="da_tab_divisions">Divisioner</div>
@@ -2183,6 +2194,11 @@ const LANGS = {
     pl_overwrites:'Dette miljø afviger. En forfremmelse hertil kasserer den forskel — hent den tilbage først hvis du vil se hvad den er',
     demo_title:'DEMO-KUNDE',
     demo_hint:'Fire miljøer (dev · test · uat · prod) og tre flows der kun findes lokalt. Ingen credentials, ingen kald til Genesys eller Archy — beregnet til at prøve pipelinen af uden at røre en rigtig org.',
+    feat_title:'AKTIVERINGSNØGLE', feat_hint:'Låser interne funktioner og beta-funktioner op (Flow Builder og Demo-kunden). Uden nøgle er de skjult.', feat_ph:'Aktiveringsnøgle', feat_unlock:'Aktivér',
+    feat_on:'Interne funktioner er aktive.', feat_lock:'Lås igen', feat_bad:'Ukendt nøgle.',
+    mig_auto:'Gem rapport (CSV) efter hver migrering', mig_download:'⬇ Download samlet rapport', mig_clear:'Ryd', mig_clear_confirm:'Rydde den samlede rapport ({n} rækker)?',
+    mig_st_ok:'Lykkedes', mig_st_skipped:'Sprunget over', mig_st_failed:'Fejlede', mig_file:'migreringsrapport', mig_type_flow:'Flow',
+    mig_tip:'Rapporten samler alle migreringer i denne browser — ressourcer, flows og deres afhængigheder — med hvad der gik godt og hvad der ikke gjorde. Secrets og adgangskoder kommer aldrig med.',
     btn_demo_create:'+ Opret demo-kunde',
     btn_demo_reset:'↺ Nulstil demo',
     btn_demo_remove:'✕ Fjern demo',
@@ -3231,6 +3247,11 @@ const LANGS = {
     pl_overwrites:'This environment differs. Promoting here discards that difference — pull it back first if you want to see what it is',
     demo_title:'DEMO CUSTOMER',
     demo_hint:'Four environments (dev · test · uat · prod) and three flows that exist only locally. No credentials, no calls to Genesys or Archy — meant for trying the pipeline without touching a real org.',
+    feat_title:'ACTIVATION KEY', feat_hint:'Unlocks internal and beta features (Flow Builder and the demo customer). Without a key they stay hidden.', feat_ph:'Activation key', feat_unlock:'Activate',
+    feat_on:'Internal features are active.', feat_lock:'Lock again', feat_bad:'Unknown key.',
+    mig_auto:'Save a report (CSV) after each migration', mig_download:'⬇ Download combined report', mig_clear:'Clear', mig_clear_confirm:'Clear the combined report ({n} rows)?',
+    mig_st_ok:'Succeeded', mig_st_skipped:'Skipped', mig_st_failed:'Failed', mig_file:'migration-report', mig_type_flow:'Flow',
+    mig_tip:'The report collects every migration in this browser — resources, flows and their dependencies — with what went well and what did not. Secrets and passwords are never included.',
     btn_demo_create:'+ Create demo customer',
     btn_demo_reset:'↺ Reset demo',
     btn_demo_remove:'✕ Remove demo',
@@ -4279,6 +4300,11 @@ const LANGS = {
     pl_overwrites:'Cet environnement diverge. Une promotion ici écarte cette différence — rapatriez-la d\'abord pour voir ce dont il s\'agit',
     demo_title:'CLIENT DÉMO',
     demo_hint:'Quatre environnements (dev · test · uat · prod) et trois flows purement locaux. Aucun identifiant, aucun appel à Genesys ou Archy — pour essayer le pipeline sans toucher une vraie org.',
+    feat_title:'CLÉ D\'ACTIVATION', feat_hint:'Déverrouille les fonctions internes et bêta (Flow Builder et client démo). Sans clé, elles restent masquées.', feat_ph:'Clé d\'activation', feat_unlock:'Activer',
+    feat_on:'Les fonctions internes sont actives.', feat_lock:'Verrouiller', feat_bad:'Clé inconnue.',
+    mig_auto:'Enregistrer un rapport (CSV) après chaque migration', mig_download:'⬇ Télécharger le rapport complet', mig_clear:'Effacer', mig_clear_confirm:'Effacer le rapport complet ({n} lignes) ?',
+    mig_st_ok:'Réussi', mig_st_skipped:'Ignoré', mig_st_failed:'Échec', mig_file:'rapport-migration', mig_type_flow:'Flow',
+    mig_tip:'Le rapport rassemble toutes les migrations de ce navigateur — ressources, flows et leurs dépendances — avec ce qui a réussi ou non. Les secrets et mots de passe n\'y figurent jamais.',
     btn_demo_create:'+ Créer le client démo',
     btn_demo_reset:'↺ Réinitialiser la démo',
     btn_demo_remove:'✕ Supprimer la démo',
@@ -5327,6 +5353,11 @@ const LANGS = {
     pl_overwrites:'Deze omgeving wijkt af. Hier promoveren gooit dat verschil weg — haal het eerst terug om te zien wat het is',
     demo_title:'DEMOKLANT',
     demo_hint:'Vier omgevingen (dev · test · uat · prod) en drie flows die alleen lokaal bestaan. Geen credentials, geen aanroepen naar Genesys of Archy — om de pipeline te proberen zonder een echte org aan te raken.',
+    feat_title:'ACTIVERINGSSLEUTEL', feat_hint:'Ontgrendelt interne functies en bètafuncties (Flow Builder en de democlient). Zonder sleutel blijven ze verborgen.', feat_ph:'Activeringssleutel', feat_unlock:'Activeren',
+    feat_on:'Interne functies zijn actief.', feat_lock:'Weer vergrendelen', feat_bad:'Onbekende sleutel.',
+    mig_auto:'Rapport (CSV) opslaan na elke migratie', mig_download:'⬇ Gecombineerd rapport downloaden', mig_clear:'Wissen', mig_clear_confirm:'Het gecombineerde rapport wissen ({n} rijen)?',
+    mig_st_ok:'Gelukt', mig_st_skipped:'Overgeslagen', mig_st_failed:'Mislukt', mig_file:'migratierapport', mig_type_flow:'Flow',
+    mig_tip:'Het rapport verzamelt alle migraties in deze browser — resources, flows en hun afhankelijkheden — met wat goed ging en wat niet. Secrets en wachtwoorden worden nooit opgenomen.',
     btn_demo_create:'+ Demoklant aanmaken',
     btn_demo_reset:'↺ Demo resetten',
     btn_demo_remove:'✕ Demo verwijderen',
@@ -5840,6 +5871,1059 @@ const LANGS = {
     ex_all_hint:'{n} van {total} getoond — typ om te filteren',
     rep_fb:'🔁 Gebruikers',
     help_close:'Sluiten',
+  },
+  de: {
+    nav_customers:'Kunden', nav_flows:'Flow-Browser', nav_migrate:'Flow migrieren',
+    nav_export:'YAML exportieren', nav_import:'YAML importieren', nav_files:'YAML-Dateien',
+    nav_syslog:'Systemprotokoll', nav_section_customers:'KUNDEN',
+    page_customers_title:'Kundenprofile', page_customers_sub:'Genesys-Cloud-Org-Verbindungen verwalten',
+    add_customer_card:'KUNDE HINZUFÜGEN', label_customername:'Kundenname *', label_region:'Region *',
+    label_clientid:'Client ID *', label_clientsecret:'Client Secret *', btn_add_customer:'+ Kunde hinzufügen',
+    page_flows_sub:'Alle Flows einer Organisation anzeigen', label_select_customer:'Kunde auswählen',
+    btn_reload:'🔄 Neu laden', col_name:'Name', col_type:'Typ', col_status:'Status',
+    col_version:'Version', col_action:'Aktion', badge_published:'Veröffentlicht', badge_draft:'Entwurf',
+    btn_export_flow:'📤 Exportieren',
+    page_migrate_sub:'Aus einer Org exportieren und direkt in eine andere importieren',
+    step1:'1 · Kunden auswählen', step2:'2 · Flow auswählen', step3:'3 · Migration starten',
+    card_source_target:'QUELLE → ZIEL', label_source:'Quelle (Export aus)', label_target:'Ziel (Import in)',
+    card_select_flows:'FLOWS FÜR DIE MIGRATION AUSWÄHLEN', label_import_action:'Importaktion:',
+    btn_run_migration:'🚀 Migration starten', card_log:'PROTOKOLL',
+    page_export_sub:'Kunde auswählen → Flow auswählen — der Typ wird automatisch gesetzt',
+    label_customer:'Kunde', label_search_flow:'Flow suchen und auswählen',
+    placeholder_filter:'🔍  Zum Filtern tippen…', label_flow_type:'Flow-Typ',
+    btn_export:'📤 Exportieren', btn_export_all:'📦 Alle Flows exportieren',
+    card_export_all_progress:'ALLES EXPORTIEREN — FORTSCHRITT', loading_flows:'Flows werden geladen…',
+    btn_download:'⬇ Herunterladen', page_import_sub:'Flow über eine YAML-Datei anlegen oder aktualisieren',
+    label_target_customer:'Zielkunde', label_filename:'Dateiname', label_upload:'YAML-Datei hochladen:',
+    label_yaml_content:'YAML-Inhalt', placeholder_yaml:'YAML hier einfügen oder Datei hochladen…',
+    btn_import:'📥 Flow importieren / anlegen', page_files_title:'Lokale YAML-Dateien',
+    page_files_sub:'Exportierte Flows — aus YAML-Export, Migrationen und Vergleichen',
+    page_syslog_title:'Systemprotokoll', page_syslog_sub:'Aktionen, Verbindungen und Fehler',
+    btn_auto_refresh_off:'⏱ Auto-Aktualisierung: Aus', btn_auto_refresh_on:'⏱ Auto-Aktualisierung: An (5 s)',
+    btn_clear_log:'🗑 Protokoll leeren', btn_update:'↺ Aktualisieren',
+    label_from:'Von', label_to:'Bis', label_quick:'Schnellauswahl',
+    lbl_hour:'Stunde', btn_today:'Heute', btn_clear:'Zurücksetzen',
+    label_level:'Stufe', opt_all_levels:'Alle Stufen',
+    label_action:'Aktion', opt_all_actions:'Alle Aktionen',
+    label_customer_filter:'Kunde', opt_all_customers:'Alle Kunden',
+    label_search_msg:'In der Meldung suchen', placeholder_search:'🔍 Freitextsuche…',
+    label_max:'Max. Einträge', btn_search:'Suchen',
+    th_timestamp:'ZEITPUNKT', th_level:'STUFE', th_action:'AKTION',
+    th_customer:'KUNDE', th_message:'MELDUNG', no_log_entries:'Keine Protokolleinträge gefunden',
+    archy_ready:'Bereit', btn_test:'🔌 Testen', btn_flows_card:'📋 Flows',
+    import_action_create:'create (neu)', import_action_update:'update (vorhanden)',
+    import_action_publish:'publish (anlegen + veröffentlichen)',
+    migrate_action_create:'create (neu)', migrate_action_update:'update (aktualisieren)',
+    migrate_action_publish:'publish (anlegen + veröffentlichen)',
+    view_file:'👁 Ansehen', copy_to_import:'→ An Import senden',
+    export_file:'📤 Exportieren', syslog_showing:'{n} Einträge werden angezeigt (neueste zuerst)',
+    syslog_auto_on:'⏱ Auto-Aktualisierung: An (5 s)',
+    label_auth_type:'Authentifizierungsart', btn_auth_credentials:'🔑 Client Credentials', btn_auth_oauth:'🌐 OAuth (PKCE)',
+    hint_auth_credentials:'Client ID + Secret werden lokal gespeichert. Für Skripte/Automatisierung.',
+    hint_auth_oauth:'Kein Secret gespeichert — Sie melden sich über den Genesys-Cloud-Browser-Login (PKCE) an.',
+    btn_login:'🔑 Anmelden', auth_status_connected:'Verbunden',
+    err_fields_required:'Alle Felder sind Pflicht', msg_customer_added:'Kunde hinzugefügt:',
+    nav_readme:'README', page_readme_sub:'Dokumentation & Hilfe', loading_readme:'README wird geladen…',
+    btn_yaml_builder:'📝 Flow Builder · Beta',
+    opt_select_customer:'— Kunde auswählen —',
+    err_select_customer_flow:'Kunde und Flow auswählen', err_select_customer_yaml:'Kunde auswählen und YAML einfügen',
+    wiz_step1:'1 · Flow-Info', wiz_step2:'2 · Daten & Aktionen', wiz_step3:'3 · Extras', wiz_step4:'4 · Vorschau',
+    wiz_back:'← Zurück', wiz_next:'Weiter →', wiz_use_yaml:'✓ YAML verwenden',
+    wiz_s1_customer:'Kunde / Org', wiz_s1_cust_hint:'(zum Abrufen von Datentabellen, Warteschlangen und Prompts)',
+    wiz_s1_cust_ph:'— Kunde auswählen (für Datentabellen/Warteschlangen/Prompts) —',
+    wiz_s1_flowtype:'Flow-Typ *', wiz_s1_lang:'Flow-Sprache (defaultLanguage)', wiz_s1_flowname:'Flow-Name *',
+    wiz_s1_tip:'💡 Wählen Sie oben einen Kunden aus — Datentabellen, Warteschlangen und Prompts werden für Schritt 2 und 3 automatisch abgerufen.',
+    wiz_s2_desc:'Abfragen konfigurieren für', wiz_add_table:'+ Datentabelle', wiz_add_action:'⚡ Data Action',
+    wiz_dt_title:'Datentabelle', wiz_remove:'✕ Entfernen',
+    wiz_dt_name:'Tabellenname *', wiz_dt_resultvar:'Ergebnisvariable (String)',
+    wiz_dt_lookuptype:'Abfrageart', wiz_dt_lit:'Literal (fester Text)', wiz_dt_var:'Variable',
+    wiz_dt_lookupval:'Abfragewert', wiz_dt_json_cb:'JSON-Tabelle (Wertspalte enthält einen JSON-String)',
+    wiz_dt_parsejson:'Ergebnis als JSON parsen (JsonParse)', wiz_dt_jsonvar:'JSON-Variable:',
+    wiz_dt_cols_hdr:'ZU EXTRAHIERENDE SPALTEN', wiz_dt_json_hdr:'ZU EXTRAHIERENDE JSON-FELDER',
+    wiz_add_field:'+ Feld hinzufügen',
+    wiz_dt_json_hint:'💡 JSON-Tabelle — die Wertspalte enthält einen JSON-String. Fügen Sie die Schlüssel hinzu, die extrahiert werden sollen (z. B. Random, Interval). Aktivieren Sie „JSON parsen“, um GetJsonObjectProperty zu verwenden.',
+    wiz_dt_empty:'Keine Datentabellen. Klicken Sie auf „+ Datentabelle“, um eine hinzuzufügen.',
+    wiz_dt_no_fields_json:'Keine JSON-Felder — klicken Sie auf „+ Feld hinzufügen“, um Schlüssel zum Extrahieren hinzuzufügen.',
+    wiz_dt_no_fields:'Keine Felder — klicken Sie auf „+ Feld hinzufügen“.',
+    wiz_dt_jsonkey:'JSON-Schlüssel', wiz_dt_column:'Spalte', wiz_dt_varname:'Variablenname', wiz_dt_type:'Typ',
+    wiz_da_title:'Data Action', wiz_da_name:'Aktionsname *',
+    wiz_da_search_ph:'Zum Suchen nach Data Actions tippen...',
+    wiz_da_timeout:'Timeout (Minuten)', wiz_da_integration:'Integration:',
+    wiz_da_inputs_hdr:'EINGABEPARAMETER', wiz_da_param:'Parameter',
+    wiz_da_none:'— Keine —', wiz_da_value:'Wert',
+    wiz_da_outputs_hdr:'AUSGABE → VARIABLEN (zum Speichern anhaken)',
+    wiz_da_outparam:'Ausgabeparameter', wiz_da_schema_loading:'Schema wird abgerufen für',
+    wiz_s3_initialaudio:'ANFANGSANSAGE (Begrüßung)',
+    wiz_s3_initial_cb:'Begrüßungsansage (playAudio) am Anfang des Flows hinzufügen',
+    wiz_s3_audio_type:'Audiotyp:', wiz_tts:'TTS', wiz_prompt:'Prompt',
+    wiz_s3_tts:'TTS-Text', wiz_prompt_name:'Prompt-Name',
+    wiz_prompt_search_ph:'Zum Suchen nach Prompts tippen...',
+    wiz_s3_endtransfer:'ENDE / WEITERLEITUNG', wiz_s3_type:'Typ',
+    wiz_s3_queuename:'Name der Warteschlange', wiz_s3_user:'Benutzer', wiz_s3_group:'Gruppe',
+    wiz_s3_flowname:'Flow-Name', wiz_s3_phone:'Telefonnummer',
+    wiz_s3_goodbye_cb:'Verabschiedung (playAudio) vor Ende/Weiterleitung hinzufügen',
+    wiz_s3_queues_ph:'Zum Suchen nach Warteschlangen tippen...',
+    wiz_s3_users_ph:'Zum Suchen nach Benutzern tippen...',
+    wiz_s3_groups_ph:'Zum Suchen nach Gruppen tippen...',
+    wiz_s3_flows_ph:'Zum Suchen nach Flows tippen...',
+    wiz_s3_same_type:'Es werden nur {type}-Flows durchsucht (gleicher Typ wie dieser Flow)',
+    wiz_s3_no_config:'Keine zusätzliche Konfiguration für',
+    wiz_s3_click_next:'Klicken Sie auf „Weiter“, um das erzeugte YAML zu sehen.',
+    wiz_s3_extra_yaml_title:'YAML-BIBLIOTHEK (zusätzliche Blöcke)',
+    wiz_s3_extra_yaml_hint:'Fügen Sie rohe YAML-Blöcke aus Ihrer Bibliothek ein (z. B. IVR-Menüs, Zeitplangruppen, wiederverwendbare Tasks). Sie werden direkt hinter dem erzeugten YAML angehängt.',
+    wiz_s3_extra_yaml_ph:'# YAML-Code hier einfügen…\n# Beispiel:\n# scheduleGroup:\n#   name: "Öffnungszeiten"\n#   ...',
+    wiz_s4_desc:'YAML prüfen — mit ✓ YAML verwenden senden Sie es an die Import-Seite.',
+    wiz_copy:'📋 Kopieren', wiz_copied:'✓ Kopiert!',
+    wiz_use_yaml_success:'✓ YAML aus dem Flow Builder eingefügt:',
+    no_customers_yet:'Noch keine Kunden. Fügen Sie oben Ihren ersten Kunden hinzu.',
+    select_org_ph:'— Org auswählen —',
+    err_select_source_target:'Quelle und Ziel auswählen',
+    err_same_org:'Quelle und Ziel dürfen nicht dieselbe Org sein',
+    migrating_msg:'Migriere:', migration_done:'── Migration abgeschlossen ──',
+    exporting_msg:'Export über Archy…', exported_ok:'Exportiert:',
+    stopping_msg:'⏳ Wird gestoppt…', loading_flowlist:'Flow-Liste wird geladen…',
+    already_exists_err:'Der Flow existiert bereits (Anlegen fehlgeschlagen).',
+    switch_to_update:'Auf „Aktualisieren“ umstellen und erneut versuchen',
+    import_ok:'✓ Flow importiert!', importing_msg:'Import läuft…',
+    no_yaml_files:'Noch keine lokalen YAML-Dateien.',
+    confirm_delete_customer:'Diesen Kunden löschen?',
+    err_label:'Fehler', confirm_clear_log:'Das gesamte Protokoll aus dem Speicher löschen?',
+    key_column_hint:'Schlüsselspalte:', key_label:'🔑 Schlüssel:',
+    btn_choose_file:'📂 Datei auswählen', no_file_chosen:'Keine Datei ausgewählt', label_or_drop:'— oder Datei hierher ziehen',
+    update_available:'Neue Version verfügbar:', update_see_gh:'Auf GitHub ansehen',
+    auth_ready_cc:'Bereit (Client Credentials)',
+    auth_not_logged_in:'Nicht angemeldet — verwenden Sie die Schaltfläche „Anmelden“ auf der Kundenkarte',
+    auth_expired:'Sitzung abgelaufen — bitte erneut anmelden',
+    btn_check_update:'🔍 Nach Updates suchen',
+    btn_checking_update:'⏳ Prüfe…',
+    btn_up_to_date:'✓ Aktuell',
+    migrate_selected:'ausgewählt', migrate_select_all:'Alle auswählen', migrate_clear_sel:'Auswahl aufheben',
+    opt_all_types:'Alle Typen',
+    warn_missing_oauth_view:'⚠ \'oauth:client:view\' fehlt — Archy bricht mit Exit-Code 99 ab. Fügen Sie die Berechtigung in Genesys Cloud Admin → OAuth hinzu.',
+    warn_missing_architect_perm:'⚠ \'architect:flow:view/edit\' fehlt — Import/Export scheitert mit „Zugriff verweigert“. Weisen Sie unter Admin → OAuth → Ihr Client → Rollen eine Rolle mit Architect-Berechtigungen zu.',
+    err_access_denied:'Zugriff verweigert (403) — dem OAuth-Client fehlt die Berechtigung \'architect:flow:edit\'. Gehen Sie zu Genesys Admin → OAuth → Ihr Client → Rollen und weisen Sie eine Rolle mit Architect-Berechtigungen zu.',
+    // ── tilføjet i v1.6.0 ──
+    nav_dataactions:'Ressourcen migrieren',
+    da_title:'Ressourcen migrieren',
+    da_sub:'Data Actions, Datentabellen-Strukturen und Benutzer-Prompts zwischen Genesys-Cloud-Orgs migrieren',
+    da_card_srctgt:'QUELLE → ZIEL',
+    da_label_source:'Quelle (kopieren von)',
+    da_label_target:'Ziel (kopieren nach)',
+    da_label_targetint:'Zielintegration (Aktionen werden hier angelegt)',
+    da_actions:'AKTIONEN',
+    da_search_ph:'🔍 Aktionen suchen…',
+    da_all_categories:'Alle Kategorien',
+    da_migrate_btn:'⚡ Auswahl migrieren',
+    da_backup_btn:'💾 Backup herunterladen',
+    da_selected:'ausgewählt',
+    da_select_all:'Alle auswählen',
+    da_reset:'Zurücksetzen',
+    da_log_title:'MIGRATIONSPROTOKOLL',
+    da_choose_org:'— Org auswählen —',
+    da_loading:'Aktionen werden geladen…',
+    da_none:'Keine Aktionen gefunden.',
+    da_err_select:'Quelle und Ziel auswählen',
+    da_err_same:'Quelle und Ziel dürfen nicht dieselbe Org sein',
+    da_migrating:'Migriere',
+    da_exists:'Existiert bereits in der Ziel-Org — übersprungen',
+    da_created:'Angelegt und veröffentlicht',
+    da_done:'Fertig',
+    da_schema_err:'Schema konnte nicht geladen werden — Verbindung prüfen',
+    da_schema_err_prefix:'Fehler',
+    card_badge_creds:'🔑 Creds',
+    btn_validate_yaml:'🔍 YAML validieren',
+    btn_check_org:'🌐 Gegen Org prüfen',
+    btn_checking:'⏳ Prüfe…',
+    val_title:'🔍 YAML-VALIDIERUNG',
+    val_no_yaml:'Kein YAML im Feld',
+    val_syntax_err:'YAML-Syntaxfehler',
+    val_at:'bei',
+    val_errors_found:'Fehler gefunden — korrigieren Sie das YAML vor dem Import',
+    val_warnings:'Warnungen — der Import kann scheitern',
+    val_no_resources:'Im YAML wurden keine zu prüfenden Ressourcen gefunden (Division, Warteschlangen, Datentabellen, Aktionen, Prompts)',
+    val_missing_res:'Ressource(n) fehlen in der Ziel-Org — der Import wird scheitern!',
+    val_no_jsyaml:'Die Bibliothek js-yaml ist nicht verfügbar (erfordert eine Internetverbindung zum CDN)',
+    val_syntax_ok:'YAML-Syntax OK',
+    val_line_col:'Zeile {l}, Spalte {c}',
+    val_expected_object:'Ein YAML-Objekt wurde erwartet — gefunden: {found}',
+    val_a_list:'eine Liste',
+    val_no_key:'(kein Schlüssel)',
+    val_bad_root:'Wurzelschlüssel „{key}“ ist kein gültiger Archy-Flow-Typ.\nGültige Typen: {types}',
+    val_empty_body:'Der Inhalt unter „{type}:“ ist leer oder ungültig',
+    val_name:'Name',
+    val_missing_name:'„name:“ fehlt (Flow-Name)',
+    val_missing_field:'„{field}:“ fehlt',
+    val_all_ok:'Alles sieht korrekt aus — bereit zum Import ✓',
+    val_all_res_found:'Alle {n} Ressourcen wurden in der Ziel-Org gefunden — bereit zum Import',
+    val_org_title:'🌐 VALIDIERUNG GEGEN ORG',
+    export_stop:'⏹ Stopp',
+    export_saved_in:'Gespeichert in',
+    export_errors:'Fehler',
+    export_saved_to:'gespeichert in',
+    export_all_done:'Alle {n} Flows nach „{folder}“ exportiert',
+    export_all_stopped:'Gestoppt — {n} Flows in „{folder}“ gespeichert',
+    ph_search_flow:'🔍  Flow suchen…',
+    ph_choose_flow:'— Flow auswählen —',
+    da_label_sourceint:'Quellintegration (nur deren Aktionen werden angezeigt)',
+    da_choose_int:'— Integration auswählen —',
+    da_pick_int_first:'Wählen Sie eine Quellintegration aus, um ihre Aktionen zu sehen.',
+    da_int_matched:'Zielintegration per Name zugeordnet',
+    da_int_no_name_match:'Keine Zielintegration heißt',
+    da_int_using:'stattdessen wird verwendet',
+    da_int_missing:'Die Ziel-Org hat keine passende Integration für',
+    da_err_no_target_int:'Wählen Sie eine Zielintegration aus',
+    da_warn_type_mismatch:'Quelle und Ziel haben unterschiedliche Integrationstypen',
+    da_sum_ok:'angelegt',
+    da_sum_skipped:'übersprungen',
+    da_sum_failed:'fehlgeschlagen',
+    da_tab_actions:'Data Actions',
+    da_tab_tables:'Datentabellen',
+    oa_home_confirm:'Die Rollen der Clients stattdessen in der Home-Division der Ziel-Org vergeben? ({n} Divisionen existieren im Ziel nicht.) „OK“ für Home, „Abbrechen“, um diese Rollen zu überspringen.',
+    oa_home_used:'Rollen ohne Division im Ziel werden in der Home-Division vergeben',
+    oa_divs_confirm:'{n} Divisionen, an die die Rollen der Clients gebunden sind, existieren in der Ziel-Org nicht. Zuerst anlegen? (Ohne sie können die Rollen den Clients nicht zugewiesen werden.)',
+    oa_divisions:'Divisionen',
+    oa_roles_confirm:'{n} von den Clients verwendete Rollen existieren in der Ziel-Org nicht. Zuerst migrieren? (Client-Credentials-Clients können ohne Rollen nicht angelegt werden.) Hinweis: Der angemeldete Benutzer muss die Rollen im Ziel selbst besitzen, um sie einem Client zuzuweisen.',
+    oa_builtin_missing:'Im Ziel fehlende Standardrollen, die nicht angelegt werden können',
+    da_tab_roles:'Rollen',
+    ro_roles:'ROLLEN',
+    ro_search_ph:'🔍 Rollen suchen…',
+    ro_policies:'Berechtigungsgruppen',
+    ro_skipped:'Übersprungen (verweist auf Ressourcen in der Quelle)',
+    roles_note:'Kopiert eigene Rollen mit ihren Berechtigungen. Standardrollen existieren in jeder Org und werden nicht migriert. Berechtigungen mit einer Bedingung auf bestimmte Divisionen oder Warteschlangen werden übersprungen und gemeldet — sonst würden sie für alles gelten. Migrieren Sie zuerst die Rollen, dann die OAuth-Clients.',
+    da_tab_oauth:'OAuth-Clients',
+    da_tab_integ:'Integrationen',
+    oa_clients:'OAUTH-CLIENTS',
+    ig_integrations:'INTEGRATIONEN',
+    oa_search_ph:'🔍 Clients suchen…',
+    ig_search_ph:'🔍 Integrationen suchen…',
+    ml_migrate_btn:'⚡ Auswahl migrieren',
+    ml_loading:'Lädt…',
+    ml_none:'Nichts gefunden.',
+    ml_exists:'Existiert bereits in der Ziel-Org — übersprungen',
+    oa_roles:'Rollen',
+    oa_missing:'Im Ziel übersprungen',
+    oa_secret_warn:'Secrets können nicht aus Genesys gelesen werden: Die neuen Clients haben NEUE Secrets erhalten, die nur jetzt angezeigt werden. Laden Sie sie unten herunter und bewahren Sie sie sicher auf.',
+    oa_download_secrets:'💾 Secrets herunterladen (JSON)',
+    oauth_note:'Name, Grant-Typ, Redirect-URIs, Scope und Rollen werden kopiert (Rollen und Divisionen werden über den Namen zugeordnet). Das Secret ist neu. Migrieren Sie zuerst die Clients, dann die Integrationen, dann die Data Actions.',
+    integ_note:'Legt die Integration mit demselben Typ und derselben Konfiguration an. Zugangsdaten können nicht kopiert werden: Ein in derselben Sitzung migrierter OAuth-Client wird automatisch verbunden, alles andere wird als manuelle Arbeit gemeldet. Die Integration wird nur aktiviert, wenn die Quelle aktiv war und nichts fehlt.',
+    ig_activated:'Aktiviert',
+    ig_inactive:'Angelegt, aber nicht aktiviert',
+    ig_todo:'Im Ziel anzulegende Zugangsdaten',
+    tip_ml_migrate_btn:'Kopiert die Auswahl in die Ziel-Org. Secrets und Zugangsdaten können nicht kopiert werden — siehe den Text über der Liste.',
+    da_tab_wrapup:'Wrap-up-Codes',
+    wu_codes:'WRAP-UP-CODES',
+    wu_search_ph:'🔍 Codes suchen…',
+    wu_migrate_btn:'⚡ Auswahl migrieren',
+    wu_loading:'Wrap-up-Codes werden geladen…',
+    wu_none:'Keine Wrap-up-Codes gefunden.',
+    wu_exists:'Existiert bereits in der Ziel-Org — übersprungen',
+    tip_wu_migrate_btn:'Kopiert die ausgewählten Wrap-up-Codes (Name und Division) in die Ziel-Org.',
+    dt_tables:'TABELLEN',
+    dt_search_ph:'🔍 Tabellen suchen…',
+    dt_migrate_btn:'⚡ Auswahl migrieren',
+    dt_backup_btn:'💾 Backup herunterladen',
+    dt_loading:'Tabellen werden geladen…',
+    dt_none:'Keine Tabellen gefunden.',
+    dt_columns:'Spalten',
+    dt_created:'Tabelle angelegt',
+    dt_exists:'Existiert bereits in der Ziel-Org — übersprungen',
+    dt_structure_note:'Es wird nur die Struktur migriert — Zeilen werden nicht kopiert.',
+    dep_title:'Abhängigkeiten fehlen in der Ziel-Org',
+    dep_btn_cancel:'Diesen Flow überspringen',
+    dep_btn_continue:'Trotzdem fortfahren',
+    dep_btn_recheck:'Erneut prüfen',
+    dep_fda_title:'BLOCKIERT — MUSS IN DER ZIEL-ORG EXISTIEREN, BEVOR DER FLOW BEFÖRDERT WERDEN KANN',
+    dep_fda_text:'Function Data Actions können von hier aus nicht angelegt werden. Legen Sie sie in Genesys in der Ziel-Org an und klicken Sie auf „Erneut prüfen“. Der Flow wird erst befördert, wenn sie existieren.',
+    dep_fda_copy:'Checkliste kopieren',
+    dep_fda_copied:'Checkliste kopiert',
+    dep_fda_checklist:'Legen Sie diese Function Data Actions in {target} so an, dass sie denen in {source} entsprechen:',
+    dam_title:'Data Actions im Flow',
+    dam_sub:'So heißen sie in der Ziel-Org. Ihre Auswahl wird für die nächste Migration gespeichert.',
+    dam_col_action:'Data Action im Flow',
+    dam_col_target:'In der Ziel-Org',
+    dam_st_exact:'gleich',
+    dam_st_mapped:'gespeichert',
+    dam_st_choose:'auswählen',
+    dam_st_absent:'nicht gefunden',
+    dam_pick:'Aktion auswählen…',
+    dam_keep:'Unverändert lassen',
+    dam_search:'Eine vorhandene Aktion im Ziel auswählen (optional)',
+    dam_hint_absent:'Eine Aktion, die im Ziel nicht existiert, wird im nächsten Schritt zur Migration angeboten — es sei denn, Sie verweisen hier auf eine vorhandene.',
+    dam_remember:'Meine Auswahl für die nächste Migration merken',
+    dam_continue:'Weiter',
+    dam_err_pick:'Wählen Sie in den gelben Zeilen eine Aktion oder „Unverändert lassen“.',
+    dam_err_unknown:'Eine gewählte Aktion existiert in der Ziel-Org nicht.',
+    da_tab_check:'DA-Totaltjek',
+    dc_title:'VOLLSTÄNDIGE PRÜFUNG DER DATA ACTIONS',
+    dc_intro:'Vergleicht jede Data Action der Quelle mit der Ziel-Org nach Kategorie und Name, damit Sie die Namen vor der Flow-Migration klären können. Die Auswahl wird gespeichert und von der Liste im Flow verwendet.',
+    dc_run:'Vollständige Prüfung starten',
+    dc_pick_both:'Wählen Sie zuerst eine Quelle und ein Ziel aus.',
+    dc_same_org:'Quelle und Ziel liegen in derselben Org und haben daher dieselben Data Actions. Es gibt nichts zu vergleichen.',
+    dc_running:'Vergleiche…',
+    dc_t_total:'In der Quelle',
+    dc_t_same:'Übereinstimmend',
+    dc_t_saved:'Gespeicherte Auswahl',
+    dc_t_choose:'Auszuwählen',
+    dc_t_absent:'Fehlt',
+    dc_t_fda:'FDA fehlt',
+    dc_t_contract:'Anderer Vertrag',
+    dc_search:'Suchen…',
+    dc_contracts_btn:'Verträge prüfen',
+    dc_contracts_progress:'Verträge: {done} von {total}',
+    dc_contract_ok:'gleicher Vertrag',
+    dc_use_suggestions:'Vorschläge übernehmen ({n})',
+    dc_save:'Zuordnung speichern',
+    dc_saved_ok:'Die Zuordnung ist gespeichert ({where}).',
+    dc_where_org:'im Manifest der Ziel-Org',
+    dc_where_local:'lokal',
+    dc_d_missing:'{side}: {name} fehlt im Ziel',
+    dc_d_extra:'{side}: {name} ist im Ziel zusätzlich vorhanden',
+    dc_d_type:'{side}: {name} ist in der Quelle {from} und im Ziel {to}',
+    dc_d_required:'{side}: {name} ist in der Quelle {from} und im Ziel {to}',
+    dc_side_input:'Eingabe',
+    dc_side_output:'Ausgabe',
+    dc_req:'erforderlich',
+    dc_opt:'optional',
+    dc_fda_manual:'Function Data Action: muss im Ziel von Hand angelegt werden.',
+    dc_more:'Die ersten {n} werden angezeigt. Verwenden Sie die Suche oder einen Filter, um den Rest zu sehen.',
+    dc_migrate_note:'Fehlende Aktionen werden auf dem Reiter „Data Actions“ migriert.',
+    da_tab_plan:'DA-Setup-Vorschlag',
+    dp_title:'SETUP-VORSCHLAG FÜR DATA ACTIONS',
+    dp_intro:'Schlägt vor, in welchen Integrationen der Ziel-Org die fehlenden Data Actions liegen sollen, je nachdem, wo noch Platz ist. Verschieben Sie im Vorschlag, was nötig ist, und exportieren Sie ihn für den Kunden.',
+    dp_cap_label:'Max. pro Integration',
+    dp_run:'Vorschlag erstellen',
+    dp_t_place:'Zu platzieren',
+    dp_t_choose:'Auszuwählen',
+    dp_t_fda:'FDA von Hand',
+    dp_t_there:'Bereits vorhanden',
+    dp_export_csv:'Nach Excel exportieren',
+    dp_export_print:'Druckbare Seite',
+    dp_sec_ints:'INTEGRATIONEN IN DER ZIEL-ORG',
+    dp_sec_groups:'VORSCHLAG PRO QUELLGRUPPE',
+    dp_sec_manual:'FUNCTION DATA ACTIONS — VON HAND ANGELEGT',
+    dp_inactive:'{n} inaktive Integrationen werden nie vorgeschlagen',
+    dp_st_ok:'Platz',
+    dp_st_near:'fast voll',
+    dp_st_over:'über dem Limit',
+    dp_g_whole:'zusammen',
+    dp_g_split:'aufgeteilt',
+    dp_g_nointeg:'keine Integration',
+    dp_g_nocap:'kein Platz',
+    dp_g_chosen:'ausgewählt',
+    dp_auto:'Vorschlag',
+    dp_unplaced:'{n} ohne Platz',
+    dp_new_int:'Legen Sie in Genesys eine aktive Integration namens {name} mit einer Zugangsdaten-Konfiguration an und erstellen Sie den Vorschlag erneut.',
+    dp_actions:'Aktionen',
+    dp_action_one:'Aktion',
+    dp_inactive_one:'{n} inaktive Integration wird nie vorgeschlagen',
+    pc_ok_one:'{n} Abhängigkeit ist in Ordnung.',
+    dp_none:'Es gibt keine Data Actions zu platzieren.',
+    dp_note_cred:'Das Limit pro Integration ist die von Ihnen eingegebene Zahl; Archy kennt sie nicht. Die Zugangsdaten der Integrationen werden nicht geprüft.',
+    dp_s_new:'Neu',
+    dp_s_nointeg:'Keine Integration im Ziel',
+    dp_s_nocap:'Kein Platz',
+    dp_s_fda:'Function Data Action: von Hand angelegt',
+    dp_s_choose:'Existiert unter einer anderen Kategorie: in der vollständigen Prüfung auswählen',
+    dp_h_srcint:'Quellintegration',
+    dp_h_action:'Data Action',
+    dp_h_srccat:'Kategorie in der Quelle',
+    dp_h_tgtint:'Zielintegration',
+    dp_h_status:'Status',
+    dp_h_int:'Integration',
+    dp_h_existing:'Vorhanden',
+    dp_h_new:'Neu',
+    dp_h_after:'Danach',
+    dp_h_cap:'Limit',
+    dp_print_hint:'Drücken Sie Strg+P, um zu drucken oder als PDF zu speichern.',
+    dp_migrate:'Nach Plan migrieren',
+    dp_confirm:'{n} Data Actions in {k} Integrationen in {target} wie vorgeschlagen anlegen?',
+    dp_confirm_over:'Über dem angegebenen Limit: {names}. Genesys kann sie ablehnen.',
+    dp_stop:'Stopp',
+    dp_stopped:'Gestoppt. Was angelegt wurde, bleibt bestehen.',
+    dp_remember_map:'Merken, wo sie landen',
+    dp_none_to_migrate:'Es gibt keine Aktionen, die nach Plan zu migrieren sind.',
+    dp_map_saved:'Die Zuordnung ist gespeichert: Flows finden die Aktionen in ihrer neuen Integration.',
+    dp_map_err:'Die Zuordnung konnte nicht gespeichert werden',
+    dep_btn_migrate:'Auswahl migrieren und fortfahren',
+    dep_can_migrate:'KANN JETZT MIGRIERT WERDEN',
+    dep_manual:'MUSS VON HAND ANGELEGT WERDEN',
+    dep_reason_function:'Function Data Action — keine API',
+    dep_reason_notinsource:'auch nicht in der Quell-Org vorhanden',
+    dep_reason_manual:'zuerst in der Ziel-Org anlegen',
+    dep_reason_unchecked:'konnte nicht geprüft werden — siehe Fehler',
+    dep_dynamic_skills:'Dieser Flow löst Skills zur Laufzeit mit FindSkill() auf. Sie können nicht im Voraus geprüft werden — prüfen Sie selbst, ob sie in der Ziel-Org existieren.',
+    dep_checking:'Abhängigkeiten werden geprüft…',
+    dep_missing_count:'Abhängigkeiten fehlen',
+    dep_all_present:'Alle Abhängigkeiten existieren in der Ziel-Org',
+    dep_migrating:'Abhängigkeiten werden migriert…',
+    dep_failed_count:'Abhängigkeiten fehlgeschlagen',
+    dep_skipped_flow:'Flow übersprungen',
+    dep_choice:'ENTSCHEIDUNG ERFORDERLICH',
+    dep_choice_create:'In der Ziel-Org anlegen',
+    dep_choice_useHome:'Stattdessen Home verwenden',
+    dep_choice_copy:'Aus der Quell-Org kopieren',
+    dep_choice_skip:'Überspringen',
+    dep_choice_replace:'Durch das TTS des Ziels ersetzen',
+    dep_tts_langs:'Sprachen',
+    dep_tts_novoice:'Keine Stimme im Ziel',
+    dep_tts_replacing:'TTS-Engines, die dem Ziel fehlen, werden auf eine Stimme in derselben Sprache umgestellt',
+    cmp_against:'Mit Org vergleichen (optional)',
+    cmp_title:'Inhaltsvergleich',
+    cmp_close:'Schließen',
+    cmp_running:'Export aus beiden Orgs und Vergleich…',
+    cmp_identical:'Identischer Inhalt',
+    cmp_differences:'Unterschiede im Inhalt',
+    cmp_missing:'Der Flow existiert in der Ziel-Org nicht',
+    cmp_source_version:'Quelle',
+    cmp_target_version:'Ziel',
+    cmp_version_note:'Versionsnummern sind Zähler pro Org und sagen nichts über den Inhalt aus — der Vergleich verwendet den Inhalts-Hash.',
+    cmp_first_diffs:'ERSTE UNTERSCHIEDE',
+    cmp_line:'Zeile',
+    cmp_migrated_at:'Von hier migriert',
+    cmp_drift_source:'Die Quelle hat sich seit der Migration geändert — das Ziel ist veraltet.',
+    cmp_drift_target:'Das Ziel hat sich seit der Migration geändert — jemand hat es direkt in der Ziel-Org bearbeitet.',
+    cmp_drift_both:'Sowohl Quelle als auch Ziel haben sich seit der Migration geändert.',
+    fb_all_types:'Alle Typen',
+    cmp_source_published:'Quelle veröffentlicht',
+    cmp_target_published:'Ziel veröffentlicht',
+    cmp_never_published:'nie veröffentlicht',
+    cmp_published_after:'Das Ziel wurde NACH der Migration veröffentlicht — jemand hat es direkt in der Ziel-Org geändert.',
+    cmp_not_touched:'Das Ziel wurde seit der Migration nicht veröffentlicht.',
+    fb_baseline:'📌 Baseline setzen',
+    fb_baseline_need_org:'Wählen Sie zuerst eine Org zum Vergleichen aus',
+    fb_baseline_running:'Wird erfasst…',
+    fb_baseline_done:'Baseline gesetzt für Flows',
+    fb_baseline_skipped:'übersprungen (bereits mit diesem Tool migriert)',
+    cmp_baseline_ref:'Baseline gesetzt',
+    cmp_provenance:'MIT ARCHYGUI MIGRIERT',
+    cmp_provenance_baseline:'BASELINE',
+    cmp_prov_from:'Migriert von',
+    cmp_prov_action:'Aktion',
+    cmp_prov_when:'Wann',
+    cmp_sync_ok:'Das Ziel entspricht der Quelle {v} — mit ArchyGUI migriert, und der Inhalt ist weiterhin identisch.',
+    cmp_sync_moved:'Das Ziel wurde aus der Quelle {built} gebaut, die jetzt bei {now} steht. Der Inhalt ist weiterhin identisch, die Quelle hat also nur eine neue Versionsnummer erhalten.',
+    fb_publish:'🚀 Veröffentlichen',
+    fb_publish_confirm:'„{name}“ als v{v} in der ausgewählten Org veröffentlichen?',
+    fb_publish_ok:'Veröffentlicht',
+    col_checked_out:'Ausgecheckt',
+    da_tab_prompts:'Benutzer-Prompts',
+    pr_prompts:'PROMPTS',
+    pr_search_ph:'🔍 Prompts suchen…',
+    pr_migrate_btn:'⚡ Auswahl migrieren',
+    pr_loading:'Prompts werden geladen…',
+    pr_none:'Keine Prompts gefunden.',
+    pr_created:'Prompt angelegt',
+    pr_languages:'Sprachen',
+    pr_audio_note:'Sowohl TTS-Text als auch aufgenommenes Audio werden kopiert. Prompts mit Audio sind mit 🔊 markiert.',
+    da_tab_scripts:'Skripte',
+    sc_scripts:'SKRIPTE',
+    sc_search_ph:'🔍 Skripte suchen…',
+    sc_loading:'Skripte werden geladen…',
+    sc_none:'Keine Skripte gefunden.',
+    sc_created:'Skript angelegt',
+    sc_published:'veröffentlicht',
+    sc_draft:'Entwurf',
+    sc_migrate_btn:'⚡ Auswahl migrieren',
+    sc_note:'Das Skript wird als Ganzes exportiert und importiert und im Ziel veröffentlicht, wenn es in der Quelle veröffentlicht ist.',
+    fl_customer:'Kunde',
+    fl_all_customers:'Alle Kunden',
+    fl_type:'Flow-Typ',
+    fl_search:'Suchen',
+    fl_latest_only:'Nur neueste Version',
+    fl_files:'Dateien',
+    fl_older_hidden:'ältere Versionen ausgeblendet',
+    fl_from_export:'aus der Org abgerufen',
+    fl_from_import:'für den Import bereitgestellt',
+    fl_cleanup:'🧹 Aufräumen',
+    fl_cleanup_title:'Exportierte Dateien aufräumen',
+    fl_cleanup_sub:'Die neuesten Versionen jedes Flows behalten, den Rest löschen.',
+    fl_keep:'Pro Flow behalten',
+    fl_cleanup_nothing:'Nichts zu löschen — kein Flow hat mehr als die gewählte Anzahl Versionen.',
+    fl_cleanup_will_delete:'Dateien werden gelöscht',
+    fl_cleanup_run:'{n} Dateien löschen',
+    fl_cleanup_confirm:'{n} Dateien endgültig löschen? Sie können nicht wiederhergestellt werden.',
+    fl_cleanup_done:'Dateien gelöscht',
+    nav_cross:'Kundenübergreifend',
+    cross_title:'Kundenübergreifend',
+    cross_sub:'Flows, die bei mehr als einem Kunden existieren — und ob sie auf dem gleichen Stand sind',
+    cross_loading:'Flows aller Kunden werden abgerufen…',
+    cross_diff_only:'Nur die nicht synchronen',
+    cross_flows:'angezeigt',
+    cross_total:'insgesamt',
+    cross_none:'Keine passenden Flows.',
+    cross_same_version:'gleiche Version',
+    cross_diff_version:'unterschiedliche Versionen',
+    cross_compare:'⇄ Inhalt vergleichen',
+    cross_hashing:'Export bei jedem Kunden…',
+    cross_identical:'Überall identischer Inhalt',
+    cross_variants:'verschiedene Versionen des Inhalts',
+    cross_partial:'Konnte nicht verglichen werden — {failed} von {total} Kunden fehlgeschlagen',
+    cross_insufficient:'Zu wenige Ergebnisse zum Vergleichen',
+    nav_pipeline:'Pipeline',
+    page_pipeline_title:'Pipeline',
+    page_pipeline_sub:'Flows Schritt für Schritt zwischen den Umgebungen einer Gruppe befördern',
+    pl_tenant:'Kunde',
+    pl_group:'Gruppe',
+    pl_show:'Pipeline anzeigen',
+    pl_loading:'Flows aus jeder Umgebung werden abgerufen…',
+    pl_no_groups:'Noch keine Gruppen. Legen Sie unter „Kunden“ Kunde, Gruppe und Stufe für die Umgebungen fest.',
+    pl_search:'🔍  Flows filtern…',
+    pl_only_gaps:'Nur solche, die in einer späteren Stufe fehlen',
+    migrate_only_selected:'Nur Ausgewählte anzeigen', migrate_none_selected:'Noch keine Flows ausgewählt — klicken Sie auf die Flows, die Sie migrieren möchten.', migrate_done_badge:'✓ migriert', paste_list_link:'Liste einfügen', retry_msg:'neuer Versuch', col_in_target:'Im Ziel', fbc_paste_link:'📋 Liste einfügen', fbc_check_btn:'🔍 Inhalt prüfen', fbc_apply_list:'Nur diese anzeigen', fbc_clear_list:'Liste leeren', fbc_missing:'fehlt im Ziel', fbc_there:'vorhanden', fbc_identical:'identisch', fbc_diff:'{n} Unterschiede', fbc_differ:'unterschiedlich', fbc_unchecked:'nicht geprüft', fbc_fetched:'Zielliste abgerufen', work_from:'Von-Org', work_to:'Ziel-Org', work_none:'Keine', da_tab_divisions:'Divisionen', da_tab_skills:'Skills', da_tab_groups:'Gruppen', da_tab_schedules:'Zeitpläne', da_tab_schedulegroups:'Zeitplangruppen', da_tab_queues:'Warteschlangen', da_tab_skillgroups:'Skill-Gruppen', da_tab_teams:'Teams', da_tab_locations:'Standorte', da_tab_utilization:'Auslastungslabels', da_tab_knowledgebases:'Wissensdatenbanken', da_tab_responselibs:'Antwortbibliotheken', da_tab_surveyforms:'Umfrageformulare', da_tab_evalforms:'Bewertungsformulare', da_tab_emergencygroups:'Notfallgruppen', da_tab_contactlists:'Kontaktlisten', da_tab_dnclists:'DNC-Listen', da_tab_rtc:'Vollständige Prüfung (alle Ressourcen)', rtc_title:'VOLLSTÄNDIGE PRÜFUNG ALLER RESSOURCEN', rtc_intro:'Vergleicht jede Ressource der Quelle mit der Ziel-Org: was in beiden existiert, was im Ziel fehlt und was nur im Ziel existiert. Laden Sie das Ergebnis als CSV zur Dokumentation und Verifizierung herunter.', rtc_run:'Vollständige Prüfung starten', rtc_csv:'⬇ CSV herunterladen', rtc_running:'Prüfe {kind} ({n}/{m})…', rtc_ok:'OK', rtc_missing:'Fehlt im Ziel', rtc_extra:'Nur im Ziel', rtc_error:'Konnte nicht geprüft werden', rtc_col_type:'Typ', rtc_col_name:'Name', rtc_col_src:'In der Quelle', rtc_col_tgt:'Im Ziel', rtc_col_status:'Status', rtc_col_detail:'Detail', rtc_col_srcorg:'Quell-Org', rtc_col_tgtorg:'Ziel-Org', rtc_col_time:'Zeit', rtc_col_inboth:'In beiden', rtc_yes:'Ja', rtc_no:'Nein', rtc_only_diff:'Nur Unterschiede anzeigen', rtc_flows:'Flows', rtc_file:'ressourcen-vollpruefung', rtc_cat_diff:'andere Kategorie im Ziel: {cat}', rtc_need_orgs:'Wählen Sie zuerst Quelle und Ziel aus.', rtc_done:'Fertig: {n} Ressourcen in der Quelle, {m} fehlen im Ziel.', rtc_more:'… und {n} weitere (alle stehen in der CSV-Datei)', da_chk_target:'🔎 Ziel-Org prüfen', da_tgt_result:'{n} von {m} existieren in {org} — {x} fehlen', da_tgt_in:'✓ im Ziel', da_tgt_out:'✗ fehlt im Ziel', da_order_note:'Die Reihenfolge folgt den Abhängigkeiten: Jeder Reiter hängt nur von den Reitern davor ab. Migrieren Sie von oben nach unten und schließen Sie mit den Flows unter „Flow migrieren“ ab.', da_depends_on:'Hängt ab von', da_depends_none:'Keine Abhängigkeiten — kann zuerst migriert werden', da_paste_hint:'Ein Name pro Zeile. Eine abschließende Klammer wird ignoriert, wenn die ganze Zeile nicht gefunden wird.', da_paste_apply:'Diese auswählen', ml_search_generic:'🔍 Suchen…', work_swap:'Von und Ziel tauschen', work_clear:'Auswahl aufheben', work_login_q:'{name} ist angemeldet. Als Von-Org oder als Ziel-Org verwenden?', fbc_failed:'konnte nicht geprüft werden', fbc_not_in_source:'steht auf der Liste, aber nicht in der Quelle', fbc_stop:'Stopp', fbc_many:'Der Inhalt von {n} Flows wird verglichen — das kann einige Minuten dauern. Fortfahren?', paste_list_hint:'Ein Flow-Name pro Zeile. Eine abschließende Klammer (z. B. „(latest …)“) wird ignoriert, wenn die ganze Zeile nicht gefunden wird.', paste_list_apply:'Diese Flows auswählen', paste_list_result:'{n} gefunden und ausgewählt, {m} nicht gefunden', skip_identical_label:'Flows überspringen, die im Ziel bereits identisch sind', reload_available:'Eine neue Version wurde gestartet', reload_now:'Seite neu laden', identical_skipped:'identisch mit dem Ziel — übersprungen',
+    migrate_no_match:'Keine Flows entsprechen dem Filter.',
+    pl_flow:'FLOW',
+    pl_missing:'fehlt',
+    pl_draft:'Entwurf',
+    pl_unknown:'unbekannt',
+    pl_promote:'Befördern',
+    pl_count:'Flows angezeigt',
+    pl_problem:'Umgebungen, die nicht gelesen werden konnten',
+    pl_unknown_note:'Eine Umgebung, die nicht gelesen werden konnte, wird als „unbekannt“ angezeigt — nicht als „fehlt“. Wir wissen nicht, was darin ist.',
+    pl_prod_warn:'Das Ziel ist eine Produktivumgebung. Bestätigen Sie die Beförderung.',
+    label_tenant:'Kunde',
+    label_group:'Gruppe',
+    label_stage:'Stufe',
+    stage_none:'— keine Stufe —',
+    hint_grouping:'Kunde + Gruppe bestimmen, zwischen welchen Umgebungen migriert werden darf. Die Gruppe kann ein Land oder ein Unternehmen sein — sie ist die Pipeline.',
+    btn_save_grouping:'Speichern',
+    btn_edit_grouping:'⚙ Einstellungen',
+    cc_ungrouped:'nicht gruppiert',
+    grouping_saved:'Einstellungen gespeichert',
+    pl_needs_publish:'Veröffentlichen Sie den Flow zuerst in der Quellumgebung — ein Entwurf wurde nicht getestet',
+    pl_check:'⇄ Inhalt prüfen',
+    pl_check_all:'⇄ Alle prüfen, die an mehr als einem Ort vorhanden sind',
+    pl_checking:'Export und Vergleich…',
+    pl_in_sync:'synchron',
+    pl_drift:'weicht ab',
+    pl_unchecked:'nicht geprüft',
+    pl_pull_back:'⟵ Zurückholen',
+    pl_pull_back_title:'Die spätere Version in diese Umgebung zurückholen, damit Sie sehen, was gemacht wurde',
+    pl_only_later:'existiert nur in einer späteren Stufe',
+    pl_changed_since:'außerhalb der Pipeline veröffentlicht',
+    pl_check_failed:'konnte nicht geprüft werden',
+    pl_only_multi:'Nur Flows, die in mehr als einer Umgebung vorhanden sind',
+    pl_checked_count:'geprüft',
+    pl_overwrites:'Diese Umgebung weicht ab. Eine Beförderung hierher verwirft den Unterschied — holen Sie ihn zuerst zurück, wenn Sie sehen möchten, worin er besteht',
+    demo_title:'DEMO-KUNDE',
+    demo_hint:'Vier Umgebungen (dev · test · uat · prod) und drei Flows, die nur lokal existieren. Keine Zugangsdaten, keine Aufrufe an Genesys oder Archy — zum Ausprobieren der Pipeline, ohne eine echte Org zu berühren.',
+    feat_title:'AKTIVIERUNGSSCHLÜSSEL', feat_hint:'Schaltet interne Funktionen und Beta-Funktionen frei (Flow Builder und der Demo-Kunde). Ohne Schlüssel bleiben sie ausgeblendet.', feat_ph:'Aktivierungsschlüssel', feat_unlock:'Aktivieren',
+    feat_on:'Interne Funktionen sind aktiv.', feat_lock:'Wieder sperren', feat_bad:'Unbekannter Schlüssel.',
+    mig_auto:'Bericht (CSV) nach jeder Migration speichern', mig_download:'⬇ Gesamtbericht herunterladen', mig_clear:'Leeren', mig_clear_confirm:'Den Gesamtbericht leeren ({n} Zeilen)?',
+    mig_st_ok:'Erfolgreich', mig_st_skipped:'Übersprungen', mig_st_failed:'Fehlgeschlagen', mig_file:'migrationsbericht', mig_type_flow:'Flow',
+    mig_tip:'Der Bericht sammelt alle Migrationen in diesem Browser — Ressourcen, Flows und ihre Abhängigkeiten — mit dem, was gut ging und was nicht. Secrets und Passwörter sind nie enthalten.',
+    btn_demo_create:'+ Demo-Kunde anlegen',
+    btn_demo_reset:'↺ Demo zurücksetzen',
+    btn_demo_remove:'✕ Demo entfernen',
+    demo_created:'Demo-Kunde angelegt — zu finden unter Pipeline',
+    demo_reset_done:'Die Demo wurde zurückgesetzt',
+    demo_removed:'Der Demo-Kunde wurde entfernt',
+    demo_confirm_remove:'Die vier Umgebungen des Demo-Kunden und alle seine Flows entfernen?',
+    demo_renamed_to:'befördert als',
+    rel_title:'Release Notes',
+    rel_none:'Noch keine Releases.',
+    rel_kind_promotion:'Beförderung',
+    rel_kind_rollback:'Rollback',
+    rel_kind_republish:'Erneut veröffentlicht',
+    rel_lines:'Zeilen',
+    rel_new:'Neu in dieser Umgebung — nichts Früheres zum Vergleichen',
+    rel_nochange:'Keine Inhaltsänderungen',
+    rel_show_diff:'Änderungen anzeigen',
+    rel_note_ph:'Notiz zum Release (z. B. Ticketnummer)',
+    rel_copy:'Markdown kopieren',
+    rel_copy_sel:'Auswahl kopieren',
+    rel_download:'.md herunterladen',
+    rel_copied:'Kopiert',
+    rel_rolled_back:'Zurückgerollt',
+    rel_by:'von',
+    rel_cascade:'Erneut veröffentlichte Flows',
+    rel_truncated:'gekürzt',
+    rel_select_some:'Wählen Sie mindestens ein Release aus',
+    rel_not_live:'nur importiert, nicht veröffentlicht',
+    rel_close:'Schließen',
+    rb_btn:'Zurückrollen auf',
+    rb_title:'Den Inhalt von vor der letzten Beförderung erneut veröffentlichen',
+    rb_confirm:'„{name}“ auf {label} zurückrollen?\n\nDer Inhalt von vor der letzten Beförderung wird als neue Version erneut veröffentlicht.',
+    rb_done:'zurückgerollt auf',
+    rb_running:'Wird zurückgerollt…',
+    rel_local_only:'nur dieser PC',
+    rel_local_only_title:'Die Umgebung hat keine Manifest-Tabelle, oder sie konnte nicht geschrieben werden. Das Release ist von einem anderen PC aus weder sichtbar noch zurückrollbar.',
+    rep_title:'Flows erneut veröffentlichen, die das Modul verwenden',
+    rep_intro:'Ein gemeinsames Modul wirkt in den aufrufenden Flows erst, wenn diese erneut veröffentlicht werden. Diese Flows in {env} verwenden „{module}“:',
+    rep_none:'Kein Flow in dieser Umgebung verwendet das Modul.',
+    rep_draft:'hat einen unveröffentlichten Entwurf — dieser wird ersetzt',
+    rep_unpublished:'nicht veröffentlicht',
+    rep_via:'über',
+    rep_btn:'Auswahl erneut veröffentlichen',
+    rep_skip:'Überspringen',
+    rep_board:'Verwender erneut veröffentlichen',
+    rep_board_title:'Die Flows finden und erneut veröffentlichen, die dieses gemeinsame Modul verwenden',
+    rep_done:'erneut veröffentlicht',
+    rep_loading:'Flows, die das Modul verwenden, werden gesucht…',
+    rep_running:'Wird erneut veröffentlicht…',
+    demo_name_kept:'befördert — Name unverändert',
+    demo_badge:'DEMO — berührt keine echte Org',
+    demo_publish:'Veröffentlichen',
+    demo_publish_title:'Nur Demo: so tun, als hätte jemand weitergearbeitet und erneut veröffentlicht. Der Name bleibt.',
+    pl_unpromoted:'{n} Version(en) nicht befördert',
+    pl_published_title:'Die eigene veröffentlichte Version der Umgebung — nicht dasselbe wie das Versionssuffix im Namen',
+    pl_changed_since_title:'Wir haben diese Umgebung bei v{v} verlassen ({when}). Jetzt ist sie höher, jemand hat hier also seitdem veröffentlicht.',
+    pl_ahead_of_prev:'{n} Version(en) vor der vorherigen Stufe',
+    pl_ahead_of_prev_title:'In einer Kette sinken die Versionsnummern in Richtung Ziel — die Arbeit geschieht vorn. Steht eine spätere Stufe höher, wurde wahrscheinlich direkt dort gearbeitet. Hinweis: Eine Umgebung, die lange vor der Pipeline in Gebrauch war, kann aus ganz gewöhnlichen Gründen hoch stehen.',
+    mf_title:'GEMEINSAMES MANIFEST',
+    mf_hint:'Jede Umgebung hat eine Datentabelle, die sich selbst beschreibt — was die Org enthält und wann es dazukam. Da jede Org nur über sich selbst schreibt, können zwei Personen auf verschiedenen PCs bei derselben Zelle nie widersprüchlich sein. Ohne die Tabelle greifen wir auf die lokale Datei zurück, die nicht geteilt wird.',
+    mf_has_table:'hat Tabelle',
+    mf_no_table:'keine Tabelle',
+    mf_rows:'Zeilen',
+    mf_create:'Tabelle anlegen',
+    mf_created:'Die Manifest-Tabelle wurde angelegt',
+    mf_confirm:'Die Datentabelle „ArchyGUI_Manifest“ in {env} anlegen? Dadurch wird ein neues Objekt in der Org des Kunden geschrieben.',
+    mf_by:'erfasst von',
+    mf_local_only:'lokale Datei — nicht geteilt',
+    mf_by_machine:'erfasst von (PC-Benutzer — die Umgebung verwendet Client Credentials, also gibt es keinen Genesys-Benutzer)',
+    pl_csv:'⭳ Als CSV herunterladen',
+    pl_csv_title:'Lädt genau die jetzt angezeigten Zeilen herunter, unter Berücksichtigung von Filter und Suche. Semikolon-getrennt, UTF-8 mit BOM, damit Excel Umlaute korrekt anzeigt.',
+    csv_flow:'Flow',
+    csv_type:'Typ',
+    csv_name:'Name',
+    csv_version:'Version',
+    csv_published:'veröffentlicht',
+    csv_note:'Notiz',
+    csv_by:'erfasst von',
+    csv_content:'Inhalt',
+    csv_missing:'fehlt',
+    pl_envs_in_org:'Umgebungen',
+    label_prefix:'Präfix',
+    pfx_none:'kein Präfix',
+    hint_prefix:'Nur wenn sich mehrere Umgebungen eine Org teilen und durch ein Präfix unterschieden werden — z. B. DEV_. Für Prod und für Umgebungen mit eigener Org leer lassen. Datentabellen folgen derselben Konvention.',
+    label_orglabel:'Org-Bezeichnung',
+    label_deployperm:'Deploy-Berechtigung',
+    label_deploygroup:'Deploy-Gruppe',
+    label_newsecret:'Neues Client Secret',
+    fh_more:'Erklärung anzeigen',
+    fh_name:'Der Name der Umgebung, wie er überall in der App angezeigt wird — z. B. „Sabio APS - PROD“. Wird auch als Name des Exportordners verwendet, daher dürfen zwei Umgebungen keine fast identischen Namen haben.',
+    fh_region:'Die Genesys-Region, in der die Org liegt. Sie steht in der Adresse, wenn Sie bei Genesys angemeldet sind, z. B. apps.mypurecloud.de = EU Frankfurt.',
+    fh_clientid:'Die ID des OAuth-Clients in Genesys (Admin → Integrationen → OAuth). Der Name des Clients wird unter dem Feld angezeigt, damit Sie ihn unter den Clients des Kunden wiederfinden. Für PKCE: Typ „Code Authorization“ mit PKCE und Redirect-URI http://localhost:3737/auth/callback.',
+    fh_tenant:'Der Kunde, zu dem die Umgebung gehört. Umgebungen eines Kunden werden in der Seitenleiste gruppiert, und eine Anmeldung darf nie in der Org eines anderen Kunden landen.',
+    fh_group:'Die Pipeline. Nur Umgebungen mit demselben Kunden + derselben Gruppe können untereinander befördert werden — z. B. ein Land, eine Marke oder eine Abteilung.',
+    fh_stage:'Wo die Umgebung in der Pipeline steht: dev → test → uat → prod. Zum Schreiben in Prod ist eine persönliche Anmeldung mit Deploy-Rechten nötig.',
+    fh_prefix:'Nur wenn sich mehrere Umgebungen eine Genesys-Org teilen: Flows werden am Präfix erkannt, z. B. DEV_Welcome. Für Prod und für Umgebungen mit eigener Org leer lassen.',
+    fh_orglabel:'Eine Überschrift über den Pipeline-Spalten, wenn sich mehrere Umgebungen eine Org teilen, z. B. „Gemeinsame Non-Prod-Org“. Nur zur Anzeige.',
+    fh_division:'Die Genesys-Division, in der Flows und Tabellen abgelegt werden, wenn sie in dieser Umgebung ankommen. Leer = Home.',
+    fh_color:'Die Farbe, mit der die Umgebung in der Pipeline, in der Seitenleiste und auf den Karten dargestellt wird. Standard ist die Stufenfarbe: dev grün, test gelb, uat orange, prod rot.',
+    fh_auth:'OAuth (PKCE): Sie melden sich als Sie selbst an, und es wird kein Secret gespeichert — erforderlich, um in Prod zu schreiben. Client Credentials: Client ID und Secret werden lokal gespeichert.',
+    fh_secret:'Nur Client Credentials. Leer lassen, um das aktuelle Secret zu behalten — es wird nie wieder angezeigt.',
+    fh_deployperm:'Bei einer Prod-Anmeldung prüft das Tool, ob Ihr Genesys-Benutzer diese Berechtigung hat — sonst können Sie lesen, aber nicht deployen. Leer lassen, um den Standard architect:flow:publish (das Recht, Flows zu veröffentlichen) zu verwenden. Nur ausfüllen, wenn der Kunde eine andere oder strengere Berechtigung verlangt.',
+    fh_deploygroup:'Optional. Geben Sie den Namen einer Genesys-Gruppe ein, wenn nur deren Mitglieder in Prod deployen dürfen — z. B. „Prod Release“. Leer = keine Gruppe erforderlich.',
+    auth_recommended:'empfohlen',
+    auth_creds_note:'Diese Umgebung verwendet Client Credentials (ältere Einrichtung). OAuth (PKCE) wird empfohlen: Wählen Sie es oben aus und geben Sie die Client ID eines PKCE-Clients in derselben Org ein.',
+    auth_creds_note_prod:'Prod mit Client Credentials kann nur gelesen, nicht beschrieben werden. Wechseln Sie zu OAuth (PKCE) und geben Sie die Client ID eines PKCE-Clients in der Prod-Org ein.',
+    oauth_client_name:'OAuth-Client in Genesys: {name} · {type}',
+    oauth_client_login:'Melden Sie sich bei der Umgebung an, um den Namen des OAuth-Clients in Genesys zu sehen.',
+    oauth_client_forbidden:'Der Name des Clients kann nicht gelesen werden — dem Benutzer oder Client fehlt die Berechtigung oauth:client:view.',
+    oauth_client_failed:'Der Name des Clients konnte nicht abgerufen werden: {err}',
+    perm_area_flows_read:'Flows lesen und exportieren',
+    perm_area_flows_write:'Flows importieren und migrieren',
+    perm_area_flows_publish:'Flows veröffentlichen',
+    perm_area_archy_client:'Archy (schlägt seinen eigenen Client nach)',
+    perm_area_datatables:'Datentabellen und Manifest',
+    perm_area_dataactions:'Data Actions',
+    perm_area_prompts:'Prompts',
+    perm_area_scripts:'Skripte',
+    perm_area_divisions:'Divisionen',
+    perm_area_queues:'Warteschlangen (Abhängigkeiten)',
+    perm_area_users:'Benutzer (Abhängigkeiten)',
+    perm_area_dependencies:'Abhängigkeiten zwischen Flows',
+    perm_missing_title:'⚠ Berechtigungen fehlen — {n} Funktion(en) werden fehlschlagen',
+    perm_all_ok:'✓ Verbindung und alle Berechtigungen sind in Ordnung',
+    perm_ok_partial:'✓ Keine fehlenden Berechtigungen gefunden — es konnte aber nicht alles verifiziert werden',
+    perm_missing:'fehlt',
+    perm_unknown:'konnte nicht verifiziert werden',
+    perm_source_probe:'Die Rollen des Clients konnten nicht gelesen werden (erfordert oauth:client:view und authorization:role:view), daher wurde nur der Lesezugriff getestet.',
+    perm_close:'Schließen',
+    stages_title:'STUFEN',
+    stages_hint:'Die Reihenfolge in der Pipeline. Fügen Sie z. B. staging oder preprod hinzu und sortieren Sie mit den Pfeilen. Prod steht immer zuletzt, da Anmeldung und Deploy-Rechte daran hängen. Eine Stufe, die von einer Umgebung verwendet wird, kann nicht entfernt werden.',
+    stages_prod_fixed:'immer zuletzt — Anmeldung und Deploy-Rechte',
+    stages_in_use:'von {n} Umgebung(en) verwendet',
+    stages_unused:'nicht in Verwendung',
+    stages_add_ph:'neue Stufe, z. B. staging',
+    btn_stages_add:'+ Hinzufügen',
+    btn_stages_save:'Stufen speichern',
+    stages_saved:'✓ Stufen gespeichert.',
+    stages_bad_name:'Verwenden Sie Kleinbuchstaben, Ziffern und Bindestriche — höchstens 20 Zeichen, beginnend mit einem Buchstaben.',
+    stages_exists:'Die Stufe existiert bereits.',
+    tip_stage_up:'Die Stufe in der Pipeline nach vorn verschieben',
+    tip_stage_down:'Die Stufe in der Pipeline nach hinten verschieben',
+    tip_stage_remove:'Die Stufe entfernen — nur möglich, wenn keine Umgebung sie verwendet',
+    act_cancel:'Abbrechen',
+    act_close:'Schließen',
+    act_what:'Was passiert:',
+    act_watch:'Achtung:',
+    act_promote_title:'⟶ {flow} von {from} nach {to} befördern',
+    act_promote_s1:'Die veröffentlichte Version v{v} von {name} wird aus {from} exportiert.',
+    act_promote_s2_exists:'Sie wird in {to} importiert und als neue Version veröffentlicht. {to} steht derzeit bei v{tv} als {tname}.',
+    act_promote_s2_new:'Der Flow existiert in {to} noch nicht — er wird angelegt und veröffentlicht.',
+    act_real_route:'Sie gelangen zu „Flow migrieren“ mit ausgewählter Quelle, ausgewähltem Ziel und Flow. Dort werden Abhängigkeiten und Division geprüft, bevor etwas nach {to} geschrieben wird.',
+    act_demo_route:'Demo: Das geschieht nur in der Demo-Datei auf diesem Rechner — es wird nichts an Genesys gesendet.',
+    act_module_after:'Es ist ein gemeinsames Modul: Danach können Sie die Flows in {to}, die es verwenden, erneut veröffentlichen.',
+    act_warn_prod:'Das Ziel ist Prod: Dafür ist Ihre Prod-Anmeldung nötig, und die Änderung trifft den laufenden Betrieb.',
+    act_warn_past:'{to} wurde seit der letzten Beförderung außerhalb der Pipeline veröffentlicht. Diese Änderungen werden überschrieben.',
+    act_warn_ahead:'{to} liegt {n} Version(en) vor {from}. Wenn jemand {to} direkt bearbeitet hat, gehen diese Änderungen verloren — verwenden Sie zuerst ⇄ Inhalt prüfen und ⟵ Zurückholen, wenn Sie sie sehen möchten.',
+    act_btn_promote:'⟶ Befördern',
+    act_pull_title:'⟵ {flow} von {from} nach {to} holen',
+    act_pull_s1:'Der Flow existiert nur in einer späteren Stufe. Die veröffentlichte Version wird aus {from} abgerufen.',
+    act_pull_s2:'Sie wird in {to} angelegt und veröffentlicht, damit die Kette von hier aus starten kann.',
+    act_pull_prefix:'Der Name erhält das Präfix {p}.',
+    act_back_title:'⟵ {flow} von {from} nach {to} zurückholen',
+    act_back_s1:'Der Inhalt in {to} und {from} unterscheidet sich (gefunden durch ⇄ Inhalt prüfen).',
+    act_back_s2:'Die Version in {from} wird in {to} importiert und veröffentlicht, damit Sie sehen und damit arbeiten können, was tatsächlich in {from} läuft.',
+    act_warn_back:'Was jetzt in {to} steht, wird ersetzt. Es kann danach mit ↩ zurückgerollt werden.',
+    act_btn_pull:'⟵ Holen',
+    act_rb_title:'↩ {flow} in {env} zurückrollen',
+    act_rb_s1:'Die Version von vor der letzten Beförderung ({label}) wird in {env} erneut importiert und veröffentlicht.',
+    act_rb_s2:'Sie wird in Genesys zu einer neuen Version — Verlauf und Release Notes bleiben erhalten.',
+    act_btn_rb:'↩ Zurückrollen',
+    act_demo_pub_title:'▲ {flow} in {env} veröffentlichen (Demo)',
+    act_demo_pub_s1:'Tut so, als hätte jemand weitergearbeitet und den Flow veröffentlicht — nur Demo, es wird nichts an Genesys gesendet.',
+    act_demo_pub_s2:'Die Version steigt, aber der Name bleibt, sodass Sie sehen, wie die Tafel reagiert, wenn eine Umgebung vorausläuft.',
+    act_demo_pub_count:'Anzahl der Veröffentlichungen',
+    act_btn_demo_pub:'▲ Veröffentlichen',
+    pl_buttons_help:'? Schaltflächen',
+    tip_pl_buttons_help:'Was jede Schaltfläche auf der Tafel bewirkt',
+    pl_buttons_help_title:'Die Schaltflächen auf der Tafel',
+    plb_promote_btn:'⟶ Befördern',
+    plb_promote:'Verschiebt die veröffentlichte Version eine Stufe weiter — aus der Spalte links hierher. Nur eine veröffentlichte Version kann befördert werden. Sie sehen immer, was passiert, bevor es passiert.',
+    plb_pull_here_btn:'⟵ Hierher holen',
+    plb_pull_here:'Der Flow existiert nur in einer späteren Stufe. Holt ihn hierher, z. B. wenn dev gerade erst eingerichtet wurde.',
+    plb_pull_back_btn:'⟵ Zurückholen',
+    plb_pull_back:'Wird angezeigt, wenn ⇄ Inhalt prüfen einen Unterschied gefunden hat. Holt die Version der nächsten Stufe hierher zurück, damit Sie sehen, was sich geändert hat.',
+    plb_check_btn:'⇄ Inhalt prüfen',
+    plb_check:'Exportiert den Flow aus jeder Umgebung und vergleicht den Inhalt. Schreibt nichts. Versionsnummern lassen sich orgübergreifend nicht vergleichen.',
+    pc_btn:'Prüfen',
+    pc_btn_title:'Prüfen, ob der Flow befördert werden kann — ohne etwas zu importieren',
+    pc_running:'prüfe',
+    pc_title:'Prüfung vor der Beförderung: {flow} ({from} → {to})',
+    pc_demo:'Die Prüfung benötigt echte Umgebungen. Demo-Umgebungen haben nichts, wogegen geprüft werden könnte.',
+    pc_s_block:'BLOCKIERT DIE BEFÖRDERUNG',
+    pc_s_decide:'ZU ENTSCHEIDEN',
+    pc_s_warn:'WIRD BEI DER BEFÖRDERUNG ODER VON HAND ERLEDIGT',
+    pc_c_fda:'Function Data Action: muss zuerst im Ziel existieren',
+    pc_c_nowhere:'existiert weder in der Quelle noch im Ziel',
+    pc_c_migrate:'wird mitmigriert, wenn Sie das wählen',
+    pc_c_unchecked:'konnte im Ziel nicht geprüft werden',
+    pc_c_division_denied:'Sie dürfen in dieser Division keine Flows anlegen',
+    pc_c_choice:'erfordert eine Auswahl',
+    pc_c_notsrc:'existiert weder in der Quelle noch im Ziel: von Hand anlegen',
+    pc_c_manual:'muss im Ziel von Hand angelegt werden',
+    pc_decide:'Existiert im Ziel unter einer anderen Kategorie: bei der Beförderung oder in der vollständigen Prüfung auswählen.',
+    pc_can:'Nichts blockiert. Der Flow kann befördert werden.',
+    pc_cannot:'Die Beförderung kann nicht durchgeführt werden, bevor das Rote behoben ist.',
+    pc_ok_n:'{n} Abhängigkeiten sind in Ordnung.',
+    plb_precheck_btn:'✔ Prüfen',
+    plb_precheck:'Führt die erste Phase einer Beförderung aus — exportiert den Flow und untersucht das Ziel —, importiert aber nichts. Zeigt, was blockiert, was entschieden werden muss und was unterwegs erledigt wird.',
+    fda_badge:'FDA',
+    fda_badge_title:'Verwendet Function Data Action: {names}. Sie kann nicht migriert werden und muss im Ziel angelegt werden.',
+    fda_missing:'FDA fehlt hier',
+    fda_missing_title:'Der Flow in der Umgebung links verwendet {names}, die hier nicht existiert. Legen Sie sie in Genesys an, bevor Sie den Flow hierher befördern.',
+    plb_fda_btn:'⚙ FDA / ✗ FDA fehlt hier',
+    plb_fda:'⚙ FDA: Der Flow verwendet eine Function Data Action. ✗ FDA fehlt hier: Der Flow in der Umgebung links verwendet eine, die in dieser Umgebung nicht existiert, und die Beförderung ist blockiert, bis sie angelegt wird. Stammt aus dem Dependency Tracking von Genesys, das nur die veröffentlichte Version kennt und einige Minuten hinterherhinken kann.',
+    plb_rollback_btn:'↩',
+    plb_rollback:'Rollt die letzte Beförderung in diese Umgebung auf die vorherige Version zurück.',
+    plb_republish_btn:'🔁 Verwender',
+    plb_republish:'Nur gemeinsame Module: veröffentlicht die Flows der Umgebung, die das Modul verwenden, erneut, damit sie die neue Version ausführen.',
+    plb_notes_btn:'📝',
+    plb_notes:'Release Notes: was jede Beförderung geändert hat, wer und wann.',
+    plb_demo_publish_btn:'▲ Veröffentlichen',
+    plb_demo_publish:'Nur Demo-Umgebungen: tut so, als hätte jemand den Flow N-mal veröffentlicht, damit Sie sehen, wie die Tafel reagiert.',
+    align_label:'Versionsnummer an die Quelle angleichen',
+    fh_align:'Nach dem Import wird der Flow im Ziel so oft zusätzlich veröffentlicht, bis seine Versionsnummer der Quelle entspricht — z. B. dev v10 → test v10 statt v3. Jede Veröffentlichung ist eine echte Version in Genesys mit demselben Inhalt. Kann nicht herunterzählen, höchstens 25 zusätzliche pro Flow. Nur mit der Aktion „publish“.',
+    act_align_offer:'Versionsnummer angleichen: {to} wird {s} statt {t}. Das braucht {n} zusätzliche Veröffentlichung(en) mit demselben Inhalt.',
+    act_align_ahead:'{to} endet bei {t}, bereits höher als {s} in der Quelle — Versionsnummern können nicht herunterzählen, daher lassen sie sich nicht angleichen.',
+    act_align_too_many:'Das Angleichen bräuchte {n} zusätzliche Veröffentlichungen — mehr als das Limit von {max}, daher wird es nicht angeboten.',
+    align_done:'Version angeglichen: {n} zusätzliche Veröffentlichung(en), das Ziel steht jetzt bei v{v}.',
+    align_partial:'Angleichen nach {done} von {n} Veröffentlichungen gestoppt: {err}',
+    align_ahead:'Nicht angeglichen: Das Ziel steht bei v{t}, höher als v{s} in der Quelle.',
+    align_too_many:'Nicht angeglichen: Es wären {n} Veröffentlichungen nötig, das Limit ist {max}.',
+    align_equal:'Die Version stimmte bereits mit der Quelle überein.',
+    align_unknown:'Nicht angeglichen: Die Versionsnummer konnte nicht gelesen werden.',
+    pfx_title:'Präfix für {env} ändern: {old} → {new}',
+    pfx_s1:'Die Namen werden in der Org über die Genesys-API geändert. Flows behalten ihre ID, jede Version erhält den neuen Namen, und alles, was auf sie zeigt — Rufnummern, Warteschlangen, andere Flows — funktioniert weiter.',
+    pfx_s2:'Schlägt eine Umbenennung fehl, werden die anderen zurückgerollt, und das Präfix wird nicht geändert.',
+    pfx_s3:'Entfernen Sie alle Häkchen, um nur das Präfix zu speichern — die Namen in der Org bleiben, wie sie sind.',
+    pfx_sec_flows:'Flows ({n})',
+    pfx_sec_tables:'Datentabellen ({n})',
+    pfx_sec_manifest:'Manifest-Tabelle',
+    pfx_conflict:'Name existiert bereits — übersprungen',
+    pfx_called_by_name:'wird über den Namen aufgerufen',
+    pfx_warn_by_name:'Gemeinsame Module und Bots werden im exportierten YAML über den Namen aufgerufen. Die App korrigiert die Namen bei der nächsten Beförderung selbst, gespeicherte YAML-Dateien und andere Tools müssen aber von Hand korrigiert werden.',
+    pfx_warn_conflict:'Einige neue Namen existieren in der Org bereits. Sie werden übersprungen — benennen Sie das Duplikat zuerst in Genesys um oder löschen Sie es.',
+    pfx_btn:'Umbenennen und speichern',
+    pfx_running:'Umbenennung in der Org…',
+    pfx_done:'✓ {n} Name(n) geändert — das Präfix ist jetzt {new}.',
+    pfx_failed:'✗ Die Umbenennung ist fehlgeschlagen und wurde zurückgerollt — das Präfix ist unverändert: {err}',
+    pfx_unreadable:'Die Org konnte nicht gelesen werden, daher können die Namen nicht mitgeändert werden: {err}\n\nPräfix trotzdem speichern? Flows mit dem alten Präfix bleiben dann als eigene Zeilen auf der Tafel stehen.',
+    gd_title:'Einrichtungsassistent — {env}',
+    gd_open_guide:'📋 Einrichtungsassistent',
+    gd_optional:'(optional)',
+    tip_btn_guide:'Einrichtungsassistent: eine Checkliste in einem neuen Fenster, um die Org und die Umgebung korrekt einzurichten',
+    btn_guide:'📋 Einrichtung',
+    card_guide_todo:'Der Einrichtungsassistent wurde nicht durchlaufen ({n} von {m})',
+    card_guide_done:'Einrichtung durchlaufen',
+    guide_prompt_text:'Die Einrichtung von {env} wurde nicht durchlaufen. Der Assistent prüft die Berechtigungen, findet, was in der Org bereits eingerichtet ist, und verknüpft die Umgebung.',
+    guide_prompt_open:'Assistent öffnen',
+    guide_prompt_later:'Später',
+    guide_prompt_never:'Für diese Umgebung nicht mehr anzeigen',
+    gd_intro:'Gehen Sie die Punkte der Reihe nach durch. Punkte mit „Prüfen“ werden von der App verifiziert; die anderen haken Sie selbst ab. Das Fenster kann während der Arbeit neben Genesys geöffnet bleiben.',
+    gd_progress:'{n} von {m} erledigt',
+    gd_check_all:'▶ Alle prüfen',
+    gd_check:'Prüfen',
+    gd_pending:'Prüfe…',
+    gd_close:'Fenster schließen',
+    gd_popup_blocked:'Der Browser hat das Fenster blockiert. Erlauben Sie Pop-ups für localhost und versuchen Sie es erneut.',
+    gd_unknown_env:'Die Umgebung existiert nicht mehr.',
+    gd_done_all:'✓ Alle Punkte sind erledigt — die Umgebung ist eingerichtet.',
+    gd_need_login:'Melden Sie sich zuerst an der Umgebung an — siehe Punkt „Anmelden“.',
+    gd_not_logged_in:'Nicht angemeldet.',
+    gd_env_first:'Füllen Sie zuerst Kunde und Gruppe aus.',
+    gd_client_title:'Einen OAuth-Client in Genesys anlegen',
+    gd_client_body_oauth:'Admin → Integrationen → OAuth → Client hinzufügen. Wählen Sie den Grant-Typ „Code Authorization“ und aktivieren Sie PKCE. Kopieren Sie die Client ID in die Umgebungseinstellungen. Der Client braucht keine Rollen — bei PKCE werden die Berechtigungen Ihres eigenen Benutzers verwendet.',
+    gd_client_body_creds:'Admin → Integrationen → OAuth → Client hinzufügen. Wählen Sie den Grant-Typ „Client Credentials“ und geben Sie dem Client in allen Divisionen eine Rolle mit den Berechtigungen aus dem nächsten Punkt. Kopieren Sie Client ID und Secret in die Umgebungseinstellungen. Client Credentials werden nur außerhalb von Prod verwendet.',
+    gd_client_found:'Gefunden: {name} · {type}',
+    gd_client_wrong:'Der Client hat den Typ {type} — die Umgebung braucht {want}.',
+    gd_redirect_title:'Redirect-URI am Client setzen',
+    gd_redirect_body:'Die autorisierten Redirect-URIs des OAuth-Clients müssen {uri} enthalten — sonst kann die Anmeldung nicht in die App zurückkehren.',
+    gd_redirect_ok:'{uri} ist gesetzt.',
+    gd_redirect_missing:'{uri} fehlt — der Client hat: {list}',
+    gd_perms_title:'Die erforderlichen Berechtigungen erteilen',
+    gd_perms_body_oauth:'Bei PKCE braucht Ihr eigener Benutzer die Berechtigungen, über eine Rolle in Genesys. Die App verwendet diese:',
+    gd_perms_body_creds:'Die Rolle des Clients braucht diese Berechtigungen:',
+    gd_perms_missing:'Fehlt: {list}',
+    gd_env_title:'Die Umgebung in der App ausfüllen',
+    gd_env_body:'Unter Kunden → ⚙ Einstellungen: Kunde und Gruppe (das ist die Pipeline), Stufe und ein Präfix, wenn sich mehrere Umgebungen die Org teilen. Region und Client ID müssen zur Org passen.',
+    gd_env_missing:'Fehlt: {list}',
+    gd_login_title:'Anmelden',
+    gd_login_btn:'Anmelden',
+    gd_login_body:'Melden Sie sich an der Umgebung an und wählen Sie auf der Genesys-Anmeldeseite die richtige Organisation. Eine Anmeldung in der falschen Org wird abgelehnt.',
+    gd_login_ok:'Angemeldet bei {org}',
+    gd_division_title:'Die Division existiert',
+    gd_division_body:'Flows und Tabellen werden in der Division {div} abgelegt. Sie muss in der Org existieren.',
+    gd_division_ok:'{div} existiert.',
+    gd_division_missing:'Die Division {div} existiert in der Org nicht.',
+    gd_manifest_title:'Die Manifest-Tabelle anlegen',
+    gd_manifest_body:'Die Tabelle {table} in der Org führt den Verlauf, damit mehrere Personen an einem Kunden arbeiten und dasselbe sehen können.',
+    gd_manifest_create:'Tabelle anlegen',
+    gd_manifest_ok:'{table} existiert ({n} Zeilen).',
+    gd_manifest_missing:'Die Tabelle existiert noch nicht.',
+    gd_deploy_title:'Deploy-Rechte für Prod',
+    gd_deploy_body:'Bei einer Prod-Anmeldung prüft das Tool, ob Ihr Benutzer die Berechtigung {perm} hat.',
+    gd_deploy_group:'Und dass Sie in der Gruppe {g} sind.',
+    gd_deploy_missing:'Fehlt: {list}',
+    gd_flows_title:'Flows in die Umgebung bringen',
+    gd_flows_body:'Ist die Umgebung leer, verwenden Sie ⟵ Hierher holen in der Pipeline oder „Flow migrieren“. Der Flow-Browser zeigt, was bereits in der Org ist.',
+    gd_discover_title:'Finden, was bereits eingerichtet ist',
+    gd_discover_body:'ArchyGUI sucht in der Org nach seinen eigenen Tabellen. Wurde die Umgebung von einem anderen PC aus eingerichtet, ist sie dort — und Sie übernehmen sie, statt sie neu einzurichten.',
+    gd_env_body_loose:'Die Umgebung hat keine Stufe: Sie wird nur für Import und Export verwendet und gehört nicht zu einer Pipeline. Region und Client ID müssen zur Org passen.',
+    gd_env_loose_ok:'Nur Import/Export — keine Stufe.',
+    disc_found:'Die Org {org} hat {n} ArchyGUI-Umgebung(en):',
+    disc_none:'Die Org {org} hat noch keine ArchyGUI-Tabellen.',
+    disc_no_setup:'Einrichtung unbekannt (Tabelle von vor v1.48) — Stufe auswählen',
+    disc_by:'Zuletzt geändert von {who}, {when}',
+    disc_wrong_org:'Die Tabelle gibt an, zu einer anderen Org zu gehören. Sie wird nicht übernommen.',
+    disc_self:'Das ist diese Umgebung.',
+    disc_local:'Bereits auf diesem PC als {name}.',
+    disc_use:'Diese verwenden',
+    disc_template:'Neu daraus anlegen',
+    tip_disc_use:'Macht diese Umgebung zu der, die die Tabelle beschreibt. Die Einrichtung wird aus der Org abgerufen, und es wird nichts geschrieben.',
+    tip_disc_template:'Legt eine neue Umgebung in derselben Org mit dieser Einrichtung als Vorlage an. Sie wählen Stufe und Präfix.',
+    disc_elsewhere_title:'Die Pipeline hat auch Umgebungen in anderen Orgs:',
+    disc_added:'Hinzugefügt. Melden Sie sich daran an, um die Org zu bestätigen.',
+    disc_clientid_ph:'Client ID (PKCE-Client in dieser Org)',
+    disc_add:'Hinzufügen',
+    disc_add_here:'Als neue Umgebung hinzufügen',
+    tip_disc_add_here:'Fügt die Umgebung, die die Karte beschreibt, als zusätzliche Umgebung auf diesem PC in derselben Org hinzu. Es wird nichts in die Org geschrieben.',
+    disc_added_here:'Als neue Umgebung hinzugefügt. Melden Sie sich daran an, um zu bestätigen.',
+    tip_disc_add:'Fügt die Umgebung auf diesem PC hinzu. Die Org-ID wird sofort gesetzt, daher wird die Anmeldung abgelehnt, wenn Sie eine andere Org wählen.',
+    disc_conflict_title:'Die Org und dieser PC sind uneinig:',
+    disc_this_pc:'dieser PC',
+    disc_the_org:'die Org',
+    disc_take_org:'Die der Org verwenden',
+    disc_keep_local:'Die dieses PCs behalten',
+    disc_applied:'Aus der Org übernommen: {list}',
+    msg_stages_added:'Neue Stufen aus der Org: {list}. Laden Sie die Seite neu, um sie in den Listen zu sehen.',
+    disc_sync_pending_prod:'Die Einrichtung ist noch nicht nach Prod geschrieben — das geschieht bei der nächsten Anmeldung mit Deploy-Rechten.',
+    disc_sync_pending:'Die Einrichtung ist noch nicht in die Org geschrieben — es wird bei der nächsten Anmeldung oder Prüfung erneut versucht.',
+    disc_sync_wrote:'Die Einrichtung ist in die Org geschrieben.',
+    disc_sync_ok:'Die Einrichtung ist mit der Org synchron.',
+    disc_loose_ok:'Nur Import/Export — es wird nichts in die Org geschrieben.',
+    disc_loose:'Nur Import/Export',
+    tip_disc_loose:'Die Umgebung wird nur zum Importieren und Exportieren von Flows verwendet. Sie erhält keine Stufe, und in der Org des Kunden wird nichts angelegt.',
+    disc_new:'Neu anlegen',
+    disc_pipeline:'Eine Pipeline starten',
+    tip_disc_pipeline:'Gibt der Umgebung eine Stufe und legt ihre Manifest-Tabelle in der Org an.',
+    disc_form_template:'Neue Umgebung auf Basis von {name}',
+    disc_form_pipeline:'Neue Pipeline-Umgebung',
+    disc_taken:'In der Org bereits verwendete Präfixe: {list}',
+    disc_create:'Anlegen',
+    disc_cancel:'Abbrechen',
+    disc_table_created:'Die Manifest-Tabelle wurde mit der Einrichtung darin angelegt.',
+    disc_table_blocked:'Die Tabelle wurde nicht angelegt: Das Schreiben in Prod erfordert eine Anmeldung mit Deploy-Rechten. Melden Sie sich erneut an und legen Sie sie im Schritt „Manifest-Tabelle“ an.',
+    disc_pick_stage:'Wählen Sie eine Stufe.',
+    disc_conflict_short:'Die Org und dieser PC sind uneinig — wählen Sie unten.',
+    disc_linked:'Verknüpft mit {table}.',
+    disc_choose:'Wählen Sie unten, was die Umgebung sein soll.',
+    sync_conflict:'Die Einrichtung von {env} wurde in der Org geändert, und dieser PC hat eine ungeschriebene Änderung. Wählen Sie im Assistenten, wer recht hat.',
+    sync_applied:'Die Org hat {env} geändert: {list}',
+    mf_rebuild:'Neu aufbauen',
+    tip_mf_rebuild:'Legt die Tabelle an, falls sie fehlt, und schreibt die Einrichtung sowie eine Zeile pro Flow der Umgebung. Der Verlauf wird von diesem PC übernommen, wo er existiert.',
+    mf_rebuild_confirm:'Das Manifest in {env} neu aufbauen? Die Tabelle wird angelegt, falls sie fehlt, und pro Flow wird eine Zeile in der Org des Kunden geschrieben. Bereits vorhandene Zeilen bleiben unberührt.',
+    mf_rebuild_running:'Das Manifest wird neu aufgebaut…',
+    mf_rebuilt:'Das Manifest ist neu aufgebaut: {n} Zeilen geschrieben, alle mit Verlauf von diesem PC. {k} Zeilen existierten bereits.',
+    mf_rebuilt_partial:'Das Manifest ist neu aufgebaut: {n} Zeilen geschrieben, {h} mit Verlauf von diesem PC — der Rest ist eine Baseline dessen, was die Org jetzt enthält. {k} Zeilen existierten bereits.',
+    cc_setup_pending:'Die Einrichtung ist nicht in die Org geschrieben',
+    tip_setup_pending:'Eine Änderung auf diesem PC wartet darauf, in die Tabelle der Umgebung in der Org geschrieben zu werden — meist, weil eine Anmeldung fehlt. Sie wird geschrieben, sobald das möglich ist.',
+    mf_setup_pending:'Einrichtung nicht geschrieben',
+    mf_setup_ok:'Einrichtung',
+    env_color_label:'Farbe', color_auto:'Stufenfarbe', color_green:'Grün', color_yellow:'Gelb', color_orange:'Orange', color_red:'Rot', color_blue:'Blau', color_grey:'Grau',
+    prod_deploy_perm:'Erfordert Berechtigung: architect:flow:publish',
+    prod_deploy_group:'Erfordert Gruppe (optional)',
+    prod_auth_label:'Authentifizierung',
+    prod_secret_ph:'Neues Secret (beim Wechsel zu Credentials)',
+    prod_lock_creds:'🔒 Prod mit Client Credentials: lesbar, Schreibzugriffe sind aber gesperrt. Wechseln Sie unter ⚙ Einstellungen zu OAuth (PKCE).',
+    prod_lock_login:'🔒 Zum Deployen nach Prod anmelden',
+    prod_lock_ok:'🔓 {who} kann {min} Min. deployen',
+    prod_lock_expired:'🔒 Die Deploy-Rechte sind abgelaufen — bitte erneut anmelden',
+    prod_lock_denied:'⛔ {who} darf nicht deployen — es fehlt {missing}',
+    prod_missing_permission:'Berechtigung {v}',
+    prod_missing_group:'Gruppe „{v}“',
+    prod_missing_lookup:'Abfrage ({v})',
+    prod_gate_login:'{msg}\n\nJetzt anmelden?',
+    prod_gate_title:'Prod ist gesperrt',
+    demo1_name:'Demo 1 — eine Org pro Umgebung',
+    demo2_name:'Demo 2 — virtuelle Umgebungen per Präfix',
+    demo1_desc:'Vier Orgs, je eine Umgebung.',
+    demo2_desc:'DEV_, TEST_ und UAT_ teilen sich eine Org; Prod hat eine eigene und kein Präfix.',
+    pl_pull_here:'⟵ Hierher holen',
+    pl_pull_here_title:'Den Flow aus der nächsten späteren Stufe in diese Umgebung herunterholen. Hat die Umgebung ein Präfix, erhält der Flow es unterwegs.',
+    label_division:'Division',
+    division_home:'Home (Standard)',
+    division_need_org:'Wählen Sie zuerst eine Region und geben Sie Zugangsdaten ein — die Divisionen werden dann aus der Org abgerufen',
+    division_load_failed:'Divisionen konnten nicht abgerufen werden',
+    division_not_in_org:'(in der Org nicht gefunden)',
+    boot_no_conventions:'{file} konnte nicht vom Server abgerufen werden. Laden Sie die Seite neu — bis dahin sind Stufenreihenfolge und Versionssuffix unbekannt.',
+    hint_division:'Die Division gehört zur Umgebung. Befördern Sie von DEV nach UAT, ziehen Flow und Tabelle mit um. Ist keine gesetzt, wird Home verwendet.',
+    action_default_note:'standardmäßig veröffentlicht — der Flow ist sofort live',
+    action_prod_note:'Prod: standardmäßig NICHT veröffentlicht — bleibt als Entwurf zum Veröffentlichen durch Sie',
+    tree_ungrouped:'Nicht gruppiert',
+    help_customers:'Eine Umgebung ist eine Genesys-Org, gesehen durch einen OAuth-Client.\n• Neue Umgebungen verwenden immer **OAuth (PKCE)**: Sie melden sich als Sie selbst bei Genesys an, und es wird kein Secret gespeichert. Ältere Umgebungen mit Client Credentials sind **gelb** markiert.\n• **⚙ Einstellungen** enthält Name, Kunde, Gruppe, Stufe, Präfix, Org-Bezeichnung, Farbe, Division, Authentifizierung und Prod-Anforderungen. Jedes Feld hat ein **ⓘ** — fahren Sie darüber oder klicken Sie darauf, um zu sehen, wofür es dient. Ungültige Zeichen und Namen, die sich einen Ordner teilen würden, werden beim Speichern abgelehnt.\n• **Kunde + Gruppe** bestimmen, zwischen welchen Umgebungen migriert werden darf — die Gruppe ist die Pipeline, benannt nach einem Land oder einem Unternehmen.\n• **Stufe** ist dev, test, uat oder prod und legt die Reihenfolge in der Pipeline fest. Unter **Stufen** am Seitenende können Sie eigene hinzufügen, z. B. staging oder preprod — prod steht immer zuletzt.\n• **Farbe**: Jede Umgebung wird in ihrer Stufenfarbe angezeigt — dev grün, test gelb, uat orange, prod rot — in der Pipeline, in der Seitenleiste und auf den Karten. Wählen Sie unter ⚙ Einstellungen eine andere.\n• **Richtige Org bei der Anmeldung**: Die Anmeldung prüft, in welcher Org Sie gelandet sind. Wählen Sie auf der Genesys-Anmeldeseite die falsche (z. B. die eines Kunden über Trusted Org), wird das abgelehnt. Die Org wird nach der Anmeldung neben der Umgebung angezeigt.\n• **Präfix** wird nur verwendet, wenn sich mehrere Umgebungen eine Org teilen, erkannt z. B. an DEV_. Ändern Sie es, zeigt ein Dialog, welche Flows, Datentabellen und welche Manifest-Tabelle in der Org mit umbenannt werden — sie behalten ihre ID. Für Prod leer lassen.\n• **Prod erfordert eine Prod-Anmeldung**: Bei der Anmeldung werden die Berechtigung (standardmäßig architect:flow:publish) und optional eine Gruppe geprüft. Das Recht gilt 30 Minuten. Stufe, Authentifizierung und Anforderungen einer Prod-Umgebung können nur mit gültiger Prod-Anmeldung geändert werden.\n• **📋 Einrichtungsassistent**: Die Schaltfläche **📋 Einrichtung** auf einer Karte öffnet eine Checkliste in einem neuen Fenster zum Einrichten von Org und Umgebung. Die Schaltflächen „Prüfen“ verifizieren für Sie. Wurde er nicht durchlaufen, wird er nach der Anmeldung oder dem Verbindungstest angeboten.\n• **Anmelden, wo Sie sind**: Braucht eine Umgebung eine Anmeldung, erscheint oben auf jeder Seite eine Leiste mit einer Schaltfläche „Anmelden“. Auch das 🔒 neben der Umgebung in der Seitenleiste meldet an, und die Seite wird danach neu geladen.\n• **Suchen** Sie die Umgebungen über den Karten, oder zeigen Sie nur die an, die eine Anmeldung erfordern. Das Formular und die Demo-Kunden lassen sich aufklappen.\n• **Demo-Kunden** sind rein lokal — keine Anmeldung, keine Aufrufe an Genesys.\n• **📋 Der Assistent findet, was bereits eingerichtet ist:** Nach der Anmeldung sucht er in der Org nach ArchyGUI-Tabellen. Von einem anderen PC eingerichtet? Übernehmen Sie es mit **Diese verwenden**. Die Umgebungen der Pipeline in anderen Orgs (z. B. Prod) können von dort hinzugefügt werden.\n• Eine Umgebung **ohne Stufe** dient nur dem Import/Export — in ihrer Org wird nichts geschrieben.\n• Die Einrichtung liegt in der Manifest-Tabelle, und **die Org gewinnt**. Eine Änderung hier wird sofort dorthin geschrieben; die Felder des Prod-Schutzes werden von außen nie gelockert.',
+    help_pipeline:'Flows als Zeilen, die Umgebungen der Gruppe als Spalten in Stufenreihenfolge.\n• Versionsnummern **können nicht** orgübergreifend verglichen werden — sie werden pro Org gezählt. Verwenden Sie **⇄ Inhalt prüfen**, das Einzige, was entscheidet, ob zwei Umgebungen übereinstimmen.\n• **Grün** bedeutet auf dem richtigen Weg veröffentlicht. **Rot** bedeutet außerhalb der Pipeline veröffentlicht oder mehr Versionen als die Stufe davor.\n• **Jede Schaltfläche zeigt zuerst, was passieren wird** — Flow, von und nach sowie Warnungen zu Prod oder zu Änderungen, die verloren gingen — und Sie können abbrechen. **? Schaltflächen** erklärt sie alle.\n• **Versionsnummer angleichen**: Bei ⟶ Befördern kann das Ziel so oft zusätzlich veröffentlicht werden, dass es zur Nummer der Quelle passt (z. B. dev v10 → test v10). Herunterzählen ist nicht möglich.\n• **⟶ Befördern** bewegt jeweils eine Stufe. Nur eine veröffentlichte Version kann befördert werden — ein Entwurf ist ungetestet. Prod erfordert Ihre Prod-Anmeldung.\n• **⟵ Hierher holen** holt einen Flow aus einer späteren Stufe, z. B. wenn dev gerade erst eingerichtet wurde.\n• **↩** rollt die letzte Beförderung zurück, und **📝** zeigt Release Notes.\n• Wird ein **gemeinsames Modul** befördert oder zurückgerollt, wird Ihnen angeboten, die Flows dieser Umgebung, die es verwenden, erneut zu veröffentlichen. **🔁** tut dasselbe, wenn das Modul direkt in Architect geändert wurde. Wurde ein Modul nach den Flows veröffentlicht, die es verwenden, steht das oben auf der Tafel, die Zellen sind mit ⚠ markiert und 🔁 wird gelb.\n• Das **gemeinsame Manifest** führt den Verlauf in der Org, damit mehrere Personen an einem Kunden arbeiten und dieselbe Wahrheit sehen können.',
+    help_flows:'Die Flows der Umgebung abrufen, durchsuchen und filtern. Teilen sich mehrere Umgebungen eine Org, werden nur die eigenen dieser Umgebung angezeigt.\n• Nach **Flow-Typ** filtern — die Liste wird aus den Typen gefüllt, die die Umgebung tatsächlich hat.\n• **Veröffentlichen** setzt einen bereits migrierten Entwurf live, ohne erneut etwas aus der Quelle abzurufen. Bei einem gemeinsamen Modul wird Ihnen dann angeboten, die Flows, die es verwenden, erneut zu veröffentlichen.\n• **Gemeinsame Module werden geprüft**, jedes Mal wenn die Liste abgerufen wird: Wurde ein Modul **nach** einem Flow veröffentlicht, der es verwendet, läuft der Flow noch mit der alten Version. Das wird in einem gelben Kasten mit einer Schaltfläche zum erneuten Veröffentlichen angezeigt, und die Zeilen sind mit ⚠ markiert.\n• **🔁 Verwender** bei einem gemeinsamen Modul listet jeden Flow auf, der es verwendet.\n• **⇄ Vergleichen** mit einer anderen Org vergleicht den **Inhalt**, nicht die Versionsnummern.\n• **📌 Baseline setzen** erfasst, was die Org jetzt enthält, damit das Tool später erkennen kann, wenn jemand direkt veröffentlicht — auch bei Flows, die es nie selbst migriert hat.',
+    help_cross:'Zeigt die Flows, die bei **mehr als einem Kunden** existieren — etwa dasselbe gemeinsame Modul bei zehn Kunden.\n• Die Übersicht beruht auf einem Aufruf pro Kunde und ist daher schnell.\n• **⇄ Inhalt vergleichen** exportiert den Flow bei jedem Kunden und vergleicht den Hash. Das dauert, daher läuft es nur für die Zeile, die Sie anfordern.\n• Konnte eine Org nicht gelesen werden, wird das gesagt — es wird **nie** „identisch“ gemeldet, wenn eine Antwort fehlt.',
+    help_migrate:'Aus einer Org exportieren und direkt in eine andere importieren, in zwei Phasen.\n• **Prüfen** — der Flow wird exportiert, und die Ziel-Org wird auf alles untersucht, worauf er verweist. Es wird noch nichts geschrieben.\n• **Import** — erst nach Ihrer Auswahl. Fehlt etwas, können Tabellen, Data Actions, gemeinsame Module, Benutzer-Prompts und Skripte vor dem Flow migriert werden — haken Sie sie im Dialog an.\n• Hat das Ziel ein **Präfix** oder eine andere **Division**, werden der Flow und seine Verweise unterwegs umbenannt.\n• Die **Importaktion** folgt dem Ziel: Alles außer Prod wird standardmäßig veröffentlicht und ist sofort live. Prod bleibt als Entwurf, den Sie veröffentlichen.\n• Das Schreiben nach **Prod** erfordert Ihre Prod-Anmeldung mit der Berechtigung — fehlt sie, wird Ihnen die Anmeldung angeboten.\n• Wird ein **gemeinsames Modul** migriert, wird Ihnen angeboten, die Flows im Ziel, die es verwenden, erneut zu veröffentlichen.\n• Warteschlangen, Skills und Wrap-up-Codes müssen von Hand angelegt werden — sie können von hier nicht migriert werden.\n• **🚀 Migration starten** steht über der Flow-Liste und ist so erreichbar, ohne an Hunderten von Flows vorbeizuscrollen.\n• Verwendet der Flow eine **Function Data Action**, die im Ziel fehlt, ist die Beförderung **blockiert**, bis sie in Genesys angelegt wurde. Klicken Sie auf **Erneut prüfen**, sobald sie existiert.\n• Hat eine **Data Action** im Ziel einen anderen Namen — etwa in einer anderen Integration —, werden die Data Actions des Flows aufgelistet, und Sie wählen, auf welche im Ziel sie zeigen sollen. Die Auswahl wird für das nächste Mal gespeichert.',
+    help_dataactions:'Migriert, was kein Flow ist: **Data Actions**, **Datentabellen**, **Benutzer-Prompts** und **Skripte**.\n• Data Actions gehören zu einer Integration. Wählen Sie die Quellintegration, dann werden nur deren Aktionen angezeigt, sodass die Gruppierung im Ziel erhalten bleibt.\n• Datentabellen migrieren die **Struktur** — die Spalten. Die Zeilen kommen nicht mit.\n• Benutzer-Prompts bringen sowohl den TTS-Text als auch aufgenommenes Audio mit. Prompts mit Audio sind mit 🔊 markiert.\n• Skripte werden als Ganzes exportiert und importiert und im Ziel veröffentlicht, wenn sie in der Quelle veröffentlicht sind.\n• **Function Data Actions können nicht migriert werden** — ihre URL ist eine ID für eine Funktion, die nur in der Quell-Org existiert.\n• Der Reiter **Vollständige Prüfung** stellt jede Data Action der Quelle nach Kategorie und Name der Ziel-Org gegenüber: *Übereinstimmend*, *Gespeicherte Auswahl*, *Auszuwählen*, *Fehlt* und *FDA fehlt*. Hier können Sie eine Aktion auf die Aktion zeigen lassen, die im Ziel so heißt, die Auswahl speichern oder entfernen und prüfen, ob die Verträge (Eingabe und Ausgabe) übereinstimmen.\n• Der Reiter **Setup-Vorschlag** schlägt vor, in welchen aktiven Integrationen des Ziels die fehlenden Data Actions liegen sollen, je nachdem, wo Platz ist (Sie geben das Limit pro Integration ein). Die Aktionen einer Quellintegration bleiben möglichst zusammen. Eine Gruppe lässt sich verschieben, und der Vorschlag kann für den Kunden nach Excel oder als druckbare Seite exportiert werden.\n• **💾 Backup herunterladen** auf den Reitern Data Actions und Datentabellen lädt die ausgewählten als lokale JSON-Datei herunter: Aktionen vollständig (Vertrag, Konfiguration und ein evtl. Entwurf), Tabellen mit der gesamten Struktur (das Schema, keine Zeilen). Es wird nur gelesen — ein Ziel muss nicht gewählt werden.',
+    help_export:'Exportiert Flows in YAML-Dateien auf diesem Rechner.\n• Wählen Sie eine Umgebung — ihre Flows werden sofort aufgelistet. Teilen sich mehrere Umgebungen eine Org, werden nur die eigenen dieser Umgebung angezeigt.\n• Zum Filtern tippen. `*` zeigt alle, und ein Stern im Text ist ein Platzhalter: `DEV_*log` findet DEV_Create Logitems.\n• Der Typ wird beim Auswählen des Flows automatisch gesetzt.\n• **Alle Flows exportieren** ruft die gesamte Umgebung mit Fortschrittsanzeige ab und lässt sich abbrechen.\n• Die Dateien landen unter `flows/<Umgebung>/` und werden auch von Migration und Vergleich verwendet.',
+    help_import:'Einen Flow aus YAML anlegen, aktualisieren oder veröffentlichen.\n• Text einfügen, eine Datei hochladen oder hineinziehen.\n• **🔍 YAML validieren** prüft die Syntax im Browser, ohne etwas aufzurufen.\n• **🌐 Gegen Org prüfen** schlägt nach, ob Division, Warteschlangen, Tabellen, Data Actions und Prompts im Ziel existieren — **bevor** Sie importieren.\n• Die **Importaktion** legt fest, ob der Flow angelegt, aktualisiert oder angelegt und veröffentlicht wird.\n• Veröffentlichen Sie ein **gemeinsames Modul**, wird Ihnen anschließend angeboten, die Flows, die es verwenden, erneut zu veröffentlichen.\n• Der Import nach **Prod** erfordert Ihre Prod-Anmeldung mit der Berechtigung.',
+    wiz_beta_note:'Beta — prüfen Sie das YAML vor dem Import immer mit 🔍 YAML validieren und 🌐 Gegen Org prüfen.',
+    help_flowbuilder:'**Beta.** Erzeugt ein YAML-Gerüst für einen neuen Flow, damit Sie es nicht von Hand schreiben müssen.\n• Die Funktion ist noch in der Beta — prüfen Sie das Ergebnis vor dem Import immer.\n• Wählen Sie Flow-Typ und Sprache, geben Sie einen Namen ein und erhalten Sie gültiges YAML zurück.\n• Das Ergebnis landet in „YAML importieren“, wo Sie es vor dem Import anpassen können.\n• Es ist ein **Ausgangspunkt**, kein fertiger Flow — die Logik selbst bauen Sie in Architect oder durch Bearbeiten des YAML.',
+    help_files:'Die YAML-Dateien auf diesem Rechner.\n• Die Dateien stammen aus dem YAML-Export **und** aus Migrationen und Vergleichen — deshalb können Dateien auftauchen, die Sie nicht selbst exportiert haben.\n• Nach Kunde und Typ filtern und nur die neueste Version jedes Flows sehen.\n• **An Import senden** legt die Datei auf die Seite „YAML importieren“ — sie importiert nicht von selbst.\n• **Aufräumen** behält die zwei neuesten Versionen jedes Flows, damit Sie darauf zurückgreifen können.',
+    help_syslog:'Alles, was das Tool getan hat, neueste zuerst.\n• Nach Zeitspanne, Stufe, Aktion, Kunde und Freitext filtern.\n• Fehlende Abhängigkeiten bei einer Migration landen hier, sodass Sie sie später finden.\n• **SECURITY** zeigt Prod-Anmeldungen, wer Deploy-Rechte bekam oder nicht und warum, sowie jeden abgelehnten Schreibversuch nach Prod.\n• Zugangsdaten werden **nie** ins Protokoll geschrieben: Secrets werden maskiert und Client IDs gekürzt.',
+    help_flowbuilder_title:'Flow Builder',
+    help_btn_title:'So verwenden Sie diese Seite',
+    da_target_failed:'Die Ziel-Org konnte nicht gelesen werden.',
+    rep_result:'{ok} erneut veröffentlicht · {fail} nicht möglich',
+    rep_result_intro:'Beim erneuten Veröffentlichen wird die veröffentlichte Version noch einmal veröffentlicht — und der Flow wird dabei gegen die Org in ihrem heutigen Zustand geprüft. Alles, was seit der letzten Veröffentlichung des Flows geändert oder gelöscht wurde, stoppt ihn.',
+    rep_why_tts_voice:'Der Flow verwendet die TTS-Stimme „{value}“ ({lang}), die die Org nicht mehr hat.',
+    rep_why_tts_default:'Die Org hat keine Standard-TTS-Stimme für {lang}, das der Flow unterstützt.',
+    rep_fix_tts:'Wählen Sie in Architect unter „Supported Languages“ des Flows eine vorhandene Stimme aus und veröffentlichen Sie den Flow.',
+    rep_why_missing:'Der Flow verweist auf Folgendes, das in der Org nicht mehr existiert: {what}{where}.',
+    rep_fix_missing:'Legen Sie es neu an, oder ändern Sie den Flow in Architect so, dass er auf ein vorhandenes zeigt, und veröffentlichen Sie ihn.',
+    rep_why_empty:'Das Feld „{field}“ muss ausgefüllt sein, ist aber leer{where}.',
+    rep_fix_empty:'Füllen Sie es in Architect aus und veröffentlichen Sie den Flow.',
+    rep_why_locked:'Der Flow ist in Architect ausgecheckt (gesperrt).',
+    rep_fix_locked:'Lassen Sie ihn in Architect einchecken und versuchen Sie es erneut.',
+    rep_why_other:'Archy hat den Flow abgelehnt.',
+    rep_fix_other:'Siehe die Details unten, korrigieren Sie den Flow in Architect und versuchen Sie es erneut.',
+    rep_what_queue:'eine Warteschlange',
+    rep_what_user:'einen Benutzer',
+    rep_what_datatable:'eine Datentabelle',
+    rep_what_dataaction:'eine Data Action',
+    rep_what_prompt:'einen Prompt',
+    rep_what_schedule:'einen Zeitplan',
+    rep_what_flow:'einen Flow',
+    rep_what_other:'etwas („{field}“)',
+    rep_where:' (in {where})',
+    rep_details:'Details von Archy',
+    rep_debug:'Vollständiges Archy-Protokoll',
+    login_bar_needs:'🔒 „{env}“ erfordert eine Anmeldung.',
+    login_bar_btn:'Anmelden',
+    login_bar_done:'✓ Bei „{env}“ angemeldet — die Seite wird neu geladen.',
+    cust_search_ph:'🔍  Umgebungen suchen — Name, Kunde, Gruppe, Stufe',
+    cust_count:'{n} von {total} Umgebungen',
+    cust_only_login:'Nur solche, die eine Anmeldung erfordern',
+    tree_login_tip:'Nicht angemeldet — zum Anmelden klicken',
+    tree_logged_in_tip:'Angemeldet',
+    card_badge_demo:'🧪 Demo',
+    pl_stale_summary:'⚠ {env}: {m} gemeinsame(s) Modul(e) neuer als {n} Flow(s), die sie verwenden',
+    pl_refreshed:'Die Pipeline wurde aktualisiert — das Manifest hat sich geändert, z. B. durch eine Kollegin oder einen Kollegen auf einem anderen PC.',
+    pl_mf_missing:'⚠ {env}: Die Manifest-Tabelle fehlt in der Org',
+    pl_stale_checking:'Gemeinsame Module werden geprüft…',
+    pl_stale_failed:'{env}: Gemeinsame Module konnten nicht geprüft werden',
+    stale_checking:'Es wird geprüft, ob gemeinsame Module neuer sind als die Flows, die sie verwenden…',
+    stale_ok:'✓ Jeder Flow ist nach den gemeinsamen Modulen veröffentlicht, die er verwendet.',
+    stale_banner:'Das gemeinsame Modul „{module}“ (v{v}, veröffentlicht {when}) ist neuer als {n} Flow(s), die es verwenden. Sie laufen noch mit der alten Version:',
+    stale_btn:'🔁 Erneut veröffentlichen',
+    stale_failed:'Gemeinsame Module konnten nicht geprüft werden',
+    stale_badge_module:'⚠ {n} Flow(s) nicht erneut veröffentlicht',
+    stale_badge_flow:'⚠ älter als {module}',
+    rep_uptodate:'✓ bereits nach dem Modul veröffentlicht',
+    tip_stale_btn:'Öffnet die Liste der Flows, die das Modul verwenden, mit den Flows auf der alten Version vorausgewählt.',
+    tip_pl_show:'Ruft jede Umgebung der Gruppe ab und zeigt die Flows nebeneinander.',
+    tip_fb_baseline:'Erfasst, wie die Flows der Vergleichs-Org jetzt aussehen, damit spätere Änderungen außerhalb des Tools erkannt werden können.',
+    tip_btn_reload:'Ruft die Liste erneut aus der Org ab.',
+    tip_btn_run_migration:'Exportiert die ausgewählten Flows aus der Quelle und importiert sie ins Ziel.',
+    tip_btn_export:'Exportiert den ausgewählten Flow über Archy als YAML.',
+    tip_btn_export_all:'Exportiert jeden Flow der Umgebung in den Ordner „flows“.',
+    tip_btn_download:'Speichert das exportierte YAML als Datei.',
+    tip_btn_choose_file:'Eine YAML-Datei vom Datenträger auswählen.',
+    tip_btn_import:'Importiert das YAML in die ausgewählte Org — anlegen, aktualisieren oder veröffentlichen.',
+    tip_btn_validate_yaml:'Prüft die YAML-Syntax lokal, ohne die Org zu berühren.',
+    tip_btn_check_org:'Prüft, ob die vom Flow verwendeten Warteschlangen, Datentabellen, Prompts usw. in der Org existieren.',
+    tip_da_migrate_btn:'Kopiert die ausgewählten Data Actions in die Ziel-Org.',
+    tip_da_backup_btn:'Lädt die ausgewählten Data Actions (vollständig, mit Vertrag und Konfiguration) als lokale JSON-Datei herunter. Es wird nichts in eine Org geschrieben.',
+    tip_dt_migrate_btn:'Kopiert die Struktur der ausgewählten Datentabellen in die Ziel-Org.',
+    tip_dt_backup_btn:'Lädt die Struktur (Schema) der ausgewählten Datentabellen als lokale JSON-Datei herunter. Zeilen sind nicht enthalten, und es wird nichts in eine Org geschrieben.',
+    tip_pr_migrate_btn:'Kopiert die ausgewählten Prompts samt Audio in die Ziel-Org.',
+    tip_sc_migrate_btn:'Kopiert die ausgewählten Skripte in die Ziel-Org und veröffentlicht sie, wenn sie in der Quelle veröffentlicht sind.',
+    tip_fl_cleanup:'Zeigt zuerst, welche alten YAML-Dateien gelöscht werden können. Ohne Bestätigung wird nichts gelöscht.',
+    tip_btn_auto_refresh_off:'Aktualisiert das Protokoll automatisch alle 5 Sekunden.',
+    tip_btn_auto_refresh_on:'Beendet die automatische Aktualisierung.',
+    tip_btn_clear_log:'Leert das Systemprotokoll.',
+    tip_btn_update:'Ruft das Protokoll erneut ab.',
+    tip_btn_check_update:'Prüft auf GitHub, ob eine neuere Version von Archy GUI vorliegt.',
+    tip_dep_btn_cancel:'Überspringt diesen Flow und macht mit den nächsten weiter.',
+    tip_dep_btn_continue:'Importiert den Flow ohne die fehlenden Abhängigkeiten — Archy kann ihn ablehnen.',
+    tip_dep_btn_migrate:'Migriert zuerst die ausgewählten Abhängigkeiten ins Ziel, dann den Flow.',
+    tip_rel_copy_sel:'Kopiert die Release Notes der Ausgewählten in die Zwischenablage.',
+    tip_rel_download:'Lädt die Release Notes der Ausgewählten als Markdown-Datei herunter.',
+    tip_rep_skip:'Schließt, ohne etwas erneut zu veröffentlichen.',
+    tip_rep_btn:'Veröffentlicht die ausgewählten Flows erneut, damit sie die neue Version des Moduls verwenden.',
+    tip_btn_login:'Als Sie selbst bei Genesys anmelden (PKCE).',
+    tip_btn_test:'Prüft die Verbindung und ob der Client die von Archy benötigten Berechtigungen hat.',
+    tip_btn_edit_grouping:'Name, Kunde, Gruppe, Stufe, Präfix, Division, Authentifizierung und Prod-Anforderungen.',
+    tip_btn_flows_card:'Öffnet die Flows der Umgebung im Flow-Browser.',
+    tip_delete_env:'Entfernt die Umgebung aus Archy GUI. In Genesys wird nichts gelöscht.',
+    tip_btn_export_flow:'Öffnet den YAML-Export mit diesem ausgewählten Flow.',
+    tip_compare:'Vergleicht den Inhalt des Flows mit demselben Flow in der unter „Mit Org vergleichen“ gewählten Org.',
+    tip_fb_publish:'Veröffentlicht den gespeicherten Entwurf, sodass er live geht.',
+    tip_view_file:'Zeigt den Inhalt der Datei.',
+    tip_copy_to_import:'Legt die Datei in „YAML importieren“ ab, bereit zum Import.',
+    tip_pl_check:'Exportiert den Flow aus jeder Umgebung und vergleicht den Inhalt selbst — Versionsnummern lassen sich orgübergreifend nicht vergleichen.',
+    tip_rel_title:'Release Notes: was wann und von wem wohin befördert wurde.',
+    tip_mf_create:'Legt die Manifest-Datentabelle in der Umgebung an, damit der Verlauf zwischen PCs geteilt wird.',
+    tip_btn_demo_reset:'Baut die Flows der Demo von Grund auf neu.',
+    tip_btn_demo_remove:'Entfernt die Demo-Umgebungen. Keine echte Org ist betroffen.',
+    tip_btn_demo_create:'Legt Demo-Umgebungen an, die nur lokal existieren, damit die Pipeline ohne Org ausprobiert werden kann.',
+    ex_all_hint:'{n} von {total} werden angezeigt — zum Filtern tippen',
+    rep_fb:'🔁 Verwender',
+    help_close:'Schließen',
   },
   es: {
     nav_customers:'Clientes', nav_flows:'Navegador de Flows', nav_migrate:'Migrar Flow',
@@ -6375,6 +7459,11 @@ const LANGS = {
     pl_overwrites:'Este entorno difiere. Promover aquí descarta esa diferencia: tráigala de vuelta primero si quiere ver cuál es',
     demo_title:'CLIENTE DEMO',
     demo_hint:'Cuatro entornos (dev · test · uat · prod) y tres flows que solo existen localmente. Sin credenciales ni llamadas a Genesys o Archy: para probar el pipeline sin tocar una org real.',
+    feat_title:'CLAVE DE ACTIVACIÓN', feat_hint:'Desbloquea funciones internas y beta (Flow Builder y el cliente demo). Sin clave permanecen ocultas.', feat_ph:'Clave de activación', feat_unlock:'Activar',
+    feat_on:'Las funciones internas están activas.', feat_lock:'Bloquear de nuevo', feat_bad:'Clave desconocida.',
+    mig_auto:'Guardar un informe (CSV) tras cada migración', mig_download:'⬇ Descargar informe combinado', mig_clear:'Borrar', mig_clear_confirm:'¿Borrar el informe combinado ({n} filas)?',
+    mig_st_ok:'Correcto', mig_st_skipped:'Omitido', mig_st_failed:'Error', mig_file:'informe-migracion', mig_type_flow:'Flow',
+    mig_tip:'El informe reúne todas las migraciones de este navegador — recursos, flows y sus dependencias — con lo que salió bien y lo que no. Nunca incluye secretos ni contraseñas.',
     btn_demo_create:'+ Crear cliente demo',
     btn_demo_reset:'↺ Restablecer demo',
     btn_demo_remove:'✕ Eliminar demo',
@@ -7074,6 +8163,8 @@ function setLang(lang) {
   // sprogskiftet kun delvist gennemført.
   renderSidebarCustomers();
   renderCustomerGrid();
+  renderFeatBox();
+  renderMigBars();
   if (document.getElementById('page-flows').classList.contains('active')) {
     const tbody = document.getElementById('flowTableBody');
     if (tbody && allFlows.length) renderFlowTable(allFlows);
@@ -7127,11 +8218,54 @@ function applyStoredTheme() {
   setTheme(localStorage.getItem('theme') || 'dark');
 }
 
+// ── Interne funktioner (aktiveringsnøgle) ────────────────────────────────────
+// Flow Builder og Demo-kunden vises kun med en gyldig nøgle. Serveren tjekker
+// nøglen igen på demo-kaldene — her skjules blot menuen.
+let features = { internal: false };
+
+async function loadFeatures() {
+  features = await fetch('/api/features').then(r => r.json()).catch(() => ({ internal: false }));
+  document.body.classList.toggle('internal', !!features.internal);
+  renderFeatBox();
+}
+
+function renderFeatBox() {
+  const box = document.getElementById('featBox');
+  if (!box) return;
+  box.innerHTML = features.internal
+    ? `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+         <span style="font-size:12px;color:var(--green)">${t('feat_on')}</span>
+         <button class="btn btn-secondary btn-sm" onclick="featLock()">${t('feat_lock')}</button></div>`
+    : `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+         <input id="feat-key" type="password" autocomplete="off" style="max-width:320px" placeholder="${t('feat_ph')}"
+                onkeydown="if (event.key === 'Enter') featUnlock()" />
+         <button class="btn btn-primary btn-sm" onclick="featUnlock()">${t('feat_unlock')}</button>
+         <span id="feat-msg" style="font-size:12px;color:var(--red)"></span></div>`;
+}
+
+async function featUnlock() {
+  const key = document.getElementById('feat-key').value;
+  const r = await fetch('/api/features/unlock', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key }) });
+  if (!r.ok) { document.getElementById('feat-msg').textContent = t('feat_bad'); return; }
+  await loadFeatures();
+  migLoad();
+  renderMigBars();
+  renderDemoButtons();
+}
+
+async function featLock() {
+  await fetch('/api/features', { method: 'DELETE' });
+  await loadFeatures();
+  renderDemoButtons();
+}
+
 // ── Init ─────────────────────────────────────────────────────────────────────
 window.onload = async () => {
   applyStoredTheme();
   applyStoredLang();
   fillStages();
+  await loadFeatures();
   await refreshCustomers();
   const guideId = new URLSearchParams(location.search).get('guide');
   if (guideId) { document.body.classList.add('guide-mode'); renderGuide(guideId); guideCheckAll(); return; }
@@ -8278,6 +9412,7 @@ async function _runMigration() {
   document.getElementById('m-log').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   let ok = 0, skipped = 0, failed = 0;
+  migStart('mig_type_flow', sourceId, targetId);
   // Versionsudligning kræver at målet publiceres, så identiske flows springes ikke over dér
   const skipIdentical = !alignVersion && !!document.getElementById('m-skip-identical')?.checked;
 
@@ -8319,15 +9454,15 @@ async function _runMigration() {
         if (svar.choice === 'recheck') { log(logBox, `  ${t('dep_checking')}`, 'info'); continue; }
         spring = true; break;
       }
-      if (prep.error) { log(logBox, `  ✗ ${prep.error}`, 'err'); failed++; continue; }
+      if (prep.error) { log(logBox, `  ✗ ${prep.error}`, 'err'); failed++; migRec(name, 'failed', prep.error); continue; }
       if (prep.identical) {
-        log(logBox, `  ⊘ ${t('identical_skipped')} (v${prep.identical.version})`, 'info');
+        log(logBox, `  ⊘ ${t('identical_skipped')} (v${prep.identical.version})`, 'info'); migRec(name, 'skipped', t('identical_skipped') + ' (v' + prep.identical.version + ')');
         skipped++;
         migratedFlows.add(key + '>' + targetId);
         selectedMigrateFlows.delete(key);
         continue;
       }
-      if (spring) { log(logBox, `  ⊘ ${t('dep_skipped_flow')}`, 'info'); skipped++; continue; }
+      if (spring) { log(logBox, `  ⊘ ${t('dep_skipped_flow')}`, 'info'); skipped++; migRec(name, 'skipped', t('dep_skipped_flow')); continue; }
 
       const missing = (prep.deps || []).filter(d => !d.ok && aktiv(d));
       const divisionMap = {};   // fyldes hvis brugeren vælger "brug Home"
@@ -8335,7 +9470,7 @@ async function _runMigration() {
       if (missing.length) {
         log(logBox, `  ⚠ ${missing.length} ${t('dep_missing_count')}`, 'info');
         const { choice, picked, decisions } = await showDepModal(name, missing, prep.dynamicSkills);
-        if (choice === 'cancel') { log(logBox, `  ⊘ ${t('dep_skipped_flow')}`, 'info'); skipped++; continue; }
+        if (choice === 'cancel') { log(logBox, `  ⊘ ${t('dep_skipped_flow')}`, 'info'); skipped++; migRec(name, 'skipped', t('dep_skipped_flow')); continue; }
         if (choice === 'migrate') {
           // TTS-valget gælder også de moduler der migreres med, så det skal
           // kendes før de flyttes.
@@ -8358,10 +9493,10 @@ async function _runMigration() {
             try {
               const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body) }).then(x => x.json());
-              if (r.error === 'already_exists') log(logBox, `    ⚠ ${dep.name}: ${t('da_exists')}`, 'info');
-              else if (r.error) log(logBox, `    ✗ ${dep.name}: ${r.error}`, 'err');
-              else log(logBox, `    ✓ ${dep.name}`, 'ok');
-            } catch (e) { log(logBox, `    ✗ ${dep.name}: ${e.message}`, 'err'); }
+              if (r.error === 'already_exists') { migRec(dep.name, 'skipped', t('da_exists'), dep.kind); log(logBox, `    ⚠ ${dep.name}: ${t('da_exists')}`, 'info'); }
+              else if (r.error) { migRec(dep.name, 'failed', r.error, dep.kind); log(logBox, `    ✗ ${dep.name}: ${r.error}`, 'err'); }
+              else { migRec(dep.name, 'ok', '', dep.kind); log(logBox, `    ✓ ${dep.name}`, 'ok'); }
+            } catch (e) { migRec(dep.name, 'failed', e.message, dep.kind); log(logBox, `    ✗ ${dep.name}: ${e.message}`, 'err'); }
           }
         }
       } else {
@@ -8373,9 +9508,9 @@ async function _runMigration() {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ sourceId, targetId, flowName: name, filePath: prep.filePath, action, divisionMap, confirmProd, alignVersion, actionMap, rememberMap, ttsReplace })
       }).then(r => r.json());
-      if (data.error) { log(logBox, `  ✗ ${data.error}`, 'err'); failed++; }
+      if (data.error) { log(logBox, `  ✗ ${data.error}`, 'err'); failed++; migRec(name, 'failed', data.error); }
       else {
-        log(logBox, `  ✓ ${data.fileName} → ${action} OK`, 'ok'); ok++;
+        log(logBox, `  ✓ ${data.fileName} → ${action} OK`, 'ok'); ok++; migRec(name, 'ok', data.fileName + ' → ' + action + (data.aligned && data.aligned.error ? ' — ' + data.aligned.error : ''));
         // Færdig: ud af valget, så næste kørsel ikke tager det med igen
         migratedFlows.add(key + '>' + targetId);
         selectedMigrateFlows.delete(key);
@@ -8392,9 +9527,10 @@ async function _runMigration() {
         }
       }
     } catch(e) {
-      log(logBox, `  ✗ ${e.message}`, 'err'); failed++;
+      migRec(name, 'failed', e.message); log(logBox, `  ✗ ${e.message}`, 'err'); failed++;
     }
   }
+  migEnd();
   pipelineDirty = true;
   fbTarget = null;            // Flow Browser henter målets liste igen næste gang
   applyMigrateFilter();
@@ -9463,7 +10599,8 @@ let _wizDaOptions      = [];  // [{id,name,category,integrationName}]
 let _wizPromptOptions  = [];  // [{id,name}]
 
 function openYamlWizard() {
-  const langMap = { da:'da-dk', en:'en-us', fr:'fr-fr', nl:'nl-nl', es:'es-es' };
+  if (!features.internal) return;
+  const langMap = { da:'da-dk', en:'en-us', fr:'fr-fr', nl:'nl-nl', es:'es-es', de:'de-de' };
   // Pre-select customer from import page if set
   const preselect = document.getElementById('im-customer')?.value || '';
   wiz = {
@@ -10960,6 +12097,85 @@ function daFilter() {
   daRender(filtered);
 }
 
+// ── Migreringsrapport ─────────────────────────────────────────────────────────
+// Hver migrering — en ressourcefane, et flow eller en afhængighed — skriver en
+// række: hvad, hvortil, og om det lykkedes. Rækkerne samles på tværs af faner og
+// flows og kan hentes som én CSV. Secrets og adgangskoder kommer aldrig med.
+let migReport = [];                 // {at, type, name, status, detail, src, tgt}
+let migRun = null;                  // rækkerne i den migrering der kører nu
+let migCtx = { type: '', src: '', tgt: '' };
+let migDep = { status: 'ok', detail: '' };
+const MIG_KEY = 'archy.migReport', MIG_AUTO_KEY = 'archy.migReportAuto', MIG_MAX = 5000;
+
+function migLoad() {
+  try { const v = JSON.parse(localStorage.getItem(MIG_KEY) || '[]'); if (Array.isArray(v)) migReport = v; } catch (_) {}
+}
+function migSave() {
+  try { localStorage.setItem(MIG_KEY, JSON.stringify(migReport.slice(-MIG_MAX))); } catch (_) {}
+}
+function migAutoOn() { try { return localStorage.getItem(MIG_AUTO_KEY) === '1'; } catch (_) { return false; } }
+function migSetAuto(on) { try { localStorage.setItem(MIG_AUTO_KEY, on ? '1' : '0'); } catch (_) {} }
+
+function migOrgName(id) { const c = customers.find(x => x.id === id); return c ? c.name : (id || ''); }
+
+function migStart(typeKey, sourceId, targetId) {
+  migRun = [];
+  migCtx = { type: typeKey, src: migOrgName(sourceId), tgt: migOrgName(targetId) };
+}
+
+// status: 'ok' | 'skipped' | 'failed'. typeText overstyrer fanens type — bruges af afhængigheder.
+function migRec(name, status, detail, typeText) {
+  if (!migRun) return;
+  migRun.push({ at: new Date().toISOString(), type: typeText || (migCtx.type.startsWith('mig_') || migCtx.type.startsWith('da_') ? t(migCtx.type) : migCtx.type),
+    name: String(name == null ? '' : name), status, detail: detail == null ? '' : String(detail), src: migCtx.src, tgt: migCtx.tgt });
+}
+
+function migEnd() {
+  const rows = migRun || [];
+  migRun = null;
+  if (!rows.length) return;
+  migReport.push(...rows);
+  if (migReport.length > MIG_MAX) migReport = migReport.slice(-MIG_MAX);
+  migSave();
+  renderMigBars();
+  if (migAutoOn()) migDownload(rows);
+}
+
+function migCsv(rows) {
+  const head = ['rtc_col_time', 'rtc_col_type', 'rtc_col_name', 'rtc_col_status', 'rtc_col_detail', 'rtc_col_srcorg', 'rtc_col_tgtorg'].map(t);
+  const st = { ok: t('mig_st_ok'), skipped: t('mig_st_skipped'), failed: t('mig_st_failed') };
+  return [head, ...rows.map(r => [r.at, r.type, r.name, st[r.status] || r.status, r.detail, r.src, r.tgt])]
+    .map(l => l.map(csvCell).join(';')).join('\r\n');
+}
+
+function migDownload(rows) {
+  if (!rows.length) return;
+  // BOM foran, så Excel viser æ, ø og å rigtigt.
+  const blob = new Blob(['\uFEFF' + migCsv(rows)], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (t('mig_file') + '_' + new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-') + '.csv').replace(/[\\/:*?"<>|\s]+/g, '_');
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function migDownloadAll() { migDownload(migReport); }
+function migClear() {
+  if (!migReport.length || !confirm(t('mig_clear_confirm').replace('{n}', String(migReport.length)))) return;
+  migReport = []; migSave(); renderMigBars();
+}
+
+function renderMigBars() {
+  const n = migReport.length, fail = migReport.filter(r => r.status === 'failed').length;
+  document.querySelectorAll('.mig-bar').forEach(el => {
+    el.innerHTML = `<label style="margin:0;display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer" title="${escapeHtml(t('mig_tip'))}">
+        <input type="checkbox" style="width:auto" ${migAutoOn() ? 'checked' : ''} onchange="migSetAuto(this.checked)" />
+        <span>${t('mig_auto')}</span></label>
+      <button class="btn btn-secondary btn-sm" onclick="migDownloadAll()" ${n ? '' : 'disabled'} title="${escapeHtml(t('mig_tip'))}">${t('mig_download')} (${n}${fail ? ' · ✗' + fail : ''})</button>
+      <button class="btn btn-secondary btn-sm" onclick="migClear()" ${n ? '' : 'disabled'}>${t('mig_clear')}</button>`;
+  });
+}
+
 async function daMigrateSelected() {
   const sourceId = document.getElementById('da-source').value;
   const targetId = document.getElementById('da-target').value;
@@ -10986,6 +12202,7 @@ async function daMigrateSelected() {
   btn.disabled = true;
 
   let ok = 0, skipped = 0, failed = 0;
+  migStart('da_tab_actions', sourceId, targetId);
 
   for (const actionId of daSelectedIds) {
     const action = daAllActions.find(a => a.id === actionId);
@@ -11001,16 +12218,16 @@ async function daMigrateSelected() {
       const data = await res.json();
 
       if (data.error === 'already_exists') {
-        log(logBox, `  ⚠ ${t('da_exists')}`, 'info'); skipped++;
+        log(logBox, `  ⚠ ${t('da_exists')}`, 'info'); skipped++; migRec(name, 'skipped', t('da_exists'));
       } else if (data.needsIntegration) {
-        log(logBox, `  ✗ ${data.error}`, 'err'); failed++;
+        log(logBox, `  ✗ ${data.error}`, 'err'); failed++; migRec(name, 'failed', data.error);
       } else if (data.error) {
-        log(logBox, `  ✗ ${data.error}`, 'err'); failed++;
+        log(logBox, `  ✗ ${data.error}`, 'err'); failed++; migRec(name, 'failed', data.error);
       } else {
-        log(logBox, `  \u2713 ${t('da_created')} (ID: ${data.newActionId})`, 'ok'); ok++;
+        log(logBox, `  \u2713 ${t('da_created')} (ID: ${data.newActionId})`, 'ok'); ok++; migRec(name, 'ok', 'ID: ' + data.newActionId);
       }
     } catch (e) {
-      log(logBox, `  ✗ ${e.message}`, 'err');
+      migRec(name, 'failed', e.message); log(logBox, `  ✗ ${e.message}`, 'err');
     }
   }
 
@@ -11018,7 +12235,7 @@ async function daMigrateSelected() {
   // faktisk kom med — særligt ved mange actions ad gangen.
   log(logBox, `\n── ${t('da_done')} ── ${ok} ${t('da_sum_ok')} · ${skipped} ${t('da_sum_skipped')} · ${failed} ${t('da_sum_failed')}`,
       failed ? 'err' : 'info');
-  daUpdateReady();
+  migEnd(); daUpdateReady();
 }
 
 
@@ -11372,6 +12589,13 @@ function showDepModal(flowName, missing, dynamicSkills, names) {
 // Migrerer én afhængighed. DataTables og Data Actions genbruger de endpoints
 // Tabeller/Actions-siderne allerede bruger.
 async function migrateOneDep(dep, sourceId, targetId, logBox, opts = {}) {
+  migDep = { status: 'ok', detail: '' };
+  const done = await _migrateOneDep(dep, sourceId, targetId, logBox, opts);
+  migRec(dep.name, done ? migDep.status : 'failed', migDep.detail, dep.kind);
+  return done;
+}
+
+async function _migrateOneDep(dep, sourceId, targetId, logBox, opts = {}) {
   // Common modules, bot flows og transfer-mål ER flows, så de migreres med
   // flow-maskineriet — inkl. deres egne afhængigheder, nedefra og op.
   const FLOW_KINDS = ['commonmodule', 'botflow', 'targetflow', 'inqueueflow'];
@@ -11382,11 +12606,11 @@ async function migrateOneDep(dep, sourceId, targetId, logBox, opts = {}) {
         body: JSON.stringify({ sourceId, targetId, flowName: dep.flowName || dep.name, flowType: dep.flowType, ttsReplace: !!opts.ttsReplace })
       }).then(r => r.json());
       for (const line of data.trail || []) log(logBox, `      ${line}`, 'info');
-      if (data.error) { log(logBox, `    \u2717 ${dep.name}: ${data.error}`, 'err'); return false; }
-      log(logBox, `    \u2713 ${dep.name}` + (data.skipped === 'exists' ? ' (fandtes allerede)' : ''), 'ok');
+      if (data.error) { migDep = { status: 'failed', detail: data.error }; log(logBox, `    \u2717 ${dep.name}: ${data.error}`, 'err'); return false; }
+      if (data.skipped === 'exists') migDep = { status: 'skipped', detail: t('da_exists') }; log(logBox, `    \u2713 ${dep.name}` + (data.skipped === 'exists' ? ' (fandtes allerede)' : ''), 'ok');
       return true;
     } catch (e) {
-      log(logBox, `    \u2717 ${dep.name}: ${e.message}`, 'err');
+      migDep = { status: 'failed', detail: e.message }; log(logBox, `    \u2717 ${dep.name}: ${e.message}`, 'err');
       return false;
     }
   }
@@ -11413,12 +12637,12 @@ async function migrateOneDep(dep, sourceId, targetId, logBox, opts = {}) {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
     }).then(r => r.json());
     for (const line of data.trail || []) log(logBox, `      ${line}`, 'info');
-    if (data.error === 'already_exists') { log(logBox, `    \u26a0 ${dep.name}: ${t('da_exists')}`, 'info'); return true; }
-    if (data.error) { log(logBox, `    \u2717 ${dep.name}: ${data.error}`, 'err'); return false; }
+    if (data.error === 'already_exists') { migDep = { status: 'skipped', detail: t('da_exists') }; log(logBox, `    \u26a0 ${dep.name}: ${t('da_exists')}`, 'info'); return true; }
+    if (data.error) { migDep = { status: 'failed', detail: data.error }; log(logBox, `    \u2717 ${dep.name}: ${data.error}`, 'err'); return false; }
     log(logBox, `    \u2713 ${dep.name}`, 'ok');
     return true;
   } catch (e) {
-    log(logBox, `    \u2717 ${dep.name}: ${e.message}`, 'err');
+    migDep = { status: 'failed', detail: e.message }; log(logBox, `    \u2717 ${dep.name}: ${e.message}`, 'err');
     return false;
   }
 }
@@ -11510,6 +12734,7 @@ async function prMigrateSelected() {
   const btn = document.getElementById('pr-migrate-btn');
   btn.disabled = true;
   let ok = 0, skipped = 0, failed = 0;
+  migStart('da_tab_prompts', sourceId, targetId);
 
   for (const id of prSelectedIds) {
     const p = prAll.find(x => x.id === id);
@@ -11521,15 +12746,15 @@ async function prMigrateSelected() {
         body: JSON.stringify({ sourceId, targetId, promptName: name })
       }).then(r => r.json());
       for (const line of data.trail || []) log(logBox, `    ${line}`, 'info');
-      if (data.error === 'already_exists') { log(logBox, `  \u26a0 ${t('da_exists')}`, 'info'); skipped++; }
-      else if (data.error) { log(logBox, `  \u2717 ${data.error}`, 'err'); failed++; }
-      else { log(logBox, `  \u2713 ${t('pr_created')} (${data.languages} ${t('pr_languages')})`, 'ok'); ok++; }
-    } catch (e) { log(logBox, `  \u2717 ${e.message}`, 'err'); failed++; }
+      if (data.error === 'already_exists') { log(logBox, `  \u26a0 ${t('da_exists')}`, 'info'); skipped++; migRec(name, 'skipped', t('da_exists')); }
+      else if (data.error) { log(logBox, `  \u2717 ${data.error}`, 'err'); failed++; migRec(name, 'failed', data.error); }
+      else { log(logBox, `  \u2713 ${t('pr_created')} (${data.languages} ${t('pr_languages')})`, 'ok'); ok++; migRec(name, 'ok', data.languages + ' ' + t('pr_languages')); }
+    } catch (e) { migRec(name, 'failed', e.message); log(logBox, `  \u2717 ${e.message}`, 'err'); failed++; }
   }
 
   log(logBox, `\n\u2500\u2500 ${t('da_done')} \u2500\u2500 ${ok} ${t('da_sum_ok')} \u00b7 ${skipped} ${t('da_sum_skipped')} \u00b7 ${failed} ${t('da_sum_failed')}`,
       failed ? 'err' : 'info');
-  prUpdateReady();
+  migEnd(); prUpdateReady();
 }
 
 // ── Scripts ───────────────────────────────────────────────────────────────────
@@ -11617,6 +12842,7 @@ async function scMigrateSelected() {
   const btn = document.getElementById('sc-migrate-btn');
   btn.disabled = true;
   let ok = 0, skipped = 0, failed = 0;
+  migStart('da_tab_scripts', sourceId, targetId);
 
   for (const id of scSelectedIds) {
     const name = scAll.find(x => x.id === id)?.name || id;
@@ -11628,16 +12854,16 @@ async function scMigrateSelected() {
         body: JSON.stringify({ sourceId, targetId, scriptName: name })
       }).then(r => r.json());
       for (const line of data.trail || []) log(logBox, `    ${line}`, 'info');
-      if (data.error === 'already_exists') { log(logBox, `  ⚠ ${t('da_exists')}`, 'info'); skipped++; }
-      else if (data.error) { log(logBox, `  ✗ ${data.error}`, 'err'); failed++; }
-      else { log(logBox, `  ✓ ${t('sc_created')}`, 'ok'); ok++; }
-    } catch (e) { log(logBox, `  ✗ ${e.message}`, 'err'); failed++; }
+      if (data.error === 'already_exists') { log(logBox, `  ⚠ ${t('da_exists')}`, 'info'); skipped++; migRec(name, 'skipped', t('da_exists')); }
+      else if (data.error) { log(logBox, `  ✗ ${data.error}`, 'err'); failed++; migRec(name, 'failed', data.error); }
+      else { log(logBox, `  ✓ ${t('sc_created')}`, 'ok'); ok++; migRec(name, 'ok', ''); }
+    } catch (e) { migRec(name, 'failed', e.message); log(logBox, `  ✗ ${e.message}`, 'err'); failed++; }
   }
 
   log(logBox, `
 ── ${t('da_done')} ── ${ok} ${t('da_sum_ok')} · ${skipped} ${t('da_sum_skipped')} · ${failed} ${t('da_sum_failed')}`,
       failed ? 'err' : 'info');
-  scUpdateReady();
+  migEnd(); scUpdateReady();
 }
 
 // ── Data Tabeller ─────────────────────────────────────────────────────────────
@@ -11936,6 +13162,7 @@ async function dpMigrate() {
   logCard.style.display = 'block'; logBox.innerHTML = '';
   log(logBox, `${dpData.srcName}  ⟶  ${dpData.tgtName}`, 'info');
   let ok = 0, skipped = 0, failed = 0;
+  migStart('da_tab_actions', sourceId, targetId);
   const migrated = [];     // til kortlægningen bagefter
   for (const x of list) {
     if (dpStop) { log(logBox, `\n⊘ ${t('dp_stopped')}`, 'info'); break; }
@@ -11943,10 +13170,10 @@ async function dpMigrate() {
     try {
       const data = await fetch('/api/actions/migrate', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sourceId, targetId, actionId: x.action.id, targetIntegrationId: x.integrationId }) }).then(r => r.json());
-      if (data.error === 'already_exists') { log(logBox, `  ⚠ ${t('da_exists')}`, 'info'); skipped++; }
-      else if (data.error) { log(logBox, `  ✗ ${data.error}`, 'err'); failed++; }
-      else { log(logBox, `  ✓ ${t('da_created')}`, 'ok'); ok++; migrated.push(x); }
-    } catch (e) { log(logBox, `  ✗ ${e.message}`, 'err'); failed++; }
+      if (data.error === 'already_exists') { log(logBox, `  ⚠ ${t('da_exists')}`, 'info'); skipped++; migRec(x.action.name, 'skipped', t('da_exists')); }
+      else if (data.error) { log(logBox, `  ✗ ${data.error}`, 'err'); failed++; migRec(x.action.name, 'failed', data.error); }
+      else { log(logBox, `  ✓ ${t('da_created')}`, 'ok'); ok++; migrated.push(x); migRec(x.action.name, 'ok', x.integrationName); }
+    } catch (e) { migRec(x.action.name, 'failed', e.message); log(logBox, `  ✗ ${e.message}`, 'err'); failed++; }
   }
 
   // Flowene peger på kildens kategori og navn. Husk hvor de er havnet, så
@@ -11967,6 +13194,7 @@ async function dpMigrate() {
   }
   log(logBox, `\n── ${t('da_done')} ── ${ok} ${t('da_sum_ok')} · ${skipped} ${t('da_sum_skipped')} · ${failed} ${t('da_sum_failed')}`,
       failed ? 'err' : 'info');
+  migEnd();
   dpBusy = false;
   await dpRun();      // tæl igen: bjælkerne skal vise det der nu findes
 }
@@ -12221,6 +13449,7 @@ async function dtMigrateSelected() {
   const btn = document.getElementById('dt-migrate-btn');
   btn.disabled = true;
   let ok = 0, skipped = 0, failed = 0;
+  migStart('da_tab_tables', sourceId, targetId);
 
   for (const tableId of dtSelectedIds) {
     const tbl  = dtAll.find(x => x.id === tableId);
@@ -12234,21 +13463,21 @@ async function dtMigrateSelected() {
       }).then(r => r.json());
 
       if (data.error === 'already_exists') {
-        log(logBox, `  \u26a0 ${t('dt_exists')}`, 'info'); skipped++;
+        log(logBox, `  \u26a0 ${t('dt_exists')}`, 'info'); skipped++; migRec(name, 'skipped', t('dt_exists'));
       } else if (data.error) {
-        log(logBox, `  \u2717 ${data.error}`, 'err'); failed++;
+        log(logBox, `  \u2717 ${data.error}`, 'err'); failed++; migRec(name, 'failed', data.error);
       } else {
         if (data.divisionNote) log(logBox, `  \u26a0 ${data.divisionNote}`, 'info');
-        log(logBox, `  \u2713 ${t('dt_created')} (ID: ${data.newTableId})`, 'ok'); ok++;
+        log(logBox, `  \u2713 ${t('dt_created')} (ID: ${data.newTableId})`, 'ok'); ok++; migRec(name, 'ok', 'ID: ' + data.newTableId + (data.divisionNote ? ' — ' + data.divisionNote : ''));
       }
     } catch (e) {
-      log(logBox, `  \u2717 ${e.message}`, 'err'); failed++;
+      migRec(name, 'failed', e.message); log(logBox, `  \u2717 ${e.message}`, 'err'); failed++;
     }
   }
 
   log(logBox, `\n\u2500\u2500 ${t('da_done')} \u2500\u2500 ${ok} ${t('da_sum_ok')} \u00b7 ${skipped} ${t('da_sum_skipped')} \u00b7 ${failed} ${t('da_sum_failed')}`,
       failed ? 'err' : 'info');
-  dtUpdateReady();
+  migEnd(); dtUpdateReady();
 }
 
 // ── Wrap-up-koder ─────────────────────────────────────────────────────────────
@@ -12330,22 +13559,23 @@ async function wuMigrateSelected() {
   btn.disabled = true;
   log(logBox, `\u27f6 ${t('da_migrating')}: ${wuSelectedIds.size} ${t('wu_codes').toLowerCase()}`, 'info');
   let ok = 0, skipped = 0, failed = 0;
+  migStart('da_tab_wrapup', sourceId, targetId);
   try {
     const data = await fetch('/api/wrapupcodes/migrate', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sourceId, targetId, codeIds: [...wuSelectedIds] })
     }).then(r => r.json());
-    if (data.error) { log(logBox, `  \u2717 ${data.error}`, 'err'); failed++; }
+    if (data.error) { log(logBox, `  \u2717 ${data.error}`, 'err'); failed++; migRec('', 'failed', data.error); }
     else for (const r of data.results) {
-      const name = r.name || r.id;
+      const name = r.name || r.id; migRec(name, r.status === 'created' ? 'ok' : r.status === 'exists' ? 'skipped' : 'failed', r.status === 'created' ? (r.missing && r.missing.length ? t('oa_missing') + ': ' + r.missing.join(', ') : (r.divisionNote || '')) : r.status === 'exists' ? t('ml_exists') : (r.message || '') + (r.missing && r.missing.length ? ' — ' + t('oa_missing') + ': ' + r.missing.join(', ') : ''));
       if (r.status === 'created') { log(logBox, `  \u2713 ${name}`, 'ok'); ok++; if (r.divisionNote) log(logBox, `    \u26a0 ${r.divisionNote}`, 'info'); }
       else if (r.status === 'exists') { log(logBox, `  \u26a0 ${name}: ${t('wu_exists')}`, 'info'); skipped++; }
       else { log(logBox, `  \u2717 ${name}: ${r.message}`, 'err'); failed++; }
     }
-  } catch (e) { log(logBox, `  \u2717 ${e.message}`, 'err'); failed++; }
+  } catch (e) { migRec('', 'failed', e.message); log(logBox, `  \u2717 ${e.message}`, 'err'); failed++; }
   log(logBox, `\n\u2500\u2500 ${t('da_done')} \u2500\u2500 ${ok} ${t('da_sum_ok')} \u00b7 ${skipped} ${t('da_sum_skipped')} \u00b7 ${failed} ${t('da_sum_failed')}`,
       failed ? 'err' : 'info');
-  wuUpdateReady();
+  migEnd(); wuUpdateReady();
 }
 
 // ── OAuth-klienter og integrationer ──────────────────────────────────────────
@@ -12756,17 +13986,18 @@ async function mlMigrate(k) {
   document.getElementById(`${k}-migrate-btn`).disabled = true;
   log(logBox, `\u27f6 ${t('da_migrating')}: ${m.sel.size} ${t(m.what).toLowerCase()}`, 'info');
   let ok = 0, skipped = 0, failed = 0;
+  migStart(m.generic ? m.what : 'da_tab_' + k, sourceId, targetId);
   try {
     const extra = k === 'oauth' ? await mlOfferRoles(sourceId, targetId, logBox) : {};
     const data = await fetch(m.migrate, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sourceId, targetId, [m.ids]: [...m.sel], ...(m.generic ? { kind: k } : {}), ...extra })
     }).then(r => r.json());
-    if (data.error) { log(logBox, `  \u2717 ${data.error}`, 'err'); failed++; }
+    if (data.error) { log(logBox, `  \u2717 ${data.error}`, 'err'); failed++; migRec('', 'failed', data.error); }
     else {
       if (k === 'oauth') mlSecrets = [];
       for (const r of data.results) {
-        const name = r.name || r.id;
+        const name = r.name || r.id; migRec(name, r.status === 'created' ? 'ok' : r.status === 'exists' ? 'skipped' : 'failed', r.status === 'created' ? (r.missing && r.missing.length ? t('oa_missing') + ': ' + r.missing.join(', ') : (r.divisionNote || '')) : r.status === 'exists' ? t('ml_exists') : (r.message || '') + (r.missing && r.missing.length ? ' — ' + t('oa_missing') + ': ' + r.missing.join(', ') : ''));
         if (r.status === 'created') {
           ok++;
           log(logBox, `  \u2713 ${name}`, 'ok');
@@ -12798,10 +14029,10 @@ async function mlMigrate(k) {
         logBox.appendChild(btn);
       }
     }
-  } catch (e) { log(logBox, `  \u2717 ${e.message}`, 'err'); failed++; }
+  } catch (e) { migRec('', 'failed', e.message); log(logBox, `  \u2717 ${e.message}`, 'err'); failed++; }
   log(logBox, `\n\u2500\u2500 ${t('da_done')} \u2500\u2500 ${ok} ${t('da_sum_ok')} \u00b7 ${skipped} ${t('da_sum_skipped')} \u00b7 ${failed} ${t('da_sum_failed')}`,
       failed ? 'err' : 'info');
-  mlUpdateReady(k);
+  migEnd(); mlUpdateReady(k);
   if (daTgt[k]) daCheckTarget();   // mærkerne vises igen med det nye
 }
 
@@ -14861,6 +16092,7 @@ async function saveStages() {
 async function renderDemoButtons() {
   const box = document.getElementById('demoButtons');
   if (!box) return;
+  if (!features.internal) { box.innerHTML = ''; return; }
   const st = await fetch('/api/demo/status').then(r => r.json()).catch(() => ({ demos: [] }));
   const navn = { '1': t('demo1_name'), '2': t('demo2_name') };
   const desc = { '1': t('demo1_desc'), '2': t('demo2_desc') };

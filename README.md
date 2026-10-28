@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.70.1
+# Archy GUI — Flow Manager · v1.73.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.70.1**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.70.1**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.73.0**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.73.0**.
 
 ---
 
@@ -141,6 +141,8 @@ Opret ét miljø pr. præfiks. Programmet slår **org-id'et** op i Genesys og se
 **Farve.** Hvert miljø vises i sit trins farve — dev grøn, test gul, uat orange, prod rød — på pipelinen, i sidebjælken og på kortene. Under ⚙ Indstillinger kan man vælge en anden.
 
 **Rigtig org ved login.** Med trusted orgs vælger man selv org'en på Genesys' login-side. Login'et tjekker hvilken org det landede i, og afviser det hvis den ikke passer med miljøets — eller hvis den hører til en anden kunde. Org'en står ved miljøet når man er logget ind.
+
+**Aktiveringsnøgle.** *Flow Builder* og *Demo-kunder* er interne eller i beta og er skjult som standard. Indtast en aktiveringsnøgle under **Kunder → Aktiveringsnøgle**, så dukker de op; **Lås igen** skjuler dem. Nøglen gemmes i `settings.json`, og serveren afviser demo-kald uden den. Det er funktionsstyring, ikke adgangskontrol. Ny nøgle: gem SHA-256 af den i `FEATURE_KEY_SHA256` i `server.js`.
 
 **Demo-kunder.** To knapper opretter et komplet opsæt der kun findes lokalt — ingen credentials, ingen kald til Genesys eller Archy:
 
@@ -365,6 +367,8 @@ Siden migrerer det der ikke er flows mellem to orgs, fordelt på otte faner: **D
 
 ![Totaltjek af data actions](docs/totaltjek.da.png)
 
+**Migreringsrapport (CSV).** Hver migrering — alle ressourcefaner, flows og de afhængigheder der migreres undervejs — skriver en række med tidspunkt, type, navn, status (*Lykkedes*, *Sprunget over*, *Fejlede*), detalje og kilde- og mål-org. Rækkerne samles på tværs af faner og flows og huskes i browseren (højst 5.000). Øverst på *Migrér ressourcer* og *Migrer Flow*: **Gem rapport (CSV) efter hver migrering** henter en fil når kørslen er færdig, **Download samlet rapport** henter alt der er samlet, og **Ryd** tømmer samlingen. Secrets fra OAuth-klienter kommer aldrig med. Semikolon og UTF-8 med BOM, så Excel åbner den rigtigt.
+
 *Eksempel med opdigtede data (Demo A/S — TEST til PROD): billedet viser appens rigtige brugerflade, men svarene er beregnet af appens egne funktioner på en opdigtet org, ikke hentet fra en kunde. Faneblade kræver to forskellige orgs.*
 
 **Fanen Setup-forslag** foreslår, hvilke integrationer i mål-org'en de data actions, der mangler, skal ligge i. Det er til dét tilfælde, hvor kilden har få integrationer og målet mange — og hvor en integration kun rummer et vist antal actions. Man angiver grænsen pr. integration (Archy kender den ikke; tallet huskes i browseren), og forslaget sætter de actions, der mangler helt og kan oprettes herfra, ind i de **aktive** integrationer af samme type, hvor der er plads. En kildeintegrations actions holdes samlet, hvis de er der plads til — helst i en integration med samme navn — ellers deles de. Inaktive integrationer foreslås aldrig, og findes der ingen aktiv integration af typen, siger forslaget hvad den skal hedde. Kapacitetsbjælkerne viser det, der findes, og det, der kommer til; en gruppe kan flyttes til en anden integration, og bjælkerne følger med. Function Data Actions og actions under en anden kategori er ikke med, men tælles og vises som *FDA manuelt* og *Skal vælges*. Forslaget kan eksporteres til **Excel** (CSV) eller en **printvenlig side** (Ctrl+P giver PDF) til samtalen med kunden; det indeholder kun navne og tal. **Migrér efter planen** opretter de actions, forslaget har placeret, i de foreslåede integrationer — én ad gangen, med mål-integrationen valgt for hver. Man bekræfter først (med antal og evt. integrationer over grænsen), kan stoppe undervejs, og loggen viser hver action. Er målet prod, spørges der som ved en forfremmelse, og prod-login kræves. Det der ikke kunne placeres, springes over. Bagefter huskes, hvor actions'ene endte (*Husk hvor de havner*, slået til fra start): flowene peger på kildens kategori og navn, så kortlægningen gør, at listen i flowet finder dem i den nye integration uden at man vælger igen. Forslaget tælles derefter igen. Fanen tjekker ikke credentials.
@@ -438,7 +442,7 @@ Begge vælges i topbaren og gemmes i browserens `localStorage`, så valget huske
 
 Sabio-temaerne viser Sabios ordmærke i topbaren i stedet for "ArchyGUI" og bruger brandets skarpe hjørner.
 
-Sprog: 🇩🇰 Dansk · 🇬🇧 English · 🇫🇷 Français · 🇳🇱 Nederlands · 🇪🇸 Español. Knapperne har tooltips på alle fem sprog, og hver side har en **?**-hjælp.
+Sprog: 🇩🇰 Dansk · 🇬🇧 English · 🇫🇷 Français · 🇳🇱 Nederlands · 🇪🇸 Español · 🇩🇪 Deutsch. Knapperne har tooltips på alle seks sprog, og hver side har en **?**-hjælp.
 Tekniske betegnelser oversættes ikke — flow-typer (`InboundCall`, `Workflow` …), regionsnavne, logniveauer (`INFO`, `ERROR` …) og Genesys-kategorinavne vises som i API'et.
 
 ---
@@ -496,7 +500,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-443 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+451 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -628,6 +632,8 @@ Create one environment per prefix. The app looks up the **org id** in Genesys an
 **Colour.** Each environment shows in its stage colour — dev green, test yellow, uat orange, prod red — on the pipeline, in the sidebar and on the cards. Pick another under ⚙ Settings.
 
 **Right org at login.** With trusted orgs you pick the org on Genesys' login page. The login checks which org it landed in and is refused if it doesn't match the environment's — or belongs to another customer. The org is shown next to the environment once logged in.
+
+**Activation key.** *Flow Builder* and *Demo customers* are internal or in beta and hidden by default. Enter an activation key under **Customers → Activation key** and they appear; **Lock again** hides them. The key is stored in `settings.json`, and the server rejects demo calls without it. This is feature gating, not access control. New key: store its SHA-256 in `FEATURE_KEY_SHA256` in `server.js`.
 
 **Demo customers.** Two buttons create a complete setup that exists only locally — no credentials, no calls to Genesys or Archy:
 
@@ -852,6 +858,8 @@ This page migrates everything that is not a flow between two orgs, across eight 
 
 ![Full check of data actions](docs/totaltjek.en.png)
 
+**Migration report (CSV).** Every migration — all resource tabs, flows and the dependencies migrated along the way — writes a row with time, type, name, status (*Succeeded*, *Skipped*, *Failed*), detail and source and target org. Rows are collected across tabs and flows and remembered in the browser (at most 5,000). At the top of *Migrate resources* and *Migrate Flow*: **Save a report (CSV) after each migration** downloads a file when the run finishes, **Download combined report** downloads everything collected, and **Clear** empties the collection. OAuth client secrets are never included. Semicolon-separated, UTF-8 with BOM so Excel opens it correctly.
+
 *Example with invented data (Demo A/S — TEST to PROD): the image shows the app's real UI, but the answers are computed by the app's own functions on an invented org, not fetched from a customer. These tabs need two different orgs.*
 
 **The Setup proposal tab** proposes which integrations in the target org the missing data actions should live in. It is for the case where the source has few integrations and the target many — and an integration holds only a certain number of actions. You enter the limit per integration (Archy does not know it; the number is remembered in the browser), and the proposal puts the actions that are missing entirely and can be created from here into the **active** integrations of the same type that have room. A source integration's actions are kept together if there is room — preferably in an integration with the same name — otherwise they are split. Inactive integrations are never proposed, and if there is no active integration of the type, the proposal says what it should be called. The capacity bars show what is there and what is coming; a group can be moved to another integration and the bars follow. Function Data Actions and actions under another category are not included, but are counted and shown as *FDA by hand* and *To choose*. The proposal can be exported to **Excel** (CSV) or a **printable page** (Ctrl+P gives PDF) for the talk with the customer; it contains only names and numbers. **Migrate by the plan** creates the actions the proposal has placed, in the proposed integrations — one at a time, with the target integration chosen for each. You confirm first (with the count and any integrations over the limit), can stop along the way, and the log shows every action. If the target is prod, you are asked as for a promotion, and a prod login is required. What could not be placed is skipped. Afterwards where the actions ended up is remembered (*Remember where they end up*, on from the start): flows point at the source's category and name, so the mapping lets the list in the flow find them in the new integration without choosing again. The proposal is then counted again. The tab does not check credentials.
@@ -925,7 +933,7 @@ Both are chosen in the top bar and stored in the browser's `localStorage`, so yo
 
 The Sabio themes show the Sabio wordmark in the top bar instead of "ArchyGUI" and use the brand's square corners.
 
-Languages: 🇩🇰 Dansk · 🇬🇧 English · 🇫🇷 Français · 🇳🇱 Nederlands · 🇪🇸 Español. Buttons have tooltips in all five languages, and every page has a **?** help.
+Languages: 🇩🇰 Dansk · 🇬🇧 English · 🇫🇷 Français · 🇳🇱 Nederlands · 🇪🇸 Español · 🇩🇪 Deutsch. Buttons have tooltips in all six languages, and every page has a **?** help.
 Technical identifiers are not translated — flow types (`InboundCall`, `Workflow` …), region names, log levels (`INFO`, `ERROR` …) and Genesys category names appear exactly as the API returns them.
 
 ---
@@ -983,7 +991,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-443 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+451 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 

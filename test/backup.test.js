@@ -1,5 +1,5 @@
 // Backup-knapperne på siden Migrér ressourcer: ruten må kun læse, og knapperne
-// skal have tekst og tooltip på alle fem sprog.
+// skal have tekst og tooltip på alle seks sprog.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -15,9 +15,9 @@ test('backup-ruten er en GET og står dermed ikke blandt de skrivende', () => {
   assert.doesNotMatch(server, /app\.post\('\/api\/customers\/:id\/backup'/);
 });
 
-test('backup-knapperne har tekst og tooltip på alle fem sprog', () => {
+test('backup-knapperne har tekst og tooltip på alle seks sprog', () => {
   for (const key of ['da_backup_btn', 'dt_backup_btn', 'tip_da_backup_btn', 'tip_dt_backup_btn']) {
     const antal = (html.match(new RegExp(`^\\s*${key}:`, 'gm')) || []).length;
-    assert.equal(antal, 5, `${key} findes ${antal} steder i LANGS, ikke 5`);
+    assert.equal(antal, 6, `${key} findes ${antal} steder i LANGS, ikke 6`);
   }
 });

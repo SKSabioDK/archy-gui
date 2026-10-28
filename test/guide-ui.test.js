@@ -16,13 +16,13 @@ test('slet-knappen på miljøkortet er et skraldespandsikon med en tekst til sk�
   assert.ok(!linje.includes('>✕<'), 'et X ligner en luk-knap');
 });
 
-test('guidens tekster findes på alle fem sprog', () => {
+test('guidens tekster findes på alle seks sprog', () => {
   const nøgler = ['btn_guide', 'card_guide_todo', 'card_guide_done',
                   'guide_prompt_text', 'guide_prompt_open', 'guide_prompt_later', 'guide_prompt_never',
                   'pl_mf_missing', 'gd_optional'];
   for (const k of nøgler) {
     const n = HTML.split('\n').filter(l => l.startsWith(`    ${k}:`)).length;
-    assert.equal(n, 5, `${k} skal stå på da, en, fr, nl og es — fandt ${n}`);
+    assert.equal(n, 6, `${k} skal stå på da, en, fr, nl, es og de — fandt ${n}`);
   }
 });
 

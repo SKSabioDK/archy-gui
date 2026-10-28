@@ -1,5 +1,5 @@
 // OAuth-klienter og integrationer: roller og divisioner skal matches på navn
-// på tværs af orgs, og fanerne skal have tekst på alle fem sprog.
+// på tværs af orgs, og fanerne skal have tekst på alle seks sprog.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -83,11 +83,11 @@ test('uden division i målet kan rollen gives i Home, og dubletter fjernes', () 
   assert.deepEqual(med.missing, []);
 });
 
-test('fanerne har tekst på alle fem sprog', () => {
+test('fanerne har tekst på alle seks sprog', () => {
   for (const key of ['oa_home_confirm', 'oa_home_used', 'oa_divs_confirm', 'oa_divisions', 'oa_roles_confirm', 'oa_builtin_missing', 'da_tab_roles', 'ro_roles', 'ro_search_ph', 'ro_policies', 'ro_skipped', 'roles_note', 'da_tab_oauth', 'da_tab_integ', 'oa_clients', 'ig_integrations', 'oa_search_ph', 'ig_search_ph',
     'ml_migrate_btn', 'ml_loading', 'ml_none', 'ml_exists', 'oa_roles', 'oa_missing', 'oa_secret_warn',
     'oa_download_secrets', 'oauth_note', 'integ_note', 'ig_activated', 'ig_inactive', 'ig_todo', 'tip_ml_migrate_btn']) {
     const antal = (html.match(new RegExp(`^[ \t]*${key}:`, 'gm')) || []).length;
-    assert.equal(antal, 5, `${key} findes ${antal} steder i LANGS, ikke 5`);
+    assert.equal(antal, 6, `${key} findes ${antal} steder i LANGS, ikke 6`);
   }
 });

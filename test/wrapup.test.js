@@ -1,5 +1,5 @@
 // Datatabel-schemaet må ikke bære grænser Genesys afviser ved oprettelse, og
-// wrap-up-fanen skal have tekst på alle fem sprog og en rute der er beskyttet.
+// wrap-up-fanen skal have tekst på alle seks sprog og en rute der er beskyttet.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -33,9 +33,9 @@ test('wrap-up-migrering er en skrivende rute med målbeskyttelse', () => {
   assert.match(server, /app\.get\('\/api\/customers\/:id\/wrapupcodes'/);
 });
 
-test('wrap-up-fanen har tekst på alle fem sprog', () => {
+test('wrap-up-fanen har tekst på alle seks sprog', () => {
   for (const key of ['da_tab_wrapup', 'wu_codes', 'wu_search_ph', 'wu_migrate_btn', 'wu_loading', 'wu_none', 'wu_exists', 'tip_wu_migrate_btn']) {
     const antal = (html.match(new RegExp(`^[ \\t]*${key}:`, 'gm')) || []).length;
-    assert.equal(antal, 5, `${key} findes ${antal} steder i LANGS, ikke 5`);
+    assert.equal(antal, 6, `${key} findes ${antal} steder i LANGS, ikke 6`);
   }
 });

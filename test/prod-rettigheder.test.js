@@ -104,7 +104,7 @@ const SKRIVER_IKKE_TIL_ORG = new Set([
   '/api/releases/diff', '/api/releases/notes', '/api/flows/dependents',
   '/api/flows/cross-hash', '/api/flows/compare', '/api/data-actions/compare', '/api/data-actions/contracts', '/api/data-actions/plan', '/api/oauthclients/plan', '/api/migrate/check',
   '/api/export', '/api/export-all', '/api/export-all/cancel/:jobId', '/api/validate-yaml',
-  '/api/logs/clear', '/api/files/cleanup'
+  '/api/logs/clear', '/api/files/cleanup', '/api/features', '/api/features/unlock'
 ]);
 const TJEKKER_SELV = ['/api/releases/rollback', '/api/releases/note'];
 // Opsætningsrækken skrives gennem writeSetupRow, som selv spørger prod-vagten.

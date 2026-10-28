@@ -156,6 +156,42 @@ function checkForUpdate() {
   });
 }
 
+// ── Interne funktioner ────────────────────────────────────────────────────────
+// Flow Builder (beta) og Demo-kunden er til internt brug. De er skjult indtil
+// der er indtastet en aktiveringsnøgle. Kun nøglens SHA-256 står her — selve
+// nøglen står aldrig i koden. Det er funktionsstyring, ikke adgangskontrol:
+// den der har koden kan fjerne spærringen.
+// Ny nøgle: node -e "console.log(require('crypto').createHash('sha256').update('MIN-NØGLE').digest('hex'))"
+const FEATURE_KEY_SHA256 = '61add01651494dfa4b7f4aeb63adb8f5d2749f2844b5d90d1f858b37012f2eee';
+
+function keyMatches(key) {
+  if (typeof key !== 'string' || !key) return false;
+  const a = Buffer.from(crypto.createHash('sha256').update(key.trim()).digest('hex'));
+  return crypto.timingSafeEqual(a, Buffer.from(FEATURE_KEY_SHA256));
+}
+function internalUnlocked() { return keyMatches(loadSettings().featureKey); }
+function requireInternal(req, res, next) {
+  if (internalUnlocked()) return next();
+  res.status(403).json({ error: 'Funktionen kræver en aktiveringsnøgle' });
+}
+
+app.get('/api/features', (req, res) => res.json({ internal: internalUnlocked() }));
+app.post('/api/features/unlock', (req, res) => {
+  const key = String((req.body || {}).key || '').trim();
+  if (!keyMatches(key)) {
+    addLog('WARN', 'Activation key rejected', null, 'SYSTEM');
+    return res.status(400).json({ error: 'Ukendt nøgle' });
+  }
+  saveSettings({ featureKey: key });
+  addLog('INFO', 'Internal features unlocked', null, 'SYSTEM');
+  res.json({ internal: true });
+});
+app.delete('/api/features', (req, res) => {
+  saveSettings({ featureKey: null });
+  addLog('INFO', 'Internal features locked', null, 'SYSTEM');
+  res.json({ internal: false });
+});
+
 app.get('/api/version', (req, res) => res.json(versionInfo));
 
 // Manual trigger — used by the "Check for updates" button in the UI
@@ -1129,7 +1165,7 @@ app.post('/api/demo/publish', (req, res) => {
   res.json({ ok: true, published: f.published, name: f.name });
 });
 
-app.get('/api/demo/status', (req, res) => {
+app.get('/api/demo/status', requireInternal, (req, res) => {
   const all = loadCustomers();
   const one = all.filter(c => demoIs(c, '1'));
   const two = all.filter(c => demoIs(c, '2'));
@@ -1150,7 +1186,7 @@ function demoIs(c, which) {
                                      : String(c.id).startsWith('demo-'));
 }
 
-app.post('/api/demo/create', (req, res) => {
+app.post('/api/demo/create', requireInternal, (req, res) => {
   const which = String(req.body?.which || '1');
   const customers = loadCustomers().filter(c => !demoIs(c, which));
   if (which === '2') {
@@ -1180,7 +1216,7 @@ app.post('/api/demo/create', (req, res) => {
   res.json({ ok: true, tenant: DEMO_TENANT, group: DEMO_GROUP });
 });
 
-app.post('/api/demo/reset', (req, res) => {
+app.post('/api/demo/reset', requireInternal, (req, res) => {
   const which = String(req.body?.which || '1');
   if (!loadCustomers().some(c => demoIs(c, which)))
     return res.status(404).json({ error: 'Ingen demo-kunde' });
@@ -1202,7 +1238,7 @@ app.post('/api/demo/reset', (req, res) => {
   res.json({ ok: true });
 });
 
-app.delete('/api/demo', (req, res) => {
+app.delete('/api/demo', requireInternal, (req, res) => {
   const which = String(req.query.which || '1');
   saveCustomers(loadCustomers().filter(c => !demoIs(c, which)));
   const d = loadDemo();
@@ -10080,7 +10116,7 @@ if (require.main === module) {
 // især haft mindst én fejl der nåede ud til brugeren, og de er samtidig de
 // eneste der kan efterprøves uden en rigtig org. Se test/*.test.js.
 module.exports = {
-  logLevelFor,
+  logLevelFor, keyMatches,
   nodeSecurityStatus, countsAsExisting, scanTtsEngines, missingTtsEngines, replaceTtsEngines, applyClientScopes, dropRejectedLogin, flowOwnDivision, divisionProblem, appsBaseOf, COPYABLE_KINDS, RESOURCE_KINDS, RESOURCE_MIGRATE, SIMPLE_CREATE, noteUnavailableType, typeUnavailableHere, scanDefaultLanguage, archyHint, scheduleCreateBody, scheduleGroupCreateBody, scanSupportedLanguages, watchForUpdates, identicalInTarget, promptHasContent, queueCreateBody, groupCreateBody, credentialChangeError, forgetLogin, keepsOrgOnClientChange,
   sanitizeDatatableSchema, mapRoleDivisions, buildOauthClientBody, buildRolePolicies, missingRolesFor, missingDivisionsFor,
   app, tokenStore, getToken, loadSessions, saveSessions, setSessionPersist, SESSION_FILE,

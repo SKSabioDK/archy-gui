@@ -102,5 +102,5 @@ test('tal i tekst: ental hvor tallet er 1', () => {
   assert.match(HTML2, /v\.ok === 1 \? 'pc_ok_one' : 'pc_ok_n'/);
   // Hvert sprog har ental-teksterne.
   for (const k of ['dp_action_one', 'dp_inactive_one', 'pc_ok_one'])
-    assert.equal((HTML2.match(new RegExp('^ *' + k + ':', 'gm')) || []).length, 5, k);
+    assert.equal((HTML2.match(new RegExp('^ *' + k + ':', 'gm')) || []).length, 6, k);
 });
