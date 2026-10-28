@@ -294,7 +294,7 @@ test('Fra-org og Mål-org gælder på tværs af siderne og spørges ved et nyt l
 
 test('fanerne i Migrér ressourcer står så ingen afhænger af en fane der kommer efter den', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-  const order = [...html.matchAll(/id="da-tab-([a-z]+)" onclick="daSetTab\('([a-z]+)'\)"/g)].map(m => m[1]).filter(k => !['check', 'plan', 'rtc'].includes(k));
+  const order = [...html.matchAll(/id="da-tab-([a-z]+)" onclick="daSetTab\('([a-z]+)'\)"/g)].map(m => m[1]).filter(k => !['check', 'plan', 'rtc', 'orgset'].includes(k));
   const deps = JSON.parse(html.match(/const DA_DEPS = (\{[\s\S]*?\});/)[1].replace(/([a-z]+):/g, '"$1":').replace(/'/g, '"'));
   assert.deepEqual([...order].sort(), Object.keys(deps).sort(), 'hver fane har en afhængighedsliste');
   for (const [k, d] of Object.entries(deps))

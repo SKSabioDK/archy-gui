@@ -548,7 +548,7 @@
       <a onclick="openIssue('idea')" data-i18n="iss_link_idea">💡 Foreslå et ønske</a>
     </div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.74.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.75.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1049,6 +1049,7 @@
         <div class="da-tab" id="da-tab-integ" onclick="daSetTab('integ')" data-i18n="da_tab_integ">Integrationer</div>
         <div class="da-tab" id="da-tab-actions" onclick="daSetTab('actions')" data-i18n="da_tab_actions">Data Actions</div>
         <div class="da-tab" id="da-tab-oauth" onclick="daSetTab('oauth')" data-i18n="da_tab_oauth">OAuth-klienter</div>
+        <div class="da-tab da-tab-x" id="da-tab-orgset" onclick="daSetTab('orgset')" data-i18n="da_tab_orgset">Org-indstillinger</div>
         <div class="da-tab da-tab-x" id="da-tab-rtc" onclick="daSetTab('rtc')" data-i18n="da_tab_rtc">Totaltjek (alle ressourcer)</div>
         <div class="da-tab da-tab-x" id="da-tab-check" onclick="daSetTab('check')" data-i18n="da_tab_check">Totaltjek</div>
         <div class="da-tab da-tab-x" id="da-tab-plan" onclick="daSetTab('plan')" data-i18n="da_tab_plan">Setup-forslag</div>
@@ -1248,6 +1249,19 @@
         </div>
         <div style="font-size:11px;color:var(--muted);margin-bottom:10px" data-i18n="sc_note">Scriptet eksporteres og importeres i sin helhed og publiceres, hvis det er publiceret i kilden.</div>
         <div id="sc-list"></div>
+      </div>
+      <div class="card" id="da-orgset-card" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap">
+          <div class="card-title" style="margin:0" data-i18n="os_title">ORG-INDSTILLINGER</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" id="os-migrate-btn" onclick="osMigrate()" disabled data-i18n="os_migrate">⚡ Migrér valgte</button>
+            <button class="btn btn-secondary btn-sm" id="os-run-btn" onclick="osRun()" data-i18n="os_run">Sammenlign</button>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px" data-i18n="os_intro"></div>
+        <div style="font-size:11px;color:var(--yellow);margin-bottom:12px" data-i18n="os_note"></div>
+        <div id="os-status" style="font-size:12px;margin-bottom:8px"></div>
+        <div id="os-body"></div>
       </div>
       <div class="card" id="da-rtc-card" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap">
@@ -2257,6 +2271,12 @@ const LANGS = {
     iss_b_log:'Log',
     iss_b_trimmed:'Loggen er forkortet til de nyeste linjer.',
     iss_b_screens:'Skærmbilleder kan indsættes her.',
+    da_tab_orgset:'Org-indstillinger', os_title:'ORG-INDSTILLINGER', os_intro:'Sammenligner det der står under Admin → Organization Settings i de to orgs. Statusser (Status Management) og standardsprog/-land kan migreres; resten vises kun til sammenligning.', os_note:'Organization Details og Authentication (login, SSO, adgangskoderegler) migreres ikke: de er knyttet til den enkelte org, og SSO-udbydere indeholder certifikater og hemmeligheder, som ikke kan læses ud. Tilladte domæner og IP-lister vises kun — en forkert værdi kan låse brugere ude.',
+    os_run:'Sammenlign', os_migrate:'⚡ Migrér valgte', os_only_diff:'Kun forskelle', os_none:'Ingen forskelle.', os_confirm:'Migrér {n} indstilling(er) til {target}? Det ændrer org\'ens indstillinger.', os_running:'Sammenligner…', os_need_orgs:'Vælg både kilde og mål først.',
+    os_col_section:'Område', os_col_item:'Indstilling', os_col_src:'Kilde', os_col_tgt:'Mål', os_col_status:'Status',
+    os_sec_presence:'Status Management', os_sec_language:'Sprog', os_sec_embedded:'Embedded integration', os_sec_whitelist:'Betroede IP-adresser',
+    os_st_same:'ens', os_st_differs:'forskellig', os_st_missing:'mangler i mål', os_st_extra:'kun i mål', os_st_unreadable:'kunne ikke læses',
+    os_i_defaultLanguage:'Standardsprog', os_i_defaultCountryCode:'Standardland', os_i_supportedLanguages:'Understøttede sprog', os_i_integrationWhiteList:'Tilladte domæner', os_i_whitelist:'Betroede IP-adresser',
     btn_demo_create:'+ Opret demo-kunde',
     btn_demo_reset:'↺ Nulstil demo',
     btn_demo_remove:'✕ Fjern demo',
@@ -3336,6 +3356,12 @@ const LANGS = {
     iss_b_log:'Log',
     iss_b_trimmed:'The log is trimmed to the latest lines.',
     iss_b_screens:'Screenshots can be pasted here.',
+    da_tab_orgset:'Org settings', os_title:'ORG SETTINGS', os_intro:'Compares what is under Admin → Organization Settings in the two orgs. Statuses (Status Management) and the default language/country can be migrated; the rest is shown for comparison only.', os_note:'Organization Details and Authentication (login, SSO, password rules) are not migrated: they belong to the individual org, and SSO providers contain certificates and secrets that cannot be read out. Allowed domains and IP lists are shown only — a wrong value can lock users out.',
+    os_run:'Compare', os_migrate:'⚡ Migrate selected', os_only_diff:'Differences only', os_none:'No differences.', os_confirm:'Migrate {n} setting(s) to {target}? This changes the org\'s settings.', os_running:'Comparing…', os_need_orgs:'Choose both source and target first.',
+    os_col_section:'Area', os_col_item:'Setting', os_col_src:'Source', os_col_tgt:'Target', os_col_status:'Status',
+    os_sec_presence:'Status Management', os_sec_language:'Language', os_sec_embedded:'Embedded integration', os_sec_whitelist:'Trusted IPs',
+    os_st_same:'same', os_st_differs:'differs', os_st_missing:'missing in target', os_st_extra:'only in target', os_st_unreadable:'could not be read',
+    os_i_defaultLanguage:'Default language', os_i_defaultCountryCode:'Default country', os_i_supportedLanguages:'Supported languages', os_i_integrationWhiteList:'Allowed domains', os_i_whitelist:'Trusted IPs',
     btn_demo_create:'+ Create demo customer',
     btn_demo_reset:'↺ Reset demo',
     btn_demo_remove:'✕ Remove demo',
@@ -4415,6 +4441,12 @@ const LANGS = {
     iss_b_log:'Journal',
     iss_b_trimmed:'Le journal est réduit aux dernières lignes.',
     iss_b_screens:'Les captures d\'écran peuvent être collées ici.',
+    da_tab_orgset:'Paramètres de l\'org', os_title:'PARAMÈTRES DE L\'ORG', os_intro:'Compare ce qui figure sous Admin → Organization Settings dans les deux orgs. Les statuts (Status Management) et la langue/le pays par défaut peuvent être migrés ; le reste n\'est affiché qu\'à titre de comparaison.', os_note:'Organization Details et Authentication (connexion, SSO, règles de mot de passe) ne sont pas migrés : ils sont propres à chaque org, et les fournisseurs SSO contiennent des certificats et secrets illisibles. Les domaines autorisés et listes d\'IP sont affichés seulement — une mauvaise valeur peut bloquer des utilisateurs.',
+    os_run:'Comparer', os_migrate:'⚡ Migrer la sélection', os_only_diff:'Différences uniquement', os_none:'Aucune différence.', os_confirm:'Migrer {n} paramètre(s) vers {target} ? Cela modifie les paramètres de l\'org.', os_running:'Comparaison…', os_need_orgs:'Choisissez d\'abord la source et la cible.',
+    os_col_section:'Domaine', os_col_item:'Paramètre', os_col_src:'Source', os_col_tgt:'Cible', os_col_status:'Statut',
+    os_sec_presence:'Status Management', os_sec_language:'Langue', os_sec_embedded:'Intégration embarquée', os_sec_whitelist:'IP de confiance',
+    os_st_same:'identique', os_st_differs:'différent', os_st_missing:'manquant dans la cible', os_st_extra:'uniquement dans la cible', os_st_unreadable:'illisible',
+    os_i_defaultLanguage:'Langue par défaut', os_i_defaultCountryCode:'Pays par défaut', os_i_supportedLanguages:'Langues prises en charge', os_i_integrationWhiteList:'Domaines autorisés', os_i_whitelist:'IP de confiance',
     btn_demo_create:'+ Créer le client démo',
     btn_demo_reset:'↺ Réinitialiser la démo',
     btn_demo_remove:'✕ Supprimer la démo',
@@ -5494,6 +5526,12 @@ const LANGS = {
     iss_b_log:'Log',
     iss_b_trimmed:'De log is ingekort tot de nieuwste regels.',
     iss_b_screens:'Schermafbeeldingen kunnen hier worden geplakt.',
+    da_tab_orgset:'Org-instellingen', os_title:'ORG-INSTELLINGEN', os_intro:'Vergelijkt wat onder Admin → Organization Settings staat in de twee orgs. Statussen (Status Management) en de standaardtaal/het standaardland kunnen worden gemigreerd; de rest wordt alleen ter vergelijking getoond.', os_note:'Organization Details en Authentication (inloggen, SSO, wachtwoordregels) worden niet gemigreerd: ze horen bij de afzonderlijke org, en SSO-providers bevatten certificaten en geheimen die niet uit te lezen zijn. Toegestane domeinen en IP-lijsten worden alleen getoond — een foute waarde kan gebruikers buitensluiten.',
+    os_run:'Vergelijken', os_migrate:'⚡ Selectie migreren', os_only_diff:'Alleen verschillen', os_none:'Geen verschillen.', os_confirm:'{n} instelling(en) migreren naar {target}? Dit wijzigt de instellingen van de org.', os_running:'Vergelijken…', os_need_orgs:'Kies eerst bron en doel.',
+    os_col_section:'Gebied', os_col_item:'Instelling', os_col_src:'Bron', os_col_tgt:'Doel', os_col_status:'Status',
+    os_sec_presence:'Status Management', os_sec_language:'Taal', os_sec_embedded:'Embedded integratie', os_sec_whitelist:'Vertrouwde IP\'s',
+    os_st_same:'gelijk', os_st_differs:'verschilt', os_st_missing:'ontbreekt in doel', os_st_extra:'alleen in doel', os_st_unreadable:'kon niet worden gelezen',
+    os_i_defaultLanguage:'Standaardtaal', os_i_defaultCountryCode:'Standaardland', os_i_supportedLanguages:'Ondersteunde talen', os_i_integrationWhiteList:'Toegestane domeinen', os_i_whitelist:'Vertrouwde IP\'s',
     btn_demo_create:'+ Demoklant aanmaken',
     btn_demo_reset:'↺ Demo resetten',
     btn_demo_remove:'✕ Demo verwijderen',
@@ -6573,6 +6611,12 @@ const LANGS = {
     iss_b_log:'Protokoll',
     iss_b_trimmed:'Das Protokoll wurde auf die neuesten Zeilen gekürzt.',
     iss_b_screens:'Screenshots können hier eingefügt werden.',
+    da_tab_orgset:'Org-Einstellungen', os_title:'ORG-EINSTELLUNGEN', os_intro:'Vergleicht, was unter Admin → Organization Settings in den beiden Orgs steht. Status (Status Management) sowie Standardsprache/-land können migriert werden; der Rest wird nur zum Vergleich angezeigt.', os_note:'Organization Details und Authentication (Anmeldung, SSO, Passwortregeln) werden nicht migriert: Sie gehören zur jeweiligen Org, und SSO-Anbieter enthalten Zertifikate und Geheimnisse, die sich nicht auslesen lassen. Erlaubte Domains und IP-Listen werden nur angezeigt — ein falscher Wert kann Benutzer aussperren.',
+    os_run:'Vergleichen', os_migrate:'⚡ Auswahl migrieren', os_only_diff:'Nur Unterschiede', os_none:'Keine Unterschiede.', os_confirm:'{n} Einstellung(en) nach {target} migrieren? Das ändert die Einstellungen der Org.', os_running:'Vergleiche…', os_need_orgs:'Wählen Sie zuerst Quelle und Ziel aus.',
+    os_col_section:'Bereich', os_col_item:'Einstellung', os_col_src:'Quelle', os_col_tgt:'Ziel', os_col_status:'Status',
+    os_sec_presence:'Status Management', os_sec_language:'Sprache', os_sec_embedded:'Embedded Integration', os_sec_whitelist:'Vertrauenswürdige IPs',
+    os_st_same:'gleich', os_st_differs:'abweichend', os_st_missing:'fehlt im Ziel', os_st_extra:'nur im Ziel', os_st_unreadable:'konnte nicht gelesen werden',
+    os_i_defaultLanguage:'Standardsprache', os_i_defaultCountryCode:'Standardland', os_i_supportedLanguages:'Unterstützte Sprachen', os_i_integrationWhiteList:'Erlaubte Domains', os_i_whitelist:'Vertrauenswürdige IPs',
     btn_demo_create:'+ Demo-Kunde anlegen',
     btn_demo_reset:'↺ Demo zurücksetzen',
     btn_demo_remove:'✕ Demo entfernen',
@@ -7652,6 +7696,12 @@ const LANGS = {
     iss_b_log:'Registro',
     iss_b_trimmed:'El registro se ha recortado a las últimas líneas.',
     iss_b_screens:'Las capturas de pantalla se pueden pegar aquí.',
+    da_tab_orgset:'Ajustes de la org', os_title:'AJUSTES DE LA ORG', os_intro:'Compara lo que aparece en Admin → Organization Settings en las dos orgs. Los estados (Status Management) y el idioma/país predeterminado se pueden migrar; el resto solo se muestra para comparar.', os_note:'Organization Details y Authentication (inicio de sesión, SSO, reglas de contraseña) no se migran: pertenecen a cada org, y los proveedores SSO contienen certificados y secretos que no se pueden leer. Los dominios permitidos y las listas de IP solo se muestran — un valor erróneo puede bloquear a los usuarios.',
+    os_run:'Comparar', os_migrate:'⚡ Migrar selección', os_only_diff:'Solo diferencias', os_none:'Sin diferencias.', os_confirm:'¿Migrar {n} ajuste(s) a {target}? Esto cambia los ajustes de la org.', os_running:'Comparando…', os_need_orgs:'Elija primero origen y destino.',
+    os_col_section:'Área', os_col_item:'Ajuste', os_col_src:'Origen', os_col_tgt:'Destino', os_col_status:'Estado',
+    os_sec_presence:'Status Management', os_sec_language:'Idioma', os_sec_embedded:'Integración embebida', os_sec_whitelist:'IP de confianza',
+    os_st_same:'igual', os_st_differs:'distinto', os_st_missing:'falta en destino', os_st_extra:'solo en destino', os_st_unreadable:'no se pudo leer',
+    os_i_defaultLanguage:'Idioma predeterminado', os_i_defaultCountryCode:'País predeterminado', os_i_supportedLanguages:'Idiomas admitidos', os_i_integrationWhiteList:'Dominios permitidos', os_i_whitelist:'IP de confianza',
     btn_demo_create:'+ Crear cliente demo',
     btn_demo_reset:'↺ Restablecer demo',
     btn_demo_remove:'✕ Eliminar demo',
@@ -13178,12 +13228,109 @@ function daSetTab(tab) {
     // Hentes først når fanen åbnes — ellers hentes alle køer, grupper og skills for hver kilde
     if (tab === k && srcPicked && ML[k].loadedFor !== document.getElementById('da-source').value) mlLoad(k);
   });
+  document.getElementById('da-tab-orgset').classList.toggle('active', tab === 'orgset');
+  document.getElementById('da-orgset-card').style.display = tab === 'orgset' ? 'block' : 'none';
   document.getElementById('da-tab-rtc').classList.toggle('active', tab === 'rtc');
   document.getElementById('da-rtc-card').style.display = (tab === 'rtc' && srcPicked) ? 'block' : 'none';
   daUpdateDepNote(tab);
   daUpdatePasteBar();
   daTgtSummary();
   if (daTgt[tab]) daApplyBadges();
+}
+
+// ── Org-indstillinger ─────────────────────────────────────────────────────────
+// Sammenligner det man ser under Admin → Organization Settings. Kun statusser og
+// standardsprog/-land kan migreres; resten vises til sammenligning.
+let osRows = [], osSel = new Set(), osMeta = null, osBusy = false;
+
+const osKey = r => r.section + ':' + r.item;
+function osLabel(r) {
+  if (r.section === 'presence') return r.item;
+  const k = 'os_i_' + r.item;
+  const v = t(k);
+  return v === k ? r.item : v;
+}
+function osStatusText(st) { return t('os_st_' + st); }
+const OS_COLOR = { same: 'green', differs: 'yellow', missing: 'red', extra: 'muted', unreadable: 'muted' };
+
+async function osRun() {
+  const sid = document.getElementById('da-source').value, tid = document.getElementById('da-target').value;
+  const st = document.getElementById('os-status');
+  if (!sid || !tid || sid === tid) { st.style.color = 'var(--yellow)'; st.textContent = t('os_need_orgs'); return; }
+  st.style.color = 'var(--muted)';
+  st.innerHTML = `<span class="spin"></span> ${escapeHtml(t('os_running'))}`;
+  document.getElementById('os-run-btn').disabled = true;
+  let r;
+  try { r = await fetch(`/api/orgsettings/compare?sourceId=${encodeURIComponent(sid)}&targetId=${encodeURIComponent(tid)}`).then(x => x.json()); }
+  catch (e) { r = { error: e.message }; }
+  document.getElementById('os-run-btn').disabled = false;
+  if (r.error) { st.style.color = 'var(--red)'; st.textContent = r.error; return; }
+  if (r.sameOrg) { st.style.color = 'var(--yellow)'; st.textContent = t('da_err_same'); return; }
+  st.textContent = '';
+  osRows = r.rows; osSel.clear(); osMeta = { src: r.sourceName, tgt: r.targetName };
+  osRender();
+}
+
+function osRender() {
+  const body = document.getElementById('os-body');
+  const only = document.getElementById('os-only-diff') ? document.getElementById('os-only-diff').checked : true;
+  const rows = osRows.filter(r => !only || r.status !== 'same');
+  const head = `<label style="display:flex;align-items:center;gap:6px;font-size:12px;margin:0 0 8px;cursor:pointer">
+      <input type="checkbox" id="os-only-diff" style="width:auto" ${only ? 'checked' : ''} onchange="osRender()" /> ${escapeHtml(t('os_only_diff'))}</label>`;
+  if (!rows.length) { body.innerHTML = head + `<div style="color:var(--muted);font-size:12px">${escapeHtml(t('os_none'))}</div>`; osUpdateBtn(); return; }
+  body.innerHTML = head + `<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="text-align:left;color:var(--muted)">
+      <th style="width:26px"></th><th>${t('os_col_section')}</th><th>${t('os_col_item')}</th><th>${t('os_col_src')}</th><th>${t('os_col_tgt')}</th><th>${t('os_col_status')}</th></tr></thead><tbody>` +
+    rows.map(r => {
+      const k = osKey(r);
+      return `<tr style="border-top:1px solid var(--border)">
+        <td>${r.migratable ? `<input type="checkbox" style="width:auto" ${osSel.has(k) ? 'checked' : ''} onchange="osToggle(${jsAttr(k)}, this.checked)" />` : ''}</td>
+        <td>${escapeHtml(t('os_sec_' + r.section))}</td>
+        <td>${escapeHtml(osLabel(r))}</td>
+        <td style="font-family:var(--mono);word-break:break-all">${escapeHtml(r.source)}</td>
+        <td style="font-family:var(--mono);word-break:break-all">${escapeHtml(r.target)}</td>
+        <td style="color:var(--${OS_COLOR[r.status] || 'muted'})">${escapeHtml(osStatusText(r.status))}${r.detail ? ' · ' + escapeHtml(r.detail) : ''}</td></tr>`;
+    }).join('') + '</tbody></table>';
+  osUpdateBtn();
+}
+
+function osToggle(k, on) { if (on) osSel.add(k); else osSel.delete(k); osUpdateBtn(); }
+function osUpdateBtn() {
+  const b = document.getElementById('os-migrate-btn');
+  if (b) { b.disabled = osBusy || !osSel.size; b.textContent = t('os_migrate') + (osSel.size ? ` (${osSel.size})` : ''); }
+}
+
+async function osMigrate() {
+  if (osBusy || !osSel.size) return;
+  const sourceId = document.getElementById('da-source').value, targetId = document.getElementById('da-target').value;
+  if (!sourceId || !targetId) return alert(t('da_err_select'));
+  if (sourceId === targetId) return alert(t('da_err_same'));
+  const items = osRows.filter(r => osSel.has(osKey(r))).map(r => ({ section: r.section, item: r.item }));
+  const tgt = customers.find(c => c.id === targetId);
+  let msg = t('os_confirm').replace('{n}', String(items.length)).replace('{target}', (tgt && tgt.name) || '');
+  if (String((tgt && tgt.stage) || '').toLowerCase() === 'prod') msg += '\n\n' + t('pl_prod_warn');
+  if (!confirm(msg)) return;
+
+  osBusy = true; osUpdateBtn();
+  const logBox = document.getElementById('da-logbox');
+  document.getElementById('da-log').style.display = 'block'; logBox.innerHTML = '';
+  log(logBox, `${osMeta ? osMeta.src : ''}  ⟶  ${osMeta ? osMeta.tgt : ''}`, 'info');
+  let ok = 0, skipped = 0, failed = 0;
+  migStart('da_tab_orgset', sourceId, targetId);
+  try {
+    const data = await fetch('/api/orgsettings/migrate', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sourceId, targetId, items }) }).then(r => r.json());
+    if (data.error) { log(logBox, '  ✗ ' + data.error, 'err'); failed++; migRec('', 'failed', data.error); }
+    else for (const r of data.results) {
+      const label = r.name || r.id;
+      if (r.status === 'created') { ok++; log(logBox, '  ✓ ' + label + (r.detail ? ' (' + r.detail + ')' : ''), 'ok'); migRec(label, 'ok', r.detail || ''); }
+      else if (r.status === 'exists') { skipped++; log(logBox, '  ⚠ ' + label + ': ' + t('ml_exists'), 'info'); migRec(label, 'skipped', t('ml_exists')); }
+      else { failed++; log(logBox, '  ✗ ' + label + ': ' + r.message, 'err'); migRec(label, 'failed', r.message || ''); }
+    }
+  } catch (e) { log(logBox, '  ✗ ' + e.message, 'err'); failed++; migRec('', 'failed', e.message); }
+  log(logBox, `\n── ${t('da_done')} ── ${ok} ${t('da_sum_ok')} · ${skipped} ${t('da_sum_skipped')} · ${failed} ${t('da_sum_failed')}`, failed ? 'err' : 'info');
+  migEnd();
+  osBusy = false;
+  await osRun();
 }
 
 // ── Totaltjek af data actions ────────────────────────────────────────────────

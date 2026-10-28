@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.74.0
+# Archy GUI — Flow Manager · v1.75.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.74.0**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.74.0**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.75.0**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.75.0**.
 
 ---
 
@@ -371,6 +371,8 @@ Siden migrerer det der ikke er flows mellem to orgs, fordelt på otte faner: **D
 
 **Sårbarhedsscanning.** `.github/workflows/security.yml` kører hver mandag `npm audit --omit=dev` og testene og opretter en issue med etiketten *security* ved fund; Dependabot holder pakkerne opdateret.
 
+**Fanen Org-indstillinger** sammenligner det der står under Admin → Organization Settings i kilde og mål og viser kun forskellene: *Status Management*, standardsprog og -land, understøttede sprog, tilladte domæner (embedded integration) og betroede IP-adresser. **Migrér valgte** kopierer statusser og standardsprog/-land efter en bekræftelse og med prod-vagten; resten vises kun, fordi en forkert IP- eller domæneliste kan låse brugere ude. *Organization Details* og *Authentication* (login, SSO, adgangskoder) migreres ikke — de hører til den enkelte org, og SSO-udbydere indeholder hemmeligheder, der ikke kan læses ud. Et område der ikke kan læses, står som *kunne ikke læses*, aldrig som *ens*. Skrivningerne er kun afprøvet med simulerede svar — prøv mod en test-org først.
+
 **Migreringsrapport (CSV).** Hver migrering — alle ressourcefaner, flows og de afhængigheder der migreres undervejs — skriver en række med tidspunkt, type, navn, status (*Lykkedes*, *Sprunget over*, *Fejlede*), detalje og kilde- og mål-org. Rækkerne samles på tværs af faner og flows og huskes i browseren (højst 5.000). Øverst på *Migrér ressourcer* og *Migrer Flow*: **Gem rapport (CSV) efter hver migrering** henter en fil når kørslen er færdig, **Download samlet rapport** henter alt der er samlet, og **Ryd** tømmer samlingen. Secrets fra OAuth-klienter kommer aldrig med. Semikolon og UTF-8 med BOM, så Excel åbner den rigtigt.
 
 *Eksempel med opdigtede data (Demo A/S — TEST til PROD): billedet viser appens rigtige brugerflade, men svarene er beregnet af appens egne funktioner på en opdigtet org, ikke hentet fra en kunde. Faneblade kræver to forskellige orgs.*
@@ -504,7 +506,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-456 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+465 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -866,6 +868,8 @@ This page migrates everything that is not a flow between two orgs, across eight 
 
 **Vulnerability scan.** `.github/workflows/security.yml` runs `npm audit --omit=dev` and the tests every Monday and creates an issue labelled *security* if it finds anything; Dependabot keeps the packages up to date.
 
+**The Org settings tab** compares what is under Admin → Organization Settings in source and target and shows only the differences: *Status Management*, default language and country, supported languages, allowed domains (embedded integration) and trusted IPs. **Migrate selected** copies statuses and the default language/country after a confirmation and behind the prod guard; the rest is shown only, because a wrong IP or domain list can lock users out. *Organization Details* and *Authentication* (login, SSO, passwords) are not migrated — they belong to the individual org, and SSO providers contain secrets that cannot be read out. An area that cannot be read shows as *could not be read*, never as *same*. The writes have only been exercised with simulated responses — try a test org first.
+
 **Migration report (CSV).** Every migration — all resource tabs, flows and the dependencies migrated along the way — writes a row with time, type, name, status (*Succeeded*, *Skipped*, *Failed*), detail and source and target org. Rows are collected across tabs and flows and remembered in the browser (at most 5,000). At the top of *Migrate resources* and *Migrate Flow*: **Save a report (CSV) after each migration** downloads a file when the run finishes, **Download combined report** downloads everything collected, and **Clear** empties the collection. OAuth client secrets are never included. Semicolon-separated, UTF-8 with BOM so Excel opens it correctly.
 
 *Example with invented data (Demo A/S — TEST to PROD): the image shows the app's real UI, but the answers are computed by the app's own functions on an invented org, not fetched from a customer. These tabs need two different orgs.*
@@ -999,7 +1003,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-456 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+465 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 

@@ -5,6 +5,27 @@
 
 ---
 
+### v1.75.0
+---
+**🇩🇰 Dansk**
+
+- **Ny fane: Org-indstillinger** under *Migrér ressourcer*. Sammenligner det der står under Admin → Organization Settings i kilde og mål og viser kun forskellene: **Status Management** (organisationens egne statusser), **standardsprog og -land**, understøttede sprog, tilladte domæner til embedded integration og betroede IP-adresser. Sammenligningen læser kun.
+- **Migrér valgte** kan kopiere statusser (oprettes i målet, ellers springes de over) og standardsprog/-land. Det kræver en bekræftelse og dit prod-login, som alt andet der skriver. Resultatet kommer med i migreringsrapporten.
+- **Det migreres ikke:** Organization Details og Authentication (login, SSO, adgangskoderegler) hører til den enkelte org, SSO-udbydere indeholder certifikater og hemmeligheder der ikke kan læses ud, og en forkert IP-liste eller domæneliste kan låse brugere ude. De vises kun, og fanen siger det.
+- Et område der ikke kan læses (fx manglende rettighed) står som *kunne ikke læses* og aldrig som *ens*.
+- **Ikke afprøvet mod en rigtig org:** Genesys' skrive-endpoints til statusser og organisationen er kun afprøvet med simulerede svar. Prøv først mod en test-org.
+- 9 nye tests.
+
+**🇬🇧 English**
+- **New tab: Org settings** under *Migrate resources*. Compares what is under Admin → Organization Settings in source and target and shows only the differences: **Status Management** (the organisation's own statuses), **default language and country**, supported languages, allowed domains for embedded integration and trusted IPs. The comparison only reads.
+- **Migrate selected** can copy statuses (created in the target, otherwise skipped) and the default language/country. It needs a confirmation and your prod login, like everything else that writes. The result goes into the migration report.
+- **Not migrated:** Organization Details and Authentication (login, SSO, password rules) belong to the individual org, SSO providers contain certificates and secrets that cannot be read out, and a wrong IP or domain list can lock users out. They are shown only, and the tab says so.
+- An area that cannot be read (e.g. missing permission) shows as *could not be read* and never as *same*.
+- **Not tried against a real org:** Genesys' write endpoints for statuses and the organisation have only been exercised with simulated responses. Try a test org first.
+- 9 new tests.
+
+---
+
 ### v1.74.0
 ---
 **🇩🇰 Dansk**
