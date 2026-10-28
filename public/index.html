@@ -548,7 +548,7 @@
       <a onclick="openIssue('idea')" data-i18n="iss_link_idea">💡 Foreslå et ønske</a>
     </div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.75.0 · Archy GUI</div>
+    <div class="version" id="app-version">v1.76.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1049,6 +1049,7 @@
         <div class="da-tab" id="da-tab-integ" onclick="daSetTab('integ')" data-i18n="da_tab_integ">Integrationer</div>
         <div class="da-tab" id="da-tab-actions" onclick="daSetTab('actions')" data-i18n="da_tab_actions">Data Actions</div>
         <div class="da-tab" id="da-tab-oauth" onclick="daSetTab('oauth')" data-i18n="da_tab_oauth">OAuth-klienter</div>
+        <div class="da-tab da-tab-x" id="da-tab-terraform" onclick="daSetTab('terraform')" data-i18n="da_tab_terraform">Terraform</div>
         <div class="da-tab da-tab-x" id="da-tab-orgset" onclick="daSetTab('orgset')" data-i18n="da_tab_orgset">Org-indstillinger</div>
         <div class="da-tab da-tab-x" id="da-tab-rtc" onclick="daSetTab('rtc')" data-i18n="da_tab_rtc">Totaltjek (alle ressourcer)</div>
         <div class="da-tab da-tab-x" id="da-tab-check" onclick="daSetTab('check')" data-i18n="da_tab_check">Totaltjek</div>
@@ -1250,6 +1251,21 @@
         <div style="font-size:11px;color:var(--muted);margin-bottom:10px" data-i18n="sc_note">Scriptet eksporteres og importeres i sin helhed og publiceres, hvis det er publiceret i kilden.</div>
         <div id="sc-list"></div>
       </div>
+      <div class="card" id="da-terraform-card" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap">
+          <div class="card-title" style="margin:0" data-i18n="tf_title">TERRAFORM-OPSÆTNING</div>
+          <button class="btn btn-primary btn-sm" id="tf-run-btn" onclick="tfRun()" data-i18n="tf_run">Generér Terraform</button>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px" data-i18n="tf_intro"></div>
+        <div style="font-size:11px;color:var(--yellow);margin-bottom:12px" data-i18n="tf_note"></div>
+        <div style="display:flex;gap:12px;margin-bottom:8px;font-size:12px">
+          <a href="#" onclick="tfAll(true);return false" style="color:var(--accent);text-decoration:none" data-i18n="tf_all">Vælg alle</a>
+          <a href="#" onclick="tfAll(false);return false" style="color:var(--accent);text-decoration:none" data-i18n="tf_none">Fravælg alle</a>
+        </div>
+        <div id="tf-kinds" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px 14px;margin-bottom:14px"></div>
+        <div id="tf-status" style="font-size:12px;margin-bottom:8px"></div>
+        <div id="tf-body"></div>
+      </div>
       <div class="card" id="da-orgset-card" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap">
           <div class="card-title" style="margin:0" data-i18n="os_title">ORG-INDSTILLINGER</div>
@@ -1388,6 +1404,7 @@
               <option value="EXPORT">EXPORT</option>
               <option value="IMPORT">IMPORT</option>
               <option value="MIGRATE">MIGRATE</option>
+              <option value="TERRAFORM">TERRAFORM</option>
               <option value="RELEASE">RELEASE</option>
               <option value="ROLLBACK">ROLLBACK</option>
               <option value="REPUBLISH">REPUBLISH</option>
@@ -2277,6 +2294,10 @@ const LANGS = {
     os_sec_presence:'Status Management', os_sec_language:'Sprog', os_sec_embedded:'Embedded integration', os_sec_whitelist:'Betroede IP-adresser',
     os_st_same:'ens', os_st_differs:'forskellig', os_st_missing:'mangler i mål', os_st_extra:'kun i mål', os_st_unreadable:'kunne ikke læses',
     os_i_defaultLanguage:'Standardsprog', os_i_defaultCountryCode:'Standardland', os_i_supportedLanguages:'Understøttede sprog', os_i_integrationWhiteList:'Tilladte domæner', os_i_whitelist:'Betroede IP-adresser',
+    da_tab_terraform:'Terraform', tf_title:'TERRAFORM-OPSÆTNING', tf_run:'Generér Terraform', tf_all:'Vælg alle', tf_none:'Fravælg alle',
+    tf_intro:'Laver en Terraform-opsætning (genesyscloud-provideren) ud fra kilde-org\'ens objekter og gemmer den automatisk i mappen terraform/ på denne maskine. Kunden kører selv terraform apply mod den org, der skal ændres — fx fra Falck Global til US.', tf_note:'Det er en startopsætning: hemmeligheder, medlemmer, kontakter og indspillet lyd kommer ikke med, og det udeladte står i README.md i mappen. Prøv den i en test-org først.',
+    tf_need_source:'Vælg en kilde først.', tf_need_kind:'Vælg mindst én type.', tf_running:'Henter objekter og skriver filer…', tf_done:'Opsætningen er gemt.',
+    tf_saved_in:'Gemt i', tf_copy_path:'Kopiér sti', tf_files:'Filer', tf_col_written:'Med / i alt', tf_unreadable:'kunne ikke læses', tf_skipped:'udeladt', tf_notes:'Bemærkninger',
     btn_demo_create:'+ Opret demo-kunde',
     btn_demo_reset:'↺ Nulstil demo',
     btn_demo_remove:'✕ Fjern demo',
@@ -3362,6 +3383,10 @@ const LANGS = {
     os_sec_presence:'Status Management', os_sec_language:'Language', os_sec_embedded:'Embedded integration', os_sec_whitelist:'Trusted IPs',
     os_st_same:'same', os_st_differs:'differs', os_st_missing:'missing in target', os_st_extra:'only in target', os_st_unreadable:'could not be read',
     os_i_defaultLanguage:'Default language', os_i_defaultCountryCode:'Default country', os_i_supportedLanguages:'Supported languages', os_i_integrationWhiteList:'Allowed domains', os_i_whitelist:'Trusted IPs',
+    da_tab_terraform:'Terraform', tf_title:'TERRAFORM SETUP', tf_run:'Generate Terraform', tf_all:'Select all', tf_none:'Select none',
+    tf_intro:'Builds a Terraform setup (the genesyscloud provider) from the source org\'s objects and saves it automatically in the terraform/ folder on this machine. The customer runs terraform apply themselves against the org that should change — e.g. from Falck Global to US.', tf_note:'It is a starting setup: secrets, members, contacts and recorded audio are not included, and what is left out is listed in README.md in the folder. Try it in a test org first.',
+    tf_need_source:'Choose a source first.', tf_need_kind:'Choose at least one type.', tf_running:'Fetching objects and writing files…', tf_done:'The setup is saved.',
+    tf_saved_in:'Saved in', tf_copy_path:'Copy path', tf_files:'Files', tf_col_written:'Included / total', tf_unreadable:'could not be read', tf_skipped:'left out', tf_notes:'Notes',
     btn_demo_create:'+ Create demo customer',
     btn_demo_reset:'↺ Reset demo',
     btn_demo_remove:'✕ Remove demo',
@@ -4447,6 +4472,10 @@ const LANGS = {
     os_sec_presence:'Status Management', os_sec_language:'Langue', os_sec_embedded:'Intégration embarquée', os_sec_whitelist:'IP de confiance',
     os_st_same:'identique', os_st_differs:'différent', os_st_missing:'manquant dans la cible', os_st_extra:'uniquement dans la cible', os_st_unreadable:'illisible',
     os_i_defaultLanguage:'Langue par défaut', os_i_defaultCountryCode:'Pays par défaut', os_i_supportedLanguages:'Langues prises en charge', os_i_integrationWhiteList:'Domaines autorisés', os_i_whitelist:'IP de confiance',
+    da_tab_terraform:'Terraform', tf_title:'CONFIGURATION TERRAFORM', tf_run:'Générer Terraform', tf_all:'Tout sélectionner', tf_none:'Tout désélectionner',
+    tf_intro:'Crée une configuration Terraform (fournisseur genesyscloud) à partir des objets de l\'org source et l\'enregistre automatiquement dans le dossier terraform/ de cette machine. Le client exécute lui-même terraform apply sur l\'org à modifier — par ex. de Falck Global vers US.', tf_note:'C\'est une configuration de départ : secrets, membres, contacts et audio enregistré ne sont pas inclus ; ce qui est omis figure dans README.md du dossier. Essayez-la d\'abord dans une org de test.',
+    tf_need_source:'Choisissez d\'abord une source.', tf_need_kind:'Choisissez au moins un type.', tf_running:'Récupération des objets et écriture des fichiers…', tf_done:'La configuration est enregistrée.',
+    tf_saved_in:'Enregistré dans', tf_copy_path:'Copier le chemin', tf_files:'Fichiers', tf_col_written:'Inclus / total', tf_unreadable:'illisible', tf_skipped:'omis', tf_notes:'Remarques',
     btn_demo_create:'+ Créer le client démo',
     btn_demo_reset:'↺ Réinitialiser la démo',
     btn_demo_remove:'✕ Supprimer la démo',
@@ -5532,6 +5561,10 @@ const LANGS = {
     os_sec_presence:'Status Management', os_sec_language:'Taal', os_sec_embedded:'Embedded integratie', os_sec_whitelist:'Vertrouwde IP\'s',
     os_st_same:'gelijk', os_st_differs:'verschilt', os_st_missing:'ontbreekt in doel', os_st_extra:'alleen in doel', os_st_unreadable:'kon niet worden gelezen',
     os_i_defaultLanguage:'Standaardtaal', os_i_defaultCountryCode:'Standaardland', os_i_supportedLanguages:'Ondersteunde talen', os_i_integrationWhiteList:'Toegestane domeinen', os_i_whitelist:'Vertrouwde IP\'s',
+    da_tab_terraform:'Terraform', tf_title:'TERRAFORM-OPZET', tf_run:'Terraform genereren', tf_all:'Alles selecteren', tf_none:'Niets selecteren',
+    tf_intro:'Maakt een Terraform-opzet (de genesyscloud-provider) op basis van de objecten van de bronorg en slaat die automatisch op in de map terraform/ op deze machine. De klant voert zelf terraform apply uit op de org die moet veranderen — bijv. van Falck Global naar US.', tf_note:'Het is een startopzet: geheimen, leden, contacten en opgenomen audio zijn niet inbegrepen, en wat is weggelaten staat in README.md in de map. Probeer het eerst in een testorg.',
+    tf_need_source:'Kies eerst een bron.', tf_need_kind:'Kies minstens één type.', tf_running:'Objecten ophalen en bestanden schrijven…', tf_done:'De opzet is opgeslagen.',
+    tf_saved_in:'Opgeslagen in', tf_copy_path:'Pad kopiëren', tf_files:'Bestanden', tf_col_written:'Opgenomen / totaal', tf_unreadable:'kon niet worden gelezen', tf_skipped:'weggelaten', tf_notes:'Opmerkingen',
     btn_demo_create:'+ Demoklant aanmaken',
     btn_demo_reset:'↺ Demo resetten',
     btn_demo_remove:'✕ Demo verwijderen',
@@ -6617,6 +6650,10 @@ const LANGS = {
     os_sec_presence:'Status Management', os_sec_language:'Sprache', os_sec_embedded:'Embedded Integration', os_sec_whitelist:'Vertrauenswürdige IPs',
     os_st_same:'gleich', os_st_differs:'abweichend', os_st_missing:'fehlt im Ziel', os_st_extra:'nur im Ziel', os_st_unreadable:'konnte nicht gelesen werden',
     os_i_defaultLanguage:'Standardsprache', os_i_defaultCountryCode:'Standardland', os_i_supportedLanguages:'Unterstützte Sprachen', os_i_integrationWhiteList:'Erlaubte Domains', os_i_whitelist:'Vertrauenswürdige IPs',
+    da_tab_terraform:'Terraform', tf_title:'TERRAFORM-SETUP', tf_run:'Terraform erzeugen', tf_all:'Alle auswählen', tf_none:'Keine auswählen',
+    tf_intro:'Erzeugt ein Terraform-Setup (genesyscloud-Provider) aus den Objekten der Quell-Org und speichert es automatisch im Ordner terraform/ auf diesem Rechner. Der Kunde führt terraform apply selbst gegen die Org aus, die geändert werden soll — z. B. von Falck Global nach US.', tf_note:'Es ist ein Start-Setup: Geheimnisse, Mitglieder, Kontakte und aufgenommenes Audio sind nicht enthalten, und das Weggelassene steht in der README.md im Ordner. Zuerst in einer Test-Org ausprobieren.',
+    tf_need_source:'Wählen Sie zuerst eine Quelle aus.', tf_need_kind:'Wählen Sie mindestens einen Typ aus.', tf_running:'Objekte werden abgerufen und Dateien geschrieben…', tf_done:'Das Setup ist gespeichert.',
+    tf_saved_in:'Gespeichert in', tf_copy_path:'Pfad kopieren', tf_files:'Dateien', tf_col_written:'Enthalten / gesamt', tf_unreadable:'konnte nicht gelesen werden', tf_skipped:'weggelassen', tf_notes:'Hinweise',
     btn_demo_create:'+ Demo-Kunde anlegen',
     btn_demo_reset:'↺ Demo zurücksetzen',
     btn_demo_remove:'✕ Demo entfernen',
@@ -7702,6 +7739,10 @@ const LANGS = {
     os_sec_presence:'Status Management', os_sec_language:'Idioma', os_sec_embedded:'Integración embebida', os_sec_whitelist:'IP de confianza',
     os_st_same:'igual', os_st_differs:'distinto', os_st_missing:'falta en destino', os_st_extra:'solo en destino', os_st_unreadable:'no se pudo leer',
     os_i_defaultLanguage:'Idioma predeterminado', os_i_defaultCountryCode:'País predeterminado', os_i_supportedLanguages:'Idiomas admitidos', os_i_integrationWhiteList:'Dominios permitidos', os_i_whitelist:'IP de confianza',
+    da_tab_terraform:'Terraform', tf_title:'CONFIGURACIÓN DE TERRAFORM', tf_run:'Generar Terraform', tf_all:'Seleccionar todo', tf_none:'Quitar selección',
+    tf_intro:'Crea una configuración de Terraform (proveedor genesyscloud) a partir de los objetos de la org de origen y la guarda automáticamente en la carpeta terraform/ de este equipo. El cliente ejecuta él mismo terraform apply en la org que debe cambiar — p. ej. de Falck Global a US.', tf_note:'Es una configuración inicial: no incluye secretos, miembros, contactos ni audio grabado, y lo omitido figura en README.md de la carpeta. Pruébela primero en una org de prueba.',
+    tf_need_source:'Elija primero un origen.', tf_need_kind:'Elija al menos un tipo.', tf_running:'Obteniendo objetos y escribiendo archivos…', tf_done:'La configuración está guardada.',
+    tf_saved_in:'Guardado en', tf_copy_path:'Copiar ruta', tf_files:'Archivos', tf_col_written:'Incluidos / total', tf_unreadable:'no se pudo leer', tf_skipped:'omitido', tf_notes:'Notas',
     btn_demo_create:'+ Crear cliente demo',
     btn_demo_reset:'↺ Restablecer demo',
     btn_demo_remove:'✕ Eliminar demo',
@@ -10565,6 +10606,7 @@ const ACTION_BADGE = {
   TEST:     '<span class="badge badge-blue">TEST</span>',
   FLOWS:    '<span class="badge badge-blue">FLOWS</span>',
   EXPORT:   '<span class="badge badge-green">EXPORT</span>',
+  TERRAFORM: '<span class="badge badge-blue">TERRAFORM</span>',
   IMPORT:   '<span class="badge badge-orange">IMPORT</span>',
   MIGRATE:  '<span class="badge badge-orange">MIGRATE</span>',
   RELEASE:  '<span class="badge badge-green">RELEASE</span>',
@@ -13228,6 +13270,9 @@ function daSetTab(tab) {
     // Hentes først når fanen åbnes — ellers hentes alle køer, grupper og skills for hver kilde
     if (tab === k && srcPicked && ML[k].loadedFor !== document.getElementById('da-source').value) mlLoad(k);
   });
+  document.getElementById('da-tab-terraform').classList.toggle('active', tab === 'terraform');
+  document.getElementById('da-terraform-card').style.display = tab === 'terraform' ? 'block' : 'none';
+  if (tab === 'terraform') tfLoadKinds();
   document.getElementById('da-tab-orgset').classList.toggle('active', tab === 'orgset');
   document.getElementById('da-orgset-card').style.display = tab === 'orgset' ? 'block' : 'none';
   document.getElementById('da-tab-rtc').classList.toggle('active', tab === 'rtc');
@@ -13236,6 +13281,78 @@ function daSetTab(tab) {
   daUpdatePasteBar();
   daTgtSummary();
   if (daTgt[tab]) daApplyBadges();
+}
+
+// ── Terraform ─────────────────────────────────────────────────────────────────
+// Genererer en Terraform-opsætning (genesyscloud-provideren) ud fra kilde-org'ens
+// objekter og gemmer den i mappen terraform/ på denne maskine. Kunden kører selv
+// terraform apply mod den org, der skal ændres.
+let tfKinds = null, tfSel = new Set(), tfBusy = false;
+
+function tfLabel(k) {
+  const key = k.id === 'integrations' ? 'da_tab_integ' : k.id === 'flows' ? 'nav_flows' : 'da_tab_' + k.id;
+  const v = t(key);
+  return v === key ? k.label : v;
+}
+
+async function tfLoadKinds() {
+  if (!tfKinds) {
+    try { tfKinds = await fetch('/api/terraform/kinds').then(r => r.json()); } catch (_) { tfKinds = []; }
+    tfSel = new Set(tfKinds.map(k => k.id));
+  }
+  tfRenderKinds();
+}
+
+function tfRenderKinds() {
+  const box = document.getElementById('tf-kinds');
+  if (!box || !tfKinds) return;
+  box.innerHTML = tfKinds.map(k => `<label style="margin:0;display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+      <input type="checkbox" style="width:auto" ${tfSel.has(k.id) ? 'checked' : ''} onchange="tfToggle(${jsAttr(k.id)}, this.checked)" /> ${escapeHtml(tfLabel(k))}</label>`).join('');
+}
+
+function tfToggle(id, on) { if (on) tfSel.add(id); else tfSel.delete(id); }
+function tfAll(on) { tfSel = on ? new Set((tfKinds || []).map(k => k.id)) : new Set(); tfRenderKinds(); }
+
+async function tfRun() {
+  if (tfBusy) return;
+  const sid = document.getElementById('da-source').value;
+  const st = document.getElementById('tf-status');
+  if (!sid) { st.style.color = 'var(--yellow)'; st.textContent = t('tf_need_source'); return; }
+  if (!tfSel.size) { st.style.color = 'var(--yellow)'; st.textContent = t('tf_need_kind'); return; }
+  tfBusy = true;
+  document.getElementById('tf-run-btn').disabled = true;
+  st.style.color = 'var(--muted)';
+  st.innerHTML = `<span class="spin"></span> ${escapeHtml(t('tf_running'))}`;
+  document.getElementById('tf-body').innerHTML = '';
+  let r;
+  try {
+    r = await fetch('/api/terraform/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sourceId: sid, include: [...tfSel] }) }).then(x => x.json());
+  } catch (e) { r = { error: e.message }; }
+  tfBusy = false;
+  document.getElementById('tf-run-btn').disabled = false;
+  if (r.error) { st.style.color = 'var(--red)'; st.textContent = r.error; return; }
+  st.style.color = 'var(--green)';
+  st.textContent = t('tf_done');
+  tfRenderResult(r);
+}
+
+function tfRenderResult(r) {
+  const rows = r.summary.map(s => {
+    const label = tfLabel({ id: s.id, label: s.label });
+    const skipped = (s.skipped || []).length;
+    const detail = s.error ? `<span style="color:var(--red)">${escapeHtml(t('tf_unreadable'))}: ${escapeHtml(s.error)}</span>`
+      : `${s.written} / ${s.total}${skipped ? ` · <span style="color:var(--muted)" title="${escapeHtml(s.skipped.map(x => x.name + ': ' + x.reason).join('\n'))}">${skipped} ${escapeHtml(t('tf_skipped'))}</span>` : ''}`;
+    return `<tr style="border-top:1px solid var(--border)"><td>${escapeHtml(label)}</td><td>${detail}</td></tr>`;
+  }).join('');
+  document.getElementById('tf-body').innerHTML = `
+    <div style="font-size:12px;margin-bottom:10px">${escapeHtml(t('tf_saved_in'))}:
+      <code style="font-family:var(--mono)">${escapeHtml(r.absolute)}</code>
+      <button class="btn btn-secondary btn-sm" style="margin-left:6px" onclick="navigator.clipboard && navigator.clipboard.writeText(${jsAttr(r.absolute)})">${escapeHtml(t('tf_copy_path'))}</button></div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${escapeHtml(t('tf_files'))}: ${r.files.map(escapeHtml).join(', ')}${r.flowsCopied ? ' · flows/ (' + r.flowsCopied + ')' : ''}</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px"><thead><tr style="text-align:left;color:var(--muted)"><th>${escapeHtml(t('os_col_section'))}</th><th>${escapeHtml(t('tf_col_written'))}</th></tr></thead><tbody>${rows}</tbody></table>
+    ${r.notes.length ? `<details><summary style="cursor:pointer;font-size:12px">${escapeHtml(t('tf_notes'))} (${r.notes.length})</summary>
+      <ul style="font-size:12px;color:var(--muted);margin:6px 0 0 18px">${r.notes.map(n => '<li>' + escapeHtml(n) + '</li>').join('')}</ul></details>` : ''}`;
 }
 
 // ── Org-indstillinger ─────────────────────────────────────────────────────────

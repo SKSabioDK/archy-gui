@@ -21,3 +21,5 @@ Thumbs.db
 
 # Egen trinliste m.m. — pr. maskine
 settings.json
+
+terraform/

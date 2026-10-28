@@ -5,6 +5,29 @@
 
 ---
 
+### v1.76.0
+---
+**🇩🇰 Dansk**
+
+- **Ny fane: Terraform** under *Migrér ressourcer*. Genererer en komplet Terraform-opsætning (genesyscloud-provideren) ud fra kilde-org'ens objekter og gemmer den automatisk i mappen `terraform/<org>/<dato>/` på maskinen. Kunden kører selv `terraform apply` mod den org, der skal ændres — fx fra Falck Global til US — og `terraform plan` viser forskellen. Man kan vælge typer eller tage alle med, som i totaltjekket.
+- **Alle typer:** divisioner, skills, skill-grupper, grupper, teams, lokationer, utilization-labels, vidensbaser, svarbiblioteker, åbningstider og -grupper, nødgrupper, kontaktlister, DNC-lister, wrap-up-koder, roller, OAuth-klienter, integrationer, data actions, data tabeller, user prompts, køer og flows (de nyeste lokale YAML-filer kopieres med).
+- Referencer mellem objekter bliver til Terraform-referencer, og Home og standardroller bliver til data-kilder. Pegede en reference på noget, der ikke er med, udelades den, og det står i rapporten.
+- Mappen får også `provider.tf`, `variables.tf` (secret er `sensitive`), `terraform.tfvars.example` og en `README.md`, der siger hvad der ikke er med: hemmeligheder, medlemmer, kontakter, DNC-numre, indspillet lyd og betingede rettigheder. Mappen `terraform/` ligger i `.gitignore`.
+- **Det er en startopsætning, og den er ikke kørt mod Terraform endnu.** Feltnavnene er kontrolleret mod providerens dokumentation og mod svar fra en rigtig org, men afprøv den i en test-org først. Formularer (survey/evaluering), scripts og Function Data Actions er ikke med.
+- Org-indstillinger: en kolonne, der ikke kunne læses, siger nu hvorfor (fx manglende rettighed eller scope) i stedet for kun «HTTP 403».
+- 16 nye tests.
+
+**🇬🇧 English**
+- **New tab: Terraform** under *Migrate resources*. Generates a complete Terraform setup (the genesyscloud provider) from the source org's objects and saves it automatically in `terraform/<org>/<date>/` on the machine. The customer runs `terraform apply` themselves against the org that should change — e.g. from Falck Global to US — and `terraform plan` shows the difference. Pick types or take them all, like the full check.
+- **All types:** divisions, skills, skill groups, groups, teams, locations, utilization labels, knowledge bases, response libraries, schedules and groups, emergency groups, contact lists, DNC lists, wrap-up codes, roles, OAuth clients, integrations, data actions, data tables, user prompts, queues and flows (the newest local YAML files are copied along).
+- References between objects become Terraform references, and Home and default roles become data sources. If a reference pointed at something that is not included, it is left out and the report says so.
+- The folder also gets `provider.tf`, `variables.tf` (the secret is `sensitive`), `terraform.tfvars.example` and a `README.md` listing what is not included: secrets, members, contacts, DNC numbers, recorded audio and conditional permissions. The `terraform/` folder is in `.gitignore`.
+- **It is a starting setup and has not been run through Terraform yet.** Field names are checked against the provider's documentation and against responses from a real org, but try it in a test org first. Forms (survey/evaluation), scripts and Function Data Actions are not included.
+- Org settings: an area that could not be read now says why (e.g. missing permission or scope) instead of just "HTTP 403".
+- 16 new tests.
+
+---
+
 ### v1.75.0
 ---
 **🇩🇰 Dansk**
