@@ -300,3 +300,9 @@ test('survey forms slås op blandt de UDGIVNE — en kladde i målet tæller ikk
   assert.match(blok, /publishedforms\/surveys\/\$\{srcPub\.id\}/, 'kilden læses fra den udgivne version');
   assert.match(blok, /pubList\(tgtBase/, 'målet tjekkes på udgivne forms');
 });
+
+test('et survey-flow som afhængighed tager sin survey form med', () => {
+  const SRC = require('fs').readFileSync(require('path').join(__dirname, '..', 'server.js'), 'utf8');
+  assert.match(SRC, /for \(const kind of \['datatable', 'dataaction', 'surveyform', \.\.\.COPYABLE_KINDS\]\)/);
+  assert.match(SRC, /if \(kind === 'surveyform'\) \{\s*url = '\/api\/surveyforms\/migrate';/);
+});

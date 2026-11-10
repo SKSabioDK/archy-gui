@@ -9208,7 +9208,7 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
   const { token: tgtToken, apiBase: tgtBase } = await getToken(target);
 
   // 1) Tabeller, data actions, prompts og scripts modulet bruger
-  for (const kind of ['datatable', 'dataaction', ...COPYABLE_KINDS]) {
+  for (const kind of ['datatable', 'dataaction', 'surveyform', ...COPYABLE_KINDS]) {
     const names = deps[kind] || [];
     if (!names.length) continue;
     // Uvished er ikke det samme som fravær. Fejlen her blev før slugt, og den
@@ -9232,7 +9232,10 @@ async function migrateFlowDependency(source, target, flowName, flowType, visited
     const SH = { headers: { Authorization: `Bearer ${srcToken}` } };
     for (const n of missing) {
       let url, body;
-      if (COPYABLE_KINDS.has(kind)) {
+      if (kind === 'surveyform') {
+        url = '/api/surveyforms/migrate';
+        body = { sourceId: source.id, targetId: target.id, name: n };
+      } else if (COPYABLE_KINDS.has(kind)) {
         // Kopieres ved navn — endpointet slår selv kilden op
         const [ep, felt, resKind] = COPY_ENDPOINT[kind];
         url = ep;

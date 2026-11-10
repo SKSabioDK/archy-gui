@@ -53,7 +53,7 @@ test('secure-flaget følger med, når en data action migreres', () => {
 
 test('moduler tager prompts og scripts med', () => {
   const fn = SERVER.slice(SERVER.indexOf('async function migrateFlowDependency('), SERVER.indexOf("app.post('/api/divisions/create'"));
-  assert.match(fn, /for \(const kind of \['datatable', 'dataaction', \.\.\.COPYABLE_KINDS\]\)/);
+  assert.match(fn, /for \(const kind of \['datatable', 'dataaction', 'surveyform', \.\.\.COPYABLE_KINDS\]\)/);
   assert.match(fn, /const \[ep, felt, resKind\] = COPY_ENDPOINT\[kind\]/);
   assert.ok(SERVER.includes("prompt: ['/api/prompts/migrate', 'promptName']") && SERVER.includes("queue: ['/api/queues/migrate', 'name']"));
 });

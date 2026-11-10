@@ -5,6 +5,18 @@
 
 ---
 
+### v1.79.5
+---
+**🇩🇰 Dansk**
+
+- **Et survey-flow, der migreres som afhængighed, tager nu sin survey form med.** Når et outbound-flow peger på et survey-flow, blev survey-flowet migreret uden sin form, og Archy afviste det med «survey forms "X" does not exist». Nu kopieres og udgives formen først, så survey-flowet og derefter outbound-flowet kan importeres i samme kørsel.
+- 1 ny test.
+
+**🇬🇧 English**
+- **A survey flow migrated as a dependency now brings its survey form.** When an outbound flow points at a survey flow, the survey flow was migrated without its form and Archy rejected it with "survey forms "X" does not exist". The form is now copied and published first, so the survey flow and then the outbound flow can be imported in the same run.
+- 1 new test.
+
+---
 ### v1.79.4
 ---
 **🇩🇰 Dansk**
