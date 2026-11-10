@@ -270,3 +270,25 @@ test('scanYamlDependencies finder survey-flowet i "Set Post-Flow" (flownavnet so
   ].join('\n');
   assert.deepEqual(s.scanYamlDependencies(y).targetflow, ['ES_EME Half Year Survey Spanish V1']);
 });
+
+test('scanYamlDependencies finder outbound-flowets kontaktliste', () => {
+  const y = [
+    'outboundCall:',
+    '  settingsOutboundCall:',
+    '    contactList:',
+    '      lit:',
+    '        name: ES_EME Voice Survey Español',
+    '    wrapupCode:',
+    '      lit:',
+    '        name: X',
+    ''
+  ].join('\n');
+  assert.deepEqual(s.scanYamlDependencies(y).contactlist, ['ES_EME Voice Survey Español']);
+});
+
+test('en kopieret survey form udgives i målet, ellers finder Archy den ikke', () => {
+  const SRC = require('fs').readFileSync(require('path').join(__dirname, '..', 'server.js'), 'utf8');
+  const blok = SRC.slice(SRC.indexOf("app.post('/api/surveyforms/migrate'"), SRC.indexOf('function stripFormIds'));
+  assert.match(blok, /published: false/);
+  assert.match(blok, /publishedforms\/surveys/);
+});

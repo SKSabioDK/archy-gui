@@ -551,7 +551,7 @@
       <a onclick="openIssue('idea')" data-i18n="iss_link_idea">💡 Foreslå et ønske</a>
     </div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.79.2 · Archy GUI</div>
+    <div class="version" id="app-version">v1.79.3 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -13819,6 +13819,7 @@ async function _migrateOneDep(dep, sourceId, targetId, logBox, opts = {}) {
     skill:      ['/api/skills/migrate',     { name: dep.name }],
     utilizationlabel: ['/api/resources/create', { name: dep.name, kind: 'utilization' }],
     knowledgebase:    ['/api/resources/create', { name: dep.name, kind: 'knowledgebases' }],
+    contactlist:      ['/api/resources/create', { name: dep.name, kind: 'contactlists' }],
     schedule:   ['/api/schedules/migrate',  { name: dep.name }],
     schedulegroup: ['/api/schedulegroups/migrate', { name: dep.name }]
   };

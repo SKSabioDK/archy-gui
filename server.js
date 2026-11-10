@@ -6511,6 +6511,8 @@ function scanYamlDependencies(yaml) {
 
     // ── Øvrige org-ressourcer ─────────────────────────────────────────────
     knowledgebase: grab(/knowledgeBase:\s*\n\s*name:\s*["']?([^'"\n]+)["']?/gm),
+    // Outbound-flowets kontaktliste: «contactList: \n lit: \n name: X»
+    contactlist:   grab(/contactList:\s*\n\s*(?:lit:\s*\n\s*)?name:[ \t]*["']?([^'"\n]+?)["']?[ \t]*$/gm),
     sttengine:     grab(/speechToText:\s*\n\s*engine:\s*\n\s*name:\s*["']?([^'"\n]+)["']?/gm),
     group:         grab(/targetGroup:\s*\n\s*lit:\s*\n\s*name:\s*["']?([^'"\n]+)["']?/gm),
     // "Set Utilization Label": utilizationLabel: \n lit: \n name: X. Et udtryk
@@ -6590,6 +6592,7 @@ async function lookupExisting(kind, names, token, apiBase, ctx = {}) {
     schedule:      { url: '/api/v2/architect/schedules', size: 100 },
     schedulegroup: { url: '/api/v2/architect/schedulegroups', size: 100 },
     knowledgebase:{ url: '/api/v2/knowledge/knowledgebases', size: 100 },
+    contactlist:  { url: '/api/v2/outbound/contactlists', size: 100 },
     sttengine:    { url: '/api/v2/integrations/speech/stt/engines', size: 100 },
     group:        { url: '/api/v2/groups', size: 100 },
     utilizationlabel: { url: '/api/v2/routing/utilization/labels', size: 100 }
@@ -8999,14 +9002,15 @@ app.post('/api/import', async (req, res) => {
 // som alt andet — et common module er bare et flow af typen COMMONMODULE.
 const FLOW_KINDS = new Set(['commonmodule', 'botflow', 'targetflow', 'inqueueflow']);
 // Ressourcer der kopieres hele fra kilden ved navn: user prompts (med lyd) og scripts
-const COPYABLE_KINDS = new Set(['prompt', 'script', 'queue', 'group', 'schedule', 'schedulegroup', 'skill', 'utilizationlabel', 'knowledgebase']);
+const COPYABLE_KINDS = new Set(['prompt', 'script', 'queue', 'group', 'schedule', 'schedulegroup', 'skill', 'utilizationlabel', 'knowledgebase', 'contactlist']);
 // Endpoint og navnefelt for hver slags der kopieres ved navn
 const COPY_ENDPOINT = {
   prompt: ['/api/prompts/migrate', 'promptName'], script: ['/api/scripts/migrate', 'scriptName'],
   queue: ['/api/queues/migrate', 'name'], group: ['/api/groups/migrate', 'name'],
   schedule: ['/api/schedules/migrate', 'name'], schedulegroup: ['/api/schedulegroups/migrate', 'name'],
   skill: ['/api/skills/migrate', 'name'],
-  utilizationlabel: ['/api/resources/create', 'name', 'utilization'], knowledgebase: ['/api/resources/create', 'name', 'knowledgebases']
+  utilizationlabel: ['/api/resources/create', 'name', 'utilization'], knowledgebase: ['/api/resources/create', 'name', 'knowledgebases'],
+  contactlist: ['/api/resources/create', 'name', 'contactlists']
 };
 
 // ── Talesyntese (TTS) ────────────────────────────────────────────────────────
@@ -9415,18 +9419,31 @@ app.post('/api/surveyforms/migrate', async (req, res) => {
     const TH = { headers: { Authorization: `Bearer ${tgtToken}`, 'Content-Type': 'application/json' } };
     const ex = await axios.get(`${tgtBase}/api/v2/quality/forms/surveys`,
       { headers: { Authorization: `Bearer ${tgtToken}` }, params: { pageSize: 200 } });
-    if ((ex.data.entities || []).some(f => f.name === name))
+    const there = (ex.data.entities || []).find(f => f.name === name);
+    if (there) {
+      // En kopi fra en tidligere kørsel kan stå som kladde. Archy finder kun udgivne
+      // survey forms, så den udgives nu, hvis kilden er det.
+      if (full.published && !there.published) {
+        await axios.post(`${tgtBase}/api/v2/quality/publishedforms/surveys`, { id: there.id, name: there.name, published: true }, TH);
+        addLog('SUCCESS', `Survey form "${name}" published in ${target.name}`, target.name, 'MIGRATE');
+        return res.json({ ok: true, id: there.id, name, published: true });
+      }
       return res.status(409).json({ error: 'already_exists', message: `Survey form "${name}" findes allerede` });
+    }
 
     // id/contextId/selfUri/modifiedDate hører til kildens form og skal ikke med
     const body = {
       name: full.name,
       language: full.language,
-      published: full.published,
+      published: false,
       disabled: full.disabled,
       questionGroups: stripFormIds(full.questionGroups || [])
     };
     const r = await axios.post(`${tgtBase}/api/v2/quality/forms/surveys`, body, TH);
+    // «published» ved oprettelse bliver ignoreret: formen står som kladde, og Archy
+    // afviser flowet med «survey forms "X" does not exist». Den udgives i et eget kald.
+    if (full.published)
+      await axios.post(`${tgtBase}/api/v2/quality/publishedforms/surveys`, { id: r.data.id, name: full.name, published: true }, TH);
     addLog('SUCCESS', `Survey form "${name}" copied to ${target.name}`, target.name, 'MIGRATE');
     res.json({ ok: true, id: r.data.id, name });
   } catch (e) {

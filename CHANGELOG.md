@@ -5,6 +5,20 @@
 
 ---
 
+### v1.79.3
+---
+**🇩🇰 Dansk**
+
+- **Survey forms udgives nu i målet.** Formen blev oprettet som kladde, selv om kilden var udgivet, og Archy afviste survey-flowet med «survey forms "X" does not exist», selv om migreringen viste ✓. Nu udgives den efter oprettelsen, og en kladde fra en tidligere kørsel udgives, næste gang den migreres.
+- **Outbound-flowets kontaktliste er nu en afhængighed.** Den blev ikke læst, så tjekket sagde «alle findes», og først Archy afviste importen med «Contact List "X" does not exist». Nu tjekkes den i målet og kan migreres sammen med flowet (kontakterne følger ikke med).
+- 2 nye tests.
+
+**🇬🇧 English**
+- **Survey forms are now published in the target.** The form was created as a draft even when the source was published, and Archy rejected the survey flow with "survey forms "X" does not exist" although the migration showed ✓. It is now published after creation, and a draft left by an earlier run is published the next time it is migrated.
+- **The outbound flow's contact list is now a dependency.** It was not read, so the check said "all exist" and only Archy rejected the import with "Contact List "X" does not exist". It is now checked in the target and can be migrated with the flow (the contacts are not copied).
+- 2 new tests.
+
+---
 ### v1.79.2
 ---
 **🇩🇰 Dansk**
