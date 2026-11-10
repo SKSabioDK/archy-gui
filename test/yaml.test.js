@@ -250,3 +250,23 @@ test('yamlFlowHeader læser flowtypen og navnet', () => {
                    { kind: 'inboundCall', name: 'Main flow' });
   assert.deepEqual(s.yamlFlowHeader('ikke yaml'), { kind: null, name: null });
 });
+
+test('scanYamlDependencies finder survey-flowet i "Set Post-Flow" (flownavnet som nøgle)', () => {
+  // Før blev kun «targetFlow: name: X» læst. Her står navnet som nøgle, så et
+  // outbound-flow uden survey-flowet i målet fremstod som uden afhængigheder.
+  const y = [
+    'outboundCall:',
+    '  tasks:',
+    '    - task:',
+    '        actions:',
+    '          - setPostFlow:',
+    '              actionType:',
+    '                voiceSurveyFlow:',
+    '                  targetFlow:',
+    '                    ES_EME Half Year Survey Spanish V1:',
+    '                      ver_latestPublished:',
+    '                        none: true',
+    ''
+  ].join('\n');
+  assert.deepEqual(s.scanYamlDependencies(y).targetflow, ['ES_EME Half Year Survey Spanish V1']);
+});

@@ -6488,7 +6488,12 @@ function scanYamlDependencies(yaml) {
     // og 'botFlow:' flowets EGEN type, ikke en reference til et andet flow.
     commonmodule: grab(new RegExp(`^\\s+commonModule:\\s*\\n\\s+([${ORD}][${ORD} .\\-()]*):`, 'gm')).filter(notMeta),
     botflow:      grab(new RegExp(`^\\s+botFlow:\\s*\\n\\s+([${ORD}][${ORD} .\\-()]*):`, 'gm')).filter(notMeta),
-    targetflow:   grab(/targetFlow:\s*\n\s*(?:lit:\s*\n\s*)?name:\s*["']?([^'"\n]+)["']?/gm),
+    // To former: «targetFlow: \n name: X» og, i "Set Post-Flow" (voiceSurveyFlow),
+    // flownavnet som nøgle: «targetFlow: \n X: \n ver_latestPublished:». Den sidste
+    // blev ikke læst, så et outbound-flow med et survey-flow efter sig fremstod
+    // uden afhængigheder, og Archy afviste importen med «flow name "X" does not exist».
+    targetflow:   uniq([...grab(/targetFlow:\s*\n\s*(?:lit:\s*\n\s*)?name:\s*["']?([^'"\n]+)["']?/gm),
+                        ...grab(new RegExp(`targetFlow:\\s*\\n\\s+([${ORD}][${ORD} .\\-()]*):\\s*\\n\\s+ver_`, 'gm'))]),
     // "Transfer to ACD" med et bestemt in-queue-flow: overrideInQueueFlow: \n name: X.
     // Manglede, så Archy afviste importen med «flow name "X" does not exist».
     inqueueflow:  grab(/overrideInQueueFlow:\s*\n\s*(?:lit:\s*\n\s*)?name:\s*["']?([^'"\n]+)["']?/gm),

@@ -5,6 +5,18 @@
 
 ---
 
+### v1.79.2
+---
+**🇩🇰 Dansk**
+
+- **Survey-flow efter et outbound-flow bliver nu fundet som afhængighed.** I «Set Post-Flow» står survey-flowets navn som nøgle i YAML'en, og den form blev ikke læst. Afhængighedstjekket sagde derfor «alle findes», og først Archy afviste importen med «flow name "X" does not exist in the target org». Nu tjekkes flowet i målet og tages med i migreringen.
+- 1 ny test.
+
+**🇬🇧 English**
+- **A survey flow after an outbound flow is now found as a dependency.** In "Set Post-Flow" the survey flow's name is a key in the YAML, and that form was not read. The dependency check said "all exist", and only Archy rejected the import with "flow name "X" does not exist in the target org". The flow is now checked in the target and included in the migration.
+- 1 new test.
+
+---
 ### v1.79.1
 ---
 **🇩🇰 Dansk**
