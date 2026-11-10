@@ -5,6 +5,18 @@
 
 ---
 
+### v1.79.7
+---
+**🇩🇰 Dansk**
+
+- **Totaltjek kan filtreres på status.** Afkrydsningen «Vis kun forskelle» er afløst af en liste: kun forskelle (som før), **kun migreret** (findes i begge), kun mangler, kun i mål eller alle. Tallet ved siden af viser hvor mange rækker udvalget har. CSV-filen følger udvalget, så «kun migreret» giver en liste over det, der er flyttet.
+- 1 ny test.
+
+**🇬🇧 English**
+- **The full check can be filtered by status.** The "Show differences only" checkbox is replaced by a list: differences only (as before), **migrated only** (exists in both), missing only, only in target, or all. The number next to it shows how many rows the selection has. The CSV file follows the selection, so "migrated only" gives a list of what has been moved.
+- 1 new test.
+
+---
 ### v1.79.6
 ---
 **🇩🇰 Dansk**

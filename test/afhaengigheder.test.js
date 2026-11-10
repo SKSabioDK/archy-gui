@@ -350,3 +350,13 @@ test('Tjek mål-org og totaltjek af alle ressourcer findes, og totaltjek giver e
   assert.ok(html.includes("da_tab_check:'DA-Totaltjek'") && html.includes("da_tab_plan:'DA-Setup-forslag'"));
   assert.ok(html.includes("da_tab_check:'DA full check'"));
 });
+
+test('totaltjekkets liste kan filtreres på status, og CSV følger filteret', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  assert.ok(html.includes('function rtcShown()'));
+  assert.ok(html.includes("rtcFilter === 'diff' ? r.status !== 'ok'"));
+  assert.ok(html.includes('...rtcShown().map(r =>'), 'CSV bruger det viste udvalg');
+  for (const k of ['rtc_filter_label', 'rtc_filter_all', 'rtc_filter_ok'])
+    assert.equal(html.split(k + ':').length - 1, 6, k + ' skal stå på alle seks sprog');
+});
+
