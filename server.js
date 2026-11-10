@@ -6583,7 +6583,7 @@ async function lookupExisting(kind, names, token, apiBase, ctx = {}) {
     datatable:  { url: '/api/v2/flows/datatables',      size: 200 },
     dataaction: { url: '/api/v2/integrations/actions',  size: 100 },
     script:     { url: '/api/v2/scripts',               size: 100 },
-    surveyform: { url: '/api/v2/quality/forms/surveys', size: 100 },
+    surveyform: { url: '/api/v2/quality/publishedforms/surveys', size: 100 },
     // Alle tre flow-referencer slås op i den samme flow-liste
     commonmodule: { url: '/api/v2/flows', size: 100 },
     botflow:      { url: '/api/v2/flows', size: 100 },
@@ -9410,25 +9410,38 @@ app.post('/api/surveyforms/migrate', async (req, res) => {
   try {
     const { token: srcToken, apiBase: srcBase } = await getToken(source);
     const SH = { headers: { Authorization: `Bearer ${srcToken}` } };
-    const list = await axios.get(`${srcBase}/api/v2/quality/forms/surveys`, { ...SH, params: { pageSize: 200 } });
-    const hit = (list.data.entities || []).find(f => f.name === name);
-    if (!hit) return res.status(400).json({ error: `Survey form "${name}" findes ikke i ${source.name}` });
-    const full = (await axios.get(`${srcBase}/api/v2/quality/forms/surveys/${hit.id}`, SH)).data;
+    // Det er den UDGIVNE version et flow peger på. Formens seneste version kan være en
+    // nyere kladde (published: false), mens flowet kører på den udgivne — og Archy
+    // finder kun udgivne survey forms. Derfor læses den udgivne først.
+    const pubList = async (base, H) => ((await axios.get(`${base}/api/v2/quality/publishedforms/surveys`,
+      { ...H, params: { pageSize: 200, name } })).data.entities || []).find(f => f.name === name);
+    const srcPub = await pubList(srcBase, SH).catch(() => null);
+    let full, srcPublished = !!srcPub;
+    if (srcPub) {
+      full = (await axios.get(`${srcBase}/api/v2/quality/publishedforms/surveys/${srcPub.id}`, SH)
+        .catch(() => axios.get(`${srcBase}/api/v2/quality/forms/surveys/${srcPub.id}`, SH))).data;
+    } else {
+      const list = await axios.get(`${srcBase}/api/v2/quality/forms/surveys`, { ...SH, params: { pageSize: 200 } });
+      const hit = (list.data.entities || []).find(f => f.name === name);
+      if (!hit) return res.status(400).json({ error: `Survey form "${name}" findes ikke i ${source.name}` });
+      full = (await axios.get(`${srcBase}/api/v2/quality/forms/surveys/${hit.id}`, SH)).data;
+      srcPublished = !!full.published;
+    }
 
     const { token: tgtToken, apiBase: tgtBase } = await getToken(target);
     const TH = { headers: { Authorization: `Bearer ${tgtToken}`, 'Content-Type': 'application/json' } };
-    const ex = await axios.get(`${tgtBase}/api/v2/quality/forms/surveys`,
-      { headers: { Authorization: `Bearer ${tgtToken}` }, params: { pageSize: 200 } });
+    const TG = { headers: { Authorization: `Bearer ${tgtToken}` } };
+    // Findes en UDGIVEN form med navnet i målet, er der intet at gøre. En kladde
+    // (fx fra en tidligere kørsel) tæller ikke — Archy finder den ikke.
+    if (await pubList(tgtBase, TG).catch(() => null))
+      return res.status(409).json({ error: 'already_exists', message: `Survey form "${name}" findes allerede` });
+    const ex = await axios.get(`${tgtBase}/api/v2/quality/forms/surveys`, { ...TG, params: { pageSize: 200 } });
     const there = (ex.data.entities || []).find(f => f.name === name);
     if (there) {
-      // En kopi fra en tidligere kørsel kan stå som kladde. Archy finder kun udgivne
-      // survey forms, så den udgives nu, hvis kilden er det.
-      if (full.published && !there.published) {
-        await axios.post(`${tgtBase}/api/v2/quality/publishedforms/surveys`, { id: there.id, name: there.name, published: true }, TH);
-        addLog('SUCCESS', `Survey form "${name}" published in ${target.name}`, target.name, 'MIGRATE');
-        return res.json({ ok: true, id: there.id, name, published: true });
-      }
-      return res.status(409).json({ error: 'already_exists', message: `Survey form "${name}" findes allerede` });
+      if (!srcPublished) return res.status(409).json({ error: 'already_exists', message: `Survey form "${name}" findes allerede` });
+      await axios.post(`${tgtBase}/api/v2/quality/publishedforms/surveys`, { id: there.id, name: there.name, published: true }, TH);
+      addLog('SUCCESS', `Survey form "${name}" published in ${target.name}`, target.name, 'MIGRATE');
+      return res.json({ ok: true, id: there.id, name, published: true });
     }
 
     // id/contextId/selfUri/modifiedDate hører til kildens form og skal ikke med
@@ -9442,7 +9455,7 @@ app.post('/api/surveyforms/migrate', async (req, res) => {
     const r = await axios.post(`${tgtBase}/api/v2/quality/forms/surveys`, body, TH);
     // «published» ved oprettelse bliver ignoreret: formen står som kladde, og Archy
     // afviser flowet med «survey forms "X" does not exist». Den udgives i et eget kald.
-    if (full.published)
+    if (srcPublished)
       await axios.post(`${tgtBase}/api/v2/quality/publishedforms/surveys`, { id: r.data.id, name: full.name, published: true }, TH);
     addLog('SUCCESS', `Survey form "${name}" copied to ${target.name}`, target.name, 'MIGRATE');
     res.json({ ok: true, id: r.data.id, name });

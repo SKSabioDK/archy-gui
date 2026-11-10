@@ -5,6 +5,18 @@
 
 ---
 
+### v1.79.4
+---
+**🇩🇰 Dansk**
+
+- **Survey forms: den udgivne version tæller.** Et flow peger på formens udgivne version, men tjekket og kopien så på den seneste (kan være en nyere kladde). Derfor sagde tjekket «findes», og kopien sprang over med «findes allerede», mens Archy ikke kunne finde formen. Nu læses og tjekkes de udgivne forms, og en kladde i målet bliver udgivet i stedet for at blive sprunget over.
+- 1 ny test.
+
+**🇬🇧 English**
+- **Survey forms: the published version counts.** A flow points at the form's published version, but the check and the copy looked at the latest one (which may be a newer draft). So the check said "exists" and the copy skipped with "already exists" while Archy could not find the form. The published forms are now read and checked, and a draft in the target is published instead of skipped.
+- 1 new test.
+
+---
 ### v1.79.3
 ---
 **🇩🇰 Dansk**

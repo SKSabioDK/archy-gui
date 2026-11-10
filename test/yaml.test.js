@@ -292,3 +292,11 @@ test('en kopieret survey form udgives i målet, ellers finder Archy den ikke', (
   assert.match(blok, /published: false/);
   assert.match(blok, /publishedforms\/surveys/);
 });
+
+test('survey forms slås op blandt de UDGIVNE — en kladde i målet tæller ikke som "findes"', () => {
+  const SRC = require('fs').readFileSync(require('path').join(__dirname, '..', 'server.js'), 'utf8');
+  assert.match(SRC, /surveyform: \{ url: '\/api\/v2\/quality\/publishedforms\/surveys'/);
+  const blok = SRC.slice(SRC.indexOf("app.post('/api/surveyforms/migrate'"), SRC.indexOf('function stripFormIds'));
+  assert.match(blok, /publishedforms\/surveys\/\$\{srcPub\.id\}/, 'kilden læses fra den udgivne version');
+  assert.match(blok, /pubList\(tgtBase/, 'målet tjekkes på udgivne forms');
+});
