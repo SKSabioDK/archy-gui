@@ -9436,14 +9436,39 @@ app.post('/api/surveyforms/migrate', async (req, res) => {
     const TG = { headers: { Authorization: `Bearer ${tgtToken}` } };
     // Findes en UDGIVEN form med navnet i målet, er der intet at gøre. En kladde
     // (fx fra en tidligere kørsel) tæller ikke — Archy finder den ikke.
-    if (await pubList(tgtBase, TG).catch(() => null))
-      return res.status(409).json({ error: 'already_exists', message: `Survey form "${name}" findes allerede` });
+    const tgtPub = await pubList(tgtBase, TG).catch(() => null);
+    if (tgtPub) {
+      // Er den udgivne kopi i målet en anden udgave end kildens (spørgsmålstekster og
+      // svarmuligheder), finder Archy ikke svarmulighederne. Så udgives kildens udgave
+      // som en ny version af samme form.
+      const tekster = f => JSON.stringify((f?.questionGroups || []).map(g => (g.questions || [])
+        .map(q => [q.text, (q.answerOptions || []).map(o => o.text)])));
+      const udgivet = srcPublished && srcPub
+        ? (await axios.get(`${tgtBase}/api/v2/quality/publishedforms/surveys/${tgtPub.id}`, TG).catch(() => ({ data: null }))).data : null;
+      if (!udgivet || tekster(udgivet) === tekster(full))
+        return res.status(409).json({ error: 'already_exists', message: `Survey form "${name}" findes allerede` });
+      await axios.put(`${tgtBase}/api/v2/quality/forms/surveys/${tgtPub.id}`, {
+        name: full.name, language: full.language, published: false, disabled: full.disabled,
+        questionGroups: stripFormIds(full.questionGroups || [])
+      }, TH);
+      await axios.post(`${tgtBase}/api/v2/quality/publishedforms/surveys`, { id: tgtPub.id, name: tgtPub.name, published: true }, TH);
+      addLog('SUCCESS', `Survey form "${name}" differed from the source — published the source's version in ${target.name}`, target.name, 'MIGRATE');
+      return res.json({ ok: true, id: tgtPub.id, name, published: true });
+    }
     const ex = await axios.get(`${tgtBase}/api/v2/quality/forms/surveys`, { ...TG, params: { pageSize: 200 } });
     const there = (ex.data.entities || []).find(f => f.name === name);
     if (there) {
       if (!srcPublished) return res.status(409).json({ error: 'already_exists', message: `Survey form "${name}" findes allerede` });
+      // Kladden kommer fra en tidligere kørsel og kan stamme fra kildens nyeste version,
+      // ikke den udgivne. Archy matcher spørgsmålenes tekst, så indholdet sættes til
+      // den udgivne version, før den udgives: «could not find the answer options
+      // using the survey question text …».
+      await axios.put(`${tgtBase}/api/v2/quality/forms/surveys/${there.id}`, {
+        name: full.name, language: full.language, published: false, disabled: full.disabled,
+        questionGroups: stripFormIds(full.questionGroups || [])
+      }, TH);
       await axios.post(`${tgtBase}/api/v2/quality/publishedforms/surveys`, { id: there.id, name: there.name, published: true }, TH);
-      addLog('SUCCESS', `Survey form "${name}" published in ${target.name}`, target.name, 'MIGRATE');
+      addLog('SUCCESS', `Survey form "${name}" updated to the source's published version and published in ${target.name}`, target.name, 'MIGRATE');
       return res.json({ ok: true, id: there.id, name, published: true });
     }
 

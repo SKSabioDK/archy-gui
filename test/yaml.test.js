@@ -306,3 +306,11 @@ test('et survey-flow som afhængighed tager sin survey form med', () => {
   assert.match(SRC, /for \(const kind of \['datatable', 'dataaction', 'surveyform', \.\.\.COPYABLE_KINDS\]\)/);
   assert.match(SRC, /if \(kind === 'surveyform'\) \{\s*url = '\/api\/surveyforms\/migrate';/);
 });
+
+test('en survey form i målet med andet indhold end kildens udgave erstattes, før den udgives', () => {
+  const SRC = require('fs').readFileSync(require('path').join(__dirname, '..', 'server.js'), 'utf8');
+  const blok = SRC.slice(SRC.indexOf("app.post('/api/surveyforms/migrate'"), SRC.indexOf('function stripFormIds'));
+  assert.match(blok, /axios\.put\(`\$\{tgtBase\}\/api\/v2\/quality\/forms\/surveys\/\$\{there\.id\}`/, 'kladden får kildens indhold');
+  assert.match(blok, /axios\.put\(`\$\{tgtBase\}\/api\/v2\/quality\/forms\/surveys\/\$\{tgtPub\.id\}`/, 'en afvigende udgivet kopi får en ny version');
+  assert.match(blok, /answerOptions/, 'svarmulighederne sammenlignes');
+});

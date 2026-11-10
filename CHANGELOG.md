@@ -5,6 +5,18 @@
 
 ---
 
+### v1.79.6
+---
+**🇩🇰 Dansk**
+
+- **Survey forms får kildens udgivne indhold.** Archy matcher et survey-flows spørgsmål på tekst og svarmuligheder i formen, og en kopi med et andet indhold gav «could not find the answer options using the survey question text …». En kladde fra en tidligere kørsel får nu kildens udgivne indhold, før den udgives, og en udgivet kopi i målet, der afviger fra kilden, får kildens udgave som ny version. Er de ens, springes den over som før.
+- 1 ny test.
+
+**🇬🇧 English**
+- **Survey forms get the source's published content.** Archy matches a survey flow's questions on text and answer options in the form, and a copy with different content gave "could not find the answer options using the survey question text …". A draft left by an earlier run now gets the source's published content before it is published, and a published copy in the target that differs from the source gets the source's version as a new version. If they are identical it is skipped as before.
+- 1 new test.
+
+---
 ### v1.79.5
 ---
 **🇩🇰 Dansk**
