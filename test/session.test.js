@@ -12,7 +12,7 @@ const path = require('path');
 // i den rigtige brugers.
 const DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'archy-session-'));
 process.env.ARCHY_SESSION_DIR = DIR;
-const s = require('../server.js');
+const s = require('../src/server.js');
 
 const ORG = '11111111-1111-1111-1111-111111111111';
 const ANDEN = '22222222-2222-2222-2222-222222222222';

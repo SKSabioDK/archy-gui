@@ -1,16 +1,18 @@
 node_modules/
 
-# Kundeprofiler med credentials — må aldrig i repoet
-customers.json
+# Kørselsdata: kundeprofiler med credentials, indstillinger, eksporterede flows,
+# Terraform-opsætninger og CA-bundle — må aldrig i repoet
+/data/
+/logs/
 
-# Eksporterede flows og migreringsmanifestet
-flows/
-
-# Demo-kundens flows — genskabes af "Opret demo-kunde"
-demo-data.json
-
-# CA-bundle bygget ved opstart til Archy-processen
-.archy-ca.pem
+# Gamle placeringer fra før v1.80 — flyttes til data/ og logs/ ved første start,
+# men må heller ikke komme med, mens de ligger der
+/customers.json
+/settings.json
+/demo-data.json
+/.archy-ca.pem
+/flows/
+/terraform/
 
 # Per-maskine Claude Code permissions — hører ikke i repoet
 .claude/settings.local.json
@@ -18,8 +20,3 @@ demo-data.json
 *.log
 .DS_Store
 Thumbs.db
-
-# Egen trinliste m.m. — pr. maskine
-settings.json
-
-terraform/

@@ -10,7 +10,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const s = require('../server.js');
+const s = require('../src/server.js');
 const { KUNDE } = require('./fixtures.js');
 
 const ORG_A = '11111111-1111-1111-1111-111111111111';

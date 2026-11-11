@@ -3,7 +3,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { manifestSignature } = require('../server.js');
+const { manifestSignature } = require('../src/server.js');
 
 const rows = () => ({
   'Betaling|INBOUNDCALL': { flowName: 'Betaling', version: '5.0', publishedAt: 100, at: 1000 },

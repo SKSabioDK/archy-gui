@@ -7,7 +7,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const s = require('../server.js');
+const s = require('../src/server.js');
 
 const env = (id, stage, prefix = '', extra = {}) =>
   ({ id, name: id, tenant: 'Kunde 2', group: 'Norden', stage, prefix, clientId: 'x', region: 'r', ...extra });

@@ -5,6 +5,24 @@
 
 ---
 
+### v1.80.0
+---
+**🇩🇰 Dansk**
+
+- **Ny mappestruktur.** Projektmappen er ryddet op: koden ligger i `src/` (`server.js`, `terraform.js`, `ai-agent.js`, `ai-providers.js`), kørselsdata i `data/` (`customers.json`, `settings.json`, `demo-data.json`, `flows/`, `terraform/` og CA-bundlen), logfiler i `logs/` og testplanerne i `docs/`. `data/` og `logs/` ligger i `.gitignore`.
+- **Data flyttes selv.** Første gang den nye version starter, flyttes de gamle filer fra projektmappen til `data/` og `logs/`. En fil der allerede findes på den nye plads, overskrives ikke; en gammel logfil gemmes som `server.old.log`. `ARCHY_DATA_DIR` lægger data et andet sted.
+- **Opdatering fra en ældre version: kør `start.bat` én gang.** En kørende server fra før v1.80 kan ikke genstarte sig selv ind i den nye struktur, fordi `server.js` er flyttet. Den kører videre på den gamle version, til man starter igen.
+- `npm start` starter serveren; `package.json` peger på `src/server.js`.
+- 5 nye tests.
+
+**🇬🇧 English**
+- **New folder structure.** The code lives in `src/`, runtime data in `data/` (customers, settings, flows, Terraform, CA bundle), log files in `logs/` and the test plans in `docs/`. `data/` and `logs/` are in `.gitignore`.
+- **Data moves itself.** The first time the new version starts, the old files are moved from the project folder to `data/` and `logs/`. Existing files in the new place are not overwritten; an old log is kept as `server.old.log`. `ARCHY_DATA_DIR` puts the data elsewhere.
+- **Updating from an older version: run `start.bat` once.** A running server from before v1.80 cannot restart itself into the new structure because `server.js` has moved.
+- `npm start` starts the server; `package.json` points at `src/server.js`.
+- 5 new tests.
+
+---
 ### v1.79.7
 ---
 **🇩🇰 Dansk**

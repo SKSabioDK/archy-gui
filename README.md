@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.79.7
+# Archy GUI — Flow Manager · v1.80.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.79.7**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.79.7**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.80.0**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.80.0**.
 
 ---
 
@@ -22,7 +22,7 @@ Et grafisk interface til [Archy](https://help.mypurecloud.com/articles/archy/) m
 
 ### Krav
 - **Node.js 22.23.4, 24.22.1, 26.12.1 eller nyere** — versionerne med sikkerhedsrettelserne fra 21. oktober 2026 ([Node.js](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases)). Ældre linjer (18, 20, 25) får ingen rettelser, og programmet skriver en advarsel ved start, hvis versionen er for gammel
-- **Archy** installeret. Helst i PATH (`archy version` skal returnere en version); ellers leder programmet i `C:\Tools\Archy`, `C:\Archy`, `C:\Program Files\Archy` og din brugermappe, eller du skriver mappen med `archy.bat` i `archyDir` i `settings.json` (eller sætter miljøvariablen `ARCHY_DIR`). Genstart med `start.bat` bagefter
+- **Archy** installeret. Helst i PATH (`archy version` skal returnere en version); ellers leder programmet i `C:\Tools\Archy`, `C:\Archy`, `C:\Program Files\Archy` og din brugermappe, eller du skriver mappen med `archy.bat` i `archyDir` i `data/settings.json` (eller sætter miljøvariablen `ARCHY_DIR`). Genstart med `start.bat` bagefter
 - **Windows** (`start.bat`/`stop.bat`) og en browser
 - En Genesys Cloud OAuth-klient af typen **Code Authorization** (PKCE) pr. org, med redirect URI `http://localhost:3737/auth/callback` — se [opsætning nedenfor](#opsætning-af-oauth-klienten-pkce). Ældre miljøer med Client Credentials virker stadig, men nye oprettes altid med PKCE
 
@@ -32,7 +32,7 @@ Gøres én gang pr. Genesys-org (se også **📋 Opsætning** i programmet, som 
 
 1. I Genesys Cloud: **Admin → Integrations → OAuth → Add Client**.
 2. **Grant Type:** *Code Authorization*. (*Client Credentials* bruges kun af ældre miljøer.)
-3. **Authorized redirect URIs:** `http://localhost:3737/auth/callback` — præcis sådan, uden skråstreg til sidst. Kører programmet på en anden port (`PORT`), skal URI'en følge den, og `OAUTH_REDIRECT_URI` i `server.js` ændres tilsvarende.
+3. **Authorized redirect URIs:** `http://localhost:3737/auth/callback` — præcis sådan, uden skråstreg til sidst. Kører programmet på en anden port (`PORT`), skal URI'en følge den, og `OAUTH_REDIRECT_URI` i `src/server.js` ændres tilsvarende.
 4. **Scope:** et kald skal være tilladt af **både** brugerens roller og klientens scopes. Vælg mindst `architect`, `scripts`, `integrations`, `authorization`, `routing`, `users`, `groups` og `oauth` (de fire sidste må gerne være `:readonly`). Mangler et scope, fejler kaldet med *app.not.authorized.for.scope* — **🔌 Test** viser det som `scope …` ud for funktionen. Et nyt scope gælder først efter et nyt login.
 5. Gem, og kopiér **Client ID** (en GUID). Der er ingen secret at gemme; PKCE bruger ingen.
 6. I programmet: opret miljøet med **🌐 OAuth (PKCE)**, indsæt Client ID, vælg region, og tryk **Log ind**. Log ind i den rigtige org — logger du ind i en anden, afvises tokenet.
@@ -68,13 +68,13 @@ npm install
 
 Dobbeltklik på **`start.bat`** — den:
 1. Stopper eventuel tidligere instans på port 3737
-2. Starter serveren **skjult i baggrunden** — output i `server.log`, fejl i `server.err.log`
-3. Venter til serveren er klar (højst 30 sekunder — ellers vises de sidste linjer af `server.err.log`)
+2. Starter serveren **skjult i baggrunden** — output i `logs/server.log`, fejl i `logs/server.err.log`
+3. Venter til serveren er klar (højst 30 sekunder — ellers vises de sidste linjer af `logs/server.err.log`)
 4. Åbner automatisk **http://localhost:3737** i browseren og lukker sit eget vindue
 
-Serveren kører videre, når vinduet er lukket. **`stop.bat`** stopper den. Kører man `start.bat` igen, genstartes serveren. Efter en opdatering (ændret `server.js` eller `package.json`) genstarter serveren **selv** — den venter på en igangværende migrering, tjekker at koden kan parses, og logins huskes. Browseren tilbyder en genindlæsning, når versionen skifter. Slås fra med miljøvariablen `ARCHY_NO_AUTORESTART=1`.
+Serveren kører videre, når vinduet er lukket. **`stop.bat`** stopper den. Kører man `start.bat` igen, genstartes serveren. Efter en opdatering (ændret `src/server.js` eller `package.json`) genstarter serveren **selv** — den venter på en igangværende migrering, tjekker at koden kan parses, og logins huskes. Browseren tilbyder en genindlæsning, når versionen skifter. Slås fra med miljøvariablen `ARCHY_NO_AUTORESTART=1`.
 
-Alternativt manuelt: `node server.js`
+Alternativt manuelt: `node src/server.js`
 
 Er der sat grupper op, **åbner programmet på Pipeline** med den kunde du sidst arbejdede med — som på billedet øverst. Tavlen hentes når du trykker *Vis pipeline*.
 
@@ -89,7 +89,7 @@ En **kunde** har én eller flere **grupper**, og hver gruppe er en **pipeline** 
 ### Funktioner
 
 #### 🏢 Kunder
-Nye miljøer oprettes altid med **🌐 OAuth (PKCE)**: du logger ind i Genesys som dig selv, kun Client ID gemmes, og tokenet lever kun i serverens hukommelse. Ældre miljøer med **🔑 Client Credentials** (Client ID + secret i `customers.json`) virker stadig og er markeret med **gult**.
+Nye miljøer oprettes altid med **🌐 OAuth (PKCE)**: du logger ind i Genesys som dig selv, kun Client ID gemmes, og tokenet lever kun i serverens hukommelse. Ældre miljøer med **🔑 Client Credentials** (Client ID + secret i `data/customers.json`) virker stadig og er markeret med **gult**.
 
 **⚙ Indstillinger** på hvert kort rummer navn, kunde, gruppe, trin, præfiks, org-navn, farve, division, godkendelse og krav til prod. Felterne tjekkes når de gemmes (se Sikkerhed), og omdøbes et miljø, flytter dets eksportmappe med.
 
@@ -121,7 +121,7 @@ Vattenfall            Kunde 2 A/S
 
 **Gruppen er pipelinen** — om den hedder et land eller et firma er kun en etiket. Hvert miljø får et trin fra `dev → test → uat → prod`. Har en kunde kun én gruppe, skjules valget.
 
-**Egne trin.** Under **Kunder → Trin** kan listen udvides med fx `staging` eller `preprod` og sorteres med pilene. Listen gælder for hele programmet og gemmes i `settings.json`. **Prod står altid sidst**, fordi login, deploy-ret og skrivevagten hænger på den, og et trin der bruges af et miljø, kan ikke fjernes. Egne trin får gul farve — orange hvis de står lige før prod.
+**Egne trin.** Under **Kunder → Trin** kan listen udvides med fx `staging` eller `preprod` og sorteres med pilene. Listen gælder for hele programmet og gemmes i `data/settings.json`. **Prod står altid sidst**, fordi login, deploy-ret og skrivevagten hænger på den, og et trin der bruges af et miljø, kan ikke fjernes. Egne trin får gul farve — orange hvis de står lige før prod.
 
 **Præfiks: flere miljøer i den samme org.** Nogle kunder har ikke én org pr. miljø, men **én org hvor miljøerne kendes på et præfiks**:
 
@@ -142,7 +142,7 @@ Opret ét miljø pr. præfiks. Programmet slår **org-id'et** op i Genesys og se
 
 **Rigtig org ved login.** Med trusted orgs vælger man selv org'en på Genesys' login-side. Login'et tjekker hvilken org det landede i, og afviser det hvis den ikke passer med miljøets — eller hvis den hører til en anden kunde. Org'en står ved miljøet når man er logget ind.
 
-**Aktiveringsnøgle.** *Flow Builder* og *Demo-kunder* er interne eller i beta og er skjult som standard. Indtast en aktiveringsnøgle under **Kunder → Aktiveringsnøgle**, så dukker de op; **Lås igen** skjuler dem. Nøglen gemmes i `settings.json`, og serveren afviser demo-kald uden den. Det er funktionsstyring, ikke adgangskontrol. Ny nøgle: gem SHA-256 af den i `FEATURE_KEY_SHA256` i `server.js`.
+**Aktiveringsnøgle.** *Flow Builder* og *Demo-kunder* er interne eller i beta og er skjult som standard. Indtast en aktiveringsnøgle under **Kunder → Aktiveringsnøgle**, så dukker de op; **Lås igen** skjuler dem. Nøglen gemmes i `data/settings.json`, og serveren afviser demo-kald uden den. Det er funktionsstyring, ikke adgangskontrol. Ny nøgle: gem SHA-256 af den i `FEATURE_KEY_SHA256` i `src/server.js`.
 
 **Demo-kunder.** To knapper opretter et komplet opsæt der kun findes lokalt — ingen credentials, ingen kald til Genesys eller Archy:
 
@@ -172,7 +172,7 @@ Dialogen viser desuden hvornår hver side sidst blev **publiceret** og af hvem, 
 
 **📌 Sæt nulpunkt.** Noterer hvordan sammenlignings-org'ens flows ser ud nu. Derefter kan værktøjet fange at nogen har publiceret direkte i mål-org'en, **også for flows det aldrig selv har migreret**. Kør den én gang pr. par af orgs du arbejder med — fx `dev → uat` og `dev → prod` for hver kunde.
 
-> Oplysningerne gemmes i `flows/.migrations.json`, nøglet på Genesys' org-id. **Filen er maskinspecifik og deles ikke** — arbejder I flere på samme kunde, så opret det delte manifest i org'en i stedet (se [Pipeline](#-pipeline)).
+> Oplysningerne gemmes i `data/flows/.migrations.json`, nøglet på Genesys' org-id. **Filen er maskinspecifik og deles ikke** — arbejder I flere på samme kunde, så opret det delte manifest i org'en i stedet (se [Pipeline](#-pipeline)).
 
 #### 🚦 Pipeline
 Er der sat grupper op, **starter programmet her**, med den kunde man sidst arbejdede med valgt. Tavlen hentes først når man trykker *Vis pipeline* — den kalder alle gruppens orgs.
@@ -227,7 +227,7 @@ Hver forfremmelse skriver en **release** med hvad målet indeholdt før og efter
 
 **Hvor det gemmes.** Historikken ligger i **org'en**, i miljøets manifest-tabel (`ArchyGUI_Manifest`), i rækken for flowet: de seneste 20 releases med udgaven før og efter, hvem, hvornår og noten. *Indholdet* gemmes ikke dér — Genesys har allerede hver publiceret udgave, så en rollback eksporterer bare den udgave målet stod på før, direkte fra org'en. Derfor kan man forfremme fra én pc og rulle tilbage fra en anden.
 
-Den lokale `flows/.releases.json` (og indholdet i `flows/.releases/`) er en **cache**: den har diff'en klar, så man slipper for eksporten. Mangler den — fordi releasen blev lavet fra en anden pc — bygges diff'en af de to udgaver i org'en, første gang man folder den ud. Har et miljø **ingen manifest-tabel**, findes historikken kun på den pc der lavede releasen, og listen markerer den *kun på denne pc*.
+Den lokale `data/flows/.releases.json` (og indholdet i `data/flows/.releases/`) er en **cache**: den har diff'en klar, så man slipper for eksporten. Mangler den — fordi releasen blev lavet fra en anden pc — bygges diff'en af de to udgaver i org'en, første gang man folder den ud. Har et miljø **ingen manifest-tabel**, findes historikken kun på den pc der lavede releasen, og listen markerer den *kun på denne pc*.
 
 For at kende "før" eksporteres målets publicerede udgave inden importen — én ekstra Archy-eksport pr. forfremmelse.
 
@@ -286,7 +286,7 @@ Tabellen har to kolonner:
 
 **Org'en vinder.** Ved login, 🔌 Test og når Pipeline åbnes, hentes org'ens opsætning ind, og det der er ændret, vises én gang øverst på siden. En rettelse her på pc'en skrives derfor straks til org'en. Har nogen ændret org'ens række, mens en rettelse herfra ventede, vælger man i guiden hvem der har ret. **Prod-vagten løsnes aldrig udefra:** org'en kan ikke sætte et prod-miljø til et andet trin eller ændre dets deploy-krav — det bliver en uenighed, og at tage org'ens kræver prod-login. Trin org'en har og pc'en mangler (fx staging), lægges til listen; der fjernes aldrig nogen. Et miljø uden præfiks tager aldrig flows med et præfiks org'en bruger — heller ikke på en pc hvor dev og test ikke er tilføjet.
 
-**Tavlen følger med.** Mens Pipeline er åben, spørger programmet hvert minut til et fingeraftryk af manifest-tabellerne i den viste gruppe, og ændrer det sig — fx fordi en kollega på en anden pc har forfremmet et flow — tegnes tavlen igen af sig selv. Det samme sker, når man vender tilbage til Pipeline efter en migration. Intervallet sættes med `pipelineRefreshSeconds` i `settings.json` (mindst 15; `0` slår det fra). **Fra tavlen til Migrer** (*Hent hertil*, *Forfrem*) vises kun det valgte flow; vil man migrere flere, slår man *Vis kun valgte* fra.
+**Tavlen følger med.** Mens Pipeline er åben, spørger programmet hvert minut til et fingeraftryk af manifest-tabellerne i den viste gruppe, og ændrer det sig — fx fordi en kollega på en anden pc har forfremmet et flow — tegnes tavlen igen af sig selv. Det samme sker, når man vender tilbage til Pipeline efter en migration. Intervallet sættes med `pipelineRefreshSeconds` i `data/settings.json` (mindst 15; `0` slår det fra). **Fra tavlen til Migrer** (*Hent hertil*, *Forfrem*) vises kun det valgte flow; vil man migrere flere, slår man *Vis kun valgte* fra.
 
 **Genopbyg.** Mangler et miljøs tabel, står det som en gul advarsel lige over tavlen på Pipeline — med en **Genopbyg**-knap. Er tabellen slettet, opretter **Genopbyg** (under *Delt manifest* og i guiden) den igen, skriver opsætningen og en række pr. flow i miljøet. Rækker der står, røres ikke. Hvad org'en indeholder nu, kan altid læses i Genesys; historikken — hvem forfremmede hvad hvorfra — tages fra denne pc's lokale filer, hvor den findes. Rækker uden historik er et nulpunkt, og svaret siger hvor mange der fik historik med.
 
@@ -367,7 +367,7 @@ Siden migrerer det der ikke er flows mellem to orgs, fordelt på otte faner: **D
 
 ![Totaltjek af data actions](docs/totaltjek.da.png)
 
-**Fejl og ønsker.** Nederst i sidebaren åbner *🐞 Rapportér en fejl* og *💡 Foreslå et ønske* en dialog. *Åbn på GitHub* åbner en forudfyldt kladde-issue — du trykker selv på Submit og indsætter skærmbilleder med Ctrl+V. Fejlrapporten medsender version, Node, styresystem, side og de seneste logliner (renset for hemmeligheder, men kan indeholde kundenavne); er loggen for lang, lægges hele loggen på udklipsholderen, og den kan gemmes som fil. Intet token gemmes. Mål-repo: `issueRepo` i `settings.json`.
+**Fejl og ønsker.** Nederst i sidebaren åbner *🐞 Rapportér en fejl* og *💡 Foreslå et ønske* en dialog. *Åbn på GitHub* åbner en forudfyldt kladde-issue — du trykker selv på Submit og indsætter skærmbilleder med Ctrl+V. Fejlrapporten medsender version, Node, styresystem, side og de seneste logliner (renset for hemmeligheder, men kan indeholde kundenavne); er loggen for lang, lægges hele loggen på udklipsholderen, og den kan gemmes som fil. Intet token gemmes. Mål-repo: `issueRepo` i `data/settings.json`.
 
 **Sårbarhedsscanning.** `.github/workflows/security.yml` kører hver mandag `npm audit --omit=dev` og testene og opretter en issue med etiketten *security* ved fund; Dependabot holder pakkerne opdateret.
 
@@ -379,7 +379,7 @@ Siden migrerer det der ikke er flows mellem to orgs, fordelt på otte faner: **D
 
 **Afhængigheder ved flow-migrering.** Et flow tager det med, det bruger: tabeller, data actions, prompts, scripts, køer, grupper, åbningstider, vidensbaser, **kontaktlister** (et outbound-flow) og andre flows. Et survey-flow, som et outbound-flow peger på via *Set Post-Flow*, migreres først — sammen med sin **survey form**, som kopieres og udgives i målet. Archy finder kun udgivne survey forms, og et survey-flow kan være bundet til en ældre version af formen; Genesys skriver det i flowets indstillinger, og så skal flowet oprettes på ny på formens nyeste version, før det kan migreres.
 
-**Fanen Terraform** genererer en Terraform-opsætning (genesyscloud-provideren) ud fra kilde-org'ens objekter og gemmer den automatisk i `terraform/<fra>_<til>/<dato>/` (vælg også et mål, så navngives mappen efter begge orgs, README og provider nævner begge, og målets region bliver standard; uden mål hedder mappen kun efter kilden). Filerne følger appens sprog (dansk, engelsk eller tysk — andre sprog får engelsk). Kunden kører selv `terraform apply` mod den org, der skal ændres — fx fra Falck Global til US — og `terraform plan` viser forskellen. Man vælger typer eller tager alle med. Med er: divisioner, skills, skill-grupper, grupper, teams, lokationer, utilization-labels, vidensbaser, svarbiblioteker, åbningstider og -grupper, nødgrupper, kontaktlister, DNC-lister, wrap-up-koder, roller, OAuth-klienter, integrationer, data actions, data tabeller, user prompts, køer og flows (nyeste lokale YAML kopieres til `architect_flows/`, som i providerens egen eksport). Referencer bliver til Terraform-referencer; Home og standardroller bliver til data-kilder, og en division der ikke er med, bliver en variabel i `terraform.tfvars` som i providerens egen eksport. Provideren følger dens vejledning: `required_version` og providerversion i `versions.tf`, og tomme felter bruger miljøvariablerne `GENESYSCLOUD_*`. Mappen får også `provider.tf`, `variables.tf`, `terraform.tfvars.example` og en `README.md` med det, der ikke er med: hemmeligheder, medlemmer, kontakter, indspillet lyd og betingede rettigheder (samt formularer, scripts og Function Data Actions). Det er en startopsætning — afprøv den i en test-org. Mappen ligger i `.gitignore`, fordi den indeholder kundens opsætning.
+**Fanen Terraform** genererer en Terraform-opsætning (genesyscloud-provideren) ud fra kilde-org'ens objekter og gemmer den automatisk i `data/terraform/<fra>_<til>/<dato>/` (vælg også et mål, så navngives mappen efter begge orgs, README og provider nævner begge, og målets region bliver standard; uden mål hedder mappen kun efter kilden). Filerne følger appens sprog (dansk, engelsk eller tysk — andre sprog får engelsk). Kunden kører selv `terraform apply` mod den org, der skal ændres — fx fra Falck Global til US — og `terraform plan` viser forskellen. Man vælger typer eller tager alle med. Med er: divisioner, skills, skill-grupper, grupper, teams, lokationer, utilization-labels, vidensbaser, svarbiblioteker, åbningstider og -grupper, nødgrupper, kontaktlister, DNC-lister, wrap-up-koder, roller, OAuth-klienter, integrationer, data actions, data tabeller, user prompts, køer og flows (nyeste lokale YAML kopieres til `architect_flows/`, som i providerens egen eksport). Referencer bliver til Terraform-referencer; Home og standardroller bliver til data-kilder, og en division der ikke er med, bliver en variabel i `terraform.tfvars` som i providerens egen eksport. Provideren følger dens vejledning: `required_version` og providerversion i `versions.tf`, og tomme felter bruger miljøvariablerne `GENESYSCLOUD_*`. Mappen får også `provider.tf`, `variables.tf`, `terraform.tfvars.example` og en `README.md` med det, der ikke er med: hemmeligheder, medlemmer, kontakter, indspillet lyd og betingede rettigheder (samt formularer, scripts og Function Data Actions). Det er en startopsætning — afprøv den i en test-org. Mappen (under `data/`) ligger i `.gitignore`, fordi den indeholder kundens opsætning.
 
 **AI-udbydere med EU-hosting (beta).** Under *Kunder → AI-udbydere* — kun synlig med aktiveringsnøglen og slået fra som standard — lægger du dine egne API-nøgler ind til AI-udbydere, der hoster i Europa: **Mistral** (kun EU-adressen `api.eu.mistral.ai`; Mistrals egen dokumentation siger, at den globale `api.mistral.ai` ikke binder sig til en placering), **Azure OpenAI** i en EU-region, **Claude via Amazon Bedrock** i en EU-region (`eu.*` inference profile; `us.`, `apac.` og `global.` afvises) og en **egen endpoint** (OpenAI-kompatibel) til andre EU-udbydere uden kode. Endpoint og autentificering er slået op i udbydernes dokumentation 28. oktober 2026.
 - **Region:** hver udbyder viser sin region og grundlaget. Mistral og Bedrock: udbyderens dokumentation. Azure og egen endpoint: *din egen erklæring* — Archy kan ikke se, hvor en Azure-ressource ligger, så tjek den i portalen (region og udrulningstype).
@@ -492,10 +492,10 @@ Tekniske betegnelser oversættes ikke — flow-typer (`InboundCall`, `Workflow` 
 - Client Secrets vises aldrig i GUI efter gemning, og maskeres i logfil og systemlog
 - OAuth PKCE: ingen secret gemmes — token lever kun i serverens hukommelse
 - **Et login gælder kun den org miljøet hører til.** Med trusted orgs vælger man selv org'en på Genesys' login-side, så værktøjet slår op hvilken org login'et landede i, før tokenet gemmes. Passer den ikke med miljøets kendte org — eller hører den til en anden kunde — kasseres tokenet. Login'et beder altid om et nyt login (`prompt=login`) og peger på miljøets org (`target`), så en husket session i en anden org ikke genbruges stille. Både API-kaldene og Archy tjekker org'en igen hver gang tokenet bruges, og et kendt org-id overskrives aldrig. Samme OAuth-klient betyder kun samme org ved client credentials
-- **Skrivning til prod kræver et personligt login.** Et prod-miljø skal bruge OAuth (PKCE); med client credentials kan det læses, men ikke skrives til. Ved login slår værktøjet brugeren op i Genesys og tjekker rettigheden — som standard `architect:flow:publish` — og eventuelt medlemskab af en gruppe. Begge sættes pr. miljø under **⚙ Indstillinger**. Deploy-retten gælder 30 minutter efter login; derefter logger man ind igen. **Genstarter man programmet inden for de 30 minutter, huskes login'et** — så skal man ikke gennem MFA igen: tokenet gemmes i din egen brugermappe (`~/.archy-gui/session.json`), kun for friske logins og kun for de miljøer og den org, der blev logget ind til, og filen ryddes når de udløber. Sæt `rememberLoginMinutes` til `0` i `settings.json` for ikke at gemme noget. Archy og API-kaldene kører med brugerens eget token, så Genesys håndhæver også selv rettighederne, og audit-loggen viser personen. Kræver en OAuth-klient af typen *Code Authorization* i prod-org'en med redirect URI `http://localhost:3737/auth/callback`. Rettigheder pr. division (`architect:flow:publish:<division-id'er>`) tæller med
+- **Skrivning til prod kræver et personligt login.** Et prod-miljø skal bruge OAuth (PKCE); med client credentials kan det læses, men ikke skrives til. Ved login slår værktøjet brugeren op i Genesys og tjekker rettigheden — som standard `architect:flow:publish` — og eventuelt medlemskab af en gruppe. Begge sættes pr. miljø under **⚙ Indstillinger**. Deploy-retten gælder 30 minutter efter login; derefter logger man ind igen. **Genstarter man programmet inden for de 30 minutter, huskes login'et** — så skal man ikke gennem MFA igen: tokenet gemmes i din egen brugermappe (`~/.archy-gui/session.json`), kun for friske logins og kun for de miljøer og den org, der blev logget ind til, og filen ryddes når de udløber. Sæt `rememberLoginMinutes` til `0` i `data/settings.json` for ikke at gemme noget. Archy og API-kaldene kører med brugerens eget token, så Genesys håndhæver også selv rettighederne, og audit-loggen viser personen. Kræver en OAuth-klient af typen *Code Authorization* i prod-org'en med redirect URI `http://localhost:3737/auth/callback`. Rettigheder pr. division (`architect:flow:publish:<division-id'er>`) tæller med
 - Trin, godkendelse, Client ID, region og deploy-krav på et prod-miljø kan kun ændres med et gyldigt prod-login — ellers kunne man sætte trinnet til "uat", skrive, og sætte det tilbage. Undtagelsen er et nyt **Client ID alene** på et OAuth-miljø: login'et går gennem klienten, så en slettet eller forkert klient ellers aldrig kunne rettes. Org-id'et bliver stående, så den nye klients login skal lande i samme org, og skrivning kræver stadig et friskt prod-login. Redigering tager kun imod de felter der kan redigeres
 - Serveren binder til `127.0.0.1`. Sæt `HOST` hvis den bevidst skal nås udefra — men der er ingen adgangskontrol foran, så det bør ikke gøres uden
-- Filstier fra brugerfladen holdes inden for `flows/`, både ved læsning og skrivning
+- Filstier fra brugerfladen holdes inden for `data/flows/`, både ved læsning og skrivning
 - Felterne på et miljø tjekkes når de gemmes: navnet må ikke indeholde `< > : " \ | ? * % ! ^ $ '` samt backtick og kontroltegn, ikke være et reserveret Windows-navn og ikke give samme eksportmappe som et andet miljø; præfikset må kun være `A-Z 0-9 _ -`; Client ID skal være et GUID og regionen en kendt. `/` er tilladt, så "A/S" kan bruges
 - Navne fra en org escapes før de tegnes: `escapeHtml` i HTML-tekst, `jsAttr` i en `onclick`. Et flow der hedder `<img src=x onerror=…>` vises som tekst
 - Værdier på Archys kommandolinje citeres, og et flownavn med et anførselstegn afvises: Archy kaldes gennem `cmd.exe`, hvor tegnet ikke kan escapes
@@ -503,25 +503,27 @@ Tekniske betegnelser oversættes ikke — flow-typer (`InboundCall`, `Workflow` 
 ### Filer
 ```
 Archy-gui/
-├── server.js          # Express backend
-├── terraform.js       # Terraform-generator (ren kode)
-├── ai-providers.js    # AI-udbydere: krypteret nøglelager og adaptere
-├── ai-agent.js        # AI-assistenten: værktøjsløkke, værktøjer og bekræftelser
-├── start.bat          # Start server skjult i baggrunden + åbn browser
-├── stop.bat           # Stop serveren
-├── customers.json     # Kunder (auto-genereret)
-├── settings.json      # Egen trinliste (oprettes når den gemmes)
-├── server.log         # Server-output
-├── flows/             # Lokale YAML-filer
-│   └── <kundenavn>/
-│       └── *.yaml
+├── src/                   # Koden
+│   ├── server.js          # Express backend
+│   ├── terraform.js       # Terraform-generator (ren kode)
+│   ├── ai-providers.js    # AI-udbydere: krypteret nøglelager og adaptere
+│   └── ai-agent.js        # AI-assistenten: værktøjsløkke, værktøjer og bekræftelser
 ├── public/
-│   └── index.html     # Frontend SPA
-├── test/              # Enhedstests (npm test)
-│   └── *.test.js
-├── docs/              # Skærmbilleder og infografik til README
+│   └── index.html         # Frontend SPA
+├── test/                  # Enhedstests (npm test)
+├── docs/                  # Skærmbilleder, infografik og testplaner
+├── data/                  # Kørselsdata — ligger i .gitignore
+│   ├── customers.json     # Kunder (auto-genereret)
+│   ├── settings.json      # Indstillinger og egen trinliste (oprettes når de gemmes)
+│   ├── flows/<kunde>/     # Lokale YAML-filer
+│   └── terraform/         # Genererede Terraform-opsætninger
+├── logs/                  # server.log og server.err.log fra start.bat
+├── start.bat              # Start server skjult i baggrunden + åbn browser
+├── stop.bat               # Stop serveren
 └── package.json
 ```
+
+Kørselsdata og logfiler lå indtil v1.80 løst i projektmappen. Første gang den nye version starter, flyttes de til `data/` og `logs/`; en fil der allerede findes på den nye plads, overskrives ikke. Miljøvariablen `ARCHY_DATA_DIR` lægger data et andet sted (så flyttes intet).
 
 ### Tests (for udviklere)
 
@@ -531,7 +533,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-535 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+540 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -560,7 +562,7 @@ A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) 
 
 ### Requirements
 - **Node.js 22.23.4, 24.22.1, 26.12.1 or newer** — the versions with the security fixes from 21 October 2026 ([Node.js](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases)). Older lines (18, 20, 25) get no fixes, and the app prints a warning at start if the version is too old
-- **Archy** installed. Preferably in PATH (`archy version` must return a version); otherwise the app looks in `C:\Tools\Archy`, `C:\Archy`, `C:\Program Files\Archy` and your user folder, or you put the folder holding `archy.bat` in `archyDir` in `settings.json` (or set the environment variable `ARCHY_DIR`). Restart with `start.bat` afterwards
+- **Archy** installed. Preferably in PATH (`archy version` must return a version); otherwise the app looks in `C:\Tools\Archy`, `C:\Archy`, `C:\Program Files\Archy` and your user folder, or you put the folder holding `archy.bat` in `archyDir` in `data/settings.json` (or set the environment variable `ARCHY_DIR`). Restart with `start.bat` afterwards
 - **Windows** (`start.bat`/`stop.bat`) and a browser
 - A Genesys Cloud OAuth client of type **Code Authorization** (PKCE) per org, with redirect URI `http://localhost:3737/auth/callback` — see [setup below](#setting-up-the-oauth-client-pkce). Older environments using Client Credentials still work, but new ones are always created with PKCE
 
@@ -570,7 +572,7 @@ Done once per Genesys org (the **📋 Setup** guide in the app walks you through
 
 1. In Genesys Cloud: **Admin → Integrations → OAuth → Add Client**.
 2. **Grant Type:** *Code Authorization*. (*Client Credentials* is only used by older environments.)
-3. **Authorized redirect URIs:** `http://localhost:3737/auth/callback` — exactly like this, no trailing slash. If the app runs on another port (`PORT`), the URI must follow it, and `OAUTH_REDIRECT_URI` in `server.js` must be changed to match.
+3. **Authorized redirect URIs:** `http://localhost:3737/auth/callback` — exactly like this, no trailing slash. If the app runs on another port (`PORT`), the URI must follow it, and `OAUTH_REDIRECT_URI` in `src/server.js` must be changed to match.
 4. **Scope:** a call must be allowed by **both** the user's roles and the client's scopes. Pick at least `architect`, `scripts`, `integrations`, `authorization`, `routing`, `users`, `groups` and `oauth` (the last four may be `:readonly`). A missing scope fails the call with *app.not.authorized.for.scope* — **🔌 Test** shows it as `scope …` next to the feature. A new scope only applies after a new login.
 5. Save, and copy the **Client ID** (a GUID). There is no secret to store; PKCE uses none.
 6. In the app: create the environment with **🌐 OAuth (PKCE)**, paste the Client ID, pick the region, and press **Log in**. Log in to the right org — a login in another org is rejected.
@@ -604,7 +606,7 @@ npm install
 
 ### Starting the app
 
-Double-click **`start.bat`** or run `node server.js` manually. `start.bat` starts the server **hidden in the background** (output in `server.log`, errors in `server.err.log`), opens **http://localhost:3737** and closes its own window — the server keeps running. **`stop.bat`** stops it, and running `start.bat` again restarts it, e.g. after an update. After an update (changed `server.js` or `package.json`) the server **restarts itself** — it waits for a migration in progress, checks that the code parses, and logins are remembered. The browser offers a reload when the version changes. Turn it off with the environment variable `ARCHY_NO_AUTORESTART=1`.
+Double-click **`start.bat`** or run `node src/server.js` manually. `start.bat` starts the server **hidden in the background** (output in `logs/server.log`, errors in `logs/server.err.log`), opens **http://localhost:3737** and closes its own window — the server keeps running. **`stop.bat`** stops it, and running `start.bat` again restarts it, e.g. after an update. After an update (changed `src/server.js` or `package.json`) the server **restarts itself** — it waits for a migration in progress, checks that the code parses, and logins are remembered. The browser offers a reload when the version changes. Turn it off with the environment variable `ARCHY_NO_AUTORESTART=1`.
 
 When groups are set up, **the app opens on Pipeline** with the customer you last worked on — as in the picture at the top. The board is fetched when you press *Show pipeline*.
 
@@ -619,7 +621,7 @@ A **customer** has one or more **groups**, and each group is a **pipeline** of e
 ### Features
 
 #### 🏢 Customers
-New environments are always created with **🌐 OAuth (PKCE)**: you log in to Genesys as yourself, only the Client ID is stored, and the token lives only in server memory. Older environments using **🔑 Client Credentials** (Client ID + secret in `customers.json`) still work and are marked in **yellow**.
+New environments are always created with **🌐 OAuth (PKCE)**: you log in to Genesys as yourself, only the Client ID is stored, and the token lives only in server memory. Older environments using **🔑 Client Credentials** (Client ID + secret in `data/customers.json`) still work and are marked in **yellow**.
 
 **⚙ Settings** on each card holds name, customer, group, stage, prefix, org label, colour, division, authentication and prod requirements. Fields are checked on save (see Security), and renaming an environment moves its export folder along.
 
@@ -643,7 +645,7 @@ New environments are always created with **🌐 OAuth (PKCE)**: you log in to Ge
 
 **Customer → group → environment.** One record is one *environment*. Two levels above it decide what may be migrated between: the **group is the pipeline**, whether it is named after a country or a company. Each environment gets a stage from `dev → test → uat → prod`. With only one group, the picker is hidden.
 
-**Custom stages.** Under **Customers → Stages** the list can be extended with e.g. `staging` or `preprod` and sorted with the arrows. The list applies to the whole app and is stored in `settings.json`. **Prod is always last**, since login, deploy rights and the write guard depend on it, and a stage used by an environment cannot be removed. Custom stages are yellow — orange when right before prod.
+**Custom stages.** Under **Customers → Stages** the list can be extended with e.g. `staging` or `preprod` and sorted with the arrows. The list applies to the whole app and is stored in `data/settings.json`. **Prod is always last**, since login, deploy rights and the write guard depend on it, and a stage used by an environment cannot be removed. Custom stages are yellow — orange when right before prod.
 
 **Prefix: several environments in one org.** Some customers do not have one org per environment but **one org where environments are told apart by a prefix**:
 
@@ -664,7 +666,7 @@ Create one environment per prefix. The app looks up the **org id** in Genesys an
 
 **Right org at login.** With trusted orgs you pick the org on Genesys' login page. The login checks which org it landed in and is refused if it doesn't match the environment's — or belongs to another customer. The org is shown next to the environment once logged in.
 
-**Activation key.** *Flow Builder* and *Demo customers* are internal or in beta and hidden by default. Enter an activation key under **Customers → Activation key** and they appear; **Lock again** hides them. The key is stored in `settings.json`, and the server rejects demo calls without it. This is feature gating, not access control. New key: store its SHA-256 in `FEATURE_KEY_SHA256` in `server.js`.
+**Activation key.** *Flow Builder* and *Demo customers* are internal or in beta and hidden by default. Enter an activation key under **Customers → Activation key** and they appear; **Lock again** hides them. The key is stored in `data/settings.json`, and the server rejects demo calls without it. This is feature gating, not access control. New key: store its SHA-256 in `FEATURE_KEY_SHA256` in `src/server.js`.
 
 **Demo customers.** Two buttons create a complete setup that exists only locally — no credentials, no calls to Genesys or Archy:
 
@@ -694,7 +696,7 @@ The dialog also shows when each side was last **published** and by whom, and —
 
 **📌 Set baseline.** Records how the comparison org's flows look right now. From then on the tool can catch someone publishing directly in the target org, **including for flows it never migrated itself**. Run it once per pair of orgs you work with — e.g. `dev → uat` and `dev → prod` for each customer.
 
-> The records live in `flows/.migrations.json`, keyed on the Genesys org id. **The file is machine-specific and is not shared** — if several of you work on the same customer, create the shared manifest in the org instead (see [Pipeline](#-pipeline-1)).
+> The records live in `data/flows/.migrations.json`, keyed on the Genesys org id. **The file is machine-specific and is not shared** — if several of you work on the same customer, create the shared manifest in the org instead (see [Pipeline](#-pipeline-1)).
 
 #### 🚦 Pipeline
 When groups are set up, **the app starts here**, with the customer you last worked on selected. The board is only fetched when you press *Show pipeline* — it calls every org in the group.
@@ -749,7 +751,7 @@ Every promotion writes a **release** holding what the target contained before an
 
 **Where it is kept.** The history lives in **the org**, in the environment's manifest table (`ArchyGUI_Manifest`), in the flow's row: the latest 20 releases with the version before and after, who, when and the note. The *content* is not stored there — Genesys already keeps every published version, so a rollback simply exports the version the target was on before, straight from the org. You can therefore promote from one PC and roll back from another.
 
-The local `flows/.releases.json` (and the content in `flows/.releases/`) is a **cache**: it has the diff ready, sparing an export. When it is missing — because the release was made from another PC — the diff is built from the two versions in the org the first time it is expanded. An environment with **no manifest table** keeps its history only on the PC that made the release, and the list marks it *this PC only*.
+The local `data/flows/.releases.json` (and the content in `data/flows/.releases/`) is a **cache**: it has the diff ready, sparing an export. When it is missing — because the release was made from another PC — the diff is built from the two versions in the org the first time it is expanded. An environment with **no manifest table** keeps its history only on the PC that made the release, and the list marks it *this PC only*.
 
 To know the "before", the target's published version is exported ahead of the import — one extra Archy export per promotion.
 
@@ -808,7 +810,7 @@ One row per flow. `Data` for `UAT_Ordreflow` looks like this:
 
 **The org wins.** At login, 🔌 Test and when Pipeline opens, the org's setup is read in, and what changed is shown once at the top of the page. A change made on this PC is therefore written to the org straight away. If someone changed the org's row while a change from here was waiting, you choose in the guide who is right. **The prod guard is never loosened from outside:** the org cannot move a prod environment to another stage or change its deploy requirements — that becomes a disagreement, and taking the org's version needs a prod login. Stages the org has and the PC lacks (e.g. staging) are added to the list; none are ever removed. An environment without a prefix never takes flows carrying a prefix the org uses — not even on a PC where dev and test have not been added.
 
-**The board keeps up.** While Pipeline is open, the app asks once a minute for a fingerprint of the manifest tables in the group shown, and if it changes — say a colleague on another PC promoted a flow — the board redraws by itself. The same happens when you return to Pipeline after a migration. The interval is set with `pipelineRefreshSeconds` in `settings.json` (at least 15; `0` turns it off). **From the board to Migrate** (*Bring here*, *Promote*) only the chosen flow is shown; to migrate more, turn *Show selected only* off.
+**The board keeps up.** While Pipeline is open, the app asks once a minute for a fingerprint of the manifest tables in the group shown, and if it changes — say a colleague on another PC promoted a flow — the board redraws by itself. The same happens when you return to Pipeline after a migration. The interval is set with `pipelineRefreshSeconds` in `data/settings.json` (at least 15; `0` turns it off). **From the board to Migrate** (*Bring here*, *Promote*) only the chosen flow is shown; to migrate more, turn *Show selected only* off.
 
 **Rebuild.** If an environment's table is missing, a yellow warning right above the board on Pipeline says so — with a **Rebuild** button. If the table was deleted, **Rebuild** (under *Shared manifest* and in the guide) creates it again and writes the setup and one row per flow in the environment. Rows that exist are left alone. What the org holds now can always be read from Genesys; the history — who promoted what from where — is taken from this PC's local files where it exists. Rows without history are a baseline, and the result says how many got history.
 
@@ -889,7 +891,7 @@ This page migrates everything that is not a flow between two orgs, across eight 
 
 ![Full check of data actions](docs/totaltjek.en.png)
 
-**Bugs and feature requests.** At the bottom of the sidebar, *🐞 Report a bug* and *💡 Suggest a feature* open a dialog. *Open on GitHub* opens a prefilled draft issue — you press Submit yourself and paste screenshots with Ctrl+V. The bug report includes version, Node, OS, page and the latest log lines (cleaned of secrets, but may contain customer names); if the log is too long, the whole log is put on the clipboard, and it can be saved as a file. No token is stored. Target repo: `issueRepo` in `settings.json`.
+**Bugs and feature requests.** At the bottom of the sidebar, *🐞 Report a bug* and *💡 Suggest a feature* open a dialog. *Open on GitHub* opens a prefilled draft issue — you press Submit yourself and paste screenshots with Ctrl+V. The bug report includes version, Node, OS, page and the latest log lines (cleaned of secrets, but may contain customer names); if the log is too long, the whole log is put on the clipboard, and it can be saved as a file. No token is stored. Target repo: `issueRepo` in `data/settings.json`.
 
 **Vulnerability scan.** `.github/workflows/security.yml` runs `npm audit --omit=dev` and the tests every Monday and creates an issue labelled *security* if it finds anything; Dependabot keeps the packages up to date.
 
@@ -901,7 +903,7 @@ This page migrates everything that is not a flow between two orgs, across eight 
 
 **Dependencies when migrating a flow.** A flow brings what it uses: tables, data actions, prompts, scripts, queues, groups, schedules, knowledge bases, **contact lists** (an outbound flow) and other flows. A survey flow that an outbound flow points to via *Set Post-Flow* is migrated first — together with its **survey form**, which is copied and published in the target. Archy only finds published survey forms, and a survey flow can be bound to an older version of the form; Genesys says so in the flow's settings, and the flow must then be recreated on the form's latest version before it can be migrated.
 
-**The Terraform tab** generates a Terraform setup (the genesyscloud provider) from the source org's objects and saves it automatically in `terraform/<from>_<to>/<date>/` (also choose a target and the folder is named after both orgs, the README and provider mention both, and the target's region becomes the default; without a target the folder is named after the source only). The files follow the app's language (Danish, English or German — other languages get English). The customer runs `terraform apply` themselves against the org that should change — e.g. from Falck Global to US — and `terraform plan` shows the difference. You pick types or take them all. Included: divisions, skills, skill groups, groups, teams, locations, utilization labels, knowledge bases, response libraries, schedules and groups, emergency groups, contact lists, DNC lists, wrap-up codes, roles, OAuth clients, integrations, data actions, data tables, user prompts, queues and flows (the newest local YAML is copied to `architect_flows/`, as in the provider's own export). References become Terraform references; Home and default roles become data sources, and a division that is not included becomes a variable in `terraform.tfvars` as in the provider's own export. The provider setup follows its guide: `required_version` and the provider version in `versions.tf`, and empty fields use the `GENESYSCLOUD_*` environment variables. The folder also gets `provider.tf`, `variables.tf`, `terraform.tfvars.example` and a `README.md` listing what is not included: secrets, members, contacts, recorded audio and conditional permissions (and forms, scripts and Function Data Actions). It is a starting setup — try it in a test org. The folder is in `.gitignore` because it contains the customer's setup.
+**The Terraform tab** generates a Terraform setup (the genesyscloud provider) from the source org's objects and saves it automatically in `data/terraform/<from>_<to>/<date>/` (also choose a target and the folder is named after both orgs, the README and provider mention both, and the target's region becomes the default; without a target the folder is named after the source only). The files follow the app's language (Danish, English or German — other languages get English). The customer runs `terraform apply` themselves against the org that should change — e.g. from Falck Global to US — and `terraform plan` shows the difference. You pick types or take them all. Included: divisions, skills, skill groups, groups, teams, locations, utilization labels, knowledge bases, response libraries, schedules and groups, emergency groups, contact lists, DNC lists, wrap-up codes, roles, OAuth clients, integrations, data actions, data tables, user prompts, queues and flows (the newest local YAML is copied to `architect_flows/`, as in the provider's own export). References become Terraform references; Home and default roles become data sources, and a division that is not included becomes a variable in `terraform.tfvars` as in the provider's own export. The provider setup follows its guide: `required_version` and the provider version in `versions.tf`, and empty fields use the `GENESYSCLOUD_*` environment variables. The folder also gets `provider.tf`, `variables.tf`, `terraform.tfvars.example` and a `README.md` listing what is not included: secrets, members, contacts, recorded audio and conditional permissions (and forms, scripts and Function Data Actions). It is a starting setup — try it in a test org. The folder (under `data/`) is in `.gitignore` because it contains the customer's setup.
 
 **AI providers hosted in the EU (beta).** Under *Customers → AI providers* — visible only with the activation key and off by default — you add your own API keys for AI providers that host in Europe: **Mistral** (only the EU address `api.eu.mistral.ai`; Mistral's own documentation says the global `api.mistral.ai` does not commit to a location), **Azure OpenAI** in an EU region, **Claude via Amazon Bedrock** in an EU region (`eu.*` inference profile; `us.`, `apac.` and `global.` are refused) and an **own endpoint** (OpenAI-compatible) for other EU providers without code. Endpoints and authentication were looked up in the providers' documentation on 28 October 2026.
 - **Region:** each provider shows its region and the basis. Mistral and Bedrock: the provider's documentation. Azure and own endpoint: *your own statement* — Archy cannot see where an Azure resource lives, so check it in the portal (region and deployment type).
@@ -1014,10 +1016,10 @@ Technical identifiers are not translated — flow types (`InboundCall`, `Workflo
 - Client Secrets never shown in the GUI after saving, and redacted in the log file and system log
 - OAuth PKCE: no secret stored — token lives only in server memory
 - **A login only counts for the environment's own org.** With trusted orgs you pick the org on Genesys' login page, so the tool checks which org the login landed in before storing the token. If it does not match the environment's known org — or belongs to another customer — the token is discarded. Logins always force a fresh sign-in (`prompt=login`) aimed at the environment's org (`target`), so a remembered session in another org is not silently reused. Both the API calls and Archy re-check the org every time the token is used, and a known org id is never overwritten. The same OAuth client means the same org only for client credentials
-- **Writing to prod requires a personal login.** A prod environment must use OAuth (PKCE); with client credentials it can be read but not written to. At login the tool looks the user up in Genesys and checks the permission — `architect:flow:publish` by default — and optionally membership of a group. Both are set per environment under **⚙ Settings**. Deploy rights last 30 minutes after login; then you log in again. **If you restart the program within those 30 minutes, the login is remembered** — so you do not go through MFA again: the token is kept in your own user folder (`~/.archy-gui/session.json`), only for fresh logins and only for the environments and org the login was for, and the file is cleared as they expire. Set `rememberLoginMinutes` to `0` in `settings.json` to keep nothing. Archy and the API calls run with the user's own token, so Genesys enforces the permissions too and the audit log shows the person. Needs a *Code Authorization* OAuth client in the prod org with redirect URI `http://localhost:3737/auth/callback`. Division-scoped permissions (`architect:flow:publish:<division ids>`) count
+- **Writing to prod requires a personal login.** A prod environment must use OAuth (PKCE); with client credentials it can be read but not written to. At login the tool looks the user up in Genesys and checks the permission — `architect:flow:publish` by default — and optionally membership of a group. Both are set per environment under **⚙ Settings**. Deploy rights last 30 minutes after login; then you log in again. **If you restart the program within those 30 minutes, the login is remembered** — so you do not go through MFA again: the token is kept in your own user folder (`~/.archy-gui/session.json`), only for fresh logins and only for the environments and org the login was for, and the file is cleared as they expire. Set `rememberLoginMinutes` to `0` in `data/settings.json` to keep nothing. Archy and the API calls run with the user's own token, so Genesys enforces the permissions too and the audit log shows the person. Needs a *Code Authorization* OAuth client in the prod org with redirect URI `http://localhost:3737/auth/callback`. Division-scoped permissions (`architect:flow:publish:<division ids>`) count
 - Stage, authentication, Client ID, region and deploy requirements of a prod environment can only be changed with a valid prod login — otherwise one could set the stage to "uat", write, and set it back. The exception is a new **Client ID on its own** on an OAuth environment: the login goes through the client, so a deleted or wrong client could otherwise never be fixed. The org id stays, so the new client's login must land in the same org, and writing still requires a fresh prod login. Editing only accepts the editable fields
 - The server binds to `127.0.0.1`. Set `HOST` to expose it deliberately — but there is no access control in front of it
-- File paths from the UI are confined to `flows/`, for both reading and writing
+- File paths from the UI are confined to `data/flows/`, for both reading and writing
 - Environment fields are checked on save: the name may not contain `< > : " \ | ? * % ! ^ $ '`, backtick or control characters, be a reserved Windows name, or map to the same export folder as another environment; the prefix may only be `A-Z 0-9 _ -`; the Client ID must be a GUID and the region a known one. `/` is allowed, so "A/S" works
 - Names from an org are escaped before rendering: `escapeHtml` in HTML text, `jsAttr` inside an `onclick`. A flow named `<img src=x onerror=…>` renders as text
 - Values on Archy's command line are quoted, and a flow name containing a double quote is rejected: Archy is invoked through `cmd.exe`, where the character cannot be escaped
@@ -1025,25 +1027,27 @@ Technical identifiers are not translated — flow types (`InboundCall`, `Workflo
 ### File structure
 ```
 Archy-gui/
-├── server.js          # Express backend
-├── terraform.js       # Terraform generator (pure code)
-├── ai-providers.js    # AI providers: encrypted key store and adapters
-├── ai-agent.js        # AI assistant: tool loop, tools and confirmations
-├── start.bat          # Start the server hidden in the background + open browser
-├── stop.bat           # Stop the server
-├── customers.json     # Customer data (auto-generated)
-├── settings.json      # Custom stage list (created when saved)
-├── server.log         # Server output
-├── flows/             # Local YAML files per customer
-│   └── <customername>/
-│       └── *.yaml
+├── src/                   # The code
+│   ├── server.js          # Express backend
+│   ├── terraform.js       # Terraform generator (pure code)
+│   ├── ai-providers.js    # AI providers: encrypted key store and adapters
+│   └── ai-agent.js        # AI assistant: tool loop, tools and confirmations
 ├── public/
-│   └── index.html     # Frontend SPA
-├── test/              # Unit tests (npm test)
-│   └── *.test.js
-├── docs/              # Screenshots and infographic for the README
+│   └── index.html         # Frontend SPA
+├── test/                  # Unit tests (npm test)
+├── docs/                  # Screenshots, infographic and test plans
+├── data/                  # Runtime data — in .gitignore
+│   ├── customers.json     # Customer data (auto-generated)
+│   ├── settings.json      # Settings and custom stage list (created when saved)
+│   ├── flows/<customer>/  # Local YAML files
+│   └── terraform/         # Generated Terraform setups
+├── logs/                  # server.log and server.err.log from start.bat
+├── start.bat              # Start the server hidden in the background + open browser
+├── stop.bat               # Stop the server
 └── package.json
 ```
+
+Until v1.80 runtime data and log files lay loose in the project folder. The first time the new version starts, they are moved to `data/` and `logs/`; a file that already exists in the new place is not overwritten. The environment variable `ARCHY_DATA_DIR` puts the data elsewhere (then nothing is moved).
 
 ### Tests (for developers)
 
@@ -1053,7 +1057,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-535 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+540 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
 

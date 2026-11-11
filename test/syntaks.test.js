@@ -24,6 +24,6 @@ test('alle inline-scripts i index.html kan oversættes', () => {
 });
 
 test('server.js kan oversættes', () => {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
   assert.doesNotThrow(() => new vm.Script(`(function(require,module,exports,__dirname,__filename){${src}\n})`));
 });

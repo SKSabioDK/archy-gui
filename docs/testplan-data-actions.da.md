@@ -1,6 +1,6 @@
 # Testplan: data actions, setup-forslag, pipeline-tjek og FDA-mærke (v1.49–v1.55)
 
-> 🇬🇧 English version: [TESTPLAN-data-actions.en.md](TESTPLAN-data-actions.en.md)
+> 🇬🇧 English version: [testplan-data-actions.en.md](testplan-data-actions.en.md)
 
 Formålet er at afprøve det, der er bygget og enhedstestet, men aldrig kørt mod to rigtige orgs. Rækkefølgen er lagt, så alt der kun læser, kommer først, og alt der skriver, kun rammer en **test-org** (aldrig prod).
 

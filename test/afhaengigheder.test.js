@@ -10,10 +10,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const s = require('../server.js');
+const s = require('../src/server.js');
 const { KUNDE } = require('./fixtures.js');
 
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
 
 const BANK_BOT = [
   'inboundCall:',

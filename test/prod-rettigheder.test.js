@@ -9,7 +9,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const s = require('../server.js');
+const s = require('../src/server.js');
 
 const PROD  = { id: 'p1', name: 'Kunde — PROD', stage: 'prod', authType: 'oauth' };
 const NU    = 1_800_000_000_000;
@@ -94,7 +94,7 @@ test('deploy-retten udløber før tokenet', () => {
 
 // ── Ruterne ──────────────────────────────────────────────────────────────────
 
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
 
 // Ruter der ikke skriver til en org — eller tjekker selv.
 const SKRIVER_IKKE_TIL_ORG = new Set([

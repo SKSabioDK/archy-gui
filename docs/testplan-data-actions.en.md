@@ -1,6 +1,6 @@
 # Test plan: data actions, setup proposal, pre-promotion check and FDA marker (v1.49–v1.55)
 
-> 🇩🇰 Dansk version: [TESTPLAN-data-actions.md](TESTPLAN-data-actions.md)
+> 🇩🇰 Dansk version: [testplan-data-actions.da.md](testplan-data-actions.da.md)
 
 The purpose is to try out what has been built and unit-tested but never run against two real orgs. The order is set so that everything that only reads comes first, and everything that writes only hits a **test org** (never prod).
 

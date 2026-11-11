@@ -6,10 +6,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const s = require('../server.js');
+const s = require('../src/server.js');
 
 const laes = f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
-const SERVER = laes('server.js');
+const SERVER = laes('src/server.js');
 const HTML = laes('public/index.html');
 
 test('en tom eller forkert nøgle åbner ikke', () => {

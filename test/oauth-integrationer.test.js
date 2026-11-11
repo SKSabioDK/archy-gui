@@ -5,10 +5,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { mapRoleDivisions, buildOauthClientBody, buildRolePolicies, missingRolesFor, missingDivisionsFor } = require('../server.js');
+const { mapRoleDivisions, buildOauthClientBody, buildRolePolicies, missingRolesFor, missingDivisionsFor } = require('../src/server.js');
 
 const rod = path.join(__dirname, '..');
-const server = fs.readFileSync(path.join(rod, 'server.js'), 'utf8');
+const server = fs.readFileSync(path.join(rod, 'src', 'server.js'), 'utf8');
 const html = fs.readFileSync(path.join(rod, 'public/index.html'), 'utf8');
 
 const srcRole = new Map([['r1', 'Admin'], ['r2', 'Custom']]);

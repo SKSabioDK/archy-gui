@@ -16,7 +16,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
 
 // Ord der ikke findes i engelsk, og som derfor afslører dansk uden at fælde
 // almindelige engelske sætninger. "for", "er" og "til" står bevidst IKKE her —

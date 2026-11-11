@@ -6,7 +6,47 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 
-const CURRENT_VERSION = require('./package.json').version;
+// ── Mapper ──────────────────────────────────────────────────────────────────
+// src/    koden          public/  brugerfladen     docs/  skærmbilleder m.m.
+// data/   kørselsdata: kunder, indstillinger, flows, Terraform (aldrig i git)
+// logs/   server.log og server.err.log fra start.bat
+const ROOT_DIR = path.join(__dirname, '..');
+const DATA_DIR = process.env.ARCHY_DATA_DIR || path.join(ROOT_DIR, 'data');
+const LOG_DIR  = path.join(ROOT_DIR, 'logs');
+
+// Før v1.80 lå data og logfiler løst i projektmappen. Ved første start flyttes
+// de på plads; findes filen allerede på den nye plads, røres den gamle ikke.
+// Med ARCHY_DATA_DIR har man selv valgt mappen, så der flyttes intet.
+const LEGACY_FILES = [
+  ['customers.json', DATA_DIR], ['settings.json', DATA_DIR], ['demo-data.json', DATA_DIR],
+  ['.archy-ca.pem', DATA_DIR], ['flows', DATA_DIR], ['terraform', DATA_DIR],
+  ['server.log', LOG_DIR], ['server.err.log', LOG_DIR],
+];
+function migrateLegacyLayout({ root = ROOT_DIR, files = LEGACY_FILES } = {}) {
+  const moved = [], failed = [];
+  for (const [name, dir] of files) {
+    const from = path.join(root, name);
+    let to = path.join(dir, name);
+    // start.bat har allerede åbnet en ny logfil; den gamle beholdes ved siden af
+    if (fs.existsSync(to) && name.endsWith('.log')) to = to.replace(/\.log$/, '.old.log');
+    if (!fs.existsSync(from)) continue;
+    // En tom mappe på den nye plads (fx data/flows, som serveren eller testene
+    // opretter ved indlæsning) er ikke "allerede flyttet"
+    try { if (fs.statSync(to).isDirectory() && !fs.readdirSync(to).length) fs.rmdirSync(to); } catch (_) {}
+    if (fs.existsSync(to)) continue;
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      fs.renameSync(from, to);
+      moved.push(name);
+    } catch (e) { failed.push(`${name}: ${e.code || e.message}`); }
+  }
+  return { moved, failed };
+}
+// Skal køre før noget opretter data/flows, ellers ser flows/ ud til at være flyttet.
+// Kun når serveren startes — ikke når testene indlæser modulet.
+const legacyMigration = require.main === module && !process.env.ARCHY_DATA_DIR ? migrateLegacyLayout() : { moved: [], failed: [] };
+
+const CURRENT_VERSION = require('../package.json').version;
 
 const app = express();
 
@@ -28,13 +68,13 @@ app.use((req, res, next) => {
 });
 
 app.use((req, res, next) => prodWriteGate(req, res, next));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(ROOT_DIR, 'public')));
 // Skærmbilleder og infografik som README'en viser — også på README-siden i
 // programmet, hvor de ellers ville mangle.
-app.use('/docs', express.static(path.join(__dirname, 'docs')));
+app.use('/docs', express.static(path.join(ROOT_DIR, 'docs')));
 
-const CUSTOMERS_FILE = path.join(__dirname, 'customers.json');
-const FLOWS_DIR = path.join(__dirname, 'flows');
+const CUSTOMERS_FILE = path.join(DATA_DIR, 'customers.json');
+const FLOWS_DIR = path.join(DATA_DIR, 'flows');
 
 if (!fs.existsSync(FLOWS_DIR)) fs.mkdirSync(FLOWS_DIR, { recursive: true });
 
@@ -119,14 +159,14 @@ function checkForUpdate() {
   // Uses git directly — no token needed, git is already authenticated.
   return new Promise((resolve) => {
     // Step 1: fetch latest remote state (no checkout, no working-tree changes).
-    exec('git fetch origin main --quiet', { cwd: __dirname, shell: 'cmd.exe', timeout: 20000, windowsHide: true }, (fetchErr) => {
+    exec('git fetch origin main --quiet', { cwd: ROOT_DIR, shell: 'cmd.exe', timeout: 20000, windowsHide: true }, (fetchErr) => {
       if (fetchErr) {
         versionInfo = { current: CURRENT_VERSION, latest: null, updateAvailable: false, checkedAt: new Date().toISOString() };
         addLog('WARN', `Version check: git fetch failed — ${fetchErr.message.split('\n')[0]}`, null, 'SYSTEM');
         return resolve(versionInfo);
       }
       // Step 2: read package.json from the remote ref — no disk write.
-      exec('git show origin/main:package.json', { cwd: __dirname, shell: 'cmd.exe', timeout: 5000, windowsHide: true }, (showErr, stdout) => {
+      exec('git show origin/main:package.json', { cwd: ROOT_DIR, shell: 'cmd.exe', timeout: 5000, windowsHide: true }, (showErr, stdout) => {
         if (showErr) {
           versionInfo = { current: CURRENT_VERSION, latest: null, updateAvailable: false, checkedAt: new Date().toISOString() };
           addLog('WARN', `Version check: could not read remote package.json — ${showErr.message.split('\n')[0]}`, null, 'SYSTEM');
@@ -415,7 +455,7 @@ const stageOrder = s => { const i = STAGES.indexOf(String(s || '').toLowerCase()
 //
 // Prod er ikke bare et navn: login, deploy-ret og skrivevagten hænger på det.
 // Derfor skal "prod" altid findes og altid stå sidst.
-const SETTINGS_FILE = path.join(__dirname, 'settings.json');
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 const STAGE_NAME = /^[a-z][a-z0-9-]{0,19}$/;
 const MAX_STAGES = 10;
 
@@ -706,7 +746,7 @@ function buildHierarchy(customers) {
 // Fire miljøer og et par flows der kun findes lokalt, så hele pipelinen kan
 // prøves af uden at røre en rigtig org. Intet demo-miljø har credentials, og
 // ingen kode-vej herunder kalder Genesys eller Archy.
-const DEMO_FILE = path.join(__dirname, 'demo-data.json');
+const DEMO_FILE = path.join(DATA_DIR, 'demo-data.json');
 const isDemo = c => !!(c && c.demo);
 
 // Demoens forfremmelser skrives i det samme manifest som de rigtige. Når demoen
@@ -7512,7 +7552,7 @@ app.post('/api/resources/migrate', async (req, res) => {
 // den org, der skal ændres. Generatoren ligger i terraform.js. Ruterne læser kun
 // fra Genesys og skriver kun lokale filer.
 const TERRAFORM = require('./terraform.js');
-const TERRAFORM_DIR = path.join(__dirname, 'terraform');
+const TERRAFORM_DIR = path.join(DATA_DIR, 'terraform');
 
 // Nyeste version af hvert flow i orgens mappe: "Navn_v5-0.yaml" → navn "Navn"
 function latestFlowFiles(dir) {
@@ -7576,8 +7616,8 @@ app.post('/api/terraform/generate', async (req, res) => {
 
     const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-').replace(/-(\d\d)-(\d\d)$/, '_$1$2');
     const part = n => sanitizeName(n).trim().replace(/\s+/g, '-').replace(/-{2,}/g, '-');
-    const rel = path.join('terraform', part(source.name) + (target ? '_' + part(target.name) : ''), stamp);
-    const dir = path.join(__dirname, rel);
+    const dir = path.join(TERRAFORM_DIR, part(source.name) + (target ? '_' + part(target.name) : ''), stamp);
+    const rel = path.relative(ROOT_DIR, dir);
     fs.mkdirSync(dir, { recursive: true });
     for (const [name, text] of Object.entries(result.files)) fs.writeFileSync(path.join(dir, safeFileName(name, 'fil.tf')), text, 'utf8');
     if (flows.length) {
@@ -8570,7 +8610,7 @@ function ensureArchyCaBundle() {
       for (const pem of certs) if (pem && !seen.has(pem)) { seen.add(pem); pems.push(pem.trim()); }
     }
     if (!pems.length) return ARCHY_CA_BUNDLE;
-    const file = path.join(__dirname, '.archy-ca.pem');
+    const file = path.join(DATA_DIR, '.archy-ca.pem');
     fs.writeFileSync(file, pems.join('\n') + '\n');
     ARCHY_CA_BUNDLE = file;
     addLog('INFO', `CA bundle for Archy written (${pems.length} certificates)`, null, 'SYSTEM');
@@ -8615,7 +8655,7 @@ function runArchy(args, customer) {
     if (isDemo(customer))
       return reject(new Error(`"${customer.name}" is a demo environment — it exists only locally, ` +
         `so there is no org to run Archy against. Use the Pipeline page to try promotions.`));
-    if (!ARCHY_DIR) return reject(new Error("Archy was not found. Add Archy to PATH, or put the folder holding archy.bat in \"archyDir\" in settings.json, then restart with start.bat."));
+    if (!ARCHY_DIR) return reject(new Error("Archy was not found. Add Archy to PATH, or put the folder holding archy.bat in \"archyDir\" in data/settings.json, then restart with start.bat."));
     const cmd = `${ARCHY_CMD} ${args} ${archyCredFlags(customer)}`;
     const bundle = ensureArchyCaBundle();
     const env = { ...process.env };
@@ -10388,7 +10428,7 @@ app.get('/api/files/content', (req, res) => {
 // ── README ────────────────────────────────────────────────────────────────────
 
 app.get('/api/readme', (req, res) => {
-  const readmePath = path.join(__dirname, 'README.md');
+  const readmePath = path.join(ROOT_DIR, 'README.md');
   if (!fs.existsSync(readmePath)) return res.status(404).json({ error: 'README.md not found' });
   res.json({ content: fs.readFileSync(readmePath, 'utf8') });
 });
@@ -10630,7 +10670,7 @@ const HOST = process.env.HOST || '127.0.0.1';
 // Slås fra med ARCHY_NO_AUTORESTART=1.
 function watchForUpdates(httpServer, { intervalMs = 2000, maxWaitMs = 15 * 60 * 1000 } = {}) {
   if (process.env.ARCHY_NO_AUTORESTART) return;
-  const files = ['server.js', 'package.json'].map(f => path.join(__dirname, f));
+  const files = [__filename, path.join(ROOT_DIR, 'package.json')];
   const stamp = f => { try { const st = fs.statSync(f); return `${st.mtimeMs}:${st.size}`; } catch (_) { return ''; } };
   const seen = new Map(files.map(f => [f, stamp(f)]));
   let pending = false;
@@ -10639,8 +10679,9 @@ function watchForUpdates(httpServer, { intervalMs = 2000, maxWaitMs = 15 * 60 * 
     addLog('INFO', 'Update on disk — restarting the server', null, 'SYSTEM');
     httpServer.close(() => {
       try {
-        const out = fs.openSync(path.join(__dirname, 'server.log'), 'a');
-        const err = fs.openSync(path.join(__dirname, 'server.err.log'), 'a');
+        fs.mkdirSync(LOG_DIR, { recursive: true });
+        const out = fs.openSync(path.join(LOG_DIR, 'server.log'), 'a');
+        const err = fs.openSync(path.join(LOG_DIR, 'server.err.log'), 'a');
         const child = require('child_process').spawn(process.execPath,
           [...process.execArgv, ...process.argv.slice(1)],
           { cwd: process.cwd(), env: process.env, detached: true, windowsHide: true, stdio: ['ignore', out, err] });
@@ -10684,6 +10725,9 @@ function retryOnPortBusy(httpServer, tries = 20) {
 // testene — må den hverken lytte på porten eller sætte et døgn-interval i gang;
 // så ville `node --test` aldrig afslutte af sig selv.
 if (require.main === module) {
+  const flyttet = legacyMigration;
+  if (flyttet.moved.length) setTimeout(() => addLog('INFO', `Moved to data/ and logs/: ${flyttet.moved.join(', ')}`, null, 'SYSTEM'), 0);
+  if (flyttet.failed.length) setTimeout(() => addLog('WARN', `Could not move to data/ or logs/: ${flyttet.failed.join('; ')}`, null, 'SYSTEM'), 0);
   _sessionPersist = true;
   const huskede = loadSessions(loadCustomers());
   saveSessions();      // rydder det der er udløbet
@@ -10748,6 +10792,7 @@ module.exports = {
   archyCredFlags, archyArg, archyBareArg, archyVerb, archyVersionFlag,
   // filstier fra klienten
   insideFlowsDir, safeFileName, missingFields, FLOWS_DIR, moveCustomerFolder,
+  ROOT_DIR, DATA_DIR, LOG_DIR, CUSTOMERS_FILE, migrateLegacyLayout,
   envFieldError, EDITABLE_FIELDS,
   // eksport af den rigtige udgave
   publishedVersionOf, publishedVersionFor, exportFlowToYaml,

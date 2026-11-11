@@ -3,7 +3,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const s = require('../server.js');
+const s = require('../src/server.js');
 
 const GC = 'purecloud-data-actions', REST = 'custom-rest-actions';
 const todo = (n, integrationName, integrationType = GC, prefix = 'a') =>
@@ -77,7 +77,7 @@ test('ingenting at placere giver et tomt forslag', () => {
 
 const fs = require('fs');
 const path = require('path');
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
 const HTML = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
 
 test('forslaget sender de gemte valg med, så klienten kan flette de nye ind', () => {

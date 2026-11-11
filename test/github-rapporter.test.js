@@ -5,7 +5,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const s = require('../server.js');
+const s = require('../src/server.js');
 
 const rod = path.join(__dirname, '..');
 const laes = f => fs.readFileSync(path.join(rod, f), 'utf8');
@@ -19,7 +19,7 @@ test('kun et gyldigt owner/repo bruges som mål for issues', () => {
 });
 
 test('serveren udleverer oplysninger til rapporten, ingen hemmeligheder', () => {
-  assert.match(laes('server.js'), /app\.get\('\/api\/report-info'/);
+  assert.match(laes('src/server.js'), /app\.get\('\/api\/report-info'/);
   const dialog = HTML.slice(HTML.indexOf('async function openIssue'), HTML.indexOf('function issDownloadLog'));
   assert.ok(dialog.length > 500, 'dialogen findes ikke');
   assert.doesNotMatch(dialog, /clientSecret|authToken/);

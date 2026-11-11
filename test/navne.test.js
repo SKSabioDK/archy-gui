@@ -6,7 +6,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const s = require('../server.js');
+const s = require('../src/server.js');
 
 test('promotionName sætter kildens udgave på navnet', () => {
   assert.equal(s.promotionName('testest', '10'), 'testest_v10');

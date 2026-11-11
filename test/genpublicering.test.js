@@ -4,7 +4,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const s = require('../server.js');
+const s = require('../src/server.js');
 
 const DEBUG = String.raw`C:\Tools\Archy\archyHome\debug\archy-debug-2026-09-25T22.05.49.125Z.txt`;
 

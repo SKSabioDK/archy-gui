@@ -9,7 +9,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const s = require('../server.js');
+const s = require('../src/server.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -280,7 +280,7 @@ test('runArchy hæfter stien på begge sine afvisningsveje', () => {
   // RÆKKEFØLGEN er pointen: withArchyLog SKAL ligge uden om
   // truncateArchyError. Omvendt ville stien selv blive afkortet væk på en lang
   // udskrift — lige netop dem hvor man har mest brug for den.
-  const SERVER = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
   assert.match(SERVER,
     /reject\(new Error\(redactSecrets\(withArchyLog\(truncateArchyError\(/,
     'afvisningen i runArchy hæfter ikke stien på uden om afkortningen');
@@ -414,7 +414,7 @@ test('redactSecrets tåler null og tom tekst uden at kaste', () => {
 test('rigtige credentials fra customers.json slipper ikke igennem', () => {
   // Læser kun filen — den bliver aldrig skrevet af testene. Findes den ikke,
   // springes testen over frem for at lade som om den bestod.
-  const fil = path.join(__dirname, '..', 'customers.json');
+  const fil = s.CUSTOMERS_FILE;
   if (!fs.existsSync(fil)) return;
   let kunder;
   try { kunder = JSON.parse(fs.readFileSync(fil, 'utf8')); } catch (_) { return; }
@@ -436,7 +436,7 @@ test('rigtige credentials fra customers.json slipper ikke igennem', () => {
 });
 
 test('manglende OAuth-token er en info, ikke en fejl', () => {
-  const s = require('../server.js');
+  const s = require('../src/server.js');
   assert.equal(s.logLevelFor('ERROR', 'Flows error for X: OAuth token missing for "X" — click the Login button'), 'INFO');
   assert.equal(s.logLevelFor('ERROR', 'Flows error for X: 500'), 'ERROR');
   assert.equal(s.logLevelFor('WARN', 'OAuth token missing for "X"'), 'WARN');

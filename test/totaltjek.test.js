@@ -3,7 +3,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const s = require('../server.js');
+const s = require('../src/server.js');
 
 const SRC = [
   { id: 's1', name: 'get_customer', category: 'DaVIS', integrationName: 'DaVIS', integrationType: 'custom-rest-actions' },

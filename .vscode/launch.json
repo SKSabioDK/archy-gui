@@ -5,7 +5,7 @@
       "type": "node",
       "request": "launch",
       "name": "▶ Start Archy GUI Server",
-      "program": "${workspaceFolder}/server.js",
+      "program": "${workspaceFolder}/src/server.js",
       "console": "integratedTerminal",
       "restart": true,
       "runtimeExecutable": "node",

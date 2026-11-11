@@ -4,7 +4,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const s = require('../server.js');
+const s = require('../src/server.js');
 
 const ok  = (f, andre) => assert.equal(s.envFieldError(f, andre), null, JSON.stringify(f));
 const nej = (f, re, andre) => {

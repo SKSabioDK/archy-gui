@@ -5,7 +5,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { nodeSecurityStatus } = require('../server.js');
+const { nodeSecurityStatus } = require('../src/server.js');
 
 test('rettede versioner godkendes', () => {
   for (const v of ['22.23.4', 'v22.24.0', '24.22.1', '24.23.0', '26.12.1', '27.0.0']) assert.equal(nodeSecurityStatus(v).ok, true, v);

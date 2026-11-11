@@ -6,10 +6,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const tf = require('../terraform.js');
+const tf = require('../src/terraform.js');
 
 const rod = path.join(__dirname, '..');
-const SERVER = fs.readFileSync(path.join(rod, 'server.js'), 'utf8');
+const SERVER = fs.readFileSync(path.join(rod, 'src', 'server.js'), 'utf8');
 const HTML = fs.readFileSync(path.join(rod, 'public', 'index.html'), 'utf8');
 
 const DATA = {
@@ -158,7 +158,7 @@ test('serveren skriver kun lokalt, og mappen er holdt ude af git', () => {
   const body = SERVER.slice(start, SERVER.indexOf('\n});\n', start));
   assert.doesNotMatch(body, /axios\.(post|put|patch|delete)/, 'ingen skrivning til en org');
   assert.match(body, /safeFileName\(name/, 'filnavne renses');
-  assert.match(fs.readFileSync(path.join(rod, '.gitignore'), 'utf8'), /^terraform\/$/m);
+  assert.match(fs.readFileSync(path.join(rod, '.gitignore'), 'utf8'), /^\/data\/$/m, 'data/ (med terraform/) ligger i .gitignore');
 });
 
 test('fanen har tekst på alle seks sprog', () => {

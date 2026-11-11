@@ -9,8 +9,8 @@ const path = require('path');
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archy-ai-'));
 process.env.ARCHY_SESSION_DIR = path.join(tmp, 'server');   // før server.js indlæses
-const AI = require('../ai-providers.js');
-const s = require('../server.js');
+const AI = require('../src/ai-providers.js');
+const s = require('../src/server.js');
 
 const NOEGLE = 'sk-test-0123456789-ABCDEF';
 const nyStore = () => AI.createStore(fs.mkdtempSync(path.join(tmp, 'store-')));
@@ -174,7 +174,7 @@ test('serveren: oversigten og loggen afslører ikke en gemt nøgle', () => {
 });
 
 test('AI-ruterne kræver aktiveringsnøglen og test-ruten kræver at funktionen er slået til', () => {
-  const SERVER = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
   for (const r of ["app.get('/api/ai/providers', requireInternal", "app.put('/api/ai/enabled', requireInternal", "app.put('/api/ai/providers/:id', requireInternal",
     "app.delete('/api/ai/providers/:id/key', requireInternal", "app.post('/api/ai/providers/:id/test', requireAi"])
     assert.ok(SERVER.includes(r), r);
@@ -185,8 +185,8 @@ test('AI-ruterne kræver aktiveringsnøglen og test-ruten kræver at funktionen 
 
 test('nøglemateriale og indstillinger kan ikke komme i git', () => {
   const ignore = fs.readFileSync(path.join(__dirname, '..', '.gitignore'), 'utf8');
-  assert.match(ignore, /^settings\.json$/m);
+  assert.match(ignore, /^\/data\/$/m, 'data/ (med settings.json) ligger i .gitignore');
   assert.ok(!AI.createStore(tmp).dataFile.startsWith(path.join(__dirname, '..')), 'lageret ligger i projektmappen');
-  const kode = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  const kode = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
   assert.ok(kode.includes('AI.createStore(SESSION_DIR)'), 'lageret skal ligge i profilmappen (SESSION_DIR)');
 });

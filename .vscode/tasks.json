@@ -4,7 +4,7 @@
     {
       "label": "Start Archy GUI",
       "type": "shell",
-      "command": "node server.js",
+      "command": "node src/server.js",
       "group": {
         "kind": "build",
         "isDefault": true

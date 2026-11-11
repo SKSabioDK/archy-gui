@@ -12,7 +12,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const s = require('../server.js');
+const s = require('../src/server.js');
 
 // ── Selve hjælperen ──────────────────────────────────────────────────────────
 
@@ -87,7 +87,7 @@ test('en flowtype med mellemrum omkring bliver trimmet, ikke afvist', async (t) 
   //
   // Prøves mod et demo-miljø: kommandolinjen bygges, men Archy nås aldrig.
   const kunder = (() => {
-    try { return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'customers.json'), 'utf8')); }
+    try { return JSON.parse(fs.readFileSync(s.CUSTOMERS_FILE, 'utf8')); }
     catch (_) { return []; }
   })();
   const demo = kunder.find(c => c.demo);
@@ -115,7 +115,7 @@ test('en flowtype med mellemrum omkring bliver trimmet, ikke afvist', async (t) 
 test('intet felt fra req.body bruges før det er tjekket', () => {
   // Samme scanning der fandt /api/export. Den kan ikke se alt, men den fælder
   // netop dét mønster: et metodekald på en værdi der kan mangle.
-  const SERVER = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
   const L = SERVER.split(/\r?\n/);
   const METODER = 'toLowerCase|toUpperCase|trim|map|filter|split|replace|slice|includes|join|forEach|find';
   const fund = [];
@@ -146,7 +146,7 @@ test('intet felt fra req.body bruges før det er tjekket', () => {
 });
 
 test('kontrol: scanneren læser faktisk ruterne', () => {
-  const SERVER = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
   const skrivende = (SERVER.match(/^app\.(post|put|delete|patch)\('/gm) || []).length;
   const medKrop = (SERVER.match(/const \{[^}]*\} = req\.body/g) || []).length;
   assert.ok(skrivende >= 25, `fandt kun ${skrivende} skrivende ruter`);

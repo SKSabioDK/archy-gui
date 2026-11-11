@@ -6,10 +6,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const A = require('../ai-agent.js');
-const AI = require('../ai-providers.js');
+const A = require('../src/ai-agent.js');
+const AI = require('../src/ai-providers.js');
 
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
 const NOEGLE = 'sk-test-0123456789-ABCDEF';
 const CFG = { apiKey: NOEGLE, dpaConfirmedAt: '2026-10-28T10:00:00Z', model: 'm' };
 
@@ -270,9 +270,9 @@ test('list_customers afslører ingen hemmeligheder', async () => {
 
 test('kun import_flow og publish_flow skriver, og begge går gennem ruter bag prod-vagten', () => {
   assert.deepEqual([...A.WRITE_TOOLS].sort(), ['import_flow', 'publish_flow']);
-  const s = require('../server.js');
+  const s = require('../src/server.js');
   assert.ok(s.PROD_WRITE_ROUTES['/api/import'] && s.PROD_WRITE_ROUTES['/api/flows/publish']);
-  const kode = fs.readFileSync(path.join(__dirname, '..', 'ai-agent.js'), 'utf8');
+  const kode = fs.readFileSync(path.join(__dirname, '..', 'src', 'ai-agent.js'), 'utf8');
   const skriv = [...kode.matchAll(/localCall\('(POST|PUT|DELETE|PATCH)', '([^']+)'/g)].map(m => m[2]);
   for (const r of skriv) assert.ok(['/api/export', '/api/validate-yaml', '/api/import', '/api/flows/publish'].includes(r), `uventet rute: ${r}`);
   assert.ok(!/axios|require\('http|fetch\(/.test(kode), 'værktøjerne må ikke gå uden om appens ruter');

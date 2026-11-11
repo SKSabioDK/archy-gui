@@ -12,7 +12,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
 const fs = require('fs');
-const s = require('../server.js');
+const s = require('../src/server.js');
 
 // ── 1. Læsning uden for flows/ ───────────────────────────────────────────────
 
@@ -107,7 +107,7 @@ test('migreringen henter den publicerede udgave, ikke kladden', () => {
   // Vagten sagde god for flowet fordi det VAR publiceret, mens eksporten tog
   // 'latest' — altså kladden. Målt på en rigtig org: prods ChatGPT var
   // publiceret som 5.0 med sin data action, mens kladden 7.0 havde mistet den.
-  const SRV = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  const SRV = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
   assert.match(SRV, /archyVersionFlag\(kildeVersion\)/, 'migrate/prepare eksporterer uden version');
   assert.match(SRV, /archyVersionFlag\(depVersion\)/, 'afhængigheder eksporteres uden version');
   assert.match(SRV, /archyVersionFlag\(version\)/, 'exportFlowToYaml tager ikke imod en version');
@@ -139,7 +139,7 @@ test('credentials citeres med archyArg, ikke med en POSIX-escape', () => {
 // De to næste kan ikke prøves af uden en rigtig org, så de læser koden i stedet.
 // Det er stadig bedre end ingenting: de fælder hvis mønstret kommer igen.
 
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
 
 test('ingen værdi går uciteret ind i en Archy-kommando', () => {
   // Alt der interpoleres i en runArchy-streng skal gennem archyArg eller
@@ -202,7 +202,7 @@ test('/api/import kan ikke skrive uden for flows/', async (t) => {
   // skrivningen — det vi tester — allerede er sket. Findes der ingen, springes
   // testen over frem for at ramme en rigtig org.
   const kunder = (() => {
-    try { return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'customers.json'), 'utf8')); }
+    try { return JSON.parse(fs.readFileSync(s.CUSTOMERS_FILE, 'utf8')); }
     catch (_) { return []; }
   })();
   const demo = kunder.find(c => c.demo);
