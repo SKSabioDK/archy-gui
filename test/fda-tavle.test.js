@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const s = require('../src/server.js');
 
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
+const { kilde, udsnit } = require('./kilde.js');
 const HTML = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
 
 test('et flow samles under de FDA\'er det bruger, sorteret', () => {
@@ -25,7 +25,8 @@ test('en FDA ingen bruger, giver ingen poster', () => {
 });
 
 test('opslaget går på data actions i Function Data Action-integrationer', () => {
-  const fn = SERVER.slice(SERVER.indexOf('async function fdaUsage'), SERVER.indexOf("app.get('/api/customers/:id/fda-usage'"));
+  const fn = udsnit(kilde('lib/dependents.js'), 'async function fdaUsage', '\n}\n');
+  assert.ok(kilde('routes/flows.js').includes("router.get('/api/customers/:id/fda-usage'"));
   assert.match(fn, /FUNCTION_INTEGRATION/);
   assert.match(fn, /consumerIds\(env, a\.id, 'DATAACTION'\)/);
   // Demo-miljøer har intet i Genesys at slå op i.

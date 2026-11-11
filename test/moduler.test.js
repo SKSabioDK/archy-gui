@@ -9,7 +9,8 @@ const fs = require('fs');
 const path = require('path');
 const s = require('../src/server.js');
 
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
+const { kilde, udsnit } = require('./kilde.js');
+const MIGRATE = kilde('routes/migrate.js');
 
 const YAML = [
   'commonModule:',
@@ -47,15 +48,15 @@ test('secure data actions kan peges over på et andet navn i målet', () => {
 });
 
 test('secure-flaget følger med, når en data action migreres', () => {
-  const route = SERVER.slice(SERVER.indexOf("app.post('/api/actions/migrate'"), SERVER.indexOf("app.post('/api/datatables/migrate'"));
+  const route = udsnit(kilde('routes/data-actions.js'), "router.post('/api/actions/migrate'", "router.post('/api/datatables/migrate'");
   assert.match(route, /secure:\s+!!published\.secure/);
 });
 
 test('moduler tager prompts og scripts med', () => {
-  const fn = SERVER.slice(SERVER.indexOf('async function migrateFlowDependency('), SERVER.indexOf("app.post('/api/divisions/create'"));
+  const fn = udsnit(MIGRATE, 'async function migrateFlowDependency(', "router.post('/api/divisions/create'");
   assert.match(fn, /for \(const kind of \['datatable', 'dataaction', 'surveyform', \.\.\.COPYABLE_KINDS\]\)/);
   assert.match(fn, /const \[ep, felt, resKind\] = COPY_ENDPOINT\[kind\]/);
-  assert.ok(SERVER.includes("prompt: ['/api/prompts/migrate', 'promptName']") && SERVER.includes("queue: ['/api/queues/migrate', 'name']"));
+  assert.ok(MIGRATE.includes("prompt: ['/api/prompts/migrate', 'promptName']") && MIGRATE.includes("queue: ['/api/queues/migrate', 'name']"));
 });
 
 // Falck US: den migrerede action fik målintegrationens navn som kategori, men

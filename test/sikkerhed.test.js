@@ -107,10 +107,11 @@ test('migreringen henter den publicerede udgave, ikke kladden', () => {
   // Vagten sagde god for flowet fordi det VAR publiceret, mens eksporten tog
   // 'latest' — altså kladden. Målt på en rigtig org: prods ChatGPT var
   // publiceret som 5.0 med sin data action, mens kladden 7.0 havde mistet den.
-  const SRV = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
+  const { kilde } = require('./kilde.js');
+  const SRV = kilde('routes/migrate.js');
   assert.match(SRV, /archyVersionFlag\(kildeVersion\)/, 'migrate/prepare eksporterer uden version');
   assert.match(SRV, /archyVersionFlag\(depVersion\)/, 'afhængigheder eksporteres uden version');
-  assert.match(SRV, /archyVersionFlag\(version\)/, 'exportFlowToYaml tager ikke imod en version');
+  assert.match(kilde('lib/flow-yaml.js'), /archyVersionFlag\(version\)/, 'exportFlowToYaml tager ikke imod en version');
 });
 
 test('underkommandoen kan kun være en af de tre Archy kender', () => {
@@ -139,7 +140,7 @@ test('credentials citeres med archyArg, ikke med en POSIX-escape', () => {
 // De to næste kan ikke prøves af uden en rigtig org, så de læser koden i stedet.
 // Det er stadig bedre end ingenting: de fælder hvis mønstret kommer igen.
 
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
+const SERVER = require('./kilde.js').helServeren();   // alle serverens filer
 
 test('ingen værdi går uciteret ind i en Archy-kommando', () => {
   // Alt der interpoleres i en runArchy-streng skal gennem archyArg eller
@@ -174,7 +175,7 @@ test('stier fra klienten tjekkes med insideFlowsDir, ikke med startsWith', () =>
 // nogen der fjerner kaldet og skriver fileName direkte igen — det viste en
 // mutationskørsel, hvor netop den ændring slap forbi hele suiten.
 function ruteKrop(sti) {
-  const start = SERVER.indexOf(`app.post('${sti}'`);
+  const start = SERVER.indexOf(`router.post('${sti}'`);
   assert.ok(start > 0, `fandt ikke ruten ${sti}`);
   const slut = SERVER.indexOf('\n});', start);
   return SERVER.slice(start, slut);

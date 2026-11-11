@@ -7,12 +7,12 @@ const fs = require('fs');
 const path = require('path');
 
 const rod = path.join(__dirname, '..');
-const server = fs.readFileSync(path.join(rod, 'src', 'server.js'), 'utf8');
+const server = require('./kilde.js').kilde('routes/org-resources.js');
 const html = fs.readFileSync(path.join(rod, 'public/index.html'), 'utf8');
 
 test('backup-ruten er en GET og står dermed ikke blandt de skrivende', () => {
-  assert.match(server, /app\.get\('\/api\/customers\/:id\/backup'/);
-  assert.doesNotMatch(server, /app\.post\('\/api\/customers\/:id\/backup'/);
+  assert.match(server, /router\.get\('\/api\/customers\/:id\/backup'/);
+  assert.doesNotMatch(require('./kilde.js').helServeren(), /(app|router)\.post\('\/api\/customers\/:id\/backup'/);
 });
 
 test('backup-knapperne har tekst og tooltip på alle seks sprog', () => {

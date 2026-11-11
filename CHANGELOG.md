@@ -5,6 +5,22 @@
 
 ---
 
+### v1.81.0
+---
+**🇩🇰 Dansk**
+
+- **Koden er delt op.** `src/server.js` var én fil på 10.800 linjer. Nu er den kun indgangen (Express, middleware, start — omkring 300 linjer), og resten ligger i 47 filer: `src/config.js` (mapper, port, `settings.json`), `src/routes/` med ét område pr. fil (fx `migrate.js`, `pipeline.js`, `releases.js`, `auth.js`, `orgsettings.js`, `ai.js`) og `src/lib/` med hjælperne uden ruter (fx `archy.js`, `flow-yaml.js`, `manifest.js`, `prod-rights.js`, `log.js`). Koden er flyttet uændret; programmet opfører sig som før, og alle 127 ruter svarer på de samme adresser i samme rækkefølge.
+- **Selv-genstarten ser alle filerne.** Serveren genstarter nu, når en hvilken som helst `.js`-fil under `src/` ændres — ikke kun `server.js` — og hver ændret fil skal kunne parses, før den genstarter.
+- Testene der læser koden som tekst, læser nu den fil der har koden, og et udsnit fejler hvis en markør mangler — i stedet for stille at blive tomt eller hele filen.
+- 3 nye tests: ingen ruter i `server.js` eller `lib/`, hver rute-fil er sat på, og ingen ring af `require` mellem filerne.
+
+**🇬🇧 English**
+- **The code is split up.** `src/server.js` was a single 10,800-line file. It is now just the entry point (Express, middleware, start — about 300 lines); the rest lives in 47 files: `src/config.js`, `src/routes/` (one area per file) and `src/lib/` (helpers without routes). The code moved unchanged; all 127 routes answer on the same paths in the same order.
+- **The self-restart watches every file.** The server restarts when any `.js` file under `src/` changes, and every changed file must parse first.
+- Tests that read the code as text now read the file that holds it, and a slice fails if a marker is missing.
+- 3 new tests: no routes in `server.js` or `lib/`, every route file mounted, no `require` cycle.
+
+---
 ### v1.80.0
 ---
 **🇩🇰 Dansk**

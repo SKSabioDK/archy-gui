@@ -1,6 +1,6 @@
 // Prøve-YAML til testene. Formen er taget fra en RIGTIG Archy-eksport
 // (flows/Sabio APS/DEV_WeekNumber_v2-0.yaml) og ikke opdigtet — indrykningen og
-// rækkefølgen er netop det regexerne i server.js læser efter, så en fri
+// rækkefølgen er netop det regexerne på serveren læser efter, så en fri
 // gengivelse ville teste noget andet end det programmet møder.
 
 // Et flow i et præfikset dev-miljø: eget navn, egen division, og referencer til

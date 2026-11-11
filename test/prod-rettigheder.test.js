@@ -94,7 +94,10 @@ test('deploy-retten udløber før tokenet', () => {
 
 // ── Ruterne ──────────────────────────────────────────────────────────────────
 
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
+const { kilde, helServeren, udsnit } = require('./kilde.js');
+const SERVER = kilde('server.js');
+const ALLE = helServeren();   // alle serverens filer
+const SETUP_RUTER = kilde('routes/setup.js');
 
 // Ruter der ikke skriver til en org — eller tjekker selv.
 const SKRIVER_IKKE_TIL_ORG = new Set([
@@ -117,31 +120,34 @@ const OPSAETNING = ['/api/setup/discover', '/api/setup/adopt', '/api/setup/add-s
                     '/api/setup/sync', '/api/setup/resolve'];
 
 test('hver skrivende rute står foran vagten', () => {
-  const ruter = [...SERVER.matchAll(/app\.(post|put|delete|patch)\('([^']+)'/g)].map(m => m[2]);
+  const ruter = [...ALLE.matchAll(/(?:app|router)\.(post|put|delete|patch)\('([^']+)'/g)].map(m => m[2]);
+  assert.ok(ruter.length >= 25, 'fandt kun ' + ruter.length + ' skrivende ruter');
   const glemt = ruter.filter(r => !s.PROD_WRITE_ROUTES[r] && !SKRIVER_IKKE_TIL_ORG.has(r) && !TJEKKER_SELV.includes(r) && !OPSAETNING.includes(r));
   assert.deepEqual(glemt, [], 'nye ruter — skriver de til en org, skal de i PROD_WRITE_ROUTES:\n  ' + glemt.join('\n  '));
   for (const r of Object.keys(s.PROD_WRITE_ROUTES)) assert.ok(ruter.includes(r), `${r} findes ikke længere`);
 });
 
 test('opsætningsrækken spørger prod-vagten før den skrives', () => {
-  const fn = SERVER.slice(SERVER.indexOf('async function writeSetupRow('), SERVER.indexOf('async function readSetupRow('));
+  const fn = udsnit(kilde('lib/setup.js'), 'async function writeSetupRow(', 'async function readSetupRow(');
   assert.ok(fn.length > 100, 'writeSetupRow findes ikke');
   assert.ok(fn.indexOf('prodWriteBlock(') !== -1 && fn.indexOf('prodWriteBlock(') < fn.indexOf('putOrgManifestRow('),
     'writeSetupRow skal spørge vagten før den skriver');
   // Den nye tabel fra opdagelsen er også en skrivning
-  const adopt = SERVER.slice(SERVER.indexOf("app.post('/api/setup/adopt'"), SERVER.indexOf("app.post('/api/setup/add-sibling'"));
+  const adopt = udsnit(SETUP_RUTER, "router.post('/api/setup/adopt'", "router.post('/api/setup/add-sibling'");
   assert.ok(adopt.indexOf('prodWriteBlock(') !== -1 && adopt.indexOf('prodWriteBlock(') < adopt.indexOf('createOrgManifestTable('));
-  for (const r of OPSAETNING) assert.ok(SERVER.includes(`app.post('${r}'`), `${r} findes ikke længere`);
+  for (const r of OPSAETNING) assert.ok(SETUP_RUTER.includes(`router.post('${r}'`), `${r} findes ikke længere`);
 });
 
 test('rollback og noter tjekker selv', () => {
   for (const r of TJEKKER_SELV)
-    assert.ok(SERVER.includes(`refuseProdWrite(res, `) && SERVER.includes(`'${r}')) return;`), r);
+    assert.ok(ALLE.includes(`refuseProdWrite(res, `) && ALLE.includes(`'${r}')) return;`), r);
 });
 
 test('vagten registreres før den første rute', () => {
+  // Ruterne står i routes/ og sættes på i server.js med app.use(require('./routes/…'))
   const vagt = SERVER.indexOf('app.use((req, res, next) => prodWriteGate(');
-  const foerste = SERVER.search(/app\.(get|post|put|delete)\('/);
+  const foerste = SERVER.indexOf("app.use(require('./routes/");
+  assert.ok(!/app\.(get|post|put|delete)\('/.test(SERVER), 'ruter hører til i routes/');
   assert.ok(vagt > 0 && vagt < foerste);
 });
 
@@ -244,7 +250,7 @@ test('en rolles politikker bliver til rettighedsstrenge', () => {
 });
 
 test('et miljø tilføjet fra et kort skriver intet i org\'en', () => {
-  const fn = SERVER.slice(SERVER.indexOf("app.post('/api/setup/add-card'"), SERVER.indexOf("app.post('/api/setup/sync'"));
+  const fn = udsnit(SETUP_RUTER, "router.post('/api/setup/add-card'", "router.post('/api/setup/sync'");
   assert.ok(fn.length > 200, 'add-card findes ikke');
   for (const skriv of ['putOrgManifestRow(', 'createOrgManifestTable(', 'writeSetupRow(', 'writeOrgManifestRow('])
     assert.ok(!fn.includes(skriv), `add-card må ikke kalde ${skriv} — det er kun en lokal tilføjelse`);

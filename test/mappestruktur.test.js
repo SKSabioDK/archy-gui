@@ -20,10 +20,10 @@ test('data og logfiler har hver sin mappe under projektmappen', () => {
   assert.equal(path.dirname(s.FLOWS_DIR), s.DATA_DIR);
 });
 
-test('server.js finder kun projektmappen gennem ROOT_DIR', () => {
-  const kode = laes('src/server.js');
-  const brug = kode.match(/path\.join\(__dirname[^)]*\)/g) || [];
-  assert.deepEqual(brug, ["path.join(__dirname, '..')"], 'en sti bygges stadig direkte på __dirname');
+test('serveren finder kun projektmappen gennem ROOT_DIR i config.js', () => {
+  const { serverFiler, kilde } = require('./kilde.js');
+  const brug = serverFiler().flatMap(f => (kilde(f).match(/path\.join\(__dirname[^)]*\)/g) || []).map(m => `${f}: ${m}`));
+  assert.deepEqual(brug, ["config.js: path.join(__dirname, '..')"], 'en sti bygges stadig direkte på __dirname');
 });
 
 test('start.bat starter src\\server.js og skriver i logs\\', () => {

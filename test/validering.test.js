@@ -115,13 +115,13 @@ test('en flowtype med mellemrum omkring bliver trimmet, ikke afvist', async (t) 
 test('intet felt fra req.body bruges før det er tjekket', () => {
   // Samme scanning der fandt /api/export. Den kan ikke se alt, men den fælder
   // netop dét mønster: et metodekald på en værdi der kan mangle.
-  const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
+  const SERVER = require('./kilde.js').helServeren();   // alle serverens filer
   const L = SERVER.split(/\r?\n/);
   const METODER = 'toLowerCase|toUpperCase|trim|map|filter|split|replace|slice|includes|join|forEach|find';
   const fund = [];
 
   for (let i = 0; i < L.length; i++) {
-    const m = L[i].match(/^app\.(post|put|delete|patch)\('([^']+)'/);
+    const m = L[i].match(/^router\.(post|put|delete|patch)\('([^']+)'/);
     if (!m) continue;
     let krop = '', j = i;
     for (; j < L.length; j++) { krop += L[j] + '\n'; if (j > i && /^\}\);/.test(L[j])) break; }
@@ -146,8 +146,8 @@ test('intet felt fra req.body bruges før det er tjekket', () => {
 });
 
 test('kontrol: scanneren læser faktisk ruterne', () => {
-  const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
-  const skrivende = (SERVER.match(/^app\.(post|put|delete|patch)\('/gm) || []).length;
+  const SERVER = require('./kilde.js').helServeren();
+  const skrivende = (SERVER.match(/^router\.(post|put|delete|patch)\('/gm) || []).length;
   const medKrop = (SERVER.match(/const \{[^}]*\} = req\.body/g) || []).length;
   assert.ok(skrivende >= 25, `fandt kun ${skrivende} skrivende ruter`);
   assert.ok(medKrop >= 15, `fandt kun ${medKrop} ruter der læser req.body`);

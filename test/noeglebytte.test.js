@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const s = require('../src/server.js');
 
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
+const { kilde, udsnit } = require('./kilde.js');
 const CC = { id: 'c1', name: 'Kunde', authType: 'credentials', clientId: 'gammel-id', clientSecret: 'gammel-secret' };
 
 test('nyt client id uden ny secret afvises på client credentials', () => {
@@ -41,11 +41,11 @@ test('forgetLogin glemmer tokenet', () => {
 });
 
 test('en ny secret glemmer login og opslag fra den gamle nøgle', () => {
-  const put = SERVER.slice(SERVER.indexOf("app.put('/api/customers/:id'"), SERVER.indexOf('// ── Token helper'));
+  const put = udsnit(kilde('routes/customers.js'), "router.put('/api/customers/:id'", "router.delete('/api/customers/:id'");
   const keys = put.indexOf("['authType', 'clientId', 'clientSecret', 'region'");
   const forget = put.indexOf('forgetLogin(updated.id)');
   assert.ok(keys > 0 && forget > keys && forget - keys < 200, 'en ny secret skal glemme login\'et');
-  const fn = SERVER.slice(SERVER.indexOf('function forgetLogin('), SERVER.indexOf('function credentialChangeError('));
+  const fn = udsnit(kilde('lib/token.js'), 'function forgetLogin(', 'function credentialChangeError(');
   for (const c of ['tokenStore', '_whoCache', '_mfTableCache', 'pkceStore'])
     assert.ok(fn.includes(`delete ${c}[id]`), `${c} glemmes ikke`);
 });

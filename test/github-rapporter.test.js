@@ -19,7 +19,7 @@ test('kun et gyldigt owner/repo bruges som mål for issues', () => {
 });
 
 test('serveren udleverer oplysninger til rapporten, ingen hemmeligheder', () => {
-  assert.match(laes('src/server.js'), /app\.get\('\/api\/report-info'/);
+  assert.match(laes('src/routes/system.js'), /router\.get\('\/api\/report-info'/);
   const dialog = HTML.slice(HTML.indexOf('async function openIssue'), HTML.indexOf('function issDownloadLog'));
   assert.ok(dialog.length > 500, 'dialogen findes ikke');
   assert.doesNotMatch(dialog, /clientSecret|authToken/);

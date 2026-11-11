@@ -8,7 +8,8 @@ const fs = require('fs');
 const path = require('path');
 const s = require('../src/server.js');
 
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
+const { kilde, udsnit } = require('./kilde.js');
+const MIGRATE = kilde('routes/migrate.js');
 const ACCESS = { names: new Set(['Home', 'CAPTURI', 'Falck Global Tele']), permitted: new Set(['Home']) };
 
 test('flowets egen division er den første indrykkede', () => {
@@ -35,12 +36,12 @@ test('en nægtet division blokerer forfremmelsen i tjekket', () => {
 });
 
 test('prepare afviser en nægtet division, før noget migreres med', () => {
-  const route = SERVER.slice(SERVER.indexOf("app.post('/api/migrate/prepare'"), SERVER.indexOf('async function migrationPreflight('));
+  const route = udsnit(MIGRATE, "router.post('/api/migrate/prepare'", 'async function migrationPreflight(');
   assert.match(route, /if \(analysis\.divisionDenied\)\s*return res\.status\(409\)/);
 });
 
 test('et modul i en division der mangler i målet, lægges i målmiljøets division', () => {
-  const fn = SERVER.slice(SERVER.indexOf('async function migrateFlowDependency('), SERVER.indexOf("app.post('/api/divisions/create'"));
+  const fn = udsnit(MIGRATE, 'async function migrateFlowDependency(', "router.post('/api/divisions/create'");
   assert.match(fn, /problem === 'missing' && !omskriv\)[\s\S]{0,400}omskriv = true;/);
   assert.ok(fn.indexOf("problem === 'denied'") < fn.indexOf('runArchy(`publish'), 'nægtet division skal stoppe før importen');
 });

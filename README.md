@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.80.0
+# Archy GUI — Flow Manager · v1.81.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.80.0**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.80.0**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.81.0**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.81.0**.
 
 ---
 
@@ -72,7 +72,7 @@ Dobbeltklik på **`start.bat`** — den:
 3. Venter til serveren er klar (højst 30 sekunder — ellers vises de sidste linjer af `logs/server.err.log`)
 4. Åbner automatisk **http://localhost:3737** i browseren og lukker sit eget vindue
 
-Serveren kører videre, når vinduet er lukket. **`stop.bat`** stopper den. Kører man `start.bat` igen, genstartes serveren. Efter en opdatering (ændret `src/server.js` eller `package.json`) genstarter serveren **selv** — den venter på en igangværende migrering, tjekker at koden kan parses, og logins huskes. Browseren tilbyder en genindlæsning, når versionen skifter. Slås fra med miljøvariablen `ARCHY_NO_AUTORESTART=1`.
+Serveren kører videre, når vinduet er lukket. **`stop.bat`** stopper den. Kører man `start.bat` igen, genstartes serveren. Efter en opdatering (en ændret fil under `src/` eller `package.json`) genstarter serveren **selv** — den venter på en igangværende migrering, tjekker at koden kan parses, og logins huskes. Browseren tilbyder en genindlæsning, når versionen skifter. Slås fra med miljøvariablen `ARCHY_NO_AUTORESTART=1`.
 
 Alternativt manuelt: `node src/server.js`
 
@@ -504,7 +504,10 @@ Tekniske betegnelser oversættes ikke — flow-typer (`InboundCall`, `Workflow` 
 ```
 Archy-gui/
 ├── src/                   # Koden
-│   ├── server.js          # Express backend
+│   ├── server.js          # Indgangen: Express, middleware, ruterne sættes på, start
+│   ├── config.js          # Mapper, port og settings.json
+│   ├── routes/            # Ruterne — ét område pr. fil (migrate, pipeline, releases, auth …)
+│   ├── lib/               # Hjælpere uden ruter (Archy, YAML, manifest, prod-vagten, log …)
 │   ├── terraform.js       # Terraform-generator (ren kode)
 │   ├── ai-providers.js    # AI-udbydere: krypteret nøglelager og adaptere
 │   └── ai-agent.js        # AI-assistenten: værktøjsløkke, værktøjer og bekræftelser
@@ -533,17 +536,17 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-540 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+543 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
-Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både `server.js` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
+Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både serverens kode i `src/` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
 `test/sikkerhed.test.js` spærrer for tre huller der har været åbne: læsning uden for `flows/`, skrivning uden for `flows/`, og kommandoindsprøjtning gennem et flownavn. De er skrevet mod de angreb der faktisk virkede.
 
-`test/log-engelsk.test.js` læser `server.js` og fælder hvis en dansk besked er sluppet ind i systemloggen — også ad bagvejen gennem en kastet fejl.
+`test/log-engelsk.test.js` læser serverens filer og fælder hvis en dansk besked er sluppet ind i systemloggen — også ad bagvejen gennem en kastet fejl.
 
 `test/escape.test.js` læser `index.html` og fælder hvis et navn fra en org går uescapet ind i HTML — og prøver `escapeHtml` og `jsAttr` af med navne der ville køre kode.
 
-`test/prod-rettigheder.test.js` fælder hvis en ny rute der skriver til en org, ikke står bag prod-vagten. `test/syntaks.test.js` oversætter hvert script i `index.html`, så et enkelt forkert tegn ikke kan stoppe hele brugerfladen. `test/ui-sprog.test.js` og `test/tooltips.test.js` fanger dansk uden om oversættelserne og tooltips — også ⓘ ved felterne — der peger på tekster der ikke findes. `test/miljoer.test.js` og `test/fejl.test.js` afprøver at et login i en forkert org afvises, og at Archy aldrig får et token fra en anden org. `test/readme.test.js` holder versionen og antallet af tests her i takt med `package.json`, brugerfladen og `CHANGELOG.md`.
+`test/prod-rettigheder.test.js` fælder hvis en ny rute der skriver til en org, ikke står bag prod-vagten. `test/syntaks.test.js` oversætter hvert script i `index.html`, så et enkelt forkert tegn ikke kan stoppe hele brugerfladen. `test/ui-sprog.test.js` og `test/tooltips.test.js` fanger dansk uden om oversættelserne og tooltips — også ⓘ ved felterne — der peger på tekster der ikke findes. `test/miljoer.test.js` og `test/fejl.test.js` afprøver at et login i en forkert org afvises, og at Archy aldrig får et token fra en anden org. `test/readme.test.js` holder versionen og antallet af tests her i takt med `package.json`, brugerfladen og `CHANGELOG.md`. `test/kodestruktur.test.js` holder opdelingen: ingen ruter i `server.js` eller `lib/`, hver fil i `routes/` sat på, og ingen ring af `require` mellem filerne.
 
 Testene ligger i `test/` og kræver ingen pakker ud over Node selv (`node --test`, Node 18+).
 
@@ -606,7 +609,7 @@ npm install
 
 ### Starting the app
 
-Double-click **`start.bat`** or run `node src/server.js` manually. `start.bat` starts the server **hidden in the background** (output in `logs/server.log`, errors in `logs/server.err.log`), opens **http://localhost:3737** and closes its own window — the server keeps running. **`stop.bat`** stops it, and running `start.bat` again restarts it, e.g. after an update. After an update (changed `src/server.js` or `package.json`) the server **restarts itself** — it waits for a migration in progress, checks that the code parses, and logins are remembered. The browser offers a reload when the version changes. Turn it off with the environment variable `ARCHY_NO_AUTORESTART=1`.
+Double-click **`start.bat`** or run `node src/server.js` manually. `start.bat` starts the server **hidden in the background** (output in `logs/server.log`, errors in `logs/server.err.log`), opens **http://localhost:3737** and closes its own window — the server keeps running. **`stop.bat`** stops it, and running `start.bat` again restarts it, e.g. after an update. After an update (a changed file under `src/` or `package.json`) the server **restarts itself** — it waits for a migration in progress, checks that the code parses, and logins are remembered. The browser offers a reload when the version changes. Turn it off with the environment variable `ARCHY_NO_AUTORESTART=1`.
 
 When groups are set up, **the app opens on Pipeline** with the customer you last worked on — as in the picture at the top. The board is fetched when you press *Show pipeline*.
 
@@ -1028,7 +1031,10 @@ Technical identifiers are not translated — flow types (`InboundCall`, `Workflo
 ```
 Archy-gui/
 ├── src/                   # The code
-│   ├── server.js          # Express backend
+│   ├── server.js          # Entry point: Express, middleware, mounts the routes, start
+│   ├── config.js          # Folders, port and settings.json
+│   ├── routes/            # The routes — one area per file (migrate, pipeline, releases, auth …)
+│   ├── lib/               # Helpers without routes (Archy, YAML, manifest, prod guard, log …)
 │   ├── terraform.js       # Terraform generator (pure code)
 │   ├── ai-providers.js    # AI providers: encrypted key store and adapters
 │   └── ai-agent.js        # AI assistant: tool loop, tools and confirmations
@@ -1057,16 +1063,16 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-540 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+543 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
-A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both `server.js` and `index.html` and fail if the rules get copied out again.
+A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both the server code in `src/` and `index.html` and fail if the rules get copied out again.
 
 `test/sikkerhed.test.js` guards three holes that were open: reading outside `flows/`, writing outside `flows/`, and command injection through a flow name. They are written against the attacks that actually worked.
 
-`test/log-engelsk.test.js` reads `server.js` and fails if a Danish message has slipped into the system log — including by way of a thrown error.
+`test/log-engelsk.test.js` reads the server files and fails if a Danish message has slipped into the system log — including by way of a thrown error.
 
 `test/escape.test.js` reads `index.html` and fails if a name from an org reaches the HTML unescaped — and exercises `escapeHtml` and `jsAttr` with names that would otherwise run code.
 
-`test/prod-rettigheder.test.js` fails if a new route that writes to an org is not behind the prod guard. `test/syntaks.test.js` compiles every script in `index.html`, so a single wrong character cannot stop the whole UI. `test/ui-sprog.test.js` and `test/tooltips.test.js` catch Danish bypassing the translations and tooltips — including the ⓘ on fields — pointing to texts that do not exist. `test/miljoer.test.js` and `test/fejl.test.js` check that a login into the wrong org is refused and that Archy never gets a token from another org. `test/readme.test.js` keeps the version and the test count here in step with `package.json`, the UI and `CHANGELOG.md`.
+`test/prod-rettigheder.test.js` fails if a new route that writes to an org is not behind the prod guard. `test/syntaks.test.js` compiles every script in `index.html`, so a single wrong character cannot stop the whole UI. `test/ui-sprog.test.js` and `test/tooltips.test.js` catch Danish bypassing the translations and tooltips — including the ⓘ on fields — pointing to texts that do not exist. `test/miljoer.test.js` and `test/fejl.test.js` check that a login into the wrong org is refused and that Archy never gets a token from another org. `test/readme.test.js` keeps the version and the test count here in step with `package.json`, the UI and `CHANGELOG.md`. `test/kodestruktur.test.js` keeps the split: no routes in `server.js` or `lib/`, every file in `routes/` mounted, and no `require` cycle between the files.
 
 The tests live in `test/` and need nothing beyond Node itself (`node --test`, Node 18+).

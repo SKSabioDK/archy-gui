@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const s = require('../src/server.js');
 
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
+const SERVER = require('./kilde.js').kilde('routes/migrate.js');
 const HTML = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
 
 const YAML = [

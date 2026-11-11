@@ -8,7 +8,8 @@ const fs = require('fs');
 const path = require('path');
 const s = require('../src/server.js');
 
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
+const { kilde, udsnit } = require('./kilde.js');
+const MIGRATE = kilde('routes/migrate.js');
 
 const dep = (kind, name, o = {}) => ({ kind, name, ok: false, ...o });
 
@@ -55,8 +56,8 @@ test('en tom analyse giver et tomt svar', () => {
 });
 
 test('tjek og forfremmelse deler vagterne og analysen', () => {
-  const prepare = SERVER.slice(SERVER.indexOf("app.post('/api/migrate/prepare'"), SERVER.indexOf('async function migrationPreflight'));
-  const check = SERVER.slice(SERVER.indexOf("app.post('/api/migrate/check'"), SERVER.indexOf("app.post('/api/migrate/commit'"));
+  const prepare = udsnit(MIGRATE, "router.post('/api/migrate/prepare'", 'async function migrationPreflight');
+  const check = udsnit(MIGRATE, "router.post('/api/migrate/check'", "router.post('/api/migrate/commit'");
   for (const part of [prepare, check]) {
     assert.match(part, /migrationPreflight\(/);
     assert.match(part, /analyzeFlowForMigration\(/);

@@ -9,7 +9,8 @@ const path = require('path');
 const s = require('../src/server.js');
 
 const laes = f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
-const SERVER = laes('src/server.js');
+const { kilde, helServeren } = require('./kilde.js');
+const DEMO_RUTER = kilde('routes/demo.js');
 const HTML = laes('public/index.html');
 
 test('en tom eller forkert nøgle åbner ikke', () => {
@@ -18,15 +19,15 @@ test('en tom eller forkert nøgle åbner ikke', () => {
 });
 
 test('nøglen står ikke i koden — kun dens hash', () => {
-  assert.ok(!SERVER.includes('ARCHY-8B832B'), 'selve nøglen må ikke stå i server.js');
-  assert.match(SERVER, /FEATURE_KEY_SHA256 = '[0-9a-f]{64}'/);
+  assert.ok(!helServeren().includes('ARCHY-8B832B'), 'selve nøglen må ikke stå i koden');
+  assert.match(kilde('lib/features.js'), /FEATURE_KEY_SHA256 = '[0-9a-f]{64}'/);
 });
 
 test('hver demo-rute, der opretter, nulstiller, fjerner eller viser, kræver nøglen', () => {
-  for (const r of ["app.get('/api/demo/status'", "app.post('/api/demo/create'", "app.post('/api/demo/reset'", "app.delete('/api/demo'"]) {
-    const i = SERVER.indexOf(r);
+  for (const r of ["router.get('/api/demo/status'", "router.post('/api/demo/create'", "router.post('/api/demo/reset'", "router.delete('/api/demo'"]) {
+    const i = DEMO_RUTER.indexOf(r);
     assert.notEqual(i, -1, r);
-    assert.match(SERVER.slice(i, i + 80), /requireInternal/, `${r} mangler requireInternal`);
+    assert.match(DEMO_RUTER.slice(i, i + 80), /requireInternal/, `${r} mangler requireInternal`);
   }
 });
 

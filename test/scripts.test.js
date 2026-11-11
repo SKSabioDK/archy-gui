@@ -8,7 +8,8 @@ const fs = require('fs');
 const path = require('path');
 const s = require('../src/server.js');
 
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
+const { kilde, udsnit } = require('./kilde.js');
+const MIGRATE = kilde('routes/migrate.js');
 const HTML = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
 
 test('scripter-importen går til apps.<region>, ikke api.<region>', () => {
@@ -19,14 +20,14 @@ test('scripter-importen går til apps.<region>, ikke api.<region>', () => {
 test('prompts og scripts kan migreres med flowet', () => {
   assert.deepEqual([...s.COPYABLE_KINDS].sort(), ['contactlist', 'group', 'knowledgebase', 'prompt', 'queue', 'schedule', 'schedulegroup', 'script', 'skill', 'utilizationlabel']);
   // Kilden slås op, og findes de dér, kan de vælges i dialogen
-  const prep = SERVER.slice(SERVER.indexOf('async function analyzeFlowForMigration('), SERVER.indexOf("app.post('/api/migrate/check'"));
+  const prep = udsnit(MIGRATE, 'async function analyzeFlowForMigration(', "router.post('/api/migrate/check'");
   assert.match(prep, /COPYABLE_KINDS\.has\(r\.kind\)\) \{[\s\S]{0,200}else if \(src\?\.has\(r\.name\)\) r\.canMigrate = true;/);
 });
 
 test('kan målet ikke læses, tilbydes intet migreret', () => {
   // Et manglende scope på mål-klienten gav før "mangler" for hvert script —
   // og hver migrering fejlede så på samme opslag.
-  const prep = SERVER.slice(SERVER.indexOf('async function analyzeFlowForMigration('), SERVER.indexOf("app.post('/api/migrate/check'"));
+  const prep = udsnit(MIGRATE, 'async function analyzeFlowForMigration(', "router.post('/api/migrate/check'");
   assert.match(prep, /results\.push\(\{ kind, name, ok: false, unchecked: true, manualReason: 'unchecked', checkError/);
   assert.match(prep, /if \(r\.ok \|\| r\.unchecked\) continue;/);
   const v = s.buildMigrationVerdict({ deps: [{ kind: 'script', name: 'X', ok: false, unchecked: true, manualReason: 'unchecked' }] });
@@ -46,7 +47,7 @@ test('dialogen sender prompts og scripts til deres egne endpoints', () => {
 });
 
 test('et script publiceres kun i målet, hvis det er publiceret i kilden', () => {
-  const route = SERVER.slice(SERVER.indexOf("app.post('/api/scripts/migrate'"), SERVER.indexOf('// ── Helpers'));
+  const route = udsnit(kilde('routes/resources.js'), "router.post('/api/scripts/migrate'", '\n});\n');
   assert.ok(route.length > 200, 'ruten findes ikke');
   const publish = route.indexOf('/api/v2/scripts/published`, { scriptId');
   assert.ok(publish > 0, 'scriptet publiceres aldrig');

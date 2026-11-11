@@ -9,7 +9,8 @@ const path = require('path');
 const A = require('../src/ai-agent.js');
 const AI = require('../src/ai-providers.js');
 
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
+const { kilde, udsnit } = require('./kilde.js');
+const AI_RUTER = kilde('routes/ai.js');
 const NOEGLE = 'sk-test-0123456789-ABCDEF';
 const CFG = { apiKey: NOEGLE, dpaConfirmedAt: '2026-10-28T10:00:00Z', model: 'm' };
 
@@ -279,11 +280,11 @@ test('kun import_flow og publish_flow skriver, og begge går gennem ruter bag pr
 });
 
 test('serveren: chat-ruterne kræver at AI er slået til, og bekræftelsen kan kun gives af brugerens svar', () => {
-  for (const r of ["app.post('/api/ai/chat', requireAi", "app.post('/api/ai/answer', requireAi", "app.post('/api/ai/stop', requireAi", "app.post('/api/ai/preview', requireAi"])
-    assert.ok(SERVER.includes(r), r);
-  const svar = SERVER.slice(SERVER.indexOf("app.post('/api/ai/answer'"), SERVER.indexOf("app.post('/api/ai/stop'"));
+  for (const r of ["router.post('/api/ai/chat', requireAi", "router.post('/api/ai/answer', requireAi", "router.post('/api/ai/stop', requireAi", "router.post('/api/ai/preview', requireAi"])
+    assert.ok(AI_RUTER.includes(r), r);
+  const svar = udsnit(AI_RUTER, "router.post('/api/ai/answer'", "router.post('/api/ai/stop'");
   assert.ok(svar.includes('approve === true'), 'kun et udtrykkeligt true godkender');
-  const chat = SERVER.slice(SERVER.indexOf("app.post('/api/ai/chat'"), SERVER.indexOf("app.post('/api/ai/answer'"));
+  const chat = udsnit(AI_RUTER, "router.post('/api/ai/chat'", "router.post('/api/ai/answer'");
   assert.ok(chat.includes('redact: redactSecrets'), 'alt der sendes renses');
   assert.ok(!/addLog\([^)]*(content|messages|history|text)\b/.test(chat), 'prompts og svar må ikke logges');
   assert.ok(chat.includes('crypto.randomUUID()'), 'kørslen har et uforudsigeligt id');

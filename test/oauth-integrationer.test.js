@@ -8,7 +8,7 @@ const path = require('path');
 const { mapRoleDivisions, buildOauthClientBody, buildRolePolicies, missingRolesFor, missingDivisionsFor } = require('../src/server.js');
 
 const rod = path.join(__dirname, '..');
-const server = fs.readFileSync(path.join(rod, 'src', 'server.js'), 'utf8');
+const server = require('./kilde.js').kilde('lib/prod-rights.js');   // PROD_WRITE_ROUTES
 const html = fs.readFileSync(path.join(rod, 'public/index.html'), 'utf8');
 
 const srcRole = new Map([['r1', 'Admin'], ['r2', 'Custom']]);

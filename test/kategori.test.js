@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const s = require('../src/server.js');
 
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
+const { kilde, udsnit } = require('./kilde.js');
 
 test('kategorien bliver målintegrationens navn', () => {
   assert.equal(s.actionCategoryFor('Test - Genesys Cloud Data Actions', 'Genesys Cloud Data Actions - Flows'),
@@ -23,7 +23,7 @@ test('kan målintegrationens navn ikke læses, beholdes kildens kategori', () =>
 });
 
 test('actions/migrate opretter actionen med den udregnede kategori', () => {
-  const rute = SERVER.slice(SERVER.indexOf("app.post('/api/actions/migrate'"), SERVER.indexOf("app.post('/api/datatables/migrate'"));
+  const rute = udsnit(kilde('routes/data-actions.js'), "router.post('/api/actions/migrate'", "router.post('/api/datatables/migrate'");
   assert.match(rute, /actionCategoryFor\(published\.category, integrationName\)/);
   assert.ok(!/category:\s+published\.category/.test(rute), 'kildens kategori må ikke sendes direkte videre');
   // Både et valgt og et automatisk fundet mål giver et navn.

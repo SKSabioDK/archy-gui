@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const s = require('../src/server.js');
 
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
+const { kilde, udsnit } = require('./kilde.js');
 
 const ACTIONS = [
   { id: 'a1', name: 'get_customer',  integrationId: 'i-rest' },
@@ -38,7 +38,7 @@ test('ingen manglende giver ingen blokering', () => {
 test('commit afviser en manglende FDA, før der skrives noget', () => {
   // Vagten skal stå i den rute der skriver, ikke kun i dialogen — ellers kan
   // klienten springe forbi den.
-  const commit = SERVER.slice(SERVER.indexOf("app.post('/api/migrate/commit'"));
+  const commit = udsnit(kilde('routes/migrate.js'), "router.post('/api/migrate/commit'");
   const vagt = commit.indexOf('functionActionsMissingInTarget');
   assert.ok(vagt > 0, 'commit tjekker Function Data Actions');
   assert.ok(vagt < commit.indexOf('runArchy('), 'tjekket kommer før importen');

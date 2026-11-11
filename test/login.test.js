@@ -9,7 +9,7 @@ const path = require('path');
 const s = require('../src/server.js');
 
 const HTML = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
+const SERVER = require('./kilde.js').helServeren();   // alle serverens filer
 
 function klientensMoenster() {
   const m = HTML.match(/const LOGIN_NEEDED = \/(.+)\/g;/);
@@ -33,7 +33,7 @@ test('udløbet login genkendes også', async () => {
   assert.match(String(fejl), klientensMoenster());
 });
 
-test('hver login-fejltekst i server.js passer til mønsteret', () => {
+test('hver login-fejltekst på serveren passer til mønsteret', () => {
   const tekster = [...SERVER.matchAll(/`(OAuth token [^`]*)`/g)].map(m => m[1].replace(/\$\{[^}]+\}/g, 'X'));
   assert.ok(tekster.length >= 3, `fandt kun ${tekster.length}`);
   for (const t of tekster) assert.match(t, klientensMoenster(), t);

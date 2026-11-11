@@ -9,7 +9,7 @@ const path = require('path');
 const tf = require('../src/terraform.js');
 
 const rod = path.join(__dirname, '..');
-const SERVER = fs.readFileSync(path.join(rod, 'src', 'server.js'), 'utf8');
+const SERVER = require('./kilde.js').kilde('routes/terraform.js');
 const HTML = fs.readFileSync(path.join(rod, 'public', 'index.html'), 'utf8');
 
 const DATA = {
@@ -154,7 +154,8 @@ test('hver type har en liste, en fil og en ressourcetype fra genesyscloud-provid
 });
 
 test('serveren skriver kun lokalt, og mappen er holdt ude af git', () => {
-  const start = SERVER.indexOf("app.post('/api/terraform/generate'");
+  const start = SERVER.indexOf("router.post('/api/terraform/generate'");
+  assert.ok(start > 0);
   const body = SERVER.slice(start, SERVER.indexOf('\n});\n', start));
   assert.doesNotMatch(body, /axios\.(post|put|patch|delete)/, 'ingen skrivning til en org');
   assert.match(body, /safeFileName\(name/, 'filnavne renses');
@@ -193,7 +194,8 @@ test('README og provider nævner både kilde og mål, og målets region bliver s
 });
 
 test('mappen hedder <fra>_<til>, når der er valgt et mål', () => {
-  const start = SERVER.indexOf("app.post('/api/terraform/generate'");
+  const start = SERVER.indexOf("router.post('/api/terraform/generate'");
+  assert.ok(start > 0);
   const body = SERVER.slice(start, SERVER.indexOf('\n});\n', start));
   assert.match(body, /part\(source\.name\) \+ \(target \? '_' \+ part\(target\.name\) : ''\)/);
   assert.match(body, /c\.id !== source\.id/, 'målet må ikke være kilden');

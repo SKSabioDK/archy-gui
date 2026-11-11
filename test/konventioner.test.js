@@ -1,4 +1,4 @@
-// Trin-rækkefølgen og versionsendelsen står ét sted i server.js og hentes af
+// Trin-rækkefølgen og versionsendelsen står ét sted på serveren og hentes af
 // klienten som /konventioner.js. Testene her spærrer for at nogen skriver dem
 // af igen — det var netop dét der gjorde at de kunne skride fra hinanden.
 
@@ -8,20 +8,20 @@ const fs = require('fs');
 const path = require('path');
 const s = require('../src/server.js');
 
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
+const SERVER = require('./kilde.js').helServeren();   // alle serverens filer
 const KLIENT = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
 
 test('trin-rækkefølgen står kun ét sted i hele programmet', () => {
   // Listen som kode — ikke som prosa i hjælpeteksterne, der beskriver den.
   const forekomster = (kilde) => (kilde.match(
     /\[\s*(?:['"]['"]\s*,\s*)?['"]dev['"]\s*,\s*['"]test['"]\s*,\s*['"]uat['"]\s*,\s*['"]prod['"]/g) || []).length;
-  assert.equal(forekomster(SERVER), 1, 'server.js må kun have STAGES én gang');
+  assert.equal(forekomster(SERVER), 1, 'serveren må kun have STAGES én gang');
   assert.equal(forekomster(KLIENT), 0, 'klienten skal hente listen fra serveren');
 });
 
 test('versionsendelsens regel står kun ét sted', () => {
   const forekomster = (kilde) => (kilde.match(/_v\(?\\d\+\)?\$/g) || []).length;
-  assert.equal(forekomster(SERVER), 1, 'server.js må kun have VERSION_SUFFIX én gang');
+  assert.equal(forekomster(SERVER), 1, 'serveren må kun have VERSION_SUFFIX én gang');
   assert.equal(forekomster(KLIENT), 0, 'klienten skal hente reglen fra serveren');
 });
 

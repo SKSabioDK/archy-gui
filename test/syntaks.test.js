@@ -23,7 +23,12 @@ test('alle inline-scripts i index.html kan oversættes', () => {
   assert.ok(antal > 0);
 });
 
-test('server.js kan oversættes', () => {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
-  assert.doesNotThrow(() => new vm.Script(`(function(require,module,exports,__dirname,__filename){${src}\n})`));
+test('hver af serverens filer kan oversættes', () => {
+  const { serverFiler, kilde } = require('./kilde.js');
+  const filer = serverFiler();
+  assert.ok(filer.length > 20, 'fandt kun ' + filer.length + ' filer');
+  for (const f of filer) {
+    const src = kilde(f);
+    assert.doesNotThrow(() => new vm.Script(`(function(require,module,exports,__dirname,__filename){${src}\n})`, { filename: f }), f);
+  }
 });

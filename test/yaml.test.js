@@ -9,6 +9,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const s = require('../src/server.js');
 const { DEV_FLOW, PROD_FLOW, MODUL_FLOW, KUNDE } = require('./fixtures.js');
+const { kilde, udsnit } = require('./kilde.js');
 
 const linje = (yaml, tekst) => yaml.split('\n').find(l => l.includes(tekst));
 
@@ -287,29 +288,26 @@ test('scanYamlDependencies finder outbound-flowets kontaktliste', () => {
 });
 
 test('en kopieret survey form udgives i målet, ellers finder Archy den ikke', () => {
-  const SRC = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'server.js'), 'utf8');
-  const blok = SRC.slice(SRC.indexOf("app.post('/api/surveyforms/migrate'"), SRC.indexOf('function stripFormIds'));
+  const blok = udsnit(kilde('routes/resources.js'), "router.post('/api/surveyforms/migrate'", 'function stripFormIds');
   assert.match(blok, /published: false/);
   assert.match(blok, /publishedforms\/surveys/);
 });
 
 test('survey forms slås op blandt de UDGIVNE — en kladde i målet tæller ikke som "findes"', () => {
-  const SRC = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'server.js'), 'utf8');
-  assert.match(SRC, /surveyform: \{ url: '\/api\/v2\/quality\/publishedforms\/surveys'/);
-  const blok = SRC.slice(SRC.indexOf("app.post('/api/surveyforms/migrate'"), SRC.indexOf('function stripFormIds'));
+  assert.match(kilde('lib/dependencies.js'), /surveyform: \{ url: '\/api\/v2\/quality\/publishedforms\/surveys'/);
+  const blok = udsnit(kilde('routes/resources.js'), "router.post('/api/surveyforms/migrate'", 'function stripFormIds');
   assert.match(blok, /publishedforms\/surveys\/\$\{srcPub\.id\}/, 'kilden læses fra den udgivne version');
   assert.match(blok, /pubList\(tgtBase/, 'målet tjekkes på udgivne forms');
 });
 
 test('et survey-flow som afhængighed tager sin survey form med', () => {
-  const SRC = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'server.js'), 'utf8');
+  const SRC = kilde('routes/migrate.js');
   assert.match(SRC, /for \(const kind of \['datatable', 'dataaction', 'surveyform', \.\.\.COPYABLE_KINDS\]\)/);
   assert.match(SRC, /if \(kind === 'surveyform'\) \{\s*url = '\/api\/surveyforms\/migrate';/);
 });
 
 test('en survey form i målet med andet indhold end kildens udgave erstattes, før den udgives', () => {
-  const SRC = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'server.js'), 'utf8');
-  const blok = SRC.slice(SRC.indexOf("app.post('/api/surveyforms/migrate'"), SRC.indexOf('function stripFormIds'));
+  const blok = udsnit(kilde('routes/resources.js'), "router.post('/api/surveyforms/migrate'", 'function stripFormIds');
   assert.match(blok, /axios\.put\(`\$\{tgtBase\}\/api\/v2\/quality\/forms\/surveys\/\$\{there\.id\}`/, 'kladden får kildens indhold');
   assert.match(blok, /axios\.put\(`\$\{tgtBase\}\/api\/v2\/quality\/forms\/surveys\/\$\{tgtPub\.id\}`/, 'en afvigende udgivet kopi får en ny version');
   assert.match(blok, /answerOptions/, 'svarmulighederne sammenlignes');

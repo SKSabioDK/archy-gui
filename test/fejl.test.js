@@ -280,7 +280,7 @@ test('runArchy hæfter stien på begge sine afvisningsveje', () => {
   // RÆKKEFØLGEN er pointen: withArchyLog SKAL ligge uden om
   // truncateArchyError. Omvendt ville stien selv blive afkortet væk på en lang
   // udskrift — lige netop dem hvor man har mest brug for den.
-  const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
+  const SERVER = require('./kilde.js').kilde('lib/archy.js');
   assert.match(SERVER,
     /reject\(new Error\(redactSecrets\(withArchyLog\(truncateArchyError\(/,
     'afvisningen i runArchy hæfter ikke stien på uden om afkortningen');

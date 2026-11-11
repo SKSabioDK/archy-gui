@@ -11,6 +11,7 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archy-ai-'));
 process.env.ARCHY_SESSION_DIR = path.join(tmp, 'server');   // før server.js indlæses
 const AI = require('../src/ai-providers.js');
 const s = require('../src/server.js');
+const { kilde, udsnit } = require('./kilde.js');
 
 const NOEGLE = 'sk-test-0123456789-ABCDEF';
 const nyStore = () => AI.createStore(fs.mkdtempSync(path.join(tmp, 'store-')));
@@ -174,12 +175,13 @@ test('serveren: oversigten og loggen afslører ikke en gemt nøgle', () => {
 });
 
 test('AI-ruterne kræver aktiveringsnøglen og test-ruten kræver at funktionen er slået til', () => {
-  const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
-  for (const r of ["app.get('/api/ai/providers', requireInternal", "app.put('/api/ai/enabled', requireInternal", "app.put('/api/ai/providers/:id', requireInternal",
-    "app.delete('/api/ai/providers/:id/key', requireInternal", "app.post('/api/ai/providers/:id/test', requireAi"])
-    assert.ok(SERVER.includes(r), r);
-  assert.ok(SERVER.includes('internalUnlocked() && loadSettings().aiEnabled === true'), 'slået fra som standard');
-  const fn = SERVER.slice(SERVER.indexOf("app.post('/api/ai/providers/:id/test'"), SERVER.indexOf('// Skal stå EFTER alle ruter'));
+  const AI_RUTER = kilde('routes/ai.js');
+  for (const r of ["router.get('/api/ai/providers', requireInternal", "router.put('/api/ai/enabled', requireInternal", "router.put('/api/ai/providers/:id', requireInternal",
+    "router.delete('/api/ai/providers/:id/key', requireInternal", "router.post('/api/ai/providers/:id/test', requireAi"])
+    assert.ok(AI_RUTER.includes(r), r);
+  assert.ok(AI_RUTER.includes('internalUnlocked() && loadSettings().aiEnabled === true'), 'slået fra som standard');
+  // Fra test-ruten til slutningen: AI-ruterne er de sidste i filen
+  const fn = udsnit(AI_RUTER, "router.post('/api/ai/providers/:id/test'");
   assert.ok(!/addLog\([^)]*(content|messages|prompt)/.test(fn), 'prompts må ikke logges');
 });
 
@@ -187,6 +189,6 @@ test('nøglemateriale og indstillinger kan ikke komme i git', () => {
   const ignore = fs.readFileSync(path.join(__dirname, '..', '.gitignore'), 'utf8');
   assert.match(ignore, /^\/data\/$/m, 'data/ (med settings.json) ligger i .gitignore');
   assert.ok(!AI.createStore(tmp).dataFile.startsWith(path.join(__dirname, '..')), 'lageret ligger i projektmappen');
-  const kode = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
+  const kode = kilde('routes/ai.js');
   assert.ok(kode.includes('AI.createStore(SESSION_DIR)'), 'lageret skal ligge i profilmappen (SESSION_DIR)');
 });

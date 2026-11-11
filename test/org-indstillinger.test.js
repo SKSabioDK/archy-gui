@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const s = require('../src/server.js');
 
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
+const SERVER = require('./kilde.js').kilde('routes/orgsettings.js');
 const HTML = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
 const ok = data => ({ ok: true, data });
 
@@ -91,11 +91,13 @@ test('et område der ikke kan læses, står som det — ikke som ens', () => {
 
 test('serverens skrivninger er afgrænset, og ruten står bag prod-vagten', () => {
   assert.equal(s.PROD_WRITE_ROUTES['/api/orgsettings/migrate'], 'targetId');
-  const start = SERVER.indexOf("app.post('/api/orgsettings/migrate'");
+  const start = SERVER.indexOf("router.post('/api/orgsettings/migrate'");
+  assert.ok(start > 0);
   const body = SERVER.slice(start, SERVER.indexOf('\n});\n', start));
   const writes = [...body.matchAll(/axios\.(post|put|patch|delete)\(`\$\{tb\}([^`]+)`/g)].map(m => `${m[1]} ${m[2]}`);
   assert.deepEqual(writes.sort(), ['post /api/v2/presencedefinitions', 'put /api/v2/organizations/me']);
-  const cmp = SERVER.slice(SERVER.indexOf("app.get('/api/orgsettings/compare'"), start);
+  const cmp = SERVER.slice(SERVER.indexOf("router.get('/api/orgsettings/compare'"), start);
+  assert.ok(cmp.length > 200);
   assert.doesNotMatch(cmp, /axios\.(post|put|patch|delete)/, 'sammenligningen skriver intet');
 });
 

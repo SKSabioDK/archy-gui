@@ -13,7 +13,10 @@ const path = require('path');
 const s = require('../src/server.js');
 const { KUNDE } = require('./fixtures.js');
 
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
+const { kilde, helServeren, udsnit } = require('./kilde.js');
+const SERVER = kilde('server.js');
+const MIGRATE = kilde('routes/migrate.js');
+const ARCHY = kilde('lib/archy.js');
 
 const BANK_BOT = [
   'inboundCall:',
@@ -49,9 +52,7 @@ test('et bot flows EGEN type-linje tages ikke for en reference', () => {
 });
 
 test('en afhængighed migreres aldrig under kildens eget navn i samme org', () => {
-  const start = SERVER.indexOf('async function migrateFlowDependency(');
-  const slut = SERVER.indexOf('\n}\n', start);
-  const fn = SERVER.slice(start, slut);
+  const fn = udsnit(MIGRATE, 'async function migrateFlowDependency(', '\n}\n');
   assert.ok(fn.length > 500, 'fandt ikke migrateFlowDependency');
   assert.ok(fn.includes('targetFlowName('), 'afhængigheden skal have målets navn');
   assert.ok(fn.includes('orgKeyOf(source) === orgKeyOf(target) && nyName === flowName'),
@@ -114,15 +115,15 @@ test('Archys TRACE-støj ender ikke i fejlteksten, og tidsgrænsen er ikke 2 min
   const raa = ['TRACE:[architect.tracking] next tracking number', 'flowId: x, flowType: inqueuecall, opName: VALIDATE, opId: 1', 'rigtig fejl'].join('\n');
   assert.equal(s.parseArchyOutput(raa), 'rigtig fejl');
   assert.equal(s.archyTimeoutMs(), 10 * 60 * 1000);
-  assert.ok(!/timeout: 120000/.test(SERVER.slice(SERVER.indexOf('function runArchy('))));
+  assert.ok(!/timeout: 120000/.test(udsnit(ARCHY, 'function runArchy(')));
 });
 
 test('en timeout efter en gennemført publicering regnes ikke for en fejl', () => {
-  const commit = SERVER.slice(SERVER.indexOf("app.post('/api/migrate/commit'"));
+  const commit = udsnit(MIGRATE, "router.post('/api/migrate/commit'");
   assert.ok(commit.includes('importFinishedDespiteTimeout(target, nyName, rodType, cmd, startedAt'), 'commit skal tjekke målet efter en timeout');
-  const dep = SERVER.slice(SERVER.indexOf('async function migrateFlowDependency('), SERVER.indexOf('// Opretter en manglende division'));
+  const dep = udsnit(MIGRATE, 'async function migrateFlowDependency(', '// Opretter en manglende division');
   assert.ok(dep.includes('importFinishedDespiteTimeout('), 'afhængigheder skal også tjekke målet efter en timeout');
-  assert.ok(SERVER.includes('e.timedOut = true'));
+  assert.ok(ARCHY.includes('e.timedOut = true'));
 });
 
 test('køer og grupper kopieres som definition — uden medlemmer, id\'er og referencer', () => {
@@ -157,22 +158,29 @@ test('et migreret flow fjernes fra valget og tages ikke med af «Vælg alle»', 
 
 test('identiske flows springes over i prepare, men aldrig ved versionsudligning', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-  const fn = SERVER.slice(SERVER.indexOf('async function identicalInTarget('), SERVER.indexOf('// Vagterne før en flytning'));
+  const fn = udsnit(MIGRATE, 'async function identicalInTarget(', '// Vagterne før en flytning');
   // Sammenlignes på det PUBLICEREDE i målet, med miljøpræfikser normaliseret væk
   assert.ok(fn.includes('publishedVersionOf(target, nyName') && fn.includes('flowContentHash(') && fn.includes('stripEnvPrefixesInYaml') === false);
   assert.ok(fn.includes('if (!found || !published) return null;'));
   assert.ok(html.includes("const skipIdentical = !alignVersion && !!document.getElementById('m-skip-identical')?.checked;"));
-  assert.ok(SERVER.includes('if (req.body.skipIdentical && analysis.filePath)'));
+  assert.ok(MIGRATE.includes('if (req.body.skipIdentical && analysis.filePath)'));
 });
 
 test('serveren genstarter sig selv ved en opdatering — men først når ingen skrivning kører', () => {
   assert.equal(typeof s.watchForUpdates, 'function');
-  const fn = SERVER.slice(SERVER.indexOf('function watchForUpdates('), SERVER.indexOf('function retryOnPortBusy('));
+  const fn = udsnit(SERVER, 'function watchForUpdates(', 'function retryOnPortBusy(');
   assert.ok(fn.includes("['--check', files[0]]"), 'koden skal kunne parses før genstart');
+  // Koden ligger i flere filer: alle under src/ overvåges, ikke kun server.js
+  assert.ok(fn.includes('sourceFiles()'), 'alle kodefiler skal overvåges');
+  const filer = s.sourceFiles().map(f => path.relative(path.join(__dirname, '..', 'src'), f).replace(/\\/g, '/'));
+  for (const f of ['server.js', 'config.js', 'lib/archy.js', 'routes/migrate.js']) assert.ok(filer.includes(f), f);
   assert.ok(fn.includes('inflightWrites > 0'), 'en skrivning i gang skal afvente');
   assert.ok(fn.includes('ARCHY_NO_AUTORESTART'));
-  // Tælleren skal sidde FØR første rute, ellers tæller den intet
-  assert.ok(SERVER.indexOf('inflightWrites++') < SERVER.search(/app\.(get|post)\('/));
+  // Tælleren skal sidde FØR første rute, ellers tæller den intet. Ruterne står i
+  // routes/ og sættes på med app.use; server.js har ingen selv.
+  assert.ok(!/app\.(get|post|put|delete)\('/.test(SERVER));
+  assert.ok(SERVER.includes('inflightWrites++'));
+  assert.ok(SERVER.indexOf('inflightWrites++') < SERVER.indexOf("app.use(require('./routes/"));
 });
 
 // Falck: P1435 fandt i målet med indhold — men ikke på noget af flowets sprog.
@@ -240,9 +248,9 @@ test('en prompt skal have indhold på flowets STANDARDSPROG', () => {
 });
 
 test('åbningstider slås op i hele listen, ikke med navnefilter', () => {
-  const src = SERVER.slice(SERVER.indexOf('async function listByName('), SERVER.indexOf('// Sikrer at en åbningstid findes i målet'));
+  const src = udsnit(kilde('routes/resources.js'), 'async function listByName(', '// Sikrer at en åbningstid findes i målet');
   assert.ok(src.includes('pagedList(base, url, token)'), '«24/7» blev ikke fundet med navnefilteret');
-  assert.ok(SERVER.includes("schedule:      { url: '/api/v2/architect/schedules', size: 100 }"));
+  assert.ok(kilde('lib/dependencies.js').includes("schedule:      { url: '/api/v2/architect/schedules', size: 100 }"));
 });
 
 test('en afvist flowtype huskes, og manglende OAuth-scope forklares', () => {
@@ -255,7 +263,7 @@ test('en afvist flowtype huskes, og manglende OAuth-scope forklares', () => {
 });
 
 test('alle processer serveren starter skjules — ellers åbner en selv-genstartet server et cmd-vindue pr. kald', () => {
-  const kald = [...SERVER.matchAll(/(?:\bexec|execSync|execFile)\((?:'[^']*'|process\.execPath, \[[^\]]*\]|cmd),?[^;]*?\{[^}]*\}/g)];
+  const kald = [...helServeren().matchAll(/(?:\bexec|execSync|execFile)\((?:'[^']*'|process\.execPath, \[[^\]]*\]|cmd),?[^;]*?\{[^}]*\}/g)];
   assert.ok(kald.length >= 4, 'fandt ikke exec-kaldene');
   for (const k of kald) assert.ok(k[0].includes('windowsHide: true'), `mangler windowsHide: ${k[0].slice(0, 80)}`);
   assert.ok(SERVER.includes("detached: true, windowsHide: true"));
@@ -266,7 +274,7 @@ test('Flow Browser viser hvad der er i målet, og sammenligningen tager præfiks
   for (const f of ['onFbCompareChange', 'fbCheckContent', 'applyFbList', 'fbTargetName', 'matchFlowList'])
     assert.ok(html.includes(`function ${f}(`) || html.includes(`async function ${f}(`), f);
   assert.ok(html.includes('targetName: fbTargetName(f)'));
-  const cmp = SERVER.slice(SERVER.indexOf("app.post('/api/flows/compare'"), SERVER.indexOf('const sourceHash = flowContentHash(src.yaml, source);'));
+  const cmp = udsnit(kilde('routes/pipeline.js'), "router.post('/api/flows/compare'", 'const sourceHash = flowContentHash(src.yaml, source);');
   assert.ok(cmp.includes('targetFlowName(flowName, source, target)') && cmp.includes('exportFlowToYaml(target, tName'));
   assert.ok(cmp.includes('stripEnvPrefixesInYaml(src.yaml, source)') && cmp.includes('stripEnvPrefixesInYaml(tgt.yaml, target)'));
 });
@@ -333,7 +341,7 @@ test('de enkle ressourcer kopierer kun definitionen — ikke id, medlemmer eller
 });
 
 test('en fejl om manglende OAuth-scope på en liste forklares', () => {
-  const src = SERVER.slice(SERVER.indexOf("app.get('/api/customers/:id/resources/:kind'"), SERVER.indexOf("app.post('/api/resources/migrate'"));
+  const src = udsnit(kilde('routes/resources.js'), "router.get('/api/customers/:id/resources/:kind'", "router.post('/api/resources/migrate'");
   assert.ok(src.includes('archyHint(describeApiError(e))'));
 });
 

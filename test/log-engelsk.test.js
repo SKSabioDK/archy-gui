@@ -3,7 +3,7 @@
 // læst af folk der ikke nødvendigvis kører programmet i samme sprog som den
 // der lavede migreringen.
 //
-// Testen læser server.js og fælder hvis en dansk besked er sluppet ind — enten
+// Testen læser serverens filer og fælder hvis en dansk besked er sluppet ind — enten
 // direkte i et addLog-kald, eller ad bagvejen gennem en kastet fejl, som ender
 // i loggen som ${e.message}.
 //
@@ -16,7 +16,9 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
+const { serverFiler, kilde } = require('./kilde.js');
+// Alle serverens filer, hver for sig — så en fejl peger på fil og linje
+const FILER = serverFiler().map(f => [f, kilde(f)]);
 
 // Ord der ikke findes i engelsk, og som derfor afslører dansk uden at fælde
 // almindelige engelske sætninger. "for", "er" og "til" står bevidst IKKE her —
@@ -75,18 +77,19 @@ function strengeI(tekst) {
   return ud;
 }
 
-const linjeFor = (pos) => SERVER.slice(0, pos).split('\n').length;
-
 function danskeI(kaldNavn) {
   const ud = [];
-  let i = 0;
-  while ((i = SERVER.indexOf(kaldNavn, i)) !== -1) {
-    const p = SERVER.indexOf('(', i + kaldNavn.length - 1);
-    const args = udenKommentarer(argumenter(SERVER, p));
-    for (const streng of strengeI(args)) {
-      if (erDansk(streng)) { ud.push(`linje ${linjeFor(i)}: ${streng.replace(/\s+/g, ' ').slice(0, 90)}`); break; }
+  for (const [fil, SERVER] of FILER) {
+    const linjeFor = (pos) => SERVER.slice(0, pos).split('\n').length;
+    let i = 0;
+    while ((i = SERVER.indexOf(kaldNavn, i)) !== -1) {
+      const p = SERVER.indexOf('(', i + kaldNavn.length - 1);
+      const args = udenKommentarer(argumenter(SERVER, p));
+      for (const streng of strengeI(args)) {
+        if (erDansk(streng)) { ud.push(`${fil}:${linjeFor(i)}: ${streng.replace(/\s+/g, ' ').slice(0, 90)}`); break; }
+      }
+      i = p + 1;
     }
-    i = p + 1;
   }
   return ud;
 }
@@ -111,8 +114,10 @@ const BESKEDBYGGERE = [
 ];
 
 function funktionskrop(navn) {
+  const fundet = FILER.find(([, kode]) => kode.includes(`function ${navn}(`));
+  if (!fundet) return null;
+  const SERVER = fundet[1];
   const start = SERVER.indexOf(`function ${navn}(`);
-  if (start === -1) return null;
   const slut = SERVER.indexOf('\n}', start);
   return SERVER.slice(start, slut + 2);
 }
@@ -121,7 +126,7 @@ test('de funktioner der bygger fejlbeskeder skriver engelsk', () => {
   const danske = [];
   for (const navn of BESKEDBYGGERE) {
     const krop = funktionskrop(navn);
-    assert.ok(krop, `fandt ikke ${navn} i server.js`);
+    assert.ok(krop, `fandt ikke ${navn} i serveren`);
     for (const streng of strengeI(udenKommentarer(krop))) {
       if (erDansk(streng)) danske.push(`${navn}: ${streng.replace(/\s+/g, ' ').slice(0, 80)}`);
     }
@@ -153,8 +158,8 @@ test('kontrol: opdageren fælder faktisk dansk', () => {
 
 test('kontrol: scanneren læser faktisk addLog-kald', () => {
   // En scanner der ikke finder noget ville bestå de to første tests i tavshed.
-  let n = 0, i = 0;
-  while ((i = SERVER.indexOf('addLog(', i)) !== -1) { n++; i += 7; }
+  let n = 0;
+  for (const [, SERVER] of FILER) { let i = 0; while ((i = SERVER.indexOf('addLog(', i)) !== -1) { n++; i += 7; } }
   assert.ok(n > 80, `fandt kun ${n} addLog-kald — scanneren er gået i stå`);
 });
 

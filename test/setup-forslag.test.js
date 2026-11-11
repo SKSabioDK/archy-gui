@@ -77,11 +77,11 @@ test('ingenting at placere giver et tomt forslag', () => {
 
 const fs = require('fs');
 const path = require('path');
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
+const { kilde, udsnit } = require('./kilde.js');
 const HTML = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
 
 test('forslaget sender de gemte valg med, så klienten kan flette de nye ind', () => {
-  const rute = SERVER.slice(SERVER.indexOf("app.post('/api/data-actions/plan'"));
+  const rute = udsnit(kilde('routes/data-actions.js'), "router.post('/api/data-actions/plan'");
   assert.match(rute.slice(0, 3500), /ok: true, \.\.\.plan, saved/);
 });
 

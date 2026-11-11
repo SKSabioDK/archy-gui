@@ -9,7 +9,8 @@ const fs = require('fs');
 const path = require('path');
 const s = require('../src/server.js');
 
-const SERVER = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.js'), 'utf8');
+const { kilde, udsnit } = require('./kilde.js');
+const MIGRATE = kilde('routes/migrate.js');
 
 const YAML = [
   'inboundCall:',
@@ -124,7 +125,7 @@ test('ugyldige valg sorteres fra', () => {
 });
 
 test('commit anvender og husker valgene først efter en vellykket import', () => {
-  const commit = SERVER.slice(SERVER.indexOf("app.post('/api/migrate/commit'"));
+  const commit = udsnit(MIGRATE, "router.post('/api/migrate/commit'");
   const omskriv = commit.indexOf('applyDataActionMap');
   const importer = commit.indexOf('runArchy(');
   const husk = commit.indexOf('saveDataActionMap');
@@ -136,5 +137,6 @@ test('commit anvender og husker valgene først efter en vellykket import', () =>
 
 test('nøglen til de gemte valg er ikke en flowrække', () => {
   // Nøgler med "|" er flows. Den må ikke ende på tavlen.
-  assert.ok(!SERVER.match(/const DA_MAP_KEY = '[^']*\|/));
+  assert.ok(!kilde('lib/data-action-refs.js').match(/const DA_MAP_KEY = '[^']*\|/));
+  assert.ok(kilde('lib/data-action-refs.js').includes('const DA_MAP_KEY = '));
 });
