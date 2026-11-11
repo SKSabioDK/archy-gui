@@ -15,7 +15,9 @@ function serverFiler() {
   return ud;
 }
 
-const kilde = rel => fs.readFileSync(path.join(SRC, rel), 'utf8');
+// Altid med LF: med core.autocrlf=true skriver git filerne med CRLF, og så ville
+// et udsnit der leder efter '\n}\n' ikke finde noget.
+const kilde = rel => fs.readFileSync(path.join(SRC, rel), 'utf8').replace(/\r\n/g, '\n');
 
 // Hele serveren som én tekst — til tjek der gælder alle filer: hvor mange gange
 // noget står, alle addLog-kald, alle ruter, alle processer der startes.
