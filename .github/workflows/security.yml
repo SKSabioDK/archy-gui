@@ -1,5 +1,9 @@
 # Ugentlig sårbarhedsscanning. Finder den noget, oprettes (eller opdateres) en
 # issue med etiketten "security", så du får besked fra GitHub.
+#
+# Testene køres på hver understøttet Node-hovedversion (seneste udgave af hver),
+# så en ny Node-udgivelse der ødelægger noget, opdages her og ikke på en pc.
+# Hold listen i takt med engines.node i package.json.
 name: Ugentlig sårbarhedsscanning
 
 on:
@@ -12,8 +16,10 @@ permissions:
   issues: write
 
 jobs:
-  scan:
+  audit:
     runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.audit.outputs.code }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,33 +34,63 @@ jobs:
           npm audit --omit=dev > audit.txt 2>&1
           echo "code=$?" >> "$GITHUB_OUTPUT"
           cat audit.txt
-      - name: Tests (inkl. kravet til Node-versionen)
-        id: tests
+      - uses: actions/upload-artifact@v4
+        with:
+          name: audit
+          path: audit.txt
+
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24', '26']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Installér afhængigheder
+        run: npm ci || npm install
+      - name: Tests på Node ${{ matrix.node }} (inkl. kravet til Node-versionen)
         run: |
-          set +e
-          npm test > tests.txt 2>&1
-          echo "code=$?" >> "$GITHUB_OUTPUT"
-          tail -n 40 tests.txt
+          set -o pipefail
+          node -v | tee tests-node${{ matrix.node }}.txt
+          npm test 2>&1 | tee -a tests-node${{ matrix.node }}.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tests-node${{ matrix.node }}
+          path: tests-node${{ matrix.node }}.txt
+
+  report:
+    needs: [audit, tests]
+    if: always() && (needs.audit.outputs.code != '0' || needs.tests.result != 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
       - name: Opret eller opdatér issue ved fund
-        if: steps.audit.outputs.code != '0' || steps.tests.outputs.code != '0'
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           {
             echo "Den ugentlige scanning fandt noget. Kørsel: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
             echo
-            if [ "${{ steps.audit.outputs.code }}" != "0" ]; then
+            if [ "${{ needs.audit.outputs.code }}" != "0" ]; then
               echo "### npm audit"
               echo '```'
-              head -c 20000 audit.txt
+              head -c 20000 audit/audit.txt
               echo '```'
             fi
-            if [ "${{ steps.tests.outputs.code }}" != "0" ]; then
-              echo "### Tests fejlede"
+            for f in tests-node*/tests-node*.txt; do
+              [ -f "$f" ] || continue
+              grep -q "^ℹ fail 0" "$f" && continue
+              echo "### Tests fejlede på $(head -n 1 "$f")"
               echo '```'
-              tail -n 60 tests.txt
+              tail -n 60 "$f"
               echo '```'
-            fi
+            done
           } > body.md
           gh label create security --color B60205 --description "Sårbarhedsscanning" 2>/dev/null || true
           existing=$(gh issue list --label security --state open --search "Ugentlig sårbarhedsscanning" --json number --jq '.[0].number')

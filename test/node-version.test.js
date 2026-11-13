@@ -24,3 +24,13 @@ test('package.json og README kræver de rettede versioner', () => {
   const readme = fs.readFileSync(path.join(rod, 'README.md'), 'utf8');
   assert.equal((readme.match(/24\.22\.1/g) || []).length >= 2, true, 'README nævner minimumsversionen på dansk og engelsk');
 });
+
+test('den ugentlige CI-kørsel tester på hver Node-hovedversion programmet tillader', () => {
+  const rod = path.join(__dirname, '..');
+  const pkg = JSON.parse(fs.readFileSync(path.join(rod, 'package.json'), 'utf8'));
+  const tilladte = [...pkg.engines.node.matchAll(/>=(\d+)\./g)].map(m => m[1]).sort();
+  const wf = fs.readFileSync(path.join(rod, '.github', 'workflows', 'security.yml'), 'utf8');
+  const matrix = (wf.match(/node:\s*\[([^\]]*)\]/) || [, ''])[1].match(/\d+/g) || [];
+  assert.deepEqual(matrix.sort(), tilladte, 'matrixen i security.yml følger engines.node');
+  assert.match(wf, /fail-fast: false/, 'én fejlende version må ikke skjule de andre');
+});

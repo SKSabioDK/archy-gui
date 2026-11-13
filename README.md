@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.81.0
+# Archy GUI — Flow Manager · v1.81.1
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.81.0**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.81.0**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.81.1**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.81.1**.
 
 ---
 
@@ -369,7 +369,7 @@ Siden migrerer det der ikke er flows mellem to orgs, fordelt på otte faner: **D
 
 **Fejl og ønsker.** Nederst i sidebaren åbner *🐞 Rapportér en fejl* og *💡 Foreslå et ønske* en dialog. *Åbn på GitHub* åbner en forudfyldt kladde-issue — du trykker selv på Submit og indsætter skærmbilleder med Ctrl+V. Fejlrapporten medsender version, Node, styresystem, side og de seneste logliner (renset for hemmeligheder, men kan indeholde kundenavne); er loggen for lang, lægges hele loggen på udklipsholderen, og den kan gemmes som fil. Intet token gemmes. Mål-repo: `issueRepo` i `data/settings.json`.
 
-**Sårbarhedsscanning.** `.github/workflows/security.yml` kører hver mandag `npm audit --omit=dev` og testene og opretter en issue med etiketten *security* ved fund; Dependabot holder pakkerne opdateret.
+**Sårbarhedsscanning.** `.github/workflows/security.yml` kører hver mandag `npm audit --omit=dev` og testene på Node 22, 24 og 26 (den nyeste udgave af hver) og opretter en issue med etiketten *security* ved fund; Dependabot holder pakkerne opdateret.
 
 **Fanen Org-indstillinger** sammenligner det der står under Admin → Organization Settings i kilde og mål og viser kun forskellene: *Status Management*, standardsprog og -land, understøttede sprog, tilladte domæner (embedded integration) og betroede IP-adresser. **Migrér valgte** kopierer statusser og standardsprog/-land efter en bekræftelse og med prod-vagten; resten vises kun, fordi en forkert IP- eller domæneliste kan låse brugere ude. *Organization Details* og *Authentication* (login, SSO, adgangskoder) migreres ikke — de hører til den enkelte org, og SSO-udbydere indeholder hemmeligheder, der ikke kan læses ud. Et område der ikke kan læses, står som *kunne ikke læses*, aldrig som *ens*. Skrivningerne er kun afprøvet med simulerede svar — prøv mod en test-org først.
 
@@ -536,7 +536,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-543 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+544 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både serverens kode i `src/` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -896,7 +896,7 @@ This page migrates everything that is not a flow between two orgs, across eight 
 
 **Bugs and feature requests.** At the bottom of the sidebar, *🐞 Report a bug* and *💡 Suggest a feature* open a dialog. *Open on GitHub* opens a prefilled draft issue — you press Submit yourself and paste screenshots with Ctrl+V. The bug report includes version, Node, OS, page and the latest log lines (cleaned of secrets, but may contain customer names); if the log is too long, the whole log is put on the clipboard, and it can be saved as a file. No token is stored. Target repo: `issueRepo` in `data/settings.json`.
 
-**Vulnerability scan.** `.github/workflows/security.yml` runs `npm audit --omit=dev` and the tests every Monday and creates an issue labelled *security* if it finds anything; Dependabot keeps the packages up to date.
+**Vulnerability scan.** `.github/workflows/security.yml` runs `npm audit --omit=dev` and the tests on Node 22, 24 and 26 (the latest release of each) every Monday and creates an issue labelled *security* if it finds anything; Dependabot keeps the packages up to date.
 
 **The Org settings tab** compares what is under Admin → Organization Settings in source and target and shows only the differences: *Status Management*, default language and country, supported languages, allowed domains (embedded integration) and trusted IPs. **Migrate selected** copies statuses and the default language/country after a confirmation and behind the prod guard; the rest is shown only, because a wrong IP or domain list can lock users out. *Organization Details* and *Authentication* (login, SSO, passwords) are not migrated — they belong to the individual org, and SSO providers contain secrets that cannot be read out. An area that cannot be read shows as *could not be read*, never as *same*. The writes have only been exercised with simulated responses — try a test org first.
 
@@ -1063,7 +1063,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-543 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+544 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both the server code in `src/` and `index.html` and fail if the rules get copied out again.
 

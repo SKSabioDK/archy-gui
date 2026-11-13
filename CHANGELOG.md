@@ -5,6 +5,18 @@
 
 ---
 
+### v1.81.1
+---
+**🇩🇰 Dansk**
+
+- **Den ugentlige scanning tester på Node 22, 24 og 26.** Testene kørte kun på Node 24, så en Node 26-pc kørte på en uafprøvet version. Nu køres de på den nyeste udgave af hver hovedversion, programmet tillader, og en fejl på én version skjuler ikke de andre. Issuen nævner hvilken Node-version der fejlede. `npm audit` køres stadig én gang.
+- 1 ny test: matrixen i `security.yml` skal følge `engines.node` i `package.json`, så de ikke glider fra hinanden, når kravet ændres.
+
+**🇬🇧 English**
+- **The weekly scan tests on Node 22, 24 and 26.** The tests ran only on Node 24, so a Node 26 PC ran an untested version. They now run on the latest release of every major version the app allows, and a failure on one does not hide the others. The issue names the Node version that failed. `npm audit` still runs once.
+- 1 new test: the matrix in `security.yml` must follow `engines.node` in `package.json`.
+
+---
 ### v1.81.0
 ---
 **🇩🇰 Dansk**
