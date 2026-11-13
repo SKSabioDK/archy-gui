@@ -5,6 +5,16 @@
 
 ---
 
+### v1.81.2
+---
+**🇩🇰 Dansk**
+
+- **Sikkerhedsrettelse: follow-redirects 1.16.1 → 1.16.3.** Pakken bruges af axios til alle kald mod Genesys. Ved en omdirigering til en anden vært kunne egne login-headere følge med (GHSA-mrwp-f3q8-3g9p, alvorlighed høj). Fundet af den ugentlige scanning. Kun `package-lock.json` er ændret; kør `npm install` efter opdateringen.
+
+**🇬🇧 English**
+- **Security fix: follow-redirects 1.16.1 → 1.16.3.** Used by axios for every call to Genesys. On a redirect to another host, custom credential headers could follow along (GHSA-mrwp-f3q8-3g9p, high). Found by the weekly scan. Only `package-lock.json` changed; run `npm install` after updating.
+
+---
 ### v1.81.1
 ---
 **🇩🇰 Dansk**
