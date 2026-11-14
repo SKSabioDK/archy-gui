@@ -1,6 +1,6 @@
 {
   "name": "archy-gui",
-  "version": "1.82.1",
+  "version": "1.82.2",
   "description": "Web-GUI til Genesys Cloud Archy: migrering, pipeline og opsætning på tværs af orgs",
   "main": "src/server.js",
   "engines": {

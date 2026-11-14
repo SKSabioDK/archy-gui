@@ -436,6 +436,26 @@ function logFilter({ exportRun = false } = {}) {
   };
 }
 
+// Typer der fik hele eksporten til at fejle. Mangler login'et en rettighed,
+// springer eksportøren selv typen over (log_permission_errors), men mangler
+// OAuth-klienten et scope, stopper den: Falck US' klient havde ikke
+// webdeployments. terraform ombryder fejlen over flere linjer, så den samles
+// først. → [{ type, perm }]
+function exportFailures(output) {
+  const flat = String(output || '').replace(/\s*\r?\n\s*/g, ' ');
+  const out = [];
+  const re = /\{"resourceType":"(genesyscloud_[a-z0-9_]+)"[^{}]*?"statusCode":(40[13])[^{}]*?"errorMessage":"((?:[^"\\]|\\.)*)"/g;
+  let m;
+  while ((m = re.exec(flat))) {
+    const msg = m[3];
+    const scope = /scope \[([^\],]+)/.exec(msg);
+    const p = PERM_RE.exec(msg);
+    const perm = scope ? 'scope ' + scope[1].trim() : p ? (p[1] || p[2] || p[3]).trim() : 'HTTP ' + m[2];
+    if (!out.some(x => x.type === m[1])) out.push({ type: m[1], perm });
+  }
+  return out;
+}
+
 // Sprungne typer samlet pr. rettighed: [{ perm, what: [...] }]
 function addSkipped(list, { perm, what }) {
   let e = list.find(x => x.perm === perm);
@@ -515,4 +535,4 @@ function exampleBlock(name, b) {
 
 module.exports = { scanBlocks, blockEntries, resources, editResource, addResource, removeResource, newResourceText,
   literalOf, decodeString, encodeValue, hclString, summarizePlan, errorHint, exportMainTf, trimSchema, exampleBlock,
-  logFilter, addSkipped };
+  logFilter, addSkipped, exportFailures };

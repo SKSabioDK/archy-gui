@@ -5,6 +5,19 @@
 
 ---
 
+### v1.82.2
+---
+**🇩🇰 Dansk**
+
+- **En eksport stopper ikke længere på et manglende OAuth-scope.** Eksporten af Falck US fejlede efter et halvt minut: *App not authorized to use scope [webdeployments:readonly, webdeployments]*. Mangler login'et en rettighed, springer Genesys' eksportør selv typen over. Mangler OAuth-klienten et scope, stopper den hele eksporten. Nu finder Archy GUI typen i fejlen, her `genesyscloud_webdeployments_deployment_identity_resolution`, udelader den med `exclude_filter_resources` og starter eksporten forfra. Fanen viser *forsøg 2, 3 …*, og typen står på listen over sprungne typer med det scope, der mangler. Der gives højst 40 forsøg, så en ukendt fejl ikke kører i ring.
+- Listen over sprungne typer forklarer forskellen: en rettighed gives brugerens rolle, et scope tilføjes miljøets OAuth-klient under *Admin → OAuth*.
+- 1 ny test: fejlen fra Falck US, som terraform ombryder over flere linjer, giver typen og scopet.
+
+**🇬🇧 English**
+- **A missing OAuth scope no longer stops an export.** The exporter stops outright on a missing scope (Falck US: `webdeployments`). Archy GUI now leaves the type out, starts again (*attempt 2, 3 …*) and lists the type with the missing scope.
+- 1 new test.
+
+---
 ### v1.82.1
 ---
 **🇩🇰 Dansk**

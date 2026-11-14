@@ -170,7 +170,7 @@ function jobView(job, from = 0) {
   return { id: job.id, ws: job.ws, kind: job.kind, status: job.status, lines: job.lines.slice(from), total: job.lines.length,
     result: job.result, error: job.error, hint: job.hint, phase: job.phase, info: job.info || null,
     seconds: Math.round(((job.finished || Date.now()) - job.started) / 1000), elapsed: job.elapsed,
-    skipped: job.skipped, stopping: job.controller.signal.aborted && job.status === 'running' };
+    skipped: job.skipped, retries: job.retries || 0, stopping: job.controller.signal.aborted && job.status === 'running' };
 }
 
 // Mappen slettes, også mens Windows endnu ikke har sluppet en fil fra en

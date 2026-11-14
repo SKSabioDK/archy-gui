@@ -185,7 +185,7 @@ async function tfStep(exe, args, cwd, env, log, job, { exportRun = false, stoppa
   if (r.aborted) throw new Error('Stopped');
   if (r.code !== 0) {
     const tail = r.out.split(/\r?\n/).filter(l => l.trim()).slice(-6).join('\n');
-    throw Object.assign(new Error(`terraform ${args[0]} failed (exit ${r.code})${tail ? ':\n' + tail : ''}`), { hint: HCL.errorHint(r.out) });
+    throw Object.assign(new Error(`terraform ${args[0]} failed (exit ${r.code})${tail ? ':\n' + tail : ''}`), { hint: HCL.errorHint(r.out), output: r.out });
   }
   return r;
 }
@@ -410,7 +410,28 @@ router.post('/api/terraform/export', async (req, res) => {
         await tfStep(exe, ['init', '-input=false', '-no-color'], work, env, log, job, { exportRun: true });
         // "apply" opretter kun eksportørens hjælpe-ressource i en lokal state
         job.phase = 'export';
-        await tfStep(exe, ['apply', '-auto-approve', '-input=false', '-no-color'], work, env, log, job, { exportRun: true });
+        // Mangler OAuth-klienten et scope til en type, stopper eksportøren helt.
+        // Typen udelades så, står på listen over sprungne typer, og eksporten
+        // startes forfra — højst 40 gange, så en ukendt fejl ikke kører i ring.
+        const noScope = [];
+        for (let forsoeg = 1; ; forsoeg++) {
+          try {
+            await tfStep(exe, ['apply', '-auto-approve', '-input=false', '-no-color'], work, env, log, job, { exportRun: true });
+            break;
+          } catch (e) {
+            if (e.message === 'Stopped') throw e;
+            const fails = HCL.exportFailures(e.output).filter(f => !noScope.includes(f.type) && !exclude.includes(f.type));
+            if (!fails.length || forsoeg >= 40) throw e;
+            for (const f of fails) { noScope.push(f.type); HCL.addSkipped(job.skipped, { perm: f.perm, what: f.type }); }
+            log(`Skipped ${fails.map(f => `${f.type} (${f.perm})`).join(', ')} — the login cannot read it. Starting the export again without it …`);
+            job.retries = forsoeg;
+            // Forfra: uden den halve uddata og uden den fejlede hjælpe-ressource i state
+            for (const n of ['out', 'terraform.tfstate', 'terraform.tfstate.backup']) {
+              try { CLI.removeDir(path.join(work, n)); } catch (_) {}
+            }
+            fs.writeFileSync(path.join(work, 'main.tf'), HCL.exportMainTf({ includeState, include, exclude: [...exclude, ...noScope], dependencies: !!req.body.dependencies }));
+          }
+        }
         job.phase = 'save';
         const out = path.join(work, 'out');
         if (!fs.existsSync(out)) throw new Error('The exporter wrote no files');

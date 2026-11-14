@@ -296,6 +296,26 @@ test('eksportens log: hjælpe-ressourcens plan skjules, ventelinjer og 403 samle
   assert.deepEqual(HCL.logFilter()('Plan: 3 to add, 0 to change, 0 to destroy.'), { log: 'Plan: 3 to add, 0 to change, 0 to destroy.' });
 });
 
+test('et manglende OAuth-scope stopper eksportøren — typen findes, så den kan udelades', () => {
+  // Falck US, ordret som terraform ombrød den
+  const ud = `Error: API Error
+  on main.tf line 13, in resource "genesyscloud_tf_export" "export":
+  13: resource "genesyscloud_tf_export" "export" {
+{"resourceType":"genesyscloud_webdeployments_deployment_identity_resolution","method":"GET","path":"/api/v2/webdeployments/deployments","statusCode":403,"errorMessage":"API
+Error: 403 - App not authorized to use scope [webdeployments:readonly,
+webdeployments]
+(66b9b2d4-d832-4cda-a81c-7cd3cab1eaf1)","correlationId":"66b9b2d4-d832-4cda-a81c-7cd3cab1eaf1"}
+{"resourceType":"genesyscloud_quality_forms_evaluation","method":"GET","path":"/api/v2/quality/forms","statusCode":403,"errorMessage":"API Error: 403 - You are missing the following permission(s): [quality:evaluationForm:view] (x)","correlationId":"x"}`;
+  assert.deepEqual(HCL.exportFailures(ud), [
+    { type: 'genesyscloud_webdeployments_deployment_identity_resolution', perm: 'scope webdeployments:readonly' },
+    { type: 'genesyscloud_quality_forms_evaluation', perm: 'quality:evaluationForm:view' }]);
+  assert.deepEqual(HCL.exportFailures('Error: something else'), []);
+  const R = kilde('routes/terraform.js');
+  const exp = R.slice(R.indexOf("router.post('/api/terraform/export'"), R.indexOf('// ── Kørsler'));
+  assert.match(exp, /exclude: \[\.\.\.exclude, \.\.\.noScope\]/, 'typen udelades ved næste forsøg');
+  assert.match(exp, /forsoeg >= 40/, 'en ukendt fejl kører ikke i ring');
+});
+
 test('eksporten oplyser at org\'en kun læses, og en stoppet eksport ryddes op', () => {
   const R = kilde('routes/terraform.js');
   const exp = R.slice(R.indexOf("router.post('/api/terraform/export'"), R.indexOf('// ── Kørsler'));
