@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.83.0
+# Archy GUI — Flow Manager · v1.83.1
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.83.0**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.83.0**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.83.1**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.83.1**.
 
 ---
 
@@ -380,7 +380,7 @@ Siden migrerer det der ikke er flows mellem to orgs, fordelt på otte faner: **D
 
 **Afhængigheder ved flow-migrering.** Et flow tager det med, det bruger: tabeller, data actions, prompts, scripts, køer, grupper, åbningstider, vidensbaser, **kontaktlister** (et outbound-flow) og andre flows. Et survey-flow, som et outbound-flow peger på via *Set Post-Flow*, migreres først — sammen med sin **survey form**, som kopieres og udgives i målet. Archy finder kun udgivne survey forms, og et survey-flow kan være bundet til en ældre version af formen; Genesys skriver det i flowets indstillinger, og så skal flowet oprettes på ny på formens nyeste version, før det kan migreres.
 
-**Fanen Terraform** har tre dele: *Fuld eksport*, *Hurtig startopsætning* og *Arbejdsmapper*, og en **📖 Guide** (CX as Code, org til org — uden kontrolspørgsmålene) åbner i et nyt vindue på dansk eller engelsk.
+**Fanen Terraform** har tre dele: *Fuld eksport*, *Hurtig startopsætning* og *Arbejdsmapper*, og en **📖 Guide** (Terraform i Archy GUI: én org trin for trin med knapperne i Archy GUI — eksport, ret, plan og apply, fx en testgruppe der oprettes og slettes igen — og derefter org til org) åbner i et nyt vindue på dansk eller engelsk.
 
 **Fuld eksport** kører Genesys' egen eksportør, `genesyscloud_tf_export`, mod kilden og gemmer alle objekter som `.tf`-filer, én fil pr. type, i `data/terraform/<fra>[_<til>]/<dato>_full/`. Flows kommer med som YAML. Man kan tage alle typer eller vælge dem fra providerens liste, og *Tag afhængigheder med* slår `enable_dependency_resolution` til. Uden mål styrer mappen kilden selv: `terraform.tfstate` kommer med, så `plan` viser 0 ændringer, indtil filerne rettes. Med et mål kommer der ingen state med, så `apply` opretter objekterne i målet. Terraform får Archy GUI's eget login gennem `GENESYSCLOUD_ACCESS_TOKEN`, også et personligt PKCE-login, og der skrives aldrig en secret i mappen. Kræver `terraform.exe`, som findes i PATH, i `C:\Tools\Terraform` eller på en sti man skriver i fanen. Provideren hentes én gang til en fælles cache, `data/terraform/.plugin-cache`.
 
@@ -924,7 +924,7 @@ This page migrates everything that is not a flow between two orgs, across eight 
 
 **Dependencies when migrating a flow.** A flow brings what it uses: tables, data actions, prompts, scripts, queues, groups, schedules, knowledge bases, **contact lists** (an outbound flow) and other flows. A survey flow that an outbound flow points to via *Set Post-Flow* is migrated first — together with its **survey form**, which is copied and published in the target. Archy only finds published survey forms, and a survey flow can be bound to an older version of the form; Genesys says so in the flow's settings, and the flow must then be recreated on the form's latest version before it can be migrated.
 
-**The Terraform tab** has three parts — *Full export*, *Quick starting setup* and *Working folders* — and a **📖 Guide** (CX as Code, org to org — without the quiz) that opens in a new window in Danish or English.
+**The Terraform tab** has three parts — *Full export*, *Quick starting setup* and *Working folders* — and a **📖 Guide** (Terraform in Archy GUI: one org step by step with the buttons in Archy GUI — export, edit, plan and apply, e.g. a test group created and deleted again — and then org to org) that opens in a new window in Danish or English.
 
 **Full export** runs Genesys' own exporter, `genesyscloud_tf_export`, against the source and saves every object as `.tf` files, one file per type, in `data/terraform/<from>[_<to>]/<date>_full/`. Flows come along as YAML. Take all types or pick them from the provider's list; *Include dependencies* turns on `enable_dependency_resolution`. Without a target the folder manages the source itself: `terraform.tfstate` comes along, so `plan` shows 0 changes until the files are edited. With a target no state comes along, so `apply` creates the objects in the target. Terraform gets Archy GUI's own login through `GENESYSCLOUD_ACCESS_TOKEN` — a personal PKCE login too — and no secret is ever written to the folder. Needs `terraform.exe`, found in PATH, in `C:\Tools\Terraform` or at a path entered in the tab. The provider is downloaded once to a shared cache, `data/terraform/.plugin-cache`.
 

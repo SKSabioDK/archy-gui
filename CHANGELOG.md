@@ -5,6 +5,16 @@
 
 ---
 
+### v1.83.1
+---
+**🇩🇰 Dansk**
+
+- **Guiden følger nu Archy GUI.** *📖 Guide: Terraform i Archy GUI* forklarer arbejdet med knapperne i programmet i stedet for generel CX as Code med CI og tfvars. Først én org: fuld eksport, ret med Opgaver, Ressourcer eller Filer, plan for kun det du har ændret, og apply. Eksemplet er gruppen TestTest, der oprettes og slettes igen. Derefter org til org med *Kopiér til en anden org*, og hvordan kunden tager mappen med i sin egen pipeline. Slides om adgang, eksport, hemmeligheder og faldgruber beskriver nu det, Archy GUI gør: dit login giver tokenet, scope-tjekket, pladsholdere med rød advarsel og den udfyldte plan.
+
+**🇬🇧 English**
+- **The guide now follows Archy GUI**: one org step by step with the program's buttons (export, edit, plan only what you changed, apply — the TestTest group as the example), then org to org and handing the folder to the customer.
+
+---
 ### v1.83.0
 ---
 **🇩🇰 Dansk**
