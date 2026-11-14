@@ -5,6 +5,24 @@
 
 ---
 
+### v1.82.4
+---
+**🇩🇰 Dansk**
+
+- **Brugere og grupper forsvandt stille fra eksporten af Falck US.** OAuth-klienten manglede scopet `voicemail`. Eksportøren kunne derfor ikke læse voicemail-politikken for hver bruger og gruppe og udelod dem. Eksporten blev "færdig" med 648 ressourcer, men uden `genesyscloud_user.tf` og `genesyscloud_group.tf`, og det stod kun i `export_errors.json`. Desuden kunne retry-logikken fra v1.82.2 have udeladt hele typen, fordi fejlen nævnte `genesyscloud_user`.
+- **Scope-tjek før eksporten.** Archy GUI slår miljøets OAuth-klient op og viser på én gang de scopes, eksporten mangler. Listen kan kopieres og indsættes under *Admin → OAuth → Scope*. Man kan også vælge *Eksportér alligevel*. Før kom de ét ad gangen, og Falck US nåede forsøg 7. Scope-navnene er dem, Genesys selv skrev i fejllisten, fx `voicemail`, `workitems`, `journey`, `speech-and-text-analytics` og `identity-providers`.
+- **En type udelades kun, hvis det er dens egne objekter, der ikke kan læses.** Fejler et opslag i et andet område, fx `/api/v2/voicemail/...` for en bruger, stopper eksporten med besked om, hvilket scope der skal tilføjes.
+- **Eksportørens fejlliste vises.** Efter eksporten læses `export_errors.json` og vises pr. manglende scope eller rettighed med *hele typen*, *ingen kom med* eller *n objekter*. Typer, der helt mangler, selv om org'en har dem, står øverst med rødt. Listen vises også i arbejdsmappens hoved og gemmes i `workspace.json`.
+- 3 nye tests med data fra Falck US: voicemail-opslaget udelader ikke brugere og grupper, scope-tjekket kommer før eksporten, og fejllisten samles korrekt.
+
+**🇬🇧 English**
+- **Users and groups silently dropped out of the Falck US export** because the OAuth client lacked `voicemail`; it only showed in `export_errors.json`.
+- **Scope check before the export:** every missing scope at once, with a copy button, or *Export anyway*.
+- **A type is left out only when its own objects cannot be read** — never for a lookup in another area.
+- **The exporter's error list is shown** per missing scope or permission, with types missing entirely on top in red.
+- 3 new tests.
+
+---
 ### v1.82.3
 ---
 **🇩🇰 Dansk**

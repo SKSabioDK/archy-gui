@@ -128,6 +128,7 @@ function wsSummary(dir) {
     initialized: fs.existsSync(path.join(dir, '.terraform')),
     lastPlan: plan && fs.existsSync(path.join(dir, PLAN_FILE)) ? { created: plan.created, envId: plan.envId, summary: plan.summary, planHash: plan.hash } : null,
     lastApply: meta.lastApply || null,
+    exportErrors: exportErrors(dir),
   };
 }
 
@@ -162,10 +163,20 @@ function needTerraform() {
 async function envLogin(env) {
   if (!env) throw httpError(404, 'The org this folder belongs to no longer exists in Archy GUI');
   if (isDemo(env)) throw httpError(400, `"${env.name}" is a demo environment — it has no org for Terraform to talk to`);
-  const { token } = await getToken(env);
+  const { token, apiBase } = await getToken(env);
   const region = TERRAFORM.awsRegion(env.region);
   if (!region) throw httpError(400, `Unknown region for "${env.name}": ${env.region}`);
-  return { token, region };
+  return { token, region, apiBase };
+}
+
+// Scopes PKCE-klienten mangler til en eksport. Kan klienten ikke slås op (fx
+// uden oauth:client:view), tjekkes der ikke — eksporten viser det så selv.
+async function missingClientScopes(env, token, apiBase) {
+  if (env.authType !== 'oauth' || !env.clientId) return [];
+  try {
+    const r = await axios.get(`${apiBase}/api/v2/oauth/clients/${encodeURIComponent(env.clientId)}`, { headers: { Authorization: `Bearer ${token}` } });
+    return HCL.missingExportScopes(r.data && r.data.scope);
+  } catch (_) { return []; }
 }
 
 // En terraform-kommando i et job. Uddata går gennem logFilter: ventelinjer bliver
@@ -383,6 +394,15 @@ const exportReadme = (lang, src, tgt, state) => (README_TEXT[lang] || README_TEX
 
 const TYPE_RE = /^genesyscloud_[a-z0-9_]+(::.+)?$/;
 
+// Eksportørens egen fejlliste (export_errors.json) samlet pr. manglende scope
+// eller rettighed, med de typer der ikke kom (helt) med.
+function exportErrors(dir) {
+  try {
+    const written = new Set(tfFiles(dir).map(f => path.basename(f.path, '.tf')));
+    return HCL.summarizeExportErrors(fs.readFileSync(path.join(dir, 'export_errors.json'), 'utf8'), written);
+  } catch (_) { return []; }
+}
+
 router.post('/api/terraform/export', async (req, res) => {
   try {
     const all = loadCustomers();
@@ -393,7 +413,13 @@ router.post('/api/terraform/export', async (req, res) => {
     const exclude = (Array.isArray(req.body.exclude) ? req.body.exclude : []).map(String).filter(t => TYPE_RE.test(t));
     const lang = /^[a-z]{2}$/.test(String(req.body.lang || '')) ? req.body.lang : 'en';
     const exe = needTerraform();
-    const { token, region } = await envLogin(source);
+    const { token, region, apiBase } = await envLogin(source);
+    // Først: mangler OAuth-klienten scopes? Eksportøren melder dem ét ad gangen
+    // og taber stille hele typer (Falck US: alle brugere og grupper på voicemail).
+    const missingScopes = await missingClientScopes(source, token, apiBase);
+    if (missingScopes.length && req.body.ignoreScopes !== true)
+      return res.status(409).json({ error: `The OAuth client of ${source.name} lacks ${missingScopes.length} scope(s) the export reads with`,
+        hint: 'missing_scopes', missingScopes, clientId: source.clientId });
     // Uden mål styrer mappen kilden selv: state kommer med, så plan viser 0 ændringer.
     const includeState = !target;
     const dir = newWsDir(source, target, '_full');
@@ -422,6 +448,12 @@ router.post('/api/terraform/export', async (req, res) => {
             if (e.message === 'Stopped') throw e;
             const fails = HCL.exportFailures(e.output).filter(f => !noScope.includes(f.type) && !exclude.includes(f.type));
             if (!fails.length || forsoeg >= 40) throw e;
+            // Fejler et opslag i et andet område (brugeres voicemail-politik), må
+            // typen ikke udelades — så forsvandt alle brugere. Stop og sig hvad der mangler.
+            const foreign = fails.filter(f => !HCL.isOwnRead(f.type, f.path));
+            if (foreign.length)
+              throw Object.assign(new Error(foreign.map(f => `${f.type} needs ${f.perm} (${f.path})`).join('; ') +
+                ' — add it to the OAuth client and log in again'), { hint: 'missing_scope', output: e.output });
             for (const f of fails) { noScope.push(f.type); HCL.addSkipped(job.skipped, { perm: f.perm, what: f.type }); }
             log(`Skipped ${fails.map(f => `${f.type} (${f.perm})`).join(', ')} — the login cannot read it. Starting the export again without it …`);
             job.retries = forsoeg;
@@ -442,7 +474,7 @@ router.post('/api/terraform/export', async (req, res) => {
       if (!fs.existsSync(path.join(dir, 'README.md'))) fs.writeFileSync(path.join(dir, 'README.md'), exportReadme(lang, source.name, target && target.name, includeState));
       writeMeta(dir, { kind: 'export', created: new Date().toISOString(), sourceId: source.id, sourceName: source.name,
         targetId: target ? target.id : null, targetName: target ? target.name : null, includeState, lang, include, exclude,
-        skipped: job.skipped });
+        skipped: job.skipped, errors: exportErrors(dir) });
       // Med state skal mappen kunne planlægges med det samme
       if (includeState) {
         job.phase = 'init_ws';
@@ -453,7 +485,7 @@ router.post('/api/terraform/export', async (req, res) => {
       const s = wsSummary(dir);
       addLog('SUCCESS', `Terraform full export of ${source.name}${target ? ' (for ' + target.name + ')' : ''}: ${s.resources} resources in ${path.relative(ROOT_DIR, dir)}` +
         (job.skipped.length ? `; skipped for missing permissions: ${job.skipped.map(x => x.perm).join(', ')}` : ''), source.name, 'TERRAFORM');
-      return { ws, resources: s.resources, files: s.files, skipped: job.skipped };
+      return { ws, resources: s.resources, files: s.files, skipped: job.skipped, errors: exportErrors(dir) };
     });
     // En fejlet eller stoppet eksport efterlader ingen halv mappe
     const watch = setInterval(() => {

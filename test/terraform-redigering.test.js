@@ -319,13 +319,55 @@ webdeployments]
 (66b9b2d4-d832-4cda-a81c-7cd3cab1eaf1)","correlationId":"66b9b2d4-d832-4cda-a81c-7cd3cab1eaf1"}
 {"resourceType":"genesyscloud_quality_forms_evaluation","method":"GET","path":"/api/v2/quality/forms","statusCode":403,"errorMessage":"API Error: 403 - You are missing the following permission(s): [quality:evaluationForm:view] (x)","correlationId":"x"}`;
   assert.deepEqual(HCL.exportFailures(ud), [
-    { type: 'genesyscloud_webdeployments_deployment_identity_resolution', perm: 'scope webdeployments:readonly' },
-    { type: 'genesyscloud_quality_forms_evaluation', perm: 'quality:evaluationForm:view' }]);
+    { type: 'genesyscloud_webdeployments_deployment_identity_resolution', perm: 'scope webdeployments:readonly', path: '/api/v2/webdeployments/deployments' },
+    { type: 'genesyscloud_quality_forms_evaluation', perm: 'quality:evaluationForm:view', path: '/api/v2/quality/forms' }]);
   assert.deepEqual(HCL.exportFailures('Error: something else'), []);
   const R = kilde('routes/terraform.js');
   const exp = R.slice(R.indexOf("router.post('/api/terraform/export'"), R.indexOf('// ── Kørsler'));
   assert.match(exp, /exclude: \[\.\.\.exclude, \.\.\.noScope\]/, 'typen udelades ved næste forsøg');
   assert.match(exp, /forsoeg >= 40/, 'en ukendt fejl kører ikke i ring');
+});
+
+test('brugere og grupper udelades aldrig for et opslag i et andet område (voicemail)', () => {
+  // Falck US forsøg 7: genesyscloud_group fejlede på gruppens voicemail-politik.
+  // Var hele typen blevet udeladt, var alle grupper og brugere forsvundet.
+  assert.equal(HCL.isOwnRead('genesyscloud_group', '/api/v2/voicemail/groups/25bd0d19/policy'), false);
+  assert.equal(HCL.isOwnRead('genesyscloud_user', '/api/v2/voicemail/userpolicies/6fc18d30'), false);
+  assert.equal(HCL.isOwnRead('genesyscloud_webdeployments_deployment_identity_resolution', '/api/v2/webdeployments/deployments'), true);
+  assert.equal(HCL.isOwnRead('genesyscloud_telephony_providers_edges_trunk', '/api/v2/telephony/providers/edges/trunks'), true);
+  assert.equal(HCL.isOwnRead('genesyscloud_conversations_messaging_integrations_open_identity_resolution', '/api/v2/conversations/messaging/integrations/open'), true);
+  assert.equal(HCL.isOwnRead('genesyscloud_group', '/api/v2/groups/1'), true);
+  const R = kilde('routes/terraform.js');
+  assert.match(R, /const foreign = fails\.filter\(f => !HCL\.isOwnRead\(f\.type, f\.path\)\)/);
+});
+
+test('OAuth-klientens scopes tjekkes før eksporten, så alle mangler ses på én gang', () => {
+  assert.deepEqual(HCL.missingExportScopes([]), [], 'en klient uden scope-liste begrænser ikke');
+  assert.deepEqual(HCL.missingExportScopes(['*']), []);
+  const alle = HCL.EXPORT_SCOPES.map(s => s + ':readonly');
+  assert.deepEqual(HCL.missingExportScopes(alle), []);
+  assert.deepEqual(HCL.missingExportScopes(HCL.EXPORT_SCOPES), [], 'det fulde scope dækker også læsning');
+  const uden = HCL.missingExportScopes(alle.filter(s => s !== 'voicemail:readonly' && s !== 'workitems:readonly'));
+  assert.deepEqual(uden, ['voicemail:readonly', 'workitems:readonly']);
+  const R = kilde('routes/terraform.js');
+  const exp = R.slice(R.indexOf("router.post('/api/terraform/export'"), R.indexOf('// ── Kørsler'));
+  assert.ok(exp.indexOf('missingClientScopes(') < exp.indexOf('CLI.startJob('), 'tjekket kommer før eksporten starter');
+  assert.match(exp, /req\.body\.ignoreScopes !== true/, 'man kan vælge at eksportere alligevel');
+});
+
+test('export_errors.json samles pr. scope — typer der helt mangler, står øverst', () => {
+  // Udsnit af Falck US' export_errors.json
+  const fil = JSON.stringify({
+    genesyscloud_user: Array(11).fill({ error_message: 'Failed to read voicemail userpolicies x error: API Error: 403 - App not authorized to use scope [voicemail, voicemail:readonly] (c7c8d05a-2600-44e1-b555-9c8639b0d56c)', resource_id: 'u1' }),
+    genesyscloud_group: Array(6).fill({ error_message: 'Failed to read group voicemail policy: API Error: 403 - App not authorized to use scope [voicemail, voicemail:readonly] (x)', resource_id: 'g1' }),
+    genesyscloud_task_management_workbin: [{ error_message: 'Failed: API Error: 403 - App not authorized to use scope [workitems:readonly, workitems] (x)', resource_id: '*' }],
+    genesyscloud_routing_sms_address: [{ error_message: 'Failed to get sms addresses: API Error: 403 - You are missing the following permission(s): [sms:phoneNumber:view] (x)', resource_id: '*' }],
+  });
+  const s = HCL.summarizeExportErrors(fil, new Set(['genesyscloud_routing_queue']));
+  assert.equal(s[0].need, 'scope voicemail:readonly');
+  assert.deepEqual(s[0].types.map(t => [t.type, t.count, t.all, t.none]), [['genesyscloud_group', 6, false, true], ['genesyscloud_user', 11, false, true]]);
+  assert.deepEqual(s.slice(1).map(g => g.need), ['scope workitems:readonly', 'sms:phoneNumber:view']);
+  assert.equal(s[1].types[0].all, true);
 });
 
 test('eksporten oplyser at org\'en kun læses, og en stoppet eksport ryddes op', () => {

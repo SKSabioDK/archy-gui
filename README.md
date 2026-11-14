@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.82.3
+# Archy GUI — Flow Manager · v1.82.4
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.82.3**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.82.3**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.82.4**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.82.4**.
 
 ---
 
@@ -390,7 +390,7 @@ Siden migrerer det der ikke er flows mellem to orgs, fordelt på otte faner: **D
 - **Plan & apply** — Init, Fmt, Validate og Plan. Planen vises som `+ ~ - ±` pr. ressource med de felter, der ændres. **Apply** udfører kun den gemte plan, du har set (filens hash skal passe), og står bag prod-vagten, så prod kræver dit personlige prod-login. Et apply kan ikke stoppes halvvejs.
 - **Kopiér til en anden org** laver en kopi uden state til et nyt mål, og **Slet mappe** fjerner den lokalt (org'en røres ikke).
 
-Under en eksport står der, hvad den er i gang med, og hvor længe den har kørt, og at org'en kun læses — terraforms "apply" og "Creating" gælder kun eksportørens hjælpe-ressource i en lokal fil. Typer, login'et ikke må læse (403), samles i en liste med den rettighed eller det scope der mangler. Mangler OAuth-klienten et scope, stopper Genesys' eksportør helt; så udelader Archy GUI typen og starter eksporten forfra (*forsøg 2, 3 …*); terraforms egen log ligger foldet sammen nedenunder. **Stop** dræber terraform og provideren og sletter den halve mappe. Går man til en anden fane, kører eksporten videre og følges igen, når man kommer tilbage.
+Under en eksport står der, hvad den er i gang med, og hvor længe den har kørt, og at org'en kun læses — terraforms "apply" og "Creating" gælder kun eksportørens hjælpe-ressource i en lokal fil. Typer, login'et ikke må læse (403), samles i en liste med den rettighed eller det scope der mangler. Før eksporten slår Archy GUI miljøets OAuth-klient op og viser på én gang de scopes, den mangler (med en kopiér-knap); man kan rette klienten eller eksportere alligevel. Mangler et scope til typens egne objekter, udelader Archy GUI typen og starter forfra (*forsøg 2, 3 …*) — men aldrig for et opslag i et andet område, så brugere og grupper ikke forsvinder på scopet voicemail. Efter eksporten læses eksportørens `export_errors.json` og vises pr. manglende scope eller rettighed, med typer der helt mangler øverst i rødt, også under mappen i *Arbejdsmapper*; terraforms egen log ligger foldet sammen nedenunder. **Stop** dræber terraform og provideren og sletter den halve mappe. Går man til en anden fane, kører eksporten videre og følges igen, når man kommer tilbage.
 
 Fejler terraform, forklarer fanen de kendte årsager. Et antivirusprogram, der scanner krypteret trafik (fx Norton), kan bryde forbindelsen mellem `terraform.exe` og provideren (*x509: certificate signed by unknown authority*). Så skal `terraform.exe` og `terraform-provider-*.exe` undtages fra scanningen.
 
@@ -552,7 +552,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-568 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+571 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både serverens kode i `src/` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -933,7 +933,7 @@ This page migrates everything that is not a flow between two orgs, across eight 
 - **Plan & apply** — Init, Fmt, Validate and Plan. The plan is shown as `+ ~ - ±` per resource with the fields that change. **Apply** carries out only the saved plan you have seen (the file's hash must match) and sits behind the prod guard, so prod needs your personal prod login. An apply cannot be stopped halfway.
 - **Copy to another org** makes a copy without state for a new target, and **Delete folder** removes it locally (the org is not touched).
 
-During an export the tab shows what it is doing, how long it has run, and that the org is only read — terraform's "apply" and "Creating" refer only to the exporter's helper resource in a local file. Types the login may not read (403) are gathered in a list with the missing permission or scope. A missing OAuth scope makes Genesys' exporter stop outright; Archy GUI then leaves the type out and starts the export again (*attempt 2, 3 …*); terraform's own log is folded away below. **Stop** kills terraform and the provider and deletes the half-written folder. Switching tabs leaves the export running, and it is followed again when you come back.
+During an export the tab shows what it is doing, how long it has run, and that the org is only read — terraform's "apply" and "Creating" refer only to the exporter's helper resource in a local file. Types the login may not read (403) are gathered in a list with the missing permission or scope. Before the export Archy GUI looks up the environment's OAuth client and shows every missing scope at once (with a copy button); fix the client or export anyway. When a scope for the type's own objects is missing, the type is left out and the export starts again (*attempt 2, 3 …*) — never for a lookup in another area, so users and groups do not vanish on the voicemail scope. After the export the exporter's `export_errors.json` is shown per missing scope or permission, with types missing entirely on top in red, also on the folder in *Working folders*; terraform's own log is folded away below. **Stop** kills terraform and the provider and deletes the half-written folder. Switching tabs leaves the export running, and it is followed again when you come back.
 
 When terraform fails, the tab explains the known causes. Antivirus that scans encrypted traffic (e.g. Norton) can break the connection between `terraform.exe` and the provider (*x509: certificate signed by unknown authority*); exclude `terraform.exe` and `terraform-provider-*.exe` from the scan.
 
@@ -1095,7 +1095,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-568 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+571 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both the server code in `src/` and `index.html` and fail if the rules get copied out again.
 

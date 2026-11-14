@@ -455,16 +455,73 @@ function skippedWhat(line) {
 function exportFailures(output) {
   const flat = String(output || '').replace(/\s*\r?\n\s*/g, ' ');
   const out = [];
-  const re = /\{"resourceType":"(genesyscloud_[a-z0-9_]+)"[^{}]*?"statusCode":(40[13])[^{}]*?"errorMessage":"((?:[^"\\]|\\.)*)"/g;
+  const re = /\{"resourceType":"(genesyscloud_[a-z0-9_]+)"(?:,"method":"[A-Z]+")?(?:,"path":"([^"]*)")?[^{}]*?"statusCode":(40[13])[^{}]*?"errorMessage":"((?:[^"\\]|\\.)*)"/g;
   let m;
   while ((m = re.exec(flat))) {
-    const msg = m[3];
+    const msg = m[4];
     const scope = /scope \[([^\],]+)/.exec(msg);
     const p = PERM_RE.exec(msg);
-    const perm = scope ? 'scope ' + scope[1].trim() : p ? (p[1] || p[2] || p[3]).trim() : 'HTTP ' + m[2];
-    if (!out.some(x => x.type === m[1])) out.push({ type: m[1], perm });
+    const perm = scope ? 'scope ' + scope[1].trim() : p ? (p[1] || p[2] || p[3]).trim() : 'HTTP ' + m[3];
+    if (!out.some(x => x.type === m[1])) out.push({ type: m[1], perm, path: (m[2] || '').replace(/ /g, '') });
   }
   return out;
+}
+
+// Er det typens egne objekter der ikke kunne læses — eller et opslag i et
+// andet område? genesyscloud_group fejlede på /api/v2/voicemail/groups/…/policy
+// (scope voicemail). Blev hele typen udeladt for det, forsvandt alle grupper og
+// brugere fra eksporten. Området er leddet efter /api/v2/; står det i typens
+// navn (telephony_…, webdeployments_…, routing_…), er det typens egen læsning.
+function isOwnRead(type, apiPath) {
+  const area = (/^\/api\/v2\/([a-z-]+)/.exec(String(apiPath || '')) || [])[1];
+  if (!area) return true;
+  const body = String(type).replace(/^genesyscloud_/, '');
+  const a = area.replace(/-/g, '_');
+  return body.includes(a) || body.includes(a.replace(/s$/, ''));
+}
+
+// ── OAuth-klientens scopes ────────────────────────────────────────────────────
+// Med PKCE begrænser klientens scopes hvad login'et må, også for en Master
+// Admin. Eksportøren melder kun ét manglende scope ad gangen og stopper, så
+// Falck US nåede forsøg 7. Listen her er de områder eksportøren læser; de
+// tjekkes før eksporten, så alle mangler ses på én gang.
+// Navnene er dem Genesys selv skrev i export_errors.json fra Falck US.
+const EXPORT_SCOPES = ['agentic-virtualagents', 'ai-studio', 'alerting', 'analytics', 'architect', 'authorization',
+  'business-rules', 'case-management', 'conversations', 'employee-performance', 'external-contacts', 'greetings',
+  'groups', 'identity-providers', 'integrations', 'journey', 'knowledge', 'learning', 'locations', 'messaging', 'oauth',
+  'organization', 'outbound', 'presence', 'process-automation', 'quality', 'recordings', 'response-management',
+  'routing', 'scripts', 'speech-and-text-analytics', 'telephony', 'users', 'users-rules', 'voicemail',
+  'webdeployments', 'workforce-management', 'workitems'];
+
+// export_errors.json, som eksportøren skriver i mappen, samlet pr. manglende
+// scope eller rettighed. all: hele typen kunne ikke hentes; none: der kom
+// ingen fil for typen (Falck US: alle brugere og grupper faldt ud på scopet
+// voicemail, uden at det stod nogen steder). → [{ need, types: [{ type, count, all, none }] }]
+function summarizeExportErrors(json, writtenTypes = new Set()) {
+  const e = typeof json === 'string' ? JSON.parse(json) : (json || {});
+  const groups = new Map();
+  for (const [type, list] of Object.entries(e)) {
+    if (!Array.isArray(list) || !list.length) continue;
+    const msg = String(list[0].error_message || '');
+    const scope = /scope \[([^\],]+)/.exec(msg);
+    const p = PERM_RE.exec(msg);
+    const need = scope ? 'scope ' + scope[1].trim().replace(/:readonly$/, '') + ':readonly'
+      : p ? (p[1] || p[2] || p[3]).trim() : msg.replace(/\s*\([0-9a-f-]{36}\)\s*$/, '').slice(0, 120);
+    if (!groups.has(need)) groups.set(need, []);
+    groups.get(need).push({ type, count: list.length, all: list.some(x => x.resource_id === '*'), none: !writtenTypes.has(type) });
+  }
+  return [...groups.entries()]
+    .map(([need, types]) => ({ need, types: types.sort((a, b) => a.type.localeCompare(b.type)) }))
+    .sort((a, b) => (b.types.some(t => !t.all && t.none) - a.types.some(t => !t.all && t.none)) || a.need.localeCompare(b.need));
+}
+
+// Scopes klienten mangler til en eksport. En klient uden scope-liste (client
+// credentials, eller ingen begrænsning) mangler intet.
+function missingExportScopes(clientScopes) {
+  if (!Array.isArray(clientScopes) || !clientScopes.length) return [];
+  const have = new Set(clientScopes.map(s => String(s).toLowerCase()));
+  if (have.has('*')) return [];
+  return EXPORT_SCOPES.filter(s => !have.has(s) && !have.has(s + ':readonly')).map(s => s + ':readonly');
 }
 
 // Sprungne typer samlet pr. rettighed: [{ perm, what: [...] }]
@@ -546,4 +603,4 @@ function exampleBlock(name, b) {
 
 module.exports = { scanBlocks, blockEntries, resources, editResource, addResource, removeResource, newResourceText,
   literalOf, decodeString, encodeValue, hclString, summarizePlan, errorHint, exportMainTf, trimSchema, exampleBlock,
-  logFilter, addSkipped, exportFailures };
+  logFilter, addSkipped, exportFailures, isOwnRead, missingExportScopes, EXPORT_SCOPES, summarizeExportErrors };
