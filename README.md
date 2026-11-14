@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.82.6
+# Archy GUI — Flow Manager · v1.83.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.82.6**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.82.6**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.83.0**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.83.0**.
 
 ---
 
@@ -387,6 +387,7 @@ Siden migrerer det der ikke er flows mellem to orgs, fordelt på otte faner: **D
 **Arbejdsmapper** viser alle opsætninger. Hver mappe hører til én org — målet, eller kilden når der ikke var et mål — og plan og apply kører kun mod den. I en mappe:
 - **Ressourcer** — ressourcerne grupperet efter type. Felterne vises i en formular bygget ud fra providerens beskrivelse (`terraform providers schema`): påkrævede felter er markeret, og de øvrige ligger under *Flere felter*. Tekst, tal og ja/nej er almindelige felter; lister, referencer og blokke skrives som HCL, og ethvert felt kan skiftes til HCL med **{ }**, fx for at pege på en anden ressource. En rettelse ændrer kun det felt, den handler om — kommentarer og resten af filen står. Man kan oprette en ny ressource ud fra providerens typer og fjerne en ressource; næste apply sletter den så i org'en.
 - **Filer** — `.tf`, `.tfvars`, YAML og README i en editor. State, planer og `.terraform/` kan ikke åbnes herfra.
+- **Opgaver** — de almindelige ændringer som en formular: opret køer, grupper, skills, wrap-up-koder, sprog eller en anden type. Skriv navnene, ét pr. linje, og vælg evt. en eksisterende at kopiere indstillingerne fra (alt undtagen navn og medlemmer, fx ACW, skills, flows og division). Archy skriver blokkene i .tf-filen, sætter planen til netop dem og kører Plan; intet sker i org'en før Apply. Mappen husker hvad du har oprettet, rettet eller slettet siden sidste apply (i formularen, filredigeringen eller en opgave). Hovedet viser *N ændringer venter på apply*, og planfeltet udfyldes selv med dem.
 - **Plan & apply** — Init, Fmt, Validate og Plan. **Begræns planen til det du har rørt** (`terraform plan -target`): skriv adresserne, fx `genesyscloud_group.testtest`, eller tryk **🎯 Plan kun denne** i formularen — også efter en sletning. En fuld eksport er aldrig uden afvigelser: Falck US' første plan ville ændre 245 objekter, bl.a. credentials og OAuth-klienter, som eksportøren kun kender som pladsholdere. Ændrer en plan sådanne hemmeligheder, vises en rød advarsel, og apply kræver et ekstra ja. **Ryd ubrugte data-opslag** fjerner data-opslag som ingen ressource bruger (tvetydige opslag stoppede planen); det sker også automatisk efter en eksport, og de gemmes i `archy-removed-data.txt`. Før hver plan fjernes data-opslag fra `terraform.tfstate` (eksportøren skriver dem med en anden skemaversion end provideren, så planen ikke kunne vises); den gamle state ligger i `terraform.tfstate.backup`. Planen vises som `+ ~ - ±` pr. ressource med de felter, der ændres. **Apply** udfører kun den gemte plan, du har set (filens hash skal passe), og står bag prod-vagten, så prod kræver dit personlige prod-login. Et apply kan ikke stoppes halvvejs.
 - **Kopiér til en anden org** laver en kopi uden state til et nyt mål, og **Slet mappe** fjerner den lokalt (org'en røres ikke).
 
@@ -552,7 +553,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-575 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+577 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både serverens kode i `src/` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -930,6 +931,7 @@ This page migrates everything that is not a flow between two orgs, across eight 
 **Working folders** lists every setup. Each folder belongs to one org — the target, or the source when there was no target — and plan and apply only run against it. In a folder:
 - **Resources** — the resources grouped by type. The fields are shown in a form built from the provider's description (`terraform providers schema`): required fields are marked and the rest sit under *More fields*. Text, numbers and yes/no are plain inputs; lists, references and blocks are written as HCL, and any field can switch to HCL with **{ }**, e.g. to point at another resource. An edit changes only the field it is about — comments and the rest of the file stay. You can create a new resource from the provider's types and remove one; the next apply then deletes it in the org.
 - **Files** — `.tf`, `.tfvars`, YAML and README in an editor. State, plans and `.terraform/` cannot be opened from here.
+- **Tasks** — the common changes as a form: create queues, groups, skills, wrap-up codes, languages or another type. Enter the names, one per line, and optionally pick an existing one to copy settings from (everything except name and members). Archy writes the blocks, limits the plan to exactly them and runs Plan; nothing happens in the org before Apply. The folder remembers what you created, edited or deleted since the last apply; the header shows *N changes waiting for apply* and the plan field fills itself with them.
 - **Plan & apply** — Init, Fmt, Validate and Plan. **Limit the plan to what you touched** (`terraform plan -target`): enter the addresses, e.g. `genesyscloud_group.testtest`, or press **🎯 Plan only this** in the form — also after a delete. A full export always has drift: the first Falck US plan would have changed 245 objects, including credentials and OAuth clients the exporter only knows as placeholders. When a plan changes such secrets, a red warning is shown and apply needs an extra yes. **Remove unused data lookups** removes data lookups no resource uses (ambiguous ones stopped plan); this also happens after an export, and they are kept in `archy-removed-data.txt`. Before each plan, data lookups are removed from `terraform.tfstate` (the exporter writes them with a different schema version than the provider, so the plan could not be shown); the old state is in `terraform.tfstate.backup`. The plan is shown as `+ ~ - ±` per resource with the fields that change. **Apply** carries out only the saved plan you have seen (the file's hash must match) and sits behind the prod guard, so prod needs your personal prod login. An apply cannot be stopped halfway.
 - **Copy to another org** makes a copy without state for a new target, and **Delete folder** removes it locally (the org is not touched).
 
@@ -1095,7 +1097,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-575 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+577 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both the server code in `src/` and `index.html` and fail if the rules get copied out again.
 

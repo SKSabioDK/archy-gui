@@ -361,6 +361,54 @@ function removeResource(text, type, name) {
   return out.replace(/\n{3,}/g, '\n\n');
 }
 
+// ── Opgaver: flere ressourcer på én gang ──────────────────────────────────────
+// Felter der ikke kopieres fra en skabelon: medlemmer hører til den kø eller
+// gruppe man kopierer fra, ikke til de nye.
+const CLONE_SKIP = ['members', 'member_ids', 'depends_on'];
+
+// En kopi af en ressource med nyt lokalt navn og nyt "name". → bloktekst
+function cloneResource(text, type, fromName, newName, label, { skip = CLONE_SKIP } = {}) {
+  if (!NAME_RE.test(newName)) throw new Error(`Invalid name: ${newName}`);
+  const s = String(text);
+  const b = findResource(s, type, fromName);
+  const src = s.slice(b.start, b.end);
+  let block = `resource "${type}" "${newName}" ` + src.slice(src.indexOf('{'));
+  const [r] = resources(block);
+  const remove = r.entries.filter(e => skip.includes(e.key)).map(e => e.id);
+  block = editResource(block, type, newName, { set: { name: { string: label } }, remove });
+  return block.replace(/\s*$/, '') + '\n';
+}
+
+// Et lokalt navn (type.<navn>) ud fra et visningsnavn, der ikke er brugt i forvejen.
+function localName(label, taken) {
+  let base = String(label).normalize('NFKD').replace(/[̀-ͯ]/g, '')
+    .replace(/[æÆ]/g, m => m === 'æ' ? 'ae' : 'AE').replace(/[øØ]/g, m => m === 'ø' ? 'oe' : 'OE').replace(/[åÅ]/g, m => m === 'å' ? 'aa' : 'AA')
+    .replace(/[^A-Za-z0-9_-]+/g, '_').replace(/_{2,}/g, '_').replace(/^_+|_+$/g, '');
+  if (!/^[A-Za-z_]/.test(base)) base = 'r_' + base;
+  if (base === 'r_') base = 'r';
+  let n = base, i = 2;
+  while (taken.has(n)) n = `${base}_${i++}`;
+  taken.add(n);
+  return n;
+}
+
+// Ressourcer der er tilføjet, rettet eller fjernet mellem to udgaver af en fil.
+// Mellemrum tæller ikke, så fmt ikke gør alt "ændret". → ["type.navn"]
+function resourceTexts(text) {
+  const s = String(text || '');
+  const m = new Map();
+  for (const b of scanBlocks(s))
+    if (b.kind === 'resource' && b.labels.length === 2) m.set(`${b.labels[0]}.${b.labels[1]}`, s.slice(b.start, b.end).replace(/\s+/g, ' '));
+  return m;
+}
+function changedResources(before, after) {
+  const a = resourceTexts(before), b = resourceTexts(after);
+  const out = [];
+  for (const [k, v] of b) if (a.get(k) !== v) out.push(k);
+  for (const k of a.keys()) if (!b.has(k)) out.push(k);
+  return out;
+}
+
 // ── Ubrugte data-opslag ───────────────────────────────────────────────────────
 // Eksportøren skriver data-opslag (data "genesyscloud_integration_action" …)
 // som ingen ressource bruger. Falck US havde to integrationer med samme
@@ -659,4 +707,5 @@ function exampleBlock(name, b) {
 module.exports = { scanBlocks, blockEntries, resources, editResource, addResource, removeResource, newResourceText,
   literalOf, decodeString, encodeValue, hclString, summarizePlan, errorHint, exportMainTf, trimSchema, exampleBlock,
   logFilter, addSkipped, exportFailures, isOwnRead, missingExportScopes, EXPORT_SCOPES, summarizeExportErrors,
-  unusedDataBlocks, removeDataBlock, stripStateData, SECRET_TYPES, TARGET_RE };
+  unusedDataBlocks, removeDataBlock, stripStateData, SECRET_TYPES, TARGET_RE,
+  CLONE_SKIP, cloneResource, localName, changedResources };

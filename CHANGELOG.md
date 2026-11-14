@@ -5,6 +5,20 @@
 
 ---
 
+### v1.83.0
+---
+**🇩🇰 Dansk**
+
+- **Opgaver i Terraform-arbejdsmappen.** En ny fane, *Opgaver*, med de almindelige ændringer som formular: opret køer, grupper, skills, wrap-up-koder, sprog eller en anden type. Skriv navnene, ét pr. linje, og vælg evt. en eksisterende at kopiere indstillingerne fra. Alt undtagen navn og medlemmer kopieres, fx ACW, skills, flows og division. Archy GUI skriver blokkene i .tf-filen, sætter planen til netop de nye og kører Plan. Intet sker i org'en før Apply. Navne, der allerede findes i mappen, afvises, og en type der kræver mere end et navn (fx brugere), kræver en skabelon.
+- **Planen udfyldes selv med det, du har ændret.** Mappen husker, hvad du har oprettet, rettet eller slettet siden sidste apply: i formularen, i filredigeringen (kun de ressourcer der reelt ændrede sig; fmt tæller ikke) og i opgaverne. Hovedet viser *N ændringer venter på apply*, og planfeltet udfyldes med dem. Skriver du selv i feltet, gælder dit valg, og et link henter ændringerne igen. Efter et apply fjernes det anvendte fra listen. En ressource, der oprettes og slettes igen før et apply, forsvinder også fra listen.
+- 2 nye tests.
+
+**🇬🇧 English**
+- **Tasks** in the Terraform folder: create queues, groups, skills, wrap-up codes, languages or another type from a list of names, optionally copying the settings of an existing one (not name or members). Archy writes the blocks and runs a plan for exactly them.
+- **The plan field fills itself** with what you created, edited or deleted since the last apply; the header shows how many changes are waiting.
+- 2 new tests.
+
+---
 ### v1.82.6
 ---
 **🇩🇰 Dansk**

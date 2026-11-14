@@ -465,3 +465,43 @@ test('fanen har fuld eksport, startopsætning, arbejdsmapper og guiden — uden 
   assert.match(guide, /\[\?&\]lang=/, 'sproget følger Archy GUI');
   assert.ok(!/Falck|Vattenfall|Transcom/i.test(guide));
 });
+
+test('opgaver: kopier en kø uden navn og medlemmer, og find ledige lokale navne', () => {
+  const src = [
+    '# Kommentar over køen',
+    'resource "genesyscloud_routing_queue" "Akut" {',
+    '  name                     = "Akut"',
+    '  acw_wrapup_prompt        = "MANDATORY_TIMEOUT"',
+    '  skill_evaluation_method  = "ALL"',
+    '  division_id              = genesyscloud_auth_division.Home.id',
+    '  members {',
+    '    user_id = genesyscloud_user.a.id',
+    '  }',
+    '  media_settings_call {',
+    '    alerting_timeout_sec = 8',
+    '  }',
+    '}',
+    ''].join('\n');
+  const ny = HCL.cloneResource(src, 'genesyscloud_routing_queue', 'Akut', 'Support_DK', 'Support "DK"');
+  assert.ok(ny.startsWith('resource "genesyscloud_routing_queue" "Support_DK" {'), 'ny overskrift, ingen kommentar med');
+  const r = HCL.resources(ny)[0];
+  assert.equal(r.entries.find(e => e.key === 'name').literal.value, 'Support "DK"');
+  assert.ok(!r.entries.some(e => e.key === 'members'), 'medlemmer kopieres ikke');
+  assert.ok(ny.includes('genesyscloud_auth_division.Home.id') && ny.includes('alerting_timeout_sec = 8'), 'resten kopieres');
+  assert.ok(src.includes('user_id'), 'skabelonen er urørt');
+
+  const taken = new Set(['Akut']);
+  assert.equal(HCL.localName('Akut', taken), 'Akut_2');
+  assert.equal(HCL.localName('Kø Ærø/Søndag', taken), 'Koe_AEroe_Soendag');
+  assert.equal(HCL.localName('112 Akut', taken), 'r_112_Akut');
+  assert.equal(HCL.localName('!!!', taken), 'r');
+  assert.throws(() => HCL.cloneResource(src, 'genesyscloud_routing_queue', 'Findes_ikke', 'X', 'X'));
+});
+
+test('ændrede ressourcer findes ved at sammenligne en fil før og efter, og fmt tæller ikke', () => {
+  const a = 'resource "genesyscloud_group" "A" {\n  name = "A"\n}\n\nresource "genesyscloud_group" "B" {\n  name = "B"\n}\n';
+  assert.deepEqual(HCL.changedResources(a, a.replace(/name = /g, 'name   =  ')), [], 'kun mellemrum');
+  const b = a.replace('"B"\n', '"B2"\n') + '\nresource "genesyscloud_group" "C" {\n  name = "C"\n}\n';
+  assert.deepEqual(HCL.changedResources(a, b).sort(), ['genesyscloud_group.B', 'genesyscloud_group.C']);
+  assert.deepEqual(HCL.changedResources(a, ''), ['genesyscloud_group.A', 'genesyscloud_group.B'], 'en slettet fil');
+});

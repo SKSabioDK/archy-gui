@@ -107,6 +107,43 @@ function listFiles(dir) {
 
 const tfFiles = dir => listFiles(dir).filter(f => /\.tf$/i.test(f.path));
 
+// ── Ændret siden sidste apply ────────────────────────────────────────────────
+// Archy husker de ressourcer man har oprettet, rettet eller slettet her, så
+// planen kan begrænses til dem uden at nogen skal huske adresserne.
+function touch(dir, addrs) {
+  if (!addrs || !addrs.length) return;
+  const meta = readMeta(dir);
+  const set = new Set(meta.touched || []);
+  for (const a of addrs) set.add(a);
+  writeMeta(dir, { ...meta, touched: [...set] });
+}
+
+function configAddrs(dir) {
+  const out = new Set();
+  for (const f of tfFiles(dir)) {
+    try { for (const r of HCL.resources(fs.readFileSync(path.join(dir, f.path), 'utf8'))) out.add(`${r.type}.${r.name}`); } catch (_) {}
+  }
+  return out;
+}
+
+function stateAddrs(dir) {
+  try {
+    const st = JSON.parse(fs.readFileSync(path.join(dir, 'terraform.tfstate'), 'utf8'));
+    return new Set((st.resources || []).filter(r => r.mode === 'managed' && !r.module).map(r => `${r.type}.${r.name}`));
+  } catch (_) { return new Set(); }
+}
+
+// Kun det der stadig findes i filerne eller i state — en ressource der blev
+// oprettet og slettet igen før et apply, har intet at planlægge.
+function touchedNow(dir, meta) {
+  const list = meta.touched || [];
+  if (!list.length) return [];
+  const cfg = configAddrs(dir);
+  const missing = list.filter(a => !cfg.has(a));
+  const st = missing.length ? stateAddrs(dir) : new Set();
+  return list.filter(a => cfg.has(a) || st.has(a));
+}
+
 function wsSummary(dir) {
   const meta = readMeta(dir);
   const files = tfFiles(dir);
@@ -128,6 +165,7 @@ function wsSummary(dir) {
     initialized: fs.existsSync(path.join(dir, '.terraform')),
     lastPlan: plan && fs.existsSync(path.join(dir, PLAN_FILE)) ? { created: plan.created, envId: plan.envId, summary: plan.summary, planHash: plan.hash } : null,
     lastApply: meta.lastApply || null,
+    touched: touchedNow(dir, meta),
     exportErrors: exportErrors(dir),
   };
 }
@@ -577,7 +615,7 @@ router.post('/api/terraform/workspace/copy', (req, res) => {
     }
     if (fs.existsSync(path.join(from, 'README.md'))) fs.copyFileSync(path.join(from, 'README.md'), path.join(dir, 'README.md'));
     writeMeta(dir, { ...meta, kind: 'copy', created: new Date().toISOString(), targetId: target.id, targetName: target.name,
-      includeState: false, copiedFrom: wsId(from), lastApply: null });
+      includeState: false, copiedFrom: wsId(from), lastApply: null, touched: [] });
     addLog('INFO', `Terraform folder ${wsId(from)} copied for ${target.name}: ${wsId(dir)}`, target.name, 'TERRAFORM');
     res.json({ ok: true, ws: wsId(dir) });
   } catch (e) { sendError(res, e); }
@@ -626,17 +664,22 @@ router.post('/api/terraform/file', (req, res) => {
     const { f, r } = wsFile(dir, req.body.path, { write: true });
     if (req.body.create && fs.existsSync(f)) return res.status(409).json({ error: `${r} already exists` });
     if (typeof req.body.content !== 'string') return res.status(400).json({ error: 'Missing content' });
+    const before = fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : '';
     fs.mkdirSync(path.dirname(f), { recursive: true });
     fs.writeFileSync(f, req.body.content, 'utf8');
+    if (/\.tf$/i.test(r)) touch(dir, HCL.changedResources(before, req.body.content));
     res.json({ ok: true, path: r });
   } catch (e) { sendError(res, e); }
 });
 
 router.post('/api/terraform/file/delete', (req, res) => {
   try {
-    const { f, r } = wsFile(wsDir(req.body.ws), req.body.path, { write: true });
+    const dir = wsDir(req.body.ws);
+    const { f, r } = wsFile(dir, req.body.path, { write: true });
     if (!fs.existsSync(f)) return res.status(404).json({ error: `${r} does not exist` });
+    const before = /\.tf$/i.test(r) ? fs.readFileSync(f, 'utf8') : '';
     fs.unlinkSync(f);
+    touch(dir, HCL.changedResources(before, ''));
     res.json({ ok: true });
   } catch (e) { sendError(res, e); }
 });
@@ -693,7 +736,71 @@ router.post('/api/terraform/resource', (req, res) => {
       after = HCL.removeResource(before, type, name);
     } else return res.status(400).json({ error: 'Unknown operation' });
     fs.writeFileSync(f, after, 'utf8');
+    touch(dir, [`${type}.${name}`]);
     res.json({ ok: true, file: r });
+  } catch (e) { e.status = e.status || 400; sendError(res, e); }
+});
+
+// ── Opgaver ──────────────────────────────────────────────────────────────────
+// Flere ressourcer af samme type på én gang, fx 5 køer. Med en skabelon
+// kopieres alt undtagen navn og medlemmer. → { addresses, file }
+router.post('/api/terraform/task/create', async (req, res) => {
+  try {
+    const dir = wsDir(req.body.ws);
+    const type = String(req.body.type || '');
+    if (!/^genesyscloud_[a-z0-9_]+$/.test(type)) return res.status(400).json({ error: `Invalid resource type: ${type}` });
+    const names = [...new Set((Array.isArray(req.body.names) ? req.body.names : []).map(n => String(n).trim()).filter(Boolean))];
+    if (!names.length) return res.status(400).json({ error: 'Enter at least one name' });
+    if (names.length > 50) return res.status(400).json({ error: 'At most 50 at a time' });
+    const tooLong = names.find(n => n.length > 200);
+    if (tooLong) return res.status(400).json({ error: `Name too long: ${tooLong.slice(0, 40)}…` });
+
+    // Hvad findes i forvejen: lokale navne og visningsnavne af typen
+    const texts = {};
+    for (const x of tfFiles(dir)) { try { texts[x.path] = fs.readFileSync(path.join(dir, x.path), 'utf8'); } catch (_) {} }
+    const taken = new Set(), labels = new Map();
+    let typeFile = null;
+    for (const [file, text] of Object.entries(texts)) {
+      for (const r of HCL.resources(text)) {
+        if (r.type !== type) continue;
+        taken.add(r.name);
+        typeFile = typeFile || file;
+        const n = r.entries.find(e => e.key === 'name' && e.literal);
+        if (n) labels.set(String(n.literal.value).toLowerCase(), r.name);
+      }
+    }
+    const dup = names.filter(n => labels.has(n.toLowerCase()));
+    if (dup.length) return res.status(409).json({ error: `Already in the folder: ${dup.join(', ')}` });
+
+    const from = req.body.from && req.body.from.name ? req.body.from : null;
+    let file, template = null;
+    if (from) {
+      file = String(from.file || '');
+      if (!(file in texts)) return res.status(404).json({ error: 'The template is no longer in the folder' });
+      template = texts[file];
+    } else {
+      // Uden skabelon skal typen kunne nøjes med et navn
+      try {
+        const sch = (await providerSchema()).types[type];
+        if (!sch) return res.status(400).json({ error: `Unknown resource type: ${type}` });
+        const req2 = Object.entries(sch.attrs).filter(([k, a]) => a.required && k !== 'name').map(([k]) => k);
+        const reqB = Object.entries(sch.blocks).filter(([, b]) => b.min > 0).map(([k]) => k);
+        if (req2.length || reqB.length) return res.status(400).json({ error: `${type} also needs ${[...req2, ...reqB].join(', ')} — choose an existing one to copy settings from` });
+      } catch (_) { /* uden schema: validate fanger det */ }
+      file = typeFile || `${type}.tf`;
+    }
+    const { f, r: rel } = wsFile(dir, file, { write: true });
+    const blocks = [], addresses = [];
+    for (const label of names) {
+      const local = HCL.localName(label, taken);
+      blocks.push(template ? HCL.cloneResource(template, type, from.name, local, label)
+        : HCL.newResourceText(type, local, [['name', { string: label }]]));
+      addresses.push(`${type}.${local}`);
+    }
+    const before = fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : '';
+    fs.writeFileSync(f, (before.trim() ? before.replace(/\s*$/, '') + '\n\n' : '') + blocks.join('\n'), 'utf8');
+    touch(dir, addresses);
+    res.json({ ok: true, file: rel, addresses });
   } catch (e) { e.status = e.status || 400; sendError(res, e); }
 });
 
@@ -778,7 +885,11 @@ router.post('/api/terraform/apply', async (req, res) => {
       } finally {
         try { fs.unlinkSync(planFile); fs.unlinkSync(path.join(dir, PLAN_META)); } catch (_) {}
       }
-      writeMeta(dir, { ...meta, lastApply: { at: new Date().toISOString(), envId: bound.id, summary: { create: s.create, update: s.update, delete: s.delete, replace: s.replace } } });
+      // Det der nu er anvendt, venter ikke længere — en plan uden mål dækkede alt
+      const now = readMeta(dir);
+      const done = s.targets || [];
+      const touched = done.length ? (now.touched || []).filter(a => !done.includes(a)) : [];
+      writeMeta(dir, { ...now, touched, lastApply: { at: new Date().toISOString(), envId: bound.id, summary: { create: s.create, update: s.update, delete: s.delete, replace: s.replace } } });
       addLog('SUCCESS', `Terraform apply to ${bound.name} (${wsId(dir)}): +${s.create} ~${s.update} -${s.delete} ±${s.replace}`, bound.name, 'TERRAFORM');
       return { action: 'apply', summary: s };
     });
