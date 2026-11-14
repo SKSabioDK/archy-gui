@@ -361,7 +361,45 @@ function removeResource(text, type, name) {
   return out.replace(/\n{3,}/g, '\n\n');
 }
 
+// ── Ubrugte data-opslag ───────────────────────────────────────────────────────
+// Eksportøren skriver data-opslag (data "genesyscloud_integration_action" …)
+// som ingen ressource bruger. Falck US havde to integrationer med samme
+// indbyggede actions, så opslaget efter navn var tvetydigt, og hele planen
+// fejlede. Et data-opslag ændrer intet i org'en; et ubrugt kan fjernes.
+// files: { navn: tekst } → [{ file, type, name, text }]
+function unusedDataBlocks(files) {
+  const all = Object.entries(files);
+  const out = [];
+  for (const [file, text] of all) {
+    for (const b of scanBlocks(text)) {
+      if (b.kind !== 'data' || b.labels.length !== 2) continue;
+      const ref = new RegExp('\\bdata\\.' + b.labels[0] + '\\.' + b.labels[1].replace(/[-]/g, '\\-') + '\\b');
+      const used = all.some(([f, t]) => ref.test(f === file ? t.slice(0, b.start) + t.slice(b.end) : t));
+      if (!used) out.push({ file, type: b.labels[0], name: b.labels[1], text: text.slice(b.outerStart, b.end) });
+    }
+  }
+  return out;
+}
+
+function removeDataBlock(text, type, name) {
+  const s = String(text);
+  const b = scanBlocks(s).find(b => b.kind === 'data' && b.labels[0] === type && b.labels[1] === name);
+  if (!b) return s;
+  let end = b.end;
+  while (s[end] === '\r' || s[end] === '\n') end++;
+  return (s.slice(0, b.outerStart) + s.slice(end)).replace(/\n{3,}/g, '\n\n');
+}
+
 // ── Plan ──────────────────────────────────────────────────────────────────────
+
+// Typer hvor eksportøren ikke kender hemmeligheden og skriver en pladsholder.
+// En plan der ændrer dem, ville overskrive de rigtige secrets i org'en.
+const SECRET_TYPES = ['genesyscloud_integration_credential', 'genesyscloud_oauth_client', 'genesyscloud_outbound_wrapupcodemappings',
+  'genesyscloud_idp_adfs', 'genesyscloud_idp_generic', 'genesyscloud_idp_gsuite', 'genesyscloud_idp_okta', 'genesyscloud_idp_onelogin',
+  'genesyscloud_idp_ping', 'genesyscloud_idp_salesforce'];
+
+// En adresse til -target: type.navn, evt. med data. foran
+const TARGET_RE = /^(data\.)?[a-z][a-z0-9_]*\.[A-Za-z_][A-Za-z0-9_-]*$/;
 
 // terraform show -json <plan> → hvad der oprettes, ændres, slettes og erstattes.
 function summarizePlan(json) {
@@ -397,8 +435,10 @@ function errorHint(text) {
   if (/Plugin did not respond|plugin process exited|failed to instantiate provider/i.test(t)) return 'plugin_start';
   if (/Inconsistent dependency lock file|terraform init|Missing required provider|Plugin reinitialization required/i.test(t)) return 'needs_init';
   if (/Failed to query available provider packages|registry\.terraform\.io.*(timeout|no such host|connection)/i.test(t)) return 'registry';
-  if (/401|invalid_client|bad\.credentials|unauthorized/i.test(t) && /genesys|oauth|token|provider/i.test(t)) return 'auth';
+  // Kun en rigtig 401 — ikke tallet 401 midt i et id (Falck US: "…-4012-…")
+  if (/API Error: 401|status(?:Code)?["':\s]+401\b|invalid_client|bad\.credentials|\bunauthorized\b/i.test(t) && /genesys|oauth|token|provider/i.test(t)) return 'auth';
   if (/Saved plan is stale/i.test(t)) return 'stale_plan';
+  if (/ambiguous data action name|ambiguous .* name/i.test(t)) return 'ambiguous_data';
   return null;
 }
 
@@ -603,4 +643,5 @@ function exampleBlock(name, b) {
 
 module.exports = { scanBlocks, blockEntries, resources, editResource, addResource, removeResource, newResourceText,
   literalOf, decodeString, encodeValue, hclString, summarizePlan, errorHint, exportMainTf, trimSchema, exampleBlock,
-  logFilter, addSkipped, exportFailures, isOwnRead, missingExportScopes, EXPORT_SCOPES, summarizeExportErrors };
+  logFilter, addSkipped, exportFailures, isOwnRead, missingExportScopes, EXPORT_SCOPES, summarizeExportErrors,
+  unusedDataBlocks, removeDataBlock, SECRET_TYPES, TARGET_RE };

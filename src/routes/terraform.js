@@ -394,6 +394,24 @@ const exportReadme = (lang, src, tgt, state) => (README_TEXT[lang] || README_TEX
 
 const TYPE_RE = /^genesyscloud_[a-z0-9_]+(::.+)?$/;
 
+// Ubrugte data-opslag fjernes fra .tf-filerne og gemmes i en tekstfil ved
+// siden af, så intet går tabt. → antal fjernede
+const PRUNED_FILE = 'archy-removed-data.txt';
+function pruneUnusedData(dir) {
+  const files = {};
+  for (const f of tfFiles(dir)) { try { files[f.path] = fs.readFileSync(path.join(dir, f.path), 'utf8'); } catch (_) {} }
+  const unused = HCL.unusedDataBlocks(files);
+  if (!unused.length) return 0;
+  const changed = {};
+  for (const u of unused) changed[u.file] = HCL.removeDataBlock(changed[u.file] ?? files[u.file], u.type, u.name);
+  for (const [f, text] of Object.entries(changed)) fs.writeFileSync(path.join(dir, f), text, 'utf8');
+  const note = '# Data lookups removed by Archy GUI because nothing used them. They change nothing in the org;\n' +
+    '# ambiguous ones (same action name in two integrations) made terraform plan fail. Paste one back if you need it.\n\n';
+  fs.appendFileSync(path.join(dir, PRUNED_FILE), (fs.existsSync(path.join(dir, PRUNED_FILE)) ? '\n' : note) +
+    unused.map(u => `# ${u.file}\n${u.text.trim()}\n`).join('\n'));
+  return unused.length;
+}
+
 // Eksportørens egen fejlliste (export_errors.json) samlet pr. manglende scope
 // eller rettighed, med de typer der ikke kom (helt) med.
 function exportErrors(dir) {
@@ -471,6 +489,8 @@ router.post('/api/terraform/export', async (req, res) => {
       } finally {
         try { CLI.removeDir(work); } catch (e) { log(`Could not remove ${work}: ${e.code || e.message}`); }
       }
+      const pruned = pruneUnusedData(dir);
+      if (pruned) log(`Removed ${pruned} unused data lookups (kept in ${PRUNED_FILE}) — they change nothing in the org, and ambiguous ones stopped plan`);
       if (!fs.existsSync(path.join(dir, 'README.md'))) fs.writeFileSync(path.join(dir, 'README.md'), exportReadme(lang, source.name, target && target.name, includeState));
       writeMeta(dir, { kind: 'export', created: new Date().toISOString(), sourceId: source.id, sourceName: source.name,
         targetId: target ? target.id : null, targetName: target ? target.name : null, includeState, lang, include, exclude,
@@ -547,6 +567,16 @@ router.post('/api/terraform/workspace/copy', (req, res) => {
       includeState: false, copiedFrom: wsId(from), lastApply: null });
     addLog('INFO', `Terraform folder ${wsId(from)} copied for ${target.name}: ${wsId(dir)}`, target.name, 'TERRAFORM');
     res.json({ ok: true, ws: wsId(dir) });
+  } catch (e) { sendError(res, e); }
+});
+
+// Ubrugte data-opslag i en mappe fra før v1.82.5 (eller efter egne rettelser)
+router.post('/api/terraform/workspace/prune', (req, res) => {
+  try {
+    const dir = wsDir(req.body.ws);
+    const removed = pruneUnusedData(dir);
+    if (removed) addLog('INFO', `Terraform folder ${wsId(dir)}: removed ${removed} unused data lookups (kept in ${PRUNED_FILE})`, null, 'TERRAFORM');
+    res.json({ ok: true, removed });
   } catch (e) { sendError(res, e); }
 });
 
@@ -670,6 +700,13 @@ router.post('/api/terraform/run', async (req, res) => {
     const dir = wsDir(req.body.ws);
     const action = String(req.body.action || '');
     if (!['init', 'validate', 'fmt', 'plan'].includes(action)) return res.status(400).json({ error: 'Unknown action' });
+    // Plan kun for de ressourcer man har rørt (-target). En fuld eksport giver
+    // ikke en mappe uden afvigelser: Falck US' første plan ville ændre 245
+    // objekter, bl.a. secrets eksportøren kun kender som pladsholdere.
+    const targets = (Array.isArray(req.body.targets) ? req.body.targets : []).map(t => String(t).trim()).filter(Boolean);
+    const bad = targets.filter(t => !HCL.TARGET_RE.test(t));
+    if (bad.length) return res.status(400).json({ error: `Not a resource address: ${bad.join(', ')} — use type.name, e.g. genesyscloud_group.testtest` });
+    if (targets.length > 50) return res.status(400).json({ error: 'At most 50 resources in a targeted plan' });
     const exe = needTerraform();
     let env = CLI.terraformEnv();
     let bound = null;
@@ -684,14 +721,16 @@ router.post('/api/terraform/run', async (req, res) => {
       if (action === 'init') return { action };
       if (action === 'fmt') { await tfStep(exe, ['fmt', '-no-color'], dir, env, log, job); return { action }; }
       if (action === 'validate') { await tfStep(exe, ['validate', '-no-color'], dir, env, log, job); return { action, valid: true }; }
-      try { fs.unlinkSync(path.join(dir, PLAN_FILE)); fs.unlinkSync(path.join(dir, PLAN_META)); } catch (_) {}
-      await tfStep(exe, ['plan', '-input=false', '-no-color', `-out=${PLAN_FILE}`], dir, env, log, job);
+      for (const f of [PLAN_FILE, PLAN_META]) { try { fs.unlinkSync(path.join(dir, f)); } catch (_) {} }
+      await tfStep(exe, ['plan', '-input=false', '-no-color', `-out=${PLAN_FILE}`, ...targets.map(t => `-target=${t}`)], dir, env, log, job);
       const show = await CLI.captureTerraform(exe, ['show', '-json', PLAN_FILE], { cwd: dir, env });
       if (show.code !== 0) throw new Error('terraform show failed: ' + show.err.trim().split('\n').slice(-3).join(' '));
-      const summary = HCL.summarizePlan(show.out);
+      const summary = { ...HCL.summarizePlan(show.out), targets };
+      // Ændringer af hemmeligheder: eksportøren kender dem ikke og skriver pladsholdere
+      summary.secrets = summary.items.filter(i => HCL.SECRET_TYPES.includes(i.type) && i.action !== 'create').map(i => i.address);
       const planHash = CLI.fileHash(path.join(dir, PLAN_FILE));
       fs.writeFileSync(path.join(dir, PLAN_META), JSON.stringify({ created: new Date().toISOString(), envId: bound.id, hash: planHash, summary }));
-      addLog('INFO', `Terraform plan for ${bound.name} (${wsId(dir)}): +${summary.create} ~${summary.update} -${summary.delete} ±${summary.replace}`, bound.name, 'TERRAFORM');
+      addLog('INFO', `Terraform plan for ${bound.name} (${wsId(dir)})${targets.length ? ' limited to ' + targets.join(', ') : ''}: +${summary.create} ~${summary.update} -${summary.delete} ±${summary.replace}`, bound.name, 'TERRAFORM');
       return { action, summary, planHash, envId: bound.id };
     });
     res.json({ ok: true, jobId: job.id });
@@ -711,6 +750,10 @@ router.post('/api/terraform/apply', async (req, res) => {
     if (!pm || !fs.existsSync(planFile)) return res.status(409).json({ error: 'Run Plan first — apply only carries out a plan you have seen' });
     if (pm.envId !== bound.id || pm.hash !== req.body.planHash || CLI.fileHash(planFile) !== pm.hash)
       return res.status(409).json({ error: 'The plan has changed since you saw it — run Plan again' });
+    // En plan der ændrer hemmeligheder, kræver et udtrykkeligt ja
+    if ((pm.summary.secrets || []).length && req.body.confirmSecrets !== true)
+      return res.status(409).json({ error: `The plan changes secrets the exporter only knows as placeholders: ${pm.summary.secrets.slice(0, 5).join(', ')}${pm.summary.secrets.length > 5 ? ' …' : ''}`,
+        hint: 'secrets', secrets: pm.summary.secrets });
     const exe = needTerraform();
     const env = CLI.terraformEnv(await envLogin(bound));
     const s = pm.summary;
@@ -733,4 +776,4 @@ router.post('/api/terraform/apply', async (req, res) => {
   } catch (e) { sendError(res, e); }
 });
 
-module.exports = { router, _test: { wsFile, wsDir, exportReadme } };
+module.exports = { router, _test: { wsFile, wsDir, exportReadme, pruneUnusedData } };

@@ -370,6 +370,58 @@ test('export_errors.json samles pr. scope — typer der helt mangler, står øve
   assert.equal(s[1].types[0].all, true);
 });
 
+test('ubrugte data-opslag fjernes — tvetydige stoppede planen for Falck US', () => {
+  const files = {
+    'genesyscloud_integration_action.tf': `data "genesyscloud_integration_action" "A_Get_User_Presence" {
+  integration_id = "\${genesyscloud_integration.A.id}"
+  name           = "Get User Presence"
+}
+
+data "genesyscloud_integration_action" "Brugt" {
+  name = "X"
+}
+
+resource "genesyscloud_integration_action" "Egen" {
+  name = "Egen"
+}
+`,
+    'genesyscloud_flow.tf': 'resource "genesyscloud_flow" "f" {\n  substitutions = { a = data.genesyscloud_integration_action.Brugt.id }\n}\n',
+  };
+  const u = HCL.unusedDataBlocks(files);
+  assert.deepEqual(u.map(x => x.name), ['A_Get_User_Presence'], 'kun det ubrugte — et brugt opslag og ressourcer bliver');
+  const ud = HCL.removeDataBlock(files['genesyscloud_integration_action.tf'], u[0].type, u[0].name);
+  assert.ok(!ud.includes('A_Get_User_Presence') && ud.includes('"Brugt"') && ud.includes('resource "genesyscloud_integration_action" "Egen"'));
+  // Fejlen fra Falck US forklares — og den forkerte "login afvist" er væk
+  const fejl = 'Error: ambiguous data action name: Get User Routing Status (set integration_id and/or action_type to disambiguate)\n{"resourceType":"genesyscloud_integration_action","method":"GET","path":"/api/v2/integrations/actions","statusCode":200,"correlationId":"41c049fc-39d0-4d40-86da-9087f8d3e8a0"} provider';
+  assert.equal(HCL.errorHint(fejl), 'ambiguous_data');
+  assert.equal(HCL.errorHint('correlationId 4012-aa provider token'), null, '401 midt i et id er ikke et afvist login');
+  assert.equal(HCL.errorHint('API Error: 401 - bad.credentials from the genesys provider'), 'auth');
+});
+
+test('plan kan begrænses til enkelte ressourcer, og en plan der ændrer hemmeligheder kræver et ja', () => {
+  assert.ok(HCL.TARGET_RE.test('genesyscloud_group.testtest'));
+  assert.ok(HCL.TARGET_RE.test('genesyscloud_group.Test-Test'));
+  for (const ond of ['genesyscloud_group', 'genesyscloud_group.x -destroy', '-target=x.y', 'a.b;rm', 'genesyscloud_group.x y'])
+    assert.ok(!HCL.TARGET_RE.test(ond), ond);
+  assert.ok(HCL.SECRET_TYPES.includes('genesyscloud_integration_credential') && HCL.SECRET_TYPES.includes('genesyscloud_oauth_client'));
+  const R = kilde('routes/terraform.js');
+  const run = R.slice(R.indexOf("router.post('/api/terraform/run'"), R.indexOf("router.post('/api/terraform/apply'"));
+  assert.match(run, /targets\.map\(t => `-target=\$\{t\}`\)/);
+  assert.match(run, /!HCL\.TARGET_RE\.test\(t\)/, 'en adresse valideres, før den kommer på kommandolinjen');
+  assert.match(run, /summary\.secrets = /);
+  const apply = R.slice(R.indexOf("router.post('/api/terraform/apply'"));
+  assert.match(apply, /req\.body\.confirmSecrets !== true/);
+});
+
+test('"Kopiér til en anden org" har intet valgt på forhånd og foreslår arbejdsparret', () => {
+  // Listen startede på den første org (Sabio APS), så den så valgt ud
+  const HTML = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  const fn = HTML.slice(HTML.indexOf('function tfCopyOptions('), HTML.indexOf('function tfRenderWs('));
+  assert.match(fn, /<option value="">/);
+  assert.match(fn, /\[work\.target, work\.source\]/);
+  assert.match(fn, /c\.id !== own/, 'mappens egen org er ikke med');
+});
+
 test('eksporten oplyser at org\'en kun læses, og en stoppet eksport ryddes op', () => {
   const R = kilde('routes/terraform.js');
   const exp = R.slice(R.indexOf("router.post('/api/terraform/export'"), R.indexOf('// ── Kørsler'));

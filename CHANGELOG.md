@@ -5,6 +5,26 @@
 
 ---
 
+### v1.82.5
+---
+**🇩🇰 Dansk**
+
+- **Plan for kun det, du har rørt (`-target`).** Under *Plan & apply* kan planen begrænses til bestemte ressourcer, fx `genesyscloud_group.testtest`. Knappen **🎯 Plan kun denne** findes i formularen og efter en sletning. Det er nødvendigt, fordi en fuld eksport aldrig er helt uden afvigelser. Falck US' første plan, med gruppen TestTest tilføjet, ville **ændre 245 objekter**: 241 user prompts, OAuth-klienter, brugere og integration-credentials. Et apply af hele planen var spærret, fordi planen fejlede.
+- **Advarsel om hemmeligheder.** Ændrer en plan credentials, OAuth-klienter, wrap-up-kode-mappings eller identitetsudbydere, vises en rød advarsel. Eksportøren kender ikke deres secrets og skriver pladsholdere (`"**"`), så et apply ville overskrive de rigtige værdier. Apply kræver et ekstra ja, og serveren afviser uden det (`confirmSecrets`).
+- **Tvetydige data-opslag stoppede planen.** *"ambiguous data action name: Get User Routing Status"*: to integrationer har indbyggede actions med samme navn. Ubrugte data-opslag fjernes nu automatisk efter en eksport og gemmes i `archy-removed-data.txt`. Knappen **Ryd ubrugte data-opslag** gør det samme for en eksisterende mappe. Fejlen får sin egen forklaring.
+- **"Genesys rejected the login" var forkert.** Forklaringen reagerede på tallet 401 midt i et id. Nu reagerer den kun på en rigtig 401.
+- **"Kopiér til en anden org" stod på Sabio APS.** Listen havde intet tomt valg, så den første org så valgt ud. Nu er intet valgt på forhånd, mappens egen org er ikke med, og den anden org i arbejdsparret foreslås.
+- 3 nye tests.
+
+**🇬🇧 English**
+- **Plan only what you touched (`-target`)**, from the plan tab or **🎯 Plan only this** in the form. A full export always has drift: the first Falck US plan would have changed 245 objects.
+- **Secret warning:** a plan that changes credentials or OAuth clients is flagged in red and apply needs an extra yes — the exporter only has placeholders.
+- **Ambiguous data lookups** no longer stop plan: unused ones are removed after an export (kept in `archy-removed-data.txt`), with a button for existing folders.
+- **No false "login rejected"** for a 401 inside an id.
+- **"Copy to another org"** no longer looks preselected on the first org.
+- 3 new tests.
+
+---
 ### v1.82.4
 ---
 **🇩🇰 Dansk**
