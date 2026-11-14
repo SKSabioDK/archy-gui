@@ -5,6 +5,18 @@
 
 ---
 
+### v1.82.3
+---
+**🇩🇰 Dansk**
+
+- **Pænere liste over sprungne typer.** Eksporten af Falck US viste *"Failed to get response management response assets | Error"*, hvor "| Error" hører til fejlen og ikke til navnet. Den viste også *"Response contains error diagnostic"* ved siden af den rigtige type (`genesyscloud_routing_queue_identity_resolution`). Nu fjernes "| Error", og den intetsigende tekst udelades, så typen står alene.
+- 1 ny test med linjerne fra Falck US.
+
+**🇬🇧 English**
+- **Cleaner list of skipped types.** "| Error" is no longer part of the name, and "Response contains error diagnostic" is left out so the real type stands alone.
+- 1 new test.
+
+---
 ### v1.82.2
 ---
 **🇩🇰 Dansk**

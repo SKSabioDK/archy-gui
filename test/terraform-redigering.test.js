@@ -296,6 +296,18 @@ test('eksportens log: hjælpe-ressourcens plan skjules, ventelinjer og 403 samle
   assert.deepEqual(HCL.logFilter()('Plan: 3 to add, 0 to change, 0 to destroy.'), { log: 'Plan: 3 to add, 0 to change, 0 to destroy.' });
 });
 
+test('listen over sprungne typer: "| Error" og intetsigende tekster ryddes væk', () => {
+  // Falck US viste "Failed to get response management response assets | Error"
+  // og "Response contains error diagnostic" ved siden af den rigtige type
+  const f = HCL.logFilter({ exportRun: true });
+  const ass = f('2026-11-14T17:40:01.000+0100 [ERROR] provider.terraform-provider-genesyscloud_v1.88.0.exe: Failed to get response management response assets | Error: API Error: 403 - Unable to perform the requested action. You must have at least one of the following permissions assigned: [responseAssets:asset:view:92a660e1-fc22-4fde-8989-6f702f0f0e6b] (abc): tf_rpc=ApplyResourceChange');
+  assert.equal(ass.skipped.what, 'Failed to get response management response assets');
+  const koe = f('2026-11-14T17:40:02.000+0100 [ERROR] provider.terraform-provider-genesyscloud_v1.88.0.exe: Response contains error diagnostic: API Error: 403 - You are missing the following permission(s): [queue:identityResolution:view] (def): tf_rpc=x');
+  assert.equal(koe.skipped.what, '');
+  const liste = HCL.addSkipped(HCL.addSkipped([], koe.skipped), { perm: 'queue:identityResolution:view', what: 'genesyscloud_routing_queue_identity_resolution' });
+  assert.deepEqual(liste, [{ perm: 'queue:identityResolution:view', what: ['genesyscloud_routing_queue_identity_resolution'] }]);
+});
+
 test('et manglende OAuth-scope stopper eksportøren — typen findes, så den kan udelades', () => {
   // Falck US, ordret som terraform ombrød den
   const ud = `Error: API Error

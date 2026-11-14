@@ -420,8 +420,7 @@ function logFilter({ exportRun = false } = {}) {
     if (/API Error: 403/.test(l)) {
       const p = PERM_RE.exec(l);
       if (p) {
-        const what = (/\.exe: (.+?)(?: \| error| error)?: /.exec(l) || [])[1] || '';
-        return { skipped: { perm: (p[1] || p[2] || p[3]).trim(), what: what.replace(/^failed/, 'Failed').trim() } };
+        return { skipped: { perm: (p[1] || p[2] || p[3]).trim(), what: skippedWhat(l) } };
       }
     }
     if (!exportRun) return { log: l };
@@ -434,6 +433,18 @@ function logFilter({ exportRun = false } = {}) {
     if (/^Apply complete! Resources: 1 added/.test(l)) return {};
     return { log: l };
   };
+}
+
+// Hvad eksportøren prøvede at hente, læst ud af dens fejllinje: teksten efter
+// "…exe: " op til fejlen. Falck US gav "Failed to get response management
+// response assets | Error" — "| Error" hører til fejlen, ikke til navnet. Og
+// "Response contains error diagnostic" siger intet om hvad; den udelades, så
+// typen fra fejlen (fx genesyscloud_routing_queue_identity_resolution) står alene.
+const NO_WHAT = /^(response contains error diagnostic|error|api error)$/i;
+function skippedWhat(line) {
+  const m = /\.exe: (.+?)(?:\s*\|\s*error|\s+error)?:\s/i.exec(String(line));
+  const what = ((m && m[1]) || '').replace(/\s*\|\s*error\s*$/i, '').replace(/^failed\b/, 'Failed').trim();
+  return NO_WHAT.test(what) ? '' : what;
 }
 
 // Typer der fik hele eksporten til at fejle. Mangler login'et en rettighed,
