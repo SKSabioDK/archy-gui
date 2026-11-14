@@ -8,7 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { spawn, execFile } = require('child_process');
+const { spawn, execFile, execFileSync } = require('child_process');
 const { DATA_DIR, loadSettings } = require('../config');
 
 const TERRAFORM_DIR = path.join(DATA_DIR, 'terraform');
@@ -62,25 +62,63 @@ function terraformEnv({ token, region } = {}) {
   return env;
 }
 
-// Kører én terraform-kommando. Uddata går til onLine linje for linje; tokenet
-// vaskes ud, hvis det skulle stå i en fejl.
+// ── Stop ─────────────────────────────────────────────────────────────────────
+// terraform.exe starter provideren som sin egen proces. Blev kun terraform.exe
+// dræbt, kørte provideren videre — eksporten fortsatte mod Genesys, og den
+// holdt mappen låst, så oprydningen fejlede med EPERM. Derfor dræbes hele
+// træet: på Windows med taskkill /T, ellers hele procesgruppen.
+const active = new Set();
+
+function killTree(child) {
+  if (!child || child.exitCode !== null) return;
+  if (process.platform === 'win32') {
+    try { execFileSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' }); } catch (_) {}
+  } else {
+    try { process.kill(-child.pid, 'SIGKILL'); } catch (_) { try { child.kill('SIGKILL'); } catch (_) {} }
+  }
+}
+
+// Lukker serveren, må ingen terraform eller provider blive hængende uden ejer
+process.on('exit', () => { for (const c of active) killTree(c); });
+
+// Kører én terraform-kommando. Uddata går til onLine hele linjer ad gangen (en
+// linje kan komme i to bidder); tokenet vaskes ud, hvis det skulle stå i en fejl.
 function runTerraform(exe, args, { cwd, env, onLine = () => {}, signal } = {}) {
   fs.mkdirSync(PLUGIN_CACHE, { recursive: true });
   return new Promise(resolve => {
-    const child = spawn(exe, args, { cwd, env, windowsHide: true });
+    if (signal && signal.aborted) return resolve({ code: -1, out: '', aborted: true });
+    const child = spawn(exe, args, { cwd, env, windowsHide: true, detached: process.platform !== 'win32' });
+    active.add(child);
     const token = env && env.GENESYSCLOUD_ACCESS_TOKEN;
     const clean = t => token ? t.split(token).join('***') : t;
     let out = '';
-    const feed = buf => {
-      const text = clean(buf.toString('utf8')).replace(/\x1b\[[0-9;]*m/g, '');
-      out += text;
-      for (const l of text.split(/\r?\n/)) if (l.trim()) onLine(l);
+    const rest = { stdout: '', stderr: '' };
+    const feed = which => buf => {
+      const text = rest[which] + clean(buf.toString('utf8')).replace(/\x1b\[[0-9;]*m/g, '');
+      const lines = text.split(/\r?\n/);
+      rest[which] = lines.pop();
+      out += text.slice(0, text.length - rest[which].length);
+      for (const l of lines) if (l.trim()) onLine(l);
     };
-    child.stdout.on('data', feed);
-    child.stderr.on('data', feed);
-    if (signal) signal.addEventListener('abort', () => { try { child.kill(); } catch (_) {} }, { once: true });
-    child.on('error', e => resolve({ code: -1, out: out + '\n' + e.message }));
-    child.on('close', code => resolve({ code, out }));
+    child.stdout.on('data', feed('stdout'));
+    child.stderr.on('data', feed('stderr'));
+    let aborted = false;
+    const onAbort = () => { aborted = true; killTree(child); };
+    if (signal) signal.addEventListener('abort', onAbort, { once: true });
+    let finished = false;
+    const done = code => {
+      if (finished) return;
+      finished = true;
+      active.delete(child);
+      if (signal) signal.removeEventListener('abort', onAbort);
+      for (const w of ['stdout', 'stderr']) if (rest[w].trim()) { out += rest[w]; onLine(rest[w]); rest[w] = ''; }
+      resolve({ code, out, aborted });
+    };
+    child.on('error', e => { out += '\n' + e.message; done(-1); });
+    // 'close' kommer når uddata er læst færdig. Holder en underproces stadig
+    // røret åbent, ventes der højst tre sekunder efter 'exit'.
+    child.on('close', code => done(code));
+    child.on('exit', code => setTimeout(() => done(code), 3000));
   });
 }
 
@@ -102,14 +140,23 @@ const busy = new Set();   // arbejdsmapper med en kørsel i gang
 function startJob(ws, kind, fn) {
   if (busy.has(ws)) throw new Error('Terraform is already running in this folder — wait for it to finish');
   const id = crypto.randomUUID();
+  // phase: hvad kørslen er i gang med (brugerfladen oversætter koden).
+  // elapsed: terraforms "Still creating… [01m10s elapsed]", vist som én linje.
+  // skipped: typer eksportøren sprang over, fordi login'et mangler en rettighed.
   const job = { id, ws, kind, status: 'running', lines: [], result: null, error: null, hint: null, started: Date.now(),
-    controller: new AbortController() };
+    phase: null, elapsed: null, skipped: [], controller: new AbortController() };
   jobs.set(id, job);
   busy.add(ws);
   const log = l => { job.lines.push(l); if (job.lines.length > 4000) job.lines.splice(0, job.lines.length - 4000); };
   Promise.resolve().then(() => fn(job, log)).then(
-    result => { job.result = result || null; job.status = 'done'; },
-    e => { job.error = e.message || String(e); job.hint = e.hint || null; job.status = 'failed'; }
+    result => {
+      if (job.controller.signal.aborted) { job.status = 'cancelled'; return; }
+      job.result = result || null; job.status = 'done';
+    },
+    e => {
+      if (job.controller.signal.aborted) { job.status = 'cancelled'; job.error = 'Stopped'; return; }
+      job.error = e.message || String(e); job.hint = e.hint || null; job.status = 'failed';
+    }
   ).finally(() => {
     busy.delete(ws);
     job.finished = Date.now();
@@ -121,10 +168,18 @@ function startJob(ws, kind, fn) {
 
 function jobView(job, from = 0) {
   return { id: job.id, ws: job.ws, kind: job.kind, status: job.status, lines: job.lines.slice(from), total: job.lines.length,
-    result: job.result, error: job.error, hint: job.hint };
+    result: job.result, error: job.error, hint: job.hint, phase: job.phase, info: job.info || null,
+    seconds: Math.round(((job.finished || Date.now()) - job.started) / 1000), elapsed: job.elapsed,
+    skipped: job.skipped, stopping: job.controller.signal.aborted && job.status === 'running' };
+}
+
+// Mappen slettes, også mens Windows endnu ikke har sluppet en fil fra en
+// netop dræbt proces (EPERM/EBUSY).
+function removeDir(dir) {
+  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
 }
 
 const fileHash = f => crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex');
 
 module.exports = { TERRAFORM_DIR, PLUGIN_CACHE, PROVIDER_DIR, findTerraform, terraformVersion, terraformEnv,
-  runTerraform, captureTerraform, startJob, jobs, jobView, fileHash };
+  runTerraform, captureTerraform, startJob, jobs, jobView, fileHash, killTree, removeDir };

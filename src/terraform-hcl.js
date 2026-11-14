@@ -402,6 +402,48 @@ function errorHint(text) {
   return null;
 }
 
+// ── Loggen ────────────────────────────────────────────────────────────────────
+// terraforms uddata gjort læselig. En eksport skrev før "apply", "Creating…"
+// og "Plan: 1 to add", hvilket lignede en ændring i org'en — det er kun
+// eksportørens egen hjælpe-ressource. Den del skjules, og brugerfladen siger
+// i stedet at org'en kun læses. "Still creating… [01m10s elapsed]" hvert 10.
+// sekund bliver til én tidsangivelse, og hver 403 fra en type login'et ikke må
+// læse, bliver til en linje i listen over sprungne typer.
+const PERM_RE = /permission\(s\): \[([^\]]+)\]|permission ([\w:*]+) in at least|permissions assigned: \[([^\]]+)\]/;
+
+function logFilter({ exportRun = false } = {}) {
+  let inPlan = false;
+  return line => {
+    const l = String(line);
+    const el = /Still (?:creating|modifying|destroying|reading)\.\.\. \[(\d+m\d+s|\d+s) elapsed\]/.exec(l);
+    if (el) return { elapsed: el[1] };
+    if (/API Error: 403/.test(l)) {
+      const p = PERM_RE.exec(l);
+      if (p) {
+        const what = (/\.exe: (.+?)(?: \| error| error)?: /.exec(l) || [])[1] || '';
+        return { skipped: { perm: (p[1] || p[2] || p[3]).trim(), what: what.replace(/^failed/, 'Failed').trim() } };
+      }
+    }
+    if (!exportRun) return { log: l };
+    // init: kun det der siger noget
+    if (/^(Initializing|Partner and community|If you'd like to know more|https:\/\/developer\.hashicorp\.com\/terraform\/cli\/plugins\/signing|Terraform has created a lock file|selections it made above|so that Terraform can guarantee|you run "terraform init"|- Finding )/.test(l)) return {};
+    // apply af eksportørens hjælpe-ressource: planen er ikke en ændring i org'en
+    if (/^Terraform used the selected providers/.test(l)) { inPlan = true; return {}; }
+    if (inPlan) { if (/^Plan: /.test(l)) inPlan = false; return {}; }
+    if (/^genesyscloud_tf_export\.export: (Creating|Creation complete)/.test(l)) return {};
+    if (/^Apply complete! Resources: 1 added/.test(l)) return {};
+    return { log: l };
+  };
+}
+
+// Sprungne typer samlet pr. rettighed: [{ perm, what: [...] }]
+function addSkipped(list, { perm, what }) {
+  let e = list.find(x => x.perm === perm);
+  if (!e) { e = { perm, what: [] }; list.push(e); }
+  if (what && !e.what.includes(what)) e.what.push(what);
+  return list;
+}
+
 // ── Eksportøren ───────────────────────────────────────────────────────────────
 
 // main.tf til genesyscloud_tf_export. Med state (samme org) bliver objekterne i
@@ -472,4 +514,5 @@ function exampleBlock(name, b) {
 }
 
 module.exports = { scanBlocks, blockEntries, resources, editResource, addResource, removeResource, newResourceText,
-  literalOf, decodeString, encodeValue, hclString, summarizePlan, errorHint, exportMainTf, trimSchema, exampleBlock };
+  literalOf, decodeString, encodeValue, hclString, summarizePlan, errorHint, exportMainTf, trimSchema, exampleBlock,
+  logFilter, addSkipped };

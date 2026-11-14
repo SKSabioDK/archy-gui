@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.82.0
+# Archy GUI — Flow Manager · v1.82.1
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.82.0**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.82.0**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.82.1**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.82.1**.
 
 ---
 
@@ -390,6 +390,8 @@ Siden migrerer det der ikke er flows mellem to orgs, fordelt på otte faner: **D
 - **Plan & apply** — Init, Fmt, Validate og Plan. Planen vises som `+ ~ - ±` pr. ressource med de felter, der ændres. **Apply** udfører kun den gemte plan, du har set (filens hash skal passe), og står bag prod-vagten, så prod kræver dit personlige prod-login. Et apply kan ikke stoppes halvvejs.
 - **Kopiér til en anden org** laver en kopi uden state til et nyt mål, og **Slet mappe** fjerner den lokalt (org'en røres ikke).
 
+Under en eksport står der, hvad den er i gang med, og hvor længe den har kørt, og at org'en kun læses — terraforms "apply" og "Creating" gælder kun eksportørens hjælpe-ressource i en lokal fil. Typer, login'et ikke må læse (403), samles i en liste med den rettighed der mangler; terraforms egen log ligger foldet sammen nedenunder. **Stop** dræber terraform og provideren og sletter den halve mappe. Går man til en anden fane, kører eksporten videre og følges igen, når man kommer tilbage.
+
 Fejler terraform, forklarer fanen de kendte årsager. Et antivirusprogram, der scanner krypteret trafik (fx Norton), kan bryde forbindelsen mellem `terraform.exe` og provideren (*x509: certificate signed by unknown authority*). Så skal `terraform.exe` og `terraform-provider-*.exe` undtages fra scanningen.
 
 **Hurtig startopsætning** (under fanen Terraform) genererer en Terraform-opsætning (genesyscloud-provideren) ud fra kilde-org'ens objekter og gemmer den automatisk i `data/terraform/<fra>_<til>/<dato>/` (vælg også et mål, så navngives mappen efter begge orgs, README og provider nævner begge, og målets region bliver standard; uden mål hedder mappen kun efter kilden). Filerne følger appens sprog (dansk, engelsk eller tysk — andre sprog får engelsk). Kunden kører selv `terraform apply` mod den org, der skal ændres — fx fra en test-org til en ny org — og `terraform plan` viser forskellen. Man vælger typer eller tager alle med. Med er: divisioner, skills, skill-grupper, grupper, teams, lokationer, utilization-labels, vidensbaser, svarbiblioteker, åbningstider og -grupper, nødgrupper, kontaktlister, DNC-lister, wrap-up-koder, roller, OAuth-klienter, integrationer, data actions, data tabeller, user prompts, køer og flows (nyeste lokale YAML kopieres til `architect_flows/`, som i providerens egen eksport). Referencer bliver til Terraform-referencer; Home og standardroller bliver til data-kilder, og en division der ikke er med, bliver en variabel i `terraform.tfvars` som i providerens egen eksport. Provideren følger dens vejledning: `required_version` og providerversion i `versions.tf`, og tomme felter bruger miljøvariablerne `GENESYSCLOUD_*`. Mappen får også `provider.tf`, `variables.tf`, `terraform.tfvars.example` og en `README.md` med det, der ikke er med: hemmeligheder, medlemmer, kontakter, indspillet lyd og betingede rettigheder (samt formularer, scripts og Function Data Actions). Det er en startopsætning — afprøv den i en test-org. Mappen (under `data/`) ligger i `.gitignore`, fordi den indeholder kundens opsætning.
@@ -550,7 +552,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-562 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+566 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både serverens kode i `src/` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -931,6 +933,8 @@ This page migrates everything that is not a flow between two orgs, across eight 
 - **Plan & apply** — Init, Fmt, Validate and Plan. The plan is shown as `+ ~ - ±` per resource with the fields that change. **Apply** carries out only the saved plan you have seen (the file's hash must match) and sits behind the prod guard, so prod needs your personal prod login. An apply cannot be stopped halfway.
 - **Copy to another org** makes a copy without state for a new target, and **Delete folder** removes it locally (the org is not touched).
 
+During an export the tab shows what it is doing, how long it has run, and that the org is only read — terraform's "apply" and "Creating" refer only to the exporter's helper resource in a local file. Types the login may not read (403) are gathered in a list with the missing permission; terraform's own log is folded away below. **Stop** kills terraform and the provider and deletes the half-written folder. Switching tabs leaves the export running, and it is followed again when you come back.
+
 When terraform fails, the tab explains the known causes. Antivirus that scans encrypted traffic (e.g. Norton) can break the connection between `terraform.exe` and the provider (*x509: certificate signed by unknown authority*); exclude `terraform.exe` and `terraform-provider-*.exe` from the scan.
 
 **Quick starting setup** (in the Terraform tab) generates a Terraform setup (the genesyscloud provider) from the source org's objects and saves it automatically in `data/terraform/<from>_<to>/<date>/` (also choose a target and the folder is named after both orgs, the README and provider mention both, and the target's region becomes the default; without a target the folder is named after the source only). The files follow the app's language (Danish, English or German — other languages get English). The customer runs `terraform apply` themselves against the org that should change — e.g. from a test org to a new org — and `terraform plan` shows the difference. You pick types or take them all. Included: divisions, skills, skill groups, groups, teams, locations, utilization labels, knowledge bases, response libraries, schedules and groups, emergency groups, contact lists, DNC lists, wrap-up codes, roles, OAuth clients, integrations, data actions, data tables, user prompts, queues and flows (the newest local YAML is copied to `architect_flows/`, as in the provider's own export). References become Terraform references; Home and default roles become data sources, and a division that is not included becomes a variable in `terraform.tfvars` as in the provider's own export. The provider setup follows its guide: `required_version` and the provider version in `versions.tf`, and empty fields use the `GENESYSCLOUD_*` environment variables. The folder also gets `provider.tf`, `variables.tf`, `terraform.tfvars.example` and a `README.md` listing what is not included: secrets, members, contacts, recorded audio and conditional permissions (and forms, scripts and Function Data Actions). It is a starting setup — try it in a test org. The folder (under `data/`) is in `.gitignore` because it contains the customer's setup.
@@ -1091,7 +1095,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-562 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+566 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both the server code in `src/` and `index.html` and fail if the rules get copied out again.
 

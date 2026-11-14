@@ -5,6 +5,29 @@
 
 ---
 
+### v1.82.1
+---
+**🇩🇰 Dansk**
+
+- **Stop stopper nu eksporten.** Stop dræbte kun `terraform.exe`. Genesys-provideren er en underproces, og den kørte videre for sig selv og eksporterede fortsat mod org'en. Den holdt også mappen låst, så oprydningen fejlede med *EPERM*. Nu dræbes hele procestræet (`taskkill /T` på Windows). Den halve mappe slettes med genforsøg, og jobbet ender som *Stoppet* i stedet for som en fejl. Lukker serveren, dræbes kørende terraform-processer også.
+- **Eksportens log er tydeligere.**
+  - Der står, at org'en kun læses. `apply`, `Creating` og `Plan: 1 to add` gælder eksportørens egen hjælpe-ressource i en lokal fil, og den del vises ikke længere.
+  - Fasen vises: henter provideren, læser org'en og skriver filer, gemmer.
+  - Tiden vises som ét ur i stedet for "Still creating…" hvert 10. sekund.
+  - Typer, login'et ikke må læse (403), samles i én liste pr. manglende rettighed i stedet for lange `[ERROR]`-linjer. Listen gemmes også i mappens `workspace.json` og i systemloggen.
+  - Terraforms egen log ligger foldet sammen nedenunder og folder sig ud ved en fejl.
+- **Fanen viste "kører" for evigt efter en fejl eller Stop.** Et færdigt job med en fejl har et `error`-felt. Brugerfladen tog det for et fejlet opslag og blev ved med at spørge, så hverken fejlen eller *Stoppet* kom frem. Nu vises begge.
+- **En eksport følges igen, når man kommer tilbage til fanen.** Før forsvandt loggen og Stop-knappen, hvis man skiftede fane, mens eksporten kørte videre.
+- 4 nye tests: Stop dræber også underprocesser, et stoppet job ender som stoppet, og loggen filtreres. Filtreringen er afprøvet på linjer fra en rigtig eksport.
+
+**🇬🇧 English**
+- **Stop now stops the export.** It only killed `terraform.exe`; the provider kept exporting and locked the folder (EPERM). The whole process tree is now killed, the half-written folder is removed with retries, and the job ends as *Stopped*.
+- **Clearer export log:** read-only notice, phase, one clock, permission errors (403) grouped per missing permission, and the raw log folded away.
+- **The tab no longer shows "running" forever** after an error or Stop.
+- **A running export is followed again** when you return to the tab.
+- 4 new tests.
+
+---
 ### v1.82.0
 ---
 **🇩🇰 Dansk**

@@ -233,6 +233,83 @@ test('README i en fuld eksport forklarer kunden at køre videre selv', () => {
   assert.match(exportReadme('fr', 'A', 'B', false), /Running it yourself/, 'ukendt sprog → engelsk');
 });
 
+// ── Stop og loggen (v1.82.1) ─────────────────────────────────────────────────
+
+test('Stop dræber også underprocesserne — provideren kørte før videre efter Stop', async () => {
+  // Falck Global: Stop dræbte terraform.exe, men provideren eksporterede
+  // videre for sig selv og holdt mappen låst (EPERM ved oprydningen).
+  const CLI = require('../src/lib/terraform-cli.js');
+  const barn = 'const c = require("child_process").spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "ignore" });' +
+    'console.log("barnebarn " + c.pid); setInterval(() => {}, 1000);';
+  const ctl = new AbortController();
+  let pid = null;
+  const kørsel = CLI.runTerraform(process.execPath, ['-e', barn], { cwd: os.tmpdir(), env: process.env,
+    signal: ctl.signal, onLine: l => { const m = /barnebarn (\d+)/.exec(l); if (m) { pid = Number(m[1]); ctl.abort(); } } });
+  const r = await kørsel;
+  assert.equal(r.aborted, true);
+  assert.ok(pid, 'barnebarnet startede ikke');
+  const lever = p => { try { process.kill(p, 0); return true; } catch (_) { return false; } };
+  for (let i = 0; i < 20 && lever(pid); i++) await new Promise(ok => setTimeout(ok, 100));
+  assert.equal(lever(pid), false, 'underprocessen kører stadig efter Stop');
+});
+
+test('et job der stoppes, ender som stoppet — ikke som fejlet', async () => {
+  const CLI = require('../src/lib/terraform-cli.js');
+  const job = CLI.startJob('test/stop-' + Date.now(), 'export', async j => {
+    if (!j.controller.signal.aborted) await new Promise(ok => j.controller.signal.addEventListener('abort', ok));
+    throw new Error('Stopped');
+  });
+  job.controller.abort();
+  for (let i = 0; i < 50 && job.status === 'running'; i++) await new Promise(ok => setTimeout(ok, 10));
+  assert.equal(job.status, 'cancelled');
+  assert.equal(CLI.jobView(job).status, 'cancelled');
+});
+
+test('eksportens log: hjælpe-ressourcens plan skjules, ventelinjer og 403 samles', () => {
+  const f = HCL.logFilter({ exportRun: true });
+  // Linjer fra en rigtig eksport af Falck Global
+  const ud = [
+    'Initializing the backend...',
+    '- Installed mypurecloud/genesyscloud v1.88.0 (self-signed, key ID 8167A4FEF3EC3F4F)',
+    'Partner and community providers are signed by their developers.',
+    'Terraform has been successfully initialized!',
+    'Terraform used the selected providers to generate the following execution',
+    '  + create',
+    '  # genesyscloud_tf_export.export will be created',
+    '      + include_state_file                 = false',
+    'Plan: 1 to add, 0 to change, 0 to destroy.',
+    'genesyscloud_tf_export.export: Creating...',
+    'genesyscloud_tf_export.export: Still creating... [01m10s elapsed]',
+    '2026-11-14T16:53:06.816+0100 [ERROR] provider.terraform-provider-genesyscloud_v1.88.0.exe: Failed to get all guides | error: API Error: 403 - Unable to perform the requested action. You are missing the following permission(s): [aiStudio:guide:view] (6cc2): tf_rpc=ApplyResourceChange',
+    '2026-11-14T16:53:06.844+0100 [ERROR] provider.terraform-provider-genesyscloud_v1.88.0.exe: Failed to get task management worktype error: failed to get worktypes: API Error: 403 - Unable to perform the requested action. You must have permission workitems:worktype:view in at least one division. (fab1): x',
+    '2026-11-14T16:53:08.674+0100 [ERROR] provider.terraform-provider-genesyscloud_v1.88.0.exe: Failed to get all business rules schemas error: failed: API Error: 403 - Unable to perform the requested action. You must have at least one of the following permissions assigned: [businessrules:businessRulesSchema:view] (7b4e): x',
+    '2026-11-14T16:53:09.345+0100 [ERROR] provider.terraform-provider-genesyscloud_v1.88.0.exe: Failed to get task management worktypes: failed to get worktypes: API Error: 403 - You must have permission workitems:worktype:view in at least one division. (dc43): x',
+  ].map(f);
+  const logget = ud.filter(x => x.log).map(x => x.log);
+  assert.deepEqual(logget, ['- Installed mypurecloud/genesyscloud v1.88.0 (self-signed, key ID 8167A4FEF3EC3F4F)', 'Terraform has been successfully initialized!']);
+  assert.deepEqual(ud.filter(x => x.elapsed).map(x => x.elapsed), ['01m10s']);
+  const sprunget = ud.filter(x => x.skipped).reduce((l, x) => HCL.addSkipped(l, x.skipped), []);
+  assert.deepEqual(sprunget.map(x => x.perm), ['aiStudio:guide:view', 'workitems:worktype:view', 'businessrules:businessRulesSchema:view']);
+  assert.deepEqual(sprunget[1].what, ['Failed to get task management worktype', 'Failed to get task management worktypes']);
+  assert.equal(sprunget[0].what[0], 'Failed to get all guides');
+  // Uden for en eksport vises planen — dér er den en rigtig ændring
+  assert.deepEqual(HCL.logFilter()('Plan: 3 to add, 0 to change, 0 to destroy.'), { log: 'Plan: 3 to add, 0 to change, 0 to destroy.' });
+});
+
+test('eksporten oplyser at org\'en kun læses, og en stoppet eksport ryddes op', () => {
+  const R = kilde('routes/terraform.js');
+  const exp = R.slice(R.indexOf("router.post('/api/terraform/export'"), R.indexOf('// ── Kørsler'));
+  assert.match(exp, /Read-only export of/);
+  assert.match(exp, /job\.status === 'cancelled'/);
+  assert.match(exp, /CLI\.removeDir\(dir\)/, 'mappen slettes med genforsøg (Windows slipper filer langsomt)');
+  const HTML = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  assert.ok(HTML.includes("tfFollowExport();\n}"), 'en kørende eksport følges igen, når fanen tegnes på ny');
+  // Et stoppet eller fejlet job har et error-felt. Gik opslaget gennem tfApi,
+  // blev det taget for et fejlet opslag, og fanen viste "kører" for evigt.
+  const follow = HTML.slice(HTML.indexOf('function tfFollowJob('), HTML.indexOf('function tfClock('));
+  assert.ok(!/tfApi\(`\/api\/terraform\/job\//.test(follow), 'jobbet hentes med fetch, ikke tfApi');
+});
+
 // ── Brugerfladen ─────────────────────────────────────────────────────────────
 
 test('fanen har fuld eksport, startopsætning, arbejdsmapper og guiden — uden kundenavne', () => {

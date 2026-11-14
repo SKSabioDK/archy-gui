@@ -168,10 +168,21 @@ async function envLogin(env) {
   return { token, region };
 }
 
-// En terraform-kommando i et job. Fejler den, bærer fejlen en forklaringskode.
-async function tfStep(exe, args, cwd, env, log, job) {
+// En terraform-kommando i et job. Uddata går gennem logFilter: ventelinjer bliver
+// til job.elapsed, og rettighedsfejl til job.skipped. Fejler den, bærer fejlen
+// en forklaringskode. stoppable: false for apply, som ikke afbrydes halvvejs.
+async function tfStep(exe, args, cwd, env, log, job, { exportRun = false, stoppable = true } = {}) {
   log(`$ terraform ${args.join(' ')}`);
-  const r = await CLI.runTerraform(exe, args, { cwd, env, onLine: log, signal: job && job.controller.signal });
+  const filter = HCL.logFilter({ exportRun });
+  const onLine = l => {
+    const f = filter(l);
+    if (f.elapsed) { if (job) job.elapsed = f.elapsed; }
+    else if (f.skipped) { if (job) HCL.addSkipped(job.skipped, f.skipped); else log(l); }
+    else if (f.log) log(f.log);
+  };
+  if (job) job.elapsed = null;
+  const r = await CLI.runTerraform(exe, args, { cwd, env, onLine, signal: job && stoppable ? job.controller.signal : null });
+  if (r.aborted) throw new Error('Stopped');
   if (r.code !== 0) {
     const tail = r.out.split(/\r?\n/).filter(l => l.trim()).slice(-6).join('\n');
     throw Object.assign(new Error(`terraform ${args[0]} failed (exit ${r.code})${tail ? ':\n' + tail : ''}`), { hint: HCL.errorHint(r.out) });
@@ -388,41 +399,52 @@ router.post('/api/terraform/export', async (req, res) => {
     const dir = newWsDir(source, target, '_full');
     const ws = wsId(dir);
     const job = CLI.startJob(ws, 'export', async (job, log) => {
+      job.info = { source: source.name, target: target ? target.name : null, region };
       const work = path.join(dir, '_export');
       fs.mkdirSync(work, { recursive: true });
       fs.writeFileSync(path.join(work, 'main.tf'), HCL.exportMainTf({ includeState, include, exclude, dependencies: !!req.body.dependencies }));
       const env = CLI.terraformEnv({ token, region });
       try {
-        log(`Exporting ${source.name} (${region})${target ? ' for ' + target.name : ''} …`);
-        await tfStep(exe, ['init', '-input=false', '-no-color'], work, env, log, job);
-        await tfStep(exe, ['apply', '-auto-approve', '-input=false', '-no-color'], work, env, log, job);
+        log(`Read-only export of ${source.name} (${region})${target ? ' for ' + target.name : ''}. Nothing is changed in any org; files are written to this machine.`);
+        job.phase = 'init';
+        await tfStep(exe, ['init', '-input=false', '-no-color'], work, env, log, job, { exportRun: true });
+        // "apply" opretter kun eksportørens hjælpe-ressource i en lokal state
+        job.phase = 'export';
+        await tfStep(exe, ['apply', '-auto-approve', '-input=false', '-no-color'], work, env, log, job, { exportRun: true });
+        job.phase = 'save';
         const out = path.join(work, 'out');
         if (!fs.existsSync(out)) throw new Error('The exporter wrote no files');
         for (const name of fs.readdirSync(out)) fs.renameSync(path.join(out, name), path.join(dir, name));
       } finally {
-        fs.rmSync(work, { recursive: true, force: true });
+        try { CLI.removeDir(work); } catch (e) { log(`Could not remove ${work}: ${e.code || e.message}`); }
       }
       if (!fs.existsSync(path.join(dir, 'README.md'))) fs.writeFileSync(path.join(dir, 'README.md'), exportReadme(lang, source.name, target && target.name, includeState));
       writeMeta(dir, { kind: 'export', created: new Date().toISOString(), sourceId: source.id, sourceName: source.name,
-        targetId: target ? target.id : null, targetName: target ? target.name : null, includeState, lang, include, exclude });
+        targetId: target ? target.id : null, targetName: target ? target.name : null, includeState, lang, include, exclude,
+        skipped: job.skipped });
       // Med state skal mappen kunne planlægges med det samme
       if (includeState) {
-        const r = await CLI.runTerraform(exe, ['init', '-input=false', '-no-color'], { cwd: dir, env, onLine: log });
-        if (r.code !== 0) log('terraform init in the folder failed — run Init under Plan & apply');
+        job.phase = 'init_ws';
+        try { await tfStep(exe, ['init', '-input=false', '-no-color'], dir, env, log, job, { exportRun: true }); }
+        catch (e) { if (e.message === 'Stopped') throw e; log('terraform init in the folder failed — run Init under Plan & apply'); }
       }
+      job.phase = 'done';
       const s = wsSummary(dir);
-      addLog('SUCCESS', `Terraform full export of ${source.name}${target ? ' (for ' + target.name + ')' : ''}: ${s.resources} resources in ${path.relative(ROOT_DIR, dir)}`, source.name, 'TERRAFORM');
-      return { ws, resources: s.resources, files: s.files };
+      addLog('SUCCESS', `Terraform full export of ${source.name}${target ? ' (for ' + target.name + ')' : ''}: ${s.resources} resources in ${path.relative(ROOT_DIR, dir)}` +
+        (job.skipped.length ? `; skipped for missing permissions: ${job.skipped.map(x => x.perm).join(', ')}` : ''), source.name, 'TERRAFORM');
+      return { ws, resources: s.resources, files: s.files, skipped: job.skipped };
     });
-    // En fejlet eksport efterlader ingen halv mappe
+    // En fejlet eller stoppet eksport efterlader ingen halv mappe
     const watch = setInterval(() => {
       if (job.status === 'running') return;
       clearInterval(watch);
-      if (job.status === 'failed') {
-        addLog('ERROR', `Terraform full export of ${source.name} failed: ${job.error.split('\n')[0]}`, source.name, 'TERRAFORM');
-        fs.rmSync(dir, { recursive: true, force: true });
-      }
-    }, 1000);
+      if (job.status === 'done') return;
+      if (job.status === 'cancelled') addLog('INFO', `Terraform full export of ${source.name} stopped by the user`, source.name, 'TERRAFORM');
+      else addLog('ERROR', `Terraform full export of ${source.name} failed: ${job.error.split('\n')[0]}`, source.name, 'TERRAFORM');
+      try { CLI.removeDir(dir); } catch (e) { addLog('WARN', `Could not remove ${path.relative(ROOT_DIR, dir)}: ${e.code || e.message}`, source.name, 'TERRAFORM'); }
+      const parent = path.dirname(dir);
+      try { if (!fs.readdirSync(parent).length) fs.rmdirSync(parent); } catch (_) {}
+    }, 500);
     res.json({ ok: true, jobId: job.id, ws });
   } catch (e) { sendError(res, e); }
 });
@@ -641,7 +663,7 @@ router.post('/api/terraform/apply', async (req, res) => {
     const s = pm.summary;
     const job = CLI.startJob(wsId(dir), 'apply', async (job, log) => {
       try {
-        await tfStep(exe, ['apply', '-input=false', '-no-color', PLAN_FILE], dir, env, log, null);
+        await tfStep(exe, ['apply', '-input=false', '-no-color', PLAN_FILE], dir, env, log, job, { stoppable: false });
       } finally {
         try { fs.unlinkSync(planFile); fs.unlinkSync(path.join(dir, PLAN_META)); } catch (_) {}
       }
