@@ -108,6 +108,9 @@ const SKRIVER_IKKE_TIL_ORG = new Set([
   '/api/flows/cross-hash', '/api/flows/compare', '/api/data-actions/compare', '/api/data-actions/contracts', '/api/data-actions/plan', '/api/oauthclients/plan', '/api/migrate/check',
   '/api/export', '/api/export-all', '/api/export-all/cancel/:jobId', '/api/validate-yaml',
   '/api/logs/clear', '/api/files/cleanup', '/api/features', '/api/features/unlock', '/api/terraform/generate',
+  // Terraform: eksport og plan læser kun; filerne er lokale. Apply står i PROD_WRITE_ROUTES.
+  '/api/terraform/cli', '/api/terraform/export', '/api/terraform/job/:id/cancel', '/api/terraform/workspace/copy',
+  '/api/terraform/workspace/delete', '/api/terraform/file', '/api/terraform/file/delete', '/api/terraform/resource', '/api/terraform/run',
   '/api/ai/enabled', '/api/ai/selected', '/api/ai/providers/:id', '/api/ai/providers/:id/key', '/api/ai/providers/:id/test',
   // chatten skriver ikke selv: en skrivning går gennem /api/import og /api/flows/publish, som står i PROD_WRITE_ROUTES
   '/api/ai/preview', '/api/ai/chat', '/api/ai/answer', '/api/ai/stop'

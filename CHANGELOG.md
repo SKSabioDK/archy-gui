@@ -5,6 +5,30 @@
 
 ---
 
+### v1.82.0
+---
+**🇩🇰 Dansk**
+
+- **Fuld eksport af en org med Terraform.** Fanen Terraform kører nu også Genesys' egen eksportør (`genesyscloud_tf_export`) mod kilden og gemmer hele org'en som `.tf`-filer, én fil pr. type, og flows som YAML. Man tager alle typer eller vælger dem fra providerens liste. Uden mål styrer mappen kilden selv: state kommer med, så `plan` viser 0 ændringer. Med et mål kommer der ingen state med, og `apply` opretter objekterne i målet. Terraform får Archy GUI's login gennem `GENESYSCLOUD_ACCESS_TOKEN`, også et PKCE-login til prod, og der skrives ingen secret i mappen. Kræver `terraform.exe` (PATH, `C:\Tools\Terraform` eller en sti man skriver i fanen).
+- **Arbejdsmapper: ret i GUI'en, gem som Terraform.** Hver opsætning er en mappe, der hører til én org. Under **Ressourcer** rettes, oprettes og slettes ressourcer i formularer bygget ud fra providerens schema. En rettelse ændrer kun sit felt, så kommentarer og resten af filen står. Under **Filer** rettes `.tf`, `.tfvars` og YAML i en editor. Kunden kan tage mappen med og fortsætte med sin egen terraform.
+- **Plan og apply fra GUI'en.** Init, Fmt, Validate og Plan. Planen vises som `+ ~ - ±` pr. ressource med de felter, der ændres. Apply kører kun den plan, du har set (hashen skal passe), kun mod mappens org og bag prod-vagten (`/api/terraform/apply` står i `PROD_WRITE_ROUTES`).
+- **Kopiér en mappe til en anden org.** Kopien får ingen state, så apply opretter objekterne i den nye org.
+- **📖 Guide: CX as Code, org til org** åbner fra fanen, på dansk eller engelsk og uden kontrolspørgsmålene.
+- **Intet kundenavn i fanens tekster.** Eksemplet "fx fra Falck Global til US" er skiftet til "fx fra en test-org til en ny org" på alle seks sprog.
+- **Kendte terraform-fejl forklares.** Bryder et antivirusprogram forbindelsen mellem terraform og provideren (Norton: *x509: certificate signed by unknown authority*), siger fanen, hvad der skal undtages.
+- 18 nye tests (`test/terraform-redigering.test.js`): læsning og rettelse af HCL, plan-opsummering, at GUI'en ikke kan nå state eller filer uden for mappen, at apply står bag prod-vagten og kun kører den sete plan, og at tokenet vaskes ud af terraforms uddata.
+
+**🇬🇧 English**
+- **Full org export with Terraform.** The Terraform tab now runs Genesys' own exporter (`genesyscloud_tf_export`) and saves the whole org as `.tf` files, one file per type. Without a target the state comes along. With a target there is none, so apply creates the objects there. The login goes through `GENESYSCLOUD_ACCESS_TOKEN`, and no secret is written to the folder. Needs `terraform.exe`.
+- **Working folders: edit in the GUI, save as Terraform.** Schema-driven forms to add, edit and delete resources. An edit changes only its own field. A file editor covers the rest.
+- **Plan and apply from the GUI.** Apply runs only the plan you have seen, only against the folder's org, and behind the prod guard.
+- **Copy a folder to another org**, without state.
+- **📖 Guide: CX as Code, org to org** opens from the tab, without the quiz.
+- **No customer name in the tab's texts.**
+- **Known terraform errors are explained**, e.g. antivirus breaking the provider connection.
+- 18 new tests.
+
+---
 ### v1.81.2
 ---
 **🇩🇰 Dansk**

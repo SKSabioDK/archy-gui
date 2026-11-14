@@ -551,7 +551,7 @@
       <a onclick="openIssue('idea')" data-i18n="iss_link_idea">💡 Foreslå et ønske</a>
     </div>
     <!-- Udfyldes fra /api/version (package.json) — teksten her er kun fallback -->
-    <div class="version" id="app-version">v1.81.2 · Archy GUI</div>
+    <div class="version" id="app-version">v1.82.0 · Archy GUI</div>
   </div>
 
   <!-- Main -->
@@ -1076,7 +1076,7 @@
           </div>
           <div>
             <label data-i18n="da_label_target">Mål (kopier til)</label>
-            <select id="da-target" onchange="daLoadTargetIntegrations(); dtUpdateReady(); wuUpdateReady(); mlUpdateReady('roles'); mlUpdateReady('oauth'); mlUpdateReady('integ'); prUpdateReady(); scUpdateReady(); mlUpdateAll()"></select>
+            <select id="da-target" onchange="daLoadTargetIntegrations(); tfRefreshMode(); dtUpdateReady(); wuUpdateReady(); mlUpdateReady('roles'); mlUpdateReady('oauth'); mlUpdateReady('integ'); prUpdateReady(); scUpdateReady(); mlUpdateAll()"></select>
           </div>
         </div>
         <div class="grid-2" id="da-actions-only" style="margin-top:12px">
@@ -1262,19 +1262,17 @@
       </div>
       <div class="card" id="da-terraform-card" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap">
-          <div class="card-title" style="margin:0" data-i18n="tf_title">TERRAFORM-OPSÆTNING</div>
-          <button class="btn btn-primary btn-sm" id="tf-run-btn" onclick="tfRun()" data-i18n="tf_run">Generér Terraform</button>
+          <div class="card-title" style="margin:0" data-i18n="tf_title">TERRAFORM</div>
+          <button class="btn btn-secondary btn-sm" onclick="tfOpenGuide()" data-i18n="tf_guide">📖 Guide: CX as Code, org til org</button>
         </div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:8px" data-i18n="tf_intro"></div>
-        <div style="font-size:12px;margin-bottom:8px" data-i18n="tf_target_hint"></div>
-        <div style="font-size:11px;color:var(--yellow);margin-bottom:12px" data-i18n="tf_note"></div>
-        <div style="display:flex;gap:12px;margin-bottom:8px;font-size:12px">
-          <a href="#" onclick="tfAll(true);return false" style="color:var(--accent);text-decoration:none" data-i18n="tf_all">Vælg alle</a>
-          <a href="#" onclick="tfAll(false);return false" style="color:var(--accent);text-decoration:none" data-i18n="tf_none">Fravælg alle</a>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px" data-i18n="tf_top_intro"></div>
+        <div id="tf-cli" style="font-size:12px;margin-bottom:12px"></div>
+        <div class="da-tabs" style="margin-bottom:14px">
+          <div class="da-tab da-tab-x" style="margin-left:0" id="tf-v-export" onclick="tfSetView('export')" data-i18n="tf_v_export">Fuld eksport</div>
+          <div class="da-tab da-tab-x" style="margin-left:0" id="tf-v-quick" onclick="tfSetView('quick')" data-i18n="tf_v_quick">Hurtig startopsætning</div>
+          <div class="da-tab da-tab-x" style="margin-left:0" id="tf-v-folders" onclick="tfSetView('folders')" data-i18n="tf_v_folders">Arbejdsmapper</div>
         </div>
-        <div id="tf-kinds" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px 14px;margin-bottom:14px"></div>
-        <div id="tf-status" style="font-size:12px;margin-bottom:8px"></div>
-        <div id="tf-body"></div>
+        <div id="tf-view"></div>
       </div>
       <div class="card" id="da-orgset-card" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap">
@@ -2403,11 +2401,37 @@ const LANGS = {
     aic_limit:'Stoppede efter 12 trin — skriv for at fortsætte.',
     aic_stopped:'Stoppet.',
     help_aichat:'En chat, hvor modellen kan **læse og forstå flows** og **lave udkast til YAML**. Beta, bag aktiveringsnøglen, og den bruger kun den udbyder, du har valgt under Kunder → AI-udbydere.\n• **Læsning:** modellen kan liste miljøer og flows, eksportere et flow, søge i det, se opbygning og afhængigheder. Det sker med appens egne funktioner og dit eget login — ikke gennem en ekstern server.\n• **Udkast:** et udkast lander i **Importér YAML**, hvor 🔍 Valider YAML og 🌐 Tjek mod org kører som altid. Står der allerede noget dér, spørger chatten først.\n• **Skrivning kræver dit klik.** Modellen kan bede om at importere udkastet eller publicere et flow, men får først lov, når du har set org, trin, flow, handling og tjek, og klikket **Udfør**. Det sker gennem de samme ruter som knapperne, så prod-vagten (prod-login), divisionstjekket og afhængighedstjekket gælder. Afvises en skrivning af dem, vises det, og du bliver ikke spurgt.\n• **Spørg mig, før data sendes:** (anbefalet, slået til som standard) før hvert kald til udbyderen vises præcis hvad der sendes — flow-YAML, kønavne og logtekst kan indeholde persondata. Du kan annullere. **Vis hvad der sendes** viser det første kald, før du sender.\n• **Indhold fra orgs er data, ikke instruktioner.** Det pakkes ind og modellen er bedt om ikke at følge det, men en model kan lade sig narre — derfor er alt skrivende bag dit klik, og du ser selv hvad der sker.\n• Hemmeligheder renses før afsendelse. Prompts og svar logges ikke; loggen viser kun at en samtale kørte, og hvilke skrivninger du godkendte eller afviste.\n• Svaret kommer trin for trin (ikke ord for ord). Højst 12 trin pr. besked.',
-    da_tab_terraform:'Terraform', tf_title:'TERRAFORM-OPSÆTNING', tf_run:'Generér Terraform', tf_all:'Vælg alle', tf_none:'Fravælg alle',
-    tf_intro:'Laver en Terraform-opsætning (genesyscloud-provideren) ud fra kilde-org\'ens objekter og gemmer den automatisk i mappen terraform/ på denne maskine. Kunden kører selv terraform apply mod den org, der skal ændres — fx fra Falck Global til US.', tf_note:'Det er en startopsætning: hemmeligheder, medlemmer, kontakter og indspillet lyd kommer ikke med, og det udeladte står i README.md i mappen. Prøv den i en test-org først.',
+    da_tab_terraform:'Terraform', tf_title:'TERRAFORM', tf_run:'Generér Terraform', tf_all:'Vælg alle', tf_none:'Fravælg alle',
+    tf_intro:'Archy GUI\'s egen generator: henter de valgte typer og skriver en startopsætning uden terraform.exe. Hurtig, men ikke alt kommer med. Kunden kører selv terraform apply mod den org, der skal ændres — fx fra en test-org til en ny org.', tf_note:'Det er en startopsætning: hemmeligheder, medlemmer, kontakter og indspillet lyd kommer ikke med, og det udeladte står i README.md i mappen. Prøv den i en test-org først.',
     tf_target_hint:'Vælg også et mål ovenfor: så hedder mappen <fra>_<til>, README og provider nævner begge orgs, og målets region bliver standard. Målet er ikke nødvendigt for selve opsætningen — den beskriver kilden.',
     tf_need_source:'Vælg en kilde først.', tf_need_kind:'Vælg mindst én type.', tf_running:'Henter objekter og skriver filer…', tf_done:'Opsætningen er gemt.',
     tf_saved_in:'Gemt i', tf_copy_path:'Kopiér sti', tf_files:'Filer', tf_col_written:'Med / i alt', tf_unreadable:'kunne ikke læses', tf_skipped:'udeladt', tf_notes:'Bemærkninger',
+    tf_guide:'📖 Guide: CX as Code, org til org', tf_top_intro:'Terraform-opsætninger af en Genesys-org med genesyscloud-provideren. Lav en fuld eksport eller en hurtig startopsætning, ret ressourcer og filer her, og kør plan og apply mod mappens org. Alt gemmes som almindelige .tf-filer i data/terraform/, så kunden kan tage mappen og fortsætte med sin egen terraform.', tf_v_export:'Fuld eksport', tf_v_quick:'Hurtig startopsætning',
+    tf_v_folders:'Arbejdsmapper', tf_cli_change:'skift', tf_cli_path:'Stien til terraform.exe:', tf_cli_missing:'terraform.exe blev ikke fundet. Installér Terraform, eller skriv stien til terraform.exe:',
+    tf_save:'Gem', tf_job_running:'Terraform kører…', tf_job_stop:'Stop', tf_job_done:'Færdig',
+    tf_exp_intro:'Kører Genesys\' egen eksportør (genesyscloud_tf_export) mod kilden og skriver alle objekter som .tf-filer — én fil pr. type — og flows som YAML. Kræver terraform.exe og internet første gang, hvor provideren hentes (ca. 90 MB).', tf_exp_same:'Uden mål: mappen styrer {src} selv. State kommer med, så plan viser 0 ændringer, indtil du retter i filerne.', tf_exp_other:'Mål valgt: mappen er til {tgt}. Der kommer ingen state med, så apply opretter objekterne fra {src} i {tgt}.', tf_exp_all:'Alle typer',
+    tf_exp_pick:'Udvalgte typer', tf_exp_deps:'Tag afhængigheder med', tf_exp_deps_tip:'enable_dependency_resolution: flows og scripts får det med, de bruger, også når typen ikke er valgt.', tf_exp_run:'Eksportér org',
+    tf_exp_done:'Eksporten er gemt: {n} ressourcer.', tf_schema_loading:'Henter providerens typer…', tf_filter:'Filtrér…', tf_ws_open:'Åbn',
+    tf_ws_none:'Ingen arbejdsmapper endnu. Lav en fuld eksport eller en hurtig startopsætning.', tf_ws_intro:'Hver mappe hører til én org — målet, eller kilden når der ikke var et mål. Plan og apply kører kun mod den org.', tf_ws_col_folder:'Mappe', tf_ws_col_kind:'Slags',
+    tf_ws_col_org:'Org', tf_ws_col_res:'Ressourcer', tf_ws_col_state:'State', tf_kind_export:'Fuld eksport',
+    tf_kind_generator:'Startopsætning', tf_kind_copy:'Kopi', tf_ws_no_org:'Mappens org findes ikke længere i Archy GUI', tf_ws_back:'Alle mapper',
+    tf_ws_org:'Org', tf_ws_state_yes:'har state', tf_ws_state_no:'ingen state', tf_ws_copied_from:'kopi af',
+    tf_ws_copy_to:'Kopiér til en anden org:', tf_ws_copy:'Kopiér', tf_ws_delete:'Slet mappe', tf_ws_tab_res:'Ressourcer',
+    tf_ws_tab_files:'Filer', tf_ws_tab_plan:'Plan & apply', tf_ws_copy_confirm:'Lav en kopi af mappen til {org}? Kopien får ingen state, så apply opretter objekterne i {org}.', tf_ws_delete_confirm:'Slet mappen {ws} på denne maskine? Org\'en røres ikke.',
+    tf_ws_delete_state:'Mappen har en terraform.tfstate. Objekterne i org\'en bliver ikke slettet, men Terraform glemmer, at den styrer dem. Slet alligevel?', tf_res_new:'Ny ressource', tf_res_pick:'Vælg en ressource til venstre, eller lav en ny.', tf_res_none:'Ingen ressourcer.',
+    tf_res_type:'Type', tf_res_local:'Navn i Terraform', tf_res_local_tip:'Navnet i filen (resource "type" "navn"): bogstaver, tal, _ og -. Det er ikke navnet i Genesys.', tf_res_continue:'Fortsæt',
+    tf_res_bad_name:'Skriv en type (fx genesyscloud_routing_queue) og et navn med bogstaver, tal, _ og -, der starter med et bogstav.', tf_res_required:'påkrævet', tf_res_as_hcl:'Skriv feltet som HCL, fx en reference til en anden ressource', tf_res_new_badge:'ny',
+    tf_res_no_schema:'Providerens beskrivelse af typen kunne ikke hentes, så kun felterne i filen vises. Du kan stadig tilføje felter som HCL.', tf_res_empty:'Ingen felter.', tf_res_new_block:'ny blok', tf_res_field_name:'feltnavn',
+    tf_res_more:'Flere felter ({n})', tf_res_add_block:'blok', tf_res_add:'Tilføj', tf_res_add_field:'Felt som HCL',
+    tf_res_create:'Opret i filen', tf_res_show_file:'Vis i filen', tf_res_delete:'Slet ressource', tf_res_missing_req:'Disse påkrævede felter er tomme: {f}. Gem alligevel? terraform validate vil fejle.',
+    tf_res_nochange:'Intet er ændret.', tf_res_saved:'Gemt i {file}. Kør Plan for at se, hvad det betyder i org\'en.', tf_res_delete_confirm:'Fjern {r} fra filen? Næste apply sletter objektet i org\'en, hvis Terraform styrer det.', tf_file_unsaved:'Der er ændringer, der ikke er gemt. Kassér dem?',
+    tf_file_new:'Ny fil', tf_file_pick:'Vælg en fil til venstre.', tf_file_delete:'Slet fil', tf_file_saved:'Gemt',
+    tf_file_delete_confirm:'Slet {f}?', tf_file_new_prompt:'Filnavn (fx queues.tf eller flows/mit_flow.yaml):', tf_plan_intro:'Plan og apply kører mod {org} med dit login i Archy GUI. Apply udfører kun den plan, du har set.', tf_act_init_tip:'terraform init: henter provideren',
+    tf_act_fmt_tip:'terraform fmt: retter indrykningen i .tf-filerne', tf_act_validate_tip:'terraform validate: tjekker filerne uden at spørge org\'en', tf_apply_btn:'Apply mod {org}', tf_last_apply:'Sidste apply',
+    tf_plan_nochange:'Ingen ændringer — org\'en svarer til filerne.', tf_plan_create:'oprettes', tf_plan_update:'ændres', tf_plan_delete:'slettes',
+    tf_plan_replace:'erstattes', tf_apply_confirm:'Udfør planen mod {org}?\n\n+{c} oprettes\n~{u} ændres\n-{d} slettes\n±{r} erstattes', tf_apply_prod:'{org} er PROD. Er du sikker?', tf_hint_tls_intercept:'Terraform kan ikke tale med sin provider: forbindelsen mellem terraform.exe og provideren bliver brudt af et program, der scanner krypteret trafik (fx Norton eller anden antivirus). Undtag terraform.exe og terraform-provider-*.exe fra scanningen, eller slå scanning af krypteret trafik fra.',
+    tf_hint_needs_init:'Kør Init under Plan & apply først.', tf_hint_registry:'Provideren kunne ikke hentes fra registry.terraform.io. Tjek internetforbindelsen og en evt. proxy.', tf_hint_auth:'Genesys afviste login\'et. Log ind i miljøet igen, og prøv igen.', tf_hint_stale_plan:'Planen er forældet — kør Plan igen.',
+    tf_hint_no_cli:'Installér Terraform (developer.hashicorp.com/terraform/install), eller skriv stien til terraform.exe øverst i fanen.', tf_hint_plugin_start:'Terraforms provider ville ikke starte. Den hyppigste årsag er et antivirusprogram, der scanner krypteret trafik (fx Norton): undtag terraform.exe og terraform-provider-*.exe fra scanningen.',
     btn_demo_create:'+ Opret demo-kunde',
     btn_demo_reset:'↺ Nulstil demo',
     btn_demo_remove:'✕ Fjern demo',
@@ -2814,7 +2838,7 @@ const LANGS = {
     help_pipeline:'Flows som rækker, gruppens miljøer som kolonner i trin-rækkefølge.\n• Versionstallene kan **ikke** sammenlignes på tværs — de tælles pr. org. Brug **⇄ Tjek indhold**, som er det eneste der afgør om to miljøer er ens.\n• **Grøn** betyder publiceret ad den rigtige vej. **Rød** betyder enten publiceret uden om pipelinen, eller flere udgaver end trinnet før.\n• **Hver knap viser først hvad der sker** — flow, fra og til, og advarsler om prod eller ændringer der går tabt — og du kan annullere. **? Knapperne** forklarer dem alle.\n• **Udlign versionsnummer**: ved ⟶ Forfrem kan målet publiceres de ekstra gange der mangler, så det står på kildens nummer (fx dev v10 → test v10). Det kan ikke tælle ned.\n• **⟶ Forfrem** flytter ét trin ad gangen. Kun en publiceret udgave kan forfremmes — en kladde er ikke testet. Til prod kræves dit prod-login.\n• **⟵ Hent hertil** henter et flow ned fra et senere trin, fx når dev lige er sat op.\n• **↩** ruller seneste forfremmelse tilbage, og **📝** viser release notes.\n• Forfremmes eller rulles et **common module** tilbage, tilbydes du at genpublicere de flows i miljøet der bruger det. **🔁** gør det samme når modulet er rettet direkte i Architect. Er et modul publiceret efter flows der bruger det, står det øverst på tavlen, cellerne er mærket ⚠, og 🔁 er gul.\n• **Delt manifest** lægger historikken i org\'en, så flere kan arbejde på samme kunde uden at se hver sin sandhed.',
     help_flows:'Hent, søg og filtrér miljøets flows. Deler flere miljøer org\'en, vises kun dette miljøs egne.\n• Filtrér på **flowtype** — listen fyldes ud fra de typer miljøet faktisk har.\n• **Publicér** sætter en allerede migreret kladde i drift uden at hente noget fra kilden igen. Er det et common module, tilbydes du bagefter at genpublicere de flows der bruger det.\n• **Common modules tjekkes** hver gang listen hentes: er et modul publiceret **efter** et flow der bruger det, kører flowet stadig på den gamle udgave. Det står i et gult felt med en knap der genpublicerer dem, og rækkerne er mærket ⚠.\n• **🔁 Brugere** på et common module viser alle de flows der bruger det.\n• **⇄ Sammenlign** mod en anden org sammenligner **indholdet**, ikke versionsnumrene.\n• **📌 Sæt nulpunkt** noterer hvad org\'en indeholder nu, så værktøjet bagefter kan fange at nogen har publiceret direkte — også for flows det aldrig selv har migreret.',
     help_cross:'Viser de flows der findes hos **flere kunder** — fx det samme common module hos ti kunder.\n• Oversigten bygger på ét kald pr. kunde og er derfor hurtig.\n• **⇄ Sammenlign indhold** eksporterer flowet fra hver kunde og sammenligner hashen. Det tager tid, så det køres kun for den række du beder om.\n• Kunne en org ikke læses, siges det — der står **aldrig** "identisk" hvis vi mangler svar fra nogen.',
-    help_migrate:'Eksport fra én org og import direkte til en anden. Kører i to faser.\n• **Tjek** — flowet eksporteres, og mål-org\'en undersøges for alt det refererer til. Der skrives intet endnu.\n• **Import** — først efter dit valg. Mangler noget, kan tabeller, data actions, common modules, user prompts og scripts migreres med inden flowet — sæt flueben ved dem i dialogen.\n• Har målet et **præfiks** eller en anden **division**, omdøbes flowet og dets referencer undervejs.\n• **Import handling** vælges efter målet: alt andet end prod publiceres som standard, så det er i drift med det samme. Prod lægges som kladde du selv publicerer.\n• Skrivning til **prod** kræver dit prod-login med rettigheden — du bliver tilbudt at logge ind hvis det mangler.\n• Migreres et **common module**, tilbydes du at genpublicere de flows i målet der bruger det.\n• Køer, skills og wrap-up-koder skal oprettes manuelt — de kan ikke migreres herfra.\n• **🚀 Kør Migration** står over flowlisten, så den kan nås uden at rulle forbi hundredvis af flows.\n• Bruger flowet en **Function Data Action**, der mangler i målet, **blokeres** forfremmelsen, til den er oprettet i Genesys. Tryk **Tjek igen**, når den findes.\n• Hedder en **data action** noget andet i målet — fx en anden integration — vises flowets data actions, og du vælger hvilken i målet de skal pege på. Valget gemmes til næste gang.',
+    help_migrate:'Eksport fra én org og import direkte til en anden. Kører i to faser.\n• **Tjek** — flowet eksporteres, og mål-org\'en undersøges for alt det refererer til. Der skrives intet endnu.\n• **Import** — først efter dit valg. Mangler noget, kan tabeller, data actions, common modules, user prompts og scripts migreres med inden flowet — sæt flueben ved dem i dialogen.\n• Har målet et **præfiks** eller en anden **division**, omdøbes flowet og dets referencer undervejs.\n• **Import handling** vælges efter målet: alt andet end prod publiceres som standard, så det er i drift med det samme. Prod lægges som kladde du selv publicerer.\n• Skrivning til **prod** kræver dit prod-login med rettigheden — du bliver tilbudt at logge ind hvis det mangler.\n• Migreres et **common module**, tilbydes du at genpublicere de flows i målet der bruger det.\n• Køer, skills og wrap-up-koder skal oprettes manuelt — de kan ikke migreres herfra.\n• **🚀 Kør Migration** står over flowlisten, så den kan nås uden at rulle forbi hundredvis af flows.\n• Bruger flowet en **Function Data Action**, der mangler i målet, **blokeres** forfremmelsen, til den er oprettet i Genesys. Tryk **Tjek igen**, når den findes.\n• Hedder en **data action** noget andet i målet — fx en anden integration — vises flowets data actions, og du vælger hvilken i målet de skal pege på. Valget gemmes til næste gang.\n• Fanen **Terraform**: **Fuld eksport** kører Genesys\' egen eksportør og gemmer org\'en som .tf-filer. Under **Arbejdsmapper** retter du ressourcer i formularer eller filerne i en editor og kører **Plan** og **Apply** mod mappens org — apply kun af en plan du har set, og prod kræver dit prod-login. Filerne er almindelig Terraform, som kunden kan tage med. **📖 Guide** forklarer CX as Code fra org til org. Kræver terraform.exe.',
     help_dataactions:'Migrerer det der ikke er flows: **Data Actions**, **Data Tabeller**, **User Prompts** og **Scripts**.\n• Data Actions hører til en integration. Vælg kilde-integration, så vises kun actions derfra, og grupperingen bevares i målet.\n• Data Tabeller migrerer **strukturen** — kolonnerne. Rækkerne følger ikke med.\n• User Prompts tager både TTS-teksten og indtalt lyd med. Prompts med lyd er markeret 🔊.\n• Scripts eksporteres og importeres i deres helhed og publiceres i målet, hvis de er publiceret i kilden.\n• **Function Data Actions kan ikke migreres** — deres URL er et id på en function der kun findes i kilde-org\'en.\n• Fanen **Totaltjek** sætter hver data action i kilden op mod mål-org\'en på kategori og navn: *matcher*, *gemt valg*, *skal vælges*, *mangler* og *FDA mangler*. Her kan du pege en action over på den, den hedder i målet, gemme eller fjerne valget, og tjekke at kontrakterne (input og output) stemmer.\n• Fanen **Setup-forslag** foreslår hvilke aktive integrationer i målet de data actions, der mangler, skal ligge i, ud fra hvor der er plads (du angiver grænsen pr. integration). En kildeintegrations actions holdes samlet, hvor det kan lade sig gøre. Gruppen kan flyttes, og forslaget kan eksporteres til Excel eller en printvenlig side til kunden.\n• **💾 Download backup** på fanerne Data Actions og Data Tabeller henter de valgte som en lokal JSON-fil: actions komplet (contract, config og eventuel draft), tabeller med hele strukturen (schemaet, ingen rækker). Det læser kun — målet behøver ikke være valgt.',
     help_export:'Eksporterer flows til YAML-filer på denne maskine.\n• Vælg miljø — listen over dets flows vises med det samme. Deler flere miljøer org\'en, vises kun dette miljøs egne.\n• Skriv for at filtrere. `*` viser alle, og en stjerne inde i teksten er et jokertegn: `DEV_*log` finder DEV_Create Logitems.\n• Typen sættes automatisk når du vælger flowet.\n• **Export Alle Flows** henter hele miljøet med en fremgangsindikator og kan afbrydes undervejs.\n• Filerne lander under `flows/<miljø>/` og bruges også af migrering og sammenligning.',
     help_import:'Opret, opdater eller publicér et flow ud fra YAML.\n• Indsæt teksten, upload en fil eller træk den ind.\n• **🔍 Valider YAML** tjekker syntaksen i browseren uden at kalde noget.\n• **🌐 Tjek mod org** slår op om division, køer, tabeller, data actions og prompts findes i målet — **inden** du importerer.\n• **Import handling** vælger om flowet oprettes, opdateres eller oprettes og publiceres.\n• Publicerer du et **common module**, tilbydes du bagefter at genpublicere de flows der bruger det.\n• Import til **prod** kræver dit prod-login med rettigheden.',
@@ -3570,11 +3594,37 @@ const LANGS = {
     aic_limit:'Stopped after 12 steps — write to continue.',
     aic_stopped:'Stopped.',
     help_aichat:'A chat where the model can **read and understand flows** and **draft YAML**. Beta, behind the activation key, and it only uses the provider you picked under Customers → AI providers.\n• **Reading:** the model can list environments and flows, export a flow, search in it, see its structure and dependencies. This uses the app\'s own functions and your own login — not an external server.\n• **Drafts:** a draft lands in **Import YAML**, where 🔍 Validate YAML and 🌐 Check against org run as usual. If something is already there, the chat asks first.\n• **Writing needs your click.** The model can ask to import the draft or publish a flow, but is only allowed once you have seen org, stage, flow, action and checks and clicked **Carry out**. It goes through the same routes as the buttons, so the prod guard (prod login), the division check and the dependency check apply. If one of them refuses a write, that is shown and you are not asked.\n• **Ask me before data is sent:** (recommended, on by default) before each call to the provider, exactly what is sent is shown — flow YAML, queue names and log text may contain personal data. You can cancel. **Show what is sent** shows the first call before you send.\n• **Content from orgs is data, not instructions.** It is wrapped and the model is told not to follow it, but a model can be fooled — so everything that writes sits behind your click, and you see what happens yourself.\n• Secrets are redacted before sending. Prompts and answers are not logged; the log only shows that a conversation ran, and which writes you approved or declined.\n• The answer arrives step by step (not word by word). At most 12 steps per message.',
-    da_tab_terraform:'Terraform', tf_title:'TERRAFORM SETUP', tf_run:'Generate Terraform', tf_all:'Select all', tf_none:'Select none',
-    tf_intro:'Builds a Terraform setup (the genesyscloud provider) from the source org\'s objects and saves it automatically in the terraform/ folder on this machine. The customer runs terraform apply themselves against the org that should change — e.g. from Falck Global to US.', tf_note:'It is a starting setup: secrets, members, contacts and recorded audio are not included, and what is left out is listed in README.md in the folder. Try it in a test org first.',
+    da_tab_terraform:'Terraform', tf_title:'TERRAFORM', tf_run:'Generate Terraform', tf_all:'Select all', tf_none:'Select none',
+    tf_intro:'Archy GUI\'s own generator: reads the selected types and writes a starting setup without terraform.exe. Quick, but not everything is included. The customer runs terraform apply themselves against the org that should change — e.g. from a test org to a new org.', tf_note:'It is a starting setup: secrets, members, contacts and recorded audio are not included, and what is left out is listed in README.md in the folder. Try it in a test org first.',
     tf_target_hint:'Also choose a target above: the folder is then named <from>_<to>, the README and provider mention both orgs, and the target\'s region becomes the default. The target is not needed for the setup itself — it describes the source.',
     tf_need_source:'Choose a source first.', tf_need_kind:'Choose at least one type.', tf_running:'Fetching objects and writing files…', tf_done:'The setup is saved.',
     tf_saved_in:'Saved in', tf_copy_path:'Copy path', tf_files:'Files', tf_col_written:'Included / total', tf_unreadable:'could not be read', tf_skipped:'left out', tf_notes:'Notes',
+    tf_guide:'📖 Guide: CX as Code, org to org', tf_top_intro:'Terraform setups of a Genesys org with the genesyscloud provider. Make a full export or a quick starting setup, edit resources and files here, and run plan and apply against the folder\'s org. Everything is saved as plain .tf files in data/terraform/, so the customer can take the folder and carry on with their own terraform.', tf_v_export:'Full export', tf_v_quick:'Quick starting setup',
+    tf_v_folders:'Working folders', tf_cli_change:'change', tf_cli_path:'Path to terraform.exe:', tf_cli_missing:'terraform.exe was not found. Install Terraform, or enter the path to terraform.exe:',
+    tf_save:'Save', tf_job_running:'Terraform is running…', tf_job_stop:'Stop', tf_job_done:'Done',
+    tf_exp_intro:'Runs Genesys\' own exporter (genesyscloud_tf_export) against the source and writes every object as .tf files — one file per type — and flows as YAML. Needs terraform.exe, and internet the first time, when the provider is downloaded (about 90 MB).', tf_exp_same:'No target: the folder manages {src} itself. The state comes along, so plan shows 0 changes until you edit the files.', tf_exp_other:'Target chosen: the folder is for {tgt}. No state comes along, so apply creates the objects from {src} in {tgt}.', tf_exp_all:'All types',
+    tf_exp_pick:'Selected types', tf_exp_deps:'Include dependencies', tf_exp_deps_tip:'enable_dependency_resolution: flows and scripts bring what they use, even when that type is not selected.', tf_exp_run:'Export org',
+    tf_exp_done:'The export is saved: {n} resources.', tf_schema_loading:'Loading the provider\'s types…', tf_filter:'Filter…', tf_ws_open:'Open',
+    tf_ws_none:'No working folders yet. Make a full export or a quick starting setup.', tf_ws_intro:'Each folder belongs to one org — the target, or the source when there was no target. Plan and apply only run against that org.', tf_ws_col_folder:'Folder', tf_ws_col_kind:'Kind',
+    tf_ws_col_org:'Org', tf_ws_col_res:'Resources', tf_ws_col_state:'State', tf_kind_export:'Full export',
+    tf_kind_generator:'Starting setup', tf_kind_copy:'Copy', tf_ws_no_org:'The folder\'s org no longer exists in Archy GUI', tf_ws_back:'All folders',
+    tf_ws_org:'Org', tf_ws_state_yes:'has state', tf_ws_state_no:'no state', tf_ws_copied_from:'copy of',
+    tf_ws_copy_to:'Copy to another org:', tf_ws_copy:'Copy', tf_ws_delete:'Delete folder', tf_ws_tab_res:'Resources',
+    tf_ws_tab_files:'Files', tf_ws_tab_plan:'Plan & apply', tf_ws_copy_confirm:'Make a copy of the folder for {org}? The copy has no state, so apply creates the objects in {org}.', tf_ws_delete_confirm:'Delete the folder {ws} on this machine? The org is not touched.',
+    tf_ws_delete_state:'The folder has a terraform.tfstate. The objects in the org are not deleted, but Terraform forgets that it manages them. Delete anyway?', tf_res_new:'New resource', tf_res_pick:'Pick a resource on the left, or make a new one.', tf_res_none:'No resources.',
+    tf_res_type:'Type', tf_res_local:'Name in Terraform', tf_res_local_tip:'The name in the file (resource "type" "name"): letters, digits, _ and -. It is not the name in Genesys.', tf_res_continue:'Continue',
+    tf_res_bad_name:'Enter a type (e.g. genesyscloud_routing_queue) and a name of letters, digits, _ and - that starts with a letter.', tf_res_required:'required', tf_res_as_hcl:'Write the field as HCL, e.g. a reference to another resource', tf_res_new_badge:'new',
+    tf_res_no_schema:'The provider\'s description of the type could not be loaded, so only the fields in the file are shown. You can still add fields as HCL.', tf_res_empty:'No fields.', tf_res_new_block:'new block', tf_res_field_name:'field name',
+    tf_res_more:'More fields ({n})', tf_res_add_block:'block', tf_res_add:'Add', tf_res_add_field:'Field as HCL',
+    tf_res_create:'Create in file', tf_res_show_file:'Show in file', tf_res_delete:'Delete resource', tf_res_missing_req:'These required fields are empty: {f}. Save anyway? terraform validate will fail.',
+    tf_res_nochange:'Nothing has changed.', tf_res_saved:'Saved in {file}. Run Plan to see what it means in the org.', tf_res_delete_confirm:'Remove {r} from the file? The next apply deletes the object in the org if Terraform manages it.', tf_file_unsaved:'There are unsaved changes. Discard them?',
+    tf_file_new:'New file', tf_file_pick:'Pick a file on the left.', tf_file_delete:'Delete file', tf_file_saved:'Saved',
+    tf_file_delete_confirm:'Delete {f}?', tf_file_new_prompt:'File name (e.g. queues.tf or flows/my_flow.yaml):', tf_plan_intro:'Plan and apply run against {org} with your login in Archy GUI. Apply only carries out the plan you have seen.', tf_act_init_tip:'terraform init: downloads the provider',
+    tf_act_fmt_tip:'terraform fmt: fixes the indentation in the .tf files', tf_act_validate_tip:'terraform validate: checks the files without asking the org', tf_apply_btn:'Apply to {org}', tf_last_apply:'Last apply',
+    tf_plan_nochange:'No changes — the org matches the files.', tf_plan_create:'to create', tf_plan_update:'to change', tf_plan_delete:'to delete',
+    tf_plan_replace:'to replace', tf_apply_confirm:'Carry out the plan against {org}?\n\n+{c} to create\n~{u} to change\n-{d} to delete\n±{r} to replace', tf_apply_prod:'{org} is PROD. Are you sure?', tf_hint_tls_intercept:'Terraform cannot talk to its provider: the connection between terraform.exe and the provider is broken by a program that scans encrypted traffic (e.g. Norton or other antivirus). Exclude terraform.exe and terraform-provider-*.exe from the scan, or turn off encrypted traffic scanning.',
+    tf_hint_needs_init:'Run Init under Plan & apply first.', tf_hint_registry:'The provider could not be downloaded from registry.terraform.io. Check the internet connection and any proxy.', tf_hint_auth:'Genesys rejected the login. Log in to the environment again and retry.', tf_hint_stale_plan:'The plan is stale — run Plan again.',
+    tf_hint_no_cli:'Install Terraform (developer.hashicorp.com/terraform/install), or enter the path to terraform.exe at the top of the tab.', tf_hint_plugin_start:'Terraform\'s provider would not start. The most common cause is antivirus that scans encrypted traffic (e.g. Norton): exclude terraform.exe and terraform-provider-*.exe from the scan.',
     btn_demo_create:'+ Create demo customer',
     btn_demo_reset:'↺ Reset demo',
     btn_demo_remove:'✕ Remove demo',
@@ -3981,7 +4031,7 @@ const LANGS = {
     help_pipeline:'Flows as rows, the group\'s environments as columns in stage order.\n• Version numbers **cannot** be compared across orgs — they are counted per org. Use **⇄ Check content**, the only thing that decides whether two environments match.\n• **Green** means published the right way. **Red** means published outside the pipeline, or more versions than the stage before.\n• **Every button first shows what will happen** — flow, from and to, and warnings about prod or changes that would be lost — and you can cancel. **? Buttons** explains them all.\n• **Align version number**: on ⟶ Promote the target can be published the missing extra times so it matches the source number (e.g. dev v10 → test v10). It cannot count down.\n• **⟶ Promote** moves one stage at a time. Only a published version can be promoted — a draft is untested. Prod requires your prod login.\n• **⟵ Pull here** fetches a flow from a later stage, e.g. when dev has just been set up.\n• **↩** rolls back the latest promotion, and **📝** shows release notes.\n• When a **common module** is promoted or rolled back, you are offered to republish the flows in that environment that use it. **🔁** does the same when the module was changed directly in Architect. If a module was published after flows that use it, this is listed at the top of the board, the cells are marked ⚠ and 🔁 turns yellow.\n• **Shared manifest** keeps history in the org, so several people can work on one customer and see the same truth.',
     help_flows:'Fetch, search and filter the environment\'s flows. When several environments share an org, only this environment\'s own are shown.\n• Filter by **flow type** — the list is populated from the types the environment actually has.\n• **Publish** puts an already-migrated draft live without fetching anything from the source again. For a common module, you are then offered to republish the flows that use it.\n• **Common modules are checked** every time the list is fetched: if a module was published **after** a flow that uses it, the flow still runs the old version. This is shown in a yellow box with a button to republish them, and the rows are marked ⚠.\n• **🔁 Users** on a common module lists every flow that uses it.\n• **⇄ Compare** against another org compares **content**, not version numbers.\n• **📌 Set baseline** records what the org holds now, so the tool can later catch someone publishing directly — even for flows it never migrated itself.',
     help_cross:'Shows the flows that exist at **more than one customer** — the same common module at ten customers, say.\n• The overview rests on one call per customer and is therefore quick.\n• **⇄ Compare content** exports the flow from each customer and compares the hash. That takes time, so it runs only for the row you ask for.\n• If an org could not be read, it says so — it **never** reports "identical" when an answer is missing.',
-    help_migrate:'Export from one org and import straight into another, in two phases.\n• **Check** — the flow is exported and the target org is examined for everything it references. Nothing is written yet.\n• **Import** — only after your choice. If something is missing, tables, data actions, common modules, user prompts and scripts can be migrated before the flow — tick them in the dialog.\n• If the target has a **prefix** or a different **division**, the flow and its references are renamed on the way.\n• **Import action** follows the target: anything but prod is published by default so it is live at once. Prod is left as a draft for you to publish.\n• Writing to **prod** requires your prod login with the permission — you are offered to log in if it is missing.\n• When a **common module** is migrated, you are offered to republish the flows in the target that use it.\n• Queues, skills and wrap-up codes must be created manually — they cannot be migrated from here.\n• **🚀 Run Migration** sits above the flow list, so it can be reached without scrolling past hundreds of flows.\n• If the flow uses a **Function Data Action** that is missing in the target, the promotion is **blocked** until it has been created in Genesys. Press **Check again** once it exists.\n• If a **data action** has a different name in the target — say another integration — the flow\'s data actions are listed and you choose which one in the target they should point at. The choice is saved for next time.',
+    help_migrate:'Export from one org and import straight into another, in two phases.\n• **Check** — the flow is exported and the target org is examined for everything it references. Nothing is written yet.\n• **Import** — only after your choice. If something is missing, tables, data actions, common modules, user prompts and scripts can be migrated before the flow — tick them in the dialog.\n• If the target has a **prefix** or a different **division**, the flow and its references are renamed on the way.\n• **Import action** follows the target: anything but prod is published by default so it is live at once. Prod is left as a draft for you to publish.\n• Writing to **prod** requires your prod login with the permission — you are offered to log in if it is missing.\n• When a **common module** is migrated, you are offered to republish the flows in the target that use it.\n• Queues, skills and wrap-up codes must be created manually — they cannot be migrated from here.\n• **🚀 Run Migration** sits above the flow list, so it can be reached without scrolling past hundreds of flows.\n• If the flow uses a **Function Data Action** that is missing in the target, the promotion is **blocked** until it has been created in Genesys. Press **Check again** once it exists.\n• If a **data action** has a different name in the target — say another integration — the flow\'s data actions are listed and you choose which one in the target they should point at. The choice is saved for next time.\n• The **Terraform** tab: **Full export** runs Genesys\' own exporter and saves the org as .tf files. Under **Working folders** you edit resources in forms or the files in an editor, and run **Plan** and **Apply** against the folder\'s org — apply only of a plan you have seen, and prod needs your prod login. The files are plain Terraform the customer can take along. **📖 Guide** explains CX as Code from org to org. Needs terraform.exe.',
     help_dataactions:'Migrates what is not a flow: **Data Actions**, **Data Tables**, **User Prompts** and **Scripts**.\n• Data Actions belong to an integration. Pick the source integration and only its actions are shown, so the grouping is kept in the target.\n• Data Tables migrate the **structure** — the columns. The rows do not come along.\n• User Prompts bring both the TTS text and recorded audio. Prompts with audio are marked 🔊.\n• Scripts are exported and imported as a whole, and published in the target if they are published in the source.\n• **Function Data Actions cannot be migrated** — their URL is an id for a function that exists only in the source org.\n• The **Full check** tab sets every data action in the source against the target org by category and name: *match*, *saved choice*, *to choose*, *missing* and *FDA missing*. Here you can point an action at the one it is called in the target, save or remove the choice, and check that the contracts (input and output) agree.\n• The **Setup proposal** tab proposes which active integrations in the target the missing data actions should live in, based on where there is room (you enter the limit per integration). A source integration\'s actions are kept together where possible. A group can be moved, and the proposal exported to Excel or a printable page for the customer.\n• **💾 Download backup** on the Data Actions and Data Tables tabs downloads the selected ones as a local JSON file: actions complete (contract, config and any draft), tables with the whole structure (the schema, no rows). It only reads — no target needs to be chosen.',
     help_export:'Exports flows to YAML files on this machine.\n• Choose an environment — its flows are listed at once. When several environments share an org, only this one\'s own are shown.\n• Type to filter. `*` shows all, and a star inside the text is a wildcard: `DEV_*log` finds DEV_Create Logitems.\n• The type is set automatically when you pick the flow.\n• **Export All Flows** fetches the whole environment with a progress indicator and can be cancelled.\n• Files land under `flows/<environment>/` and are also used by migration and comparison.',
     help_import:'Create, update or publish a flow from YAML.\n• Paste the text, upload a file or drag it in.\n• **🔍 Validate YAML** checks the syntax in the browser without calling anything.\n• **🌐 Check against org** looks up whether division, queues, tables, data actions and prompts exist in the target — **before** you import.\n• **Import action** chooses whether the flow is created, updated, or created and published.\n• When you publish a **common module**, you are then offered to republish the flows that use it.\n• Importing to **prod** requires your prod login with the permission.',
@@ -4737,11 +4787,37 @@ const LANGS = {
     aic_limit:'Arrêté après 12 étapes — écrivez pour continuer.',
     aic_stopped:'Arrêté.',
     help_aichat:'Un chat où le modèle peut **lire et comprendre des flows** et **rédiger du YAML**. Bêta, derrière la clé d\'activation, et il n\'utilise que le fournisseur choisi sous Clients → Fournisseurs d\'IA.\n• **Lecture :** le modèle peut lister environnements et flows, exporter un flow, y chercher, voir sa structure et ses dépendances — avec les fonctions de l\'application et votre propre connexion, sans serveur externe.\n• **Brouillons :** un brouillon arrive dans **Importer YAML**, où 🔍 Valider YAML et 🌐 Contrôler dans l\'org fonctionnent comme d\'habitude. S\'il y a déjà du contenu, le chat demande d\'abord.\n• **Écrire exige votre clic.** Le modèle peut demander d\'importer le brouillon ou de publier un flow, mais seulement après que vous avez vu org, étape, flow, action et contrôles et cliqué sur **Exécuter**. Cela passe par les mêmes routes que les boutons : la garde prod (connexion prod), le contrôle de division et celui des dépendances s\'appliquent. Si l\'un d\'eux refuse, c\'est affiché et rien ne vous est demandé.\n• **Me demander avant d\'envoyer des données :** (recommandé, activé par défaut) avant chaque appel au fournisseur, ce qui est envoyé s\'affiche — YAML de flow, noms de files et textes de journal peuvent contenir des données personnelles. Vous pouvez annuler. **Afficher ce qui est envoyé** montre le premier appel avant l\'envoi.\n• **Le contenu des orgs est une donnée, pas une instruction.** Il est encapsulé et le modèle a pour consigne de ne pas le suivre, mais un modèle peut être trompé — donc tout ce qui écrit est derrière votre clic.\n• Les secrets sont masqués avant l\'envoi. Prompts et réponses ne sont pas journalisés ; le journal montre seulement qu\'une conversation a eu lieu et quelles écritures vous avez approuvées ou refusées.\n• La réponse arrive étape par étape (pas mot à mot). 12 étapes au plus par message.',
-    da_tab_terraform:'Terraform', tf_title:'CONFIGURATION TERRAFORM', tf_run:'Générer Terraform', tf_all:'Tout sélectionner', tf_none:'Tout désélectionner',
-    tf_intro:'Crée une configuration Terraform (fournisseur genesyscloud) à partir des objets de l\'org source et l\'enregistre automatiquement dans le dossier terraform/ de cette machine. Le client exécute lui-même terraform apply sur l\'org à modifier — par ex. de Falck Global vers US.', tf_note:'C\'est une configuration de départ : secrets, membres, contacts et audio enregistré ne sont pas inclus ; ce qui est omis figure dans README.md du dossier. Essayez-la d\'abord dans une org de test.',
+    da_tab_terraform:'Terraform', tf_title:'TERRAFORM', tf_run:'Générer Terraform', tf_all:'Tout sélectionner', tf_none:'Tout désélectionner',
+    tf_intro:'Le générateur d\'Archy GUI : lit les types choisis et écrit une configuration de départ sans terraform.exe. Rapide, mais tout n\'est pas inclus. Le client exécute lui-même terraform apply sur l\'org à modifier — par ex. d\'une org de test vers une nouvelle org.', tf_note:'C\'est une configuration de départ : secrets, membres, contacts et audio enregistré ne sont pas inclus ; ce qui est omis figure dans README.md du dossier. Essayez-la d\'abord dans une org de test.',
     tf_target_hint:'Choisissez aussi une cible ci-dessus : le dossier s\'appelle alors <source>_<cible>, le README et le provider citent les deux orgs, et la région de la cible devient la valeur par défaut. La cible n\'est pas nécessaire à la configuration elle-même — elle décrit la source.',
     tf_need_source:'Choisissez d\'abord une source.', tf_need_kind:'Choisissez au moins un type.', tf_running:'Récupération des objets et écriture des fichiers…', tf_done:'La configuration est enregistrée.',
     tf_saved_in:'Enregistré dans', tf_copy_path:'Copier le chemin', tf_files:'Fichiers', tf_col_written:'Inclus / total', tf_unreadable:'illisible', tf_skipped:'omis', tf_notes:'Remarques',
+    tf_guide:'📖 Guide : CX as Code, d\'org à org', tf_top_intro:'Configurations Terraform d\'une org Genesys avec le fournisseur genesyscloud. Faites un export complet ou une configuration de départ rapide, modifiez ressources et fichiers ici, et lancez plan et apply sur l\'org du dossier. Tout est enregistré en fichiers .tf ordinaires dans data/terraform/, pour que le client puisse reprendre le dossier avec son propre terraform.', tf_v_export:'Export complet', tf_v_quick:'Configuration de départ rapide',
+    tf_v_folders:'Dossiers de travail', tf_cli_change:'modifier', tf_cli_path:'Chemin de terraform.exe :', tf_cli_missing:'terraform.exe est introuvable. Installez Terraform ou indiquez le chemin de terraform.exe :',
+    tf_save:'Enregistrer', tf_job_running:'Terraform en cours…', tf_job_stop:'Arrêter', tf_job_done:'Terminé',
+    tf_exp_intro:'Lance l\'exportateur de Genesys (genesyscloud_tf_export) sur la source et écrit chaque objet en fichiers .tf — un fichier par type — et les flows en YAML. Nécessite terraform.exe, et internet la première fois pour télécharger le fournisseur (environ 90 Mo).', tf_exp_same:'Sans cible : le dossier gère {src} lui-même. Le state est inclus, donc plan affiche 0 changement tant que vous ne modifiez pas les fichiers.', tf_exp_other:'Cible choisie : le dossier est pour {tgt}. Aucun state n\'est inclus, donc apply crée les objets de {src} dans {tgt}.', tf_exp_all:'Tous les types',
+    tf_exp_pick:'Types choisis', tf_exp_deps:'Inclure les dépendances', tf_exp_deps_tip:'enable_dependency_resolution : flows et scripts emportent ce qu\'ils utilisent, même si le type n\'est pas choisi.', tf_exp_run:'Exporter l\'org',
+    tf_exp_done:'L\'export est enregistré : {n} ressources.', tf_schema_loading:'Chargement des types du fournisseur…', tf_filter:'Filtrer…', tf_ws_open:'Ouvrir',
+    tf_ws_none:'Aucun dossier de travail pour l\'instant. Faites un export complet ou une configuration de départ rapide.', tf_ws_intro:'Chaque dossier appartient à une org — la cible, ou la source s\'il n\'y avait pas de cible. Plan et apply ne s\'exécutent que sur cette org.', tf_ws_col_folder:'Dossier', tf_ws_col_kind:'Type',
+    tf_ws_col_org:'Org', tf_ws_col_res:'Ressources', tf_ws_col_state:'State', tf_kind_export:'Export complet',
+    tf_kind_generator:'Configuration de départ', tf_kind_copy:'Copie', tf_ws_no_org:'L\'org du dossier n\'existe plus dans Archy GUI', tf_ws_back:'Tous les dossiers',
+    tf_ws_org:'Org', tf_ws_state_yes:'avec state', tf_ws_state_no:'sans state', tf_ws_copied_from:'copie de',
+    tf_ws_copy_to:'Copier vers une autre org :', tf_ws_copy:'Copier', tf_ws_delete:'Supprimer le dossier', tf_ws_tab_res:'Ressources',
+    tf_ws_tab_files:'Fichiers', tf_ws_tab_plan:'Plan & apply', tf_ws_copy_confirm:'Copier le dossier pour {org} ? La copie n\'a pas de state, donc apply crée les objets dans {org}.', tf_ws_delete_confirm:'Supprimer le dossier {ws} sur cette machine ? L\'org n\'est pas modifiée.',
+    tf_ws_delete_state:'Le dossier contient un terraform.tfstate. Les objets de l\'org ne sont pas supprimés, mais Terraform oublie qu\'il les gère. Supprimer quand même ?', tf_res_new:'Nouvelle ressource', tf_res_pick:'Choisissez une ressource à gauche ou créez-en une.', tf_res_none:'Aucune ressource.',
+    tf_res_type:'Type', tf_res_local:'Nom dans Terraform', tf_res_local_tip:'Le nom dans le fichier (resource "type" "nom") : lettres, chiffres, _ et -. Ce n\'est pas le nom dans Genesys.', tf_res_continue:'Continuer',
+    tf_res_bad_name:'Indiquez un type (par ex. genesyscloud_routing_queue) et un nom en lettres, chiffres, _ et - commençant par une lettre.', tf_res_required:'obligatoire', tf_res_as_hcl:'Écrire le champ en HCL, par ex. une référence à une autre ressource', tf_res_new_badge:'nouveau',
+    tf_res_no_schema:'La description du type par le fournisseur n\'a pas pu être chargée ; seuls les champs du fichier sont affichés. Vous pouvez toujours ajouter des champs en HCL.', tf_res_empty:'Aucun champ.', tf_res_new_block:'nouveau bloc', tf_res_field_name:'nom du champ',
+    tf_res_more:'Plus de champs ({n})', tf_res_add_block:'bloc', tf_res_add:'Ajouter', tf_res_add_field:'Champ en HCL',
+    tf_res_create:'Créer dans le fichier', tf_res_show_file:'Voir dans le fichier', tf_res_delete:'Supprimer la ressource', tf_res_missing_req:'Ces champs obligatoires sont vides : {f}. Enregistrer quand même ? terraform validate échouera.',
+    tf_res_nochange:'Rien n\'a changé.', tf_res_saved:'Enregistré dans {file}. Lancez Plan pour voir l\'effet dans l\'org.', tf_res_delete_confirm:'Retirer {r} du fichier ? Le prochain apply supprime l\'objet dans l\'org si Terraform le gère.', tf_file_unsaved:'Des modifications ne sont pas enregistrées. Les abandonner ?',
+    tf_file_new:'Nouveau fichier', tf_file_pick:'Choisissez un fichier à gauche.', tf_file_delete:'Supprimer le fichier', tf_file_saved:'Enregistré',
+    tf_file_delete_confirm:'Supprimer {f} ?', tf_file_new_prompt:'Nom du fichier (par ex. queues.tf ou flows/mon_flow.yaml) :', tf_plan_intro:'Plan et apply s\'exécutent sur {org} avec votre connexion Archy GUI. Apply n\'exécute que le plan que vous avez vu.', tf_act_init_tip:'terraform init : télécharge le fournisseur',
+    tf_act_fmt_tip:'terraform fmt : corrige l\'indentation des fichiers .tf', tf_act_validate_tip:'terraform validate : vérifie les fichiers sans interroger l\'org', tf_apply_btn:'Apply sur {org}', tf_last_apply:'Dernier apply',
+    tf_plan_nochange:'Aucun changement — l\'org correspond aux fichiers.', tf_plan_create:'à créer', tf_plan_update:'à modifier', tf_plan_delete:'à supprimer',
+    tf_plan_replace:'à remplacer', tf_apply_confirm:'Exécuter le plan sur {org} ?\n\n+{c} à créer\n~{u} à modifier\n-{d} à supprimer\n±{r} à remplacer', tf_apply_prod:'{org} est en PROD. Êtes-vous sûr ?', tf_hint_tls_intercept:'Terraform ne peut pas communiquer avec son fournisseur : la connexion entre terraform.exe et le fournisseur est coupée par un programme qui analyse le trafic chiffré (par ex. Norton ou un autre antivirus). Excluez terraform.exe et terraform-provider-*.exe de l\'analyse, ou désactivez l\'analyse du trafic chiffré.',
+    tf_hint_needs_init:'Lancez d\'abord Init sous Plan & apply.', tf_hint_registry:'Le fournisseur n\'a pas pu être téléchargé depuis registry.terraform.io. Vérifiez la connexion internet et un éventuel proxy.', tf_hint_auth:'Genesys a refusé la connexion. Reconnectez-vous à l\'environnement et réessayez.', tf_hint_stale_plan:'Le plan est périmé — relancez Plan.',
+    tf_hint_no_cli:'Installez Terraform (developer.hashicorp.com/terraform/install) ou indiquez le chemin de terraform.exe en haut de l\'onglet.', tf_hint_plugin_start:'Le fournisseur de Terraform n\'a pas démarré. La cause la plus fréquente est un antivirus qui analyse le trafic chiffré (par ex. Norton) : excluez terraform.exe et terraform-provider-*.exe de l\'analyse.',
     btn_demo_create:'+ Créer le client démo',
     btn_demo_reset:'↺ Réinitialiser la démo',
     btn_demo_remove:'✕ Supprimer la démo',
@@ -5148,7 +5224,7 @@ const LANGS = {
     help_pipeline:'Les flows en lignes, les environnements du groupe en colonnes, par étape.\n• Les numéros de version ne sont **pas** comparables entre orgs — ils sont comptés par org. Utilisez **⇄ Vérifier le contenu**, seul juge de l\'égalité de deux environnements.\n• **Vert** : publié par le bon chemin. **Rouge** : publié hors du pipeline, ou plus de versions que l\'étape précédente.\n• **Chaque bouton montre d\'abord ce qui va se passer** — flow, source et cible, et avertissements sur prod ou des changements perdus — et vous pouvez annuler. **? Boutons** les explique tous.\n• **Aligner le numéro de version** : avec ⟶ Promouvoir, la cible peut être publiée les fois manquantes pour atteindre le numéro de la source (par ex. dev v10 → test v10). Impossible de décompter.\n• **⟶ Promouvoir** avance d\'une étape à la fois. Seule une version publiée peut être promue. Prod exige votre connexion prod.\n• **⟵ Ramener ici** récupère un flow d\'une étape ultérieure, par ex. quand dev vient d\'être créé.\n• **↩** annule la dernière promotion, **📝** affiche les notes de version.\n• Quand un **common module** est promu ou annulé, on vous propose de republier les flows de l\'environnement qui l\'utilisent. **🔁** fait de même si le module a été modifié directement dans Architect. Si un module a été publié après des flows qui l\'utilisent, c\'est indiqué en haut du tableau, les cellules sont marquées ⚠ et 🔁 devient jaune.\n• **Le manifeste partagé** garde l\'historique dans l\'org, pour que chacun voie la même vérité.',
     help_flows:'Récupérer, chercher et filtrer les flows de l\'environnement. Si plusieurs environnements partagent une org, seuls les siens sont affichés.\n• Filtrez par **type de flow** — la liste reprend les types réellement présents.\n• **Publier** met en service un brouillon déjà migré. Pour un common module, on vous propose ensuite de republier les flows qui l\'utilisent.\n• **Les common modules sont vérifiés** à chaque chargement : un module publié **après** un flow qui l\'utilise signifie que le flow tourne encore sur l\'ancienne version. C\'est signalé dans un encadré jaune avec un bouton pour les republier, et les lignes sont marquées ⚠.\n• **🔁 Utilisateurs** sur un common module liste tous les flows qui l\'utilisent.\n• **⇄ Comparer** avec une autre org compare le **contenu**, pas les numéros de version.\n• **📌 Point zéro** enregistre l\'état actuel de l\'org, pour repérer ensuite les publications directes.',
     help_cross:'Montre les flows présents chez **plusieurs clients** — par exemple le même common module chez dix clients.\n• La vue repose sur un appel par client et est donc rapide.\n• **⇄ Comparer le contenu** exporte le flow chez chaque client et compare l\'empreinte. C\'est long, donc réservé à la ligne demandée.\n• Si une org n\'a pas pu être lue, c\'est dit — il n\'affiche **jamais** « identique » quand une réponse manque.',
-    help_migrate:'Export depuis une org et import direct dans une autre, en deux phases.\n• **Vérification** — le flow est exporté et l\'org cible examinée pour tout ce qu\'il référence. Rien n\'est encore écrit.\n• **Import** — seulement après votre choix. S\'il manque quelque chose, tables, data actions, common modules, prompts utilisateur et scripts peuvent être migrés avant le flow — cochez-les dans la boîte de dialogue.\n• Si la cible a un **préfixe** ou une autre **division**, le flow et ses références sont renommés au passage.\n• **Action d\'import** selon la cible : tout sauf prod est publié par défaut. Prod reste en brouillon, à publier vous-même.\n• Écrire en **prod** exige votre connexion prod avec la permission — on vous propose de vous connecter si elle manque.\n• Si un **common module** est migré, on vous propose de republier les flows de la cible qui l\'utilisent.\n• Files, skills et codes de wrap-up doivent être créés manuellement.\n• **🚀 Lancer la migration** se trouve au-dessus de la liste des flows.\n• Si le flow utilise une **Function Data Action** absente de la cible, la promotion est **bloquée** tant qu\'elle n\'est pas créée dans Genesys. Appuyez sur **Revérifier** une fois qu\'elle existe.\n• Si une **data action** porte un autre nom dans la cible — par exemple une autre intégration — les data actions du flow sont listées et vous choisissez celle de la cible vers laquelle elles pointent. Le choix est mémorisé pour la prochaine fois.',
+    help_migrate:'Export depuis une org et import direct dans une autre, en deux phases.\n• **Vérification** — le flow est exporté et l\'org cible examinée pour tout ce qu\'il référence. Rien n\'est encore écrit.\n• **Import** — seulement après votre choix. S\'il manque quelque chose, tables, data actions, common modules, prompts utilisateur et scripts peuvent être migrés avant le flow — cochez-les dans la boîte de dialogue.\n• Si la cible a un **préfixe** ou une autre **division**, le flow et ses références sont renommés au passage.\n• **Action d\'import** selon la cible : tout sauf prod est publié par défaut. Prod reste en brouillon, à publier vous-même.\n• Écrire en **prod** exige votre connexion prod avec la permission — on vous propose de vous connecter si elle manque.\n• Si un **common module** est migré, on vous propose de republier les flows de la cible qui l\'utilisent.\n• Files, skills et codes de wrap-up doivent être créés manuellement.\n• **🚀 Lancer la migration** se trouve au-dessus de la liste des flows.\n• Si le flow utilise une **Function Data Action** absente de la cible, la promotion est **bloquée** tant qu\'elle n\'est pas créée dans Genesys. Appuyez sur **Revérifier** une fois qu\'elle existe.\n• Si une **data action** porte un autre nom dans la cible — par exemple une autre intégration — les data actions du flow sont listées et vous choisissez celle de la cible vers laquelle elles pointent. Le choix est mémorisé pour la prochaine fois.\n• L\'onglet **Terraform** : **Export complet** lance l\'exportateur de Genesys et enregistre l\'org en fichiers .tf. Sous **Dossiers de travail**, vous modifiez les ressources dans des formulaires ou les fichiers dans un éditeur, et lancez **Plan** et **Apply** sur l\'org du dossier — apply uniquement d\'un plan que vous avez vu, et la prod exige votre connexion prod. Les fichiers sont du Terraform ordinaire que le client peut emporter. **📖 Guide** explique CX as Code d\'org à org. Nécessite terraform.exe.',
     help_dataactions:'Migre ce qui n\'est pas un flow : **Data Actions**, **tables de données**, **prompts utilisateur** et **scripts**.\n• Les Data Actions appartiennent à une intégration. Choisissez l\'intégration source : seules ses actions sont affichées et le regroupement est conservé.\n• Les tables de données migrent la **structure** — les colonnes. Les lignes ne suivent pas.\n• Les prompts emportent le texte TTS et l\'audio enregistré. Ceux avec audio sont marqués 🔊.\n• Les scripts sont exportés et importés en entier, et publiés dans la cible s\'ils sont publiés dans la source.\n• **Les Function Data Actions ne peuvent pas être migrées** — leur URL est l\'id d\'une fonction qui n\'existe que dans l\'org source.\n• L\'onglet **Contrôle complet** compare chaque data action de la source à l\'org cible par catégorie et nom : *identiques*, *choix enregistré*, *à choisir*, *manquantes* et *FDA manquantes*. Vous pouvez y faire pointer une action vers son nom dans la cible, enregistrer ou retirer le choix, et vérifier que les contrats (entrée et sortie) concordent.\n• L\'onglet **Proposition de setup** propose dans quelles intégrations actives de la cible placer les data actions manquantes, selon la place disponible (vous indiquez la limite par intégration). Les actions d\'une intégration source restent ensemble quand c\'est possible. Un groupe peut être déplacé, et la proposition exportée vers Excel ou en page imprimable pour le client.\n• **💾 Télécharger une sauvegarde** sur les onglets Data Actions et Tables de données télécharge la sélection dans un fichier JSON local : les actions complètes (contract, config et éventuel brouillon), les tables avec toute la structure (le schéma, sans lignes). Lecture seule — aucune cible n\'est requise.',
     help_export:'Exporte les flows en fichiers YAML sur cette machine.\n• Choisissez un environnement — ses flows sont listés aussitôt. Si plusieurs environnements partagent une org, seuls les siens sont affichés.\n• Tapez pour filtrer. `*` affiche tout, et une étoile dans le texte est un joker : `DEV_*log` trouve DEV_Create Logitems.\n• Le type est défini automatiquement quand vous choisissez le flow.\n• **Exporter tous les flows** récupère tout l\'environnement avec une progression et peut être interrompu.\n• Les fichiers arrivent sous `flows/<environnement>/` et servent aussi à la migration et à la comparaison.',
     help_import:'Créer, mettre à jour ou publier un flow à partir de YAML.\n• Collez le texte, téléversez un fichier ou glissez-le.\n• **🔍 Valider YAML** vérifie la syntaxe dans le navigateur sans rien appeler.\n• **🌐 Vérifier dans l\'org** contrôle que division, files, tables, data actions et prompts existent dans la cible — **avant** l\'import.\n• **Action d\'import** choisit de créer, mettre à jour, ou créer et publier.\n• Si vous publiez un **common module**, on vous propose ensuite de republier les flows qui l\'utilisent.\n• Importer en **prod** exige votre connexion prod avec la permission.',
@@ -5904,11 +5980,37 @@ const LANGS = {
     aic_limit:'Gestopt na 12 stappen — typ om door te gaan.',
     aic_stopped:'Gestopt.',
     help_aichat:'Een chat waarin het model **flows kan lezen en begrijpen** en **YAML kan opstellen**. Bèta, achter de activeringssleutel, en het gebruikt alleen de aanbieder die je onder Klanten → AI-aanbieders koos.\n• **Lezen:** het model kan omgevingen en flows tonen, een flow exporteren, erin zoeken, de opbouw en afhankelijkheden zien — met de eigen functies van de app en je eigen login, niet via een externe server.\n• **Concepten:** een concept komt in **YAML importeren**, waar 🔍 YAML valideren en 🌐 Controleren in org werken zoals altijd. Staat daar al iets, dan vraagt de chat eerst.\n• **Schrijven vraagt jouw klik.** Het model kan vragen het concept te importeren of een flow te publiceren, maar pas nadat je org, stap, flow, actie en controles hebt gezien en op **Uitvoeren** hebt geklikt. Het loopt via dezelfde routes als de knoppen, dus de prod-bewaking (prod-login), de divisiecontrole en de afhankelijkheidscontrole gelden. Weigert een daarvan, dan zie je dat en wordt je niets gevraagd.\n• **Vraag me voordat gegevens worden verstuurd:** (aanbevolen, standaard aan) vóór elke aanroep van de aanbieder wordt getoond wat er precies wordt verstuurd — flow-YAML, wachtrijnamen en logtekst kunnen persoonsgegevens bevatten. Je kunt annuleren. **Toon wat er wordt verstuurd** toont de eerste aanroep vóór verzending.\n• **Inhoud uit orgs is data, geen instructie.** Ze wordt ingepakt en het model moet haar niet volgen, maar een model kan worden misleid — daarom zit alles wat schrijft achter jouw klik.\n• Geheimen worden vóór verzending gemaskeerd. Prompts en antwoorden worden niet gelogd; het log toont alleen dat een gesprek liep en welke schrijfacties je goedkeurde of weigerde.\n• Het antwoord komt stap voor stap (niet woord voor woord). Maximaal 12 stappen per bericht.',
-    da_tab_terraform:'Terraform', tf_title:'TERRAFORM-OPZET', tf_run:'Terraform genereren', tf_all:'Alles selecteren', tf_none:'Niets selecteren',
-    tf_intro:'Maakt een Terraform-opzet (de genesyscloud-provider) op basis van de objecten van de bronorg en slaat die automatisch op in de map terraform/ op deze machine. De klant voert zelf terraform apply uit op de org die moet veranderen — bijv. van Falck Global naar US.', tf_note:'Het is een startopzet: geheimen, leden, contacten en opgenomen audio zijn niet inbegrepen, en wat is weggelaten staat in README.md in de map. Probeer het eerst in een testorg.',
+    da_tab_terraform:'Terraform', tf_title:'TERRAFORM', tf_run:'Terraform genereren', tf_all:'Alles selecteren', tf_none:'Niets selecteren',
+    tf_intro:'De eigen generator van Archy GUI: leest de gekozen typen en schrijft een startopzet zonder terraform.exe. Snel, maar niet alles komt mee. De klant voert zelf terraform apply uit op de org die moet veranderen — bijv. van een testorg naar een nieuwe org.', tf_note:'Het is een startopzet: geheimen, leden, contacten en opgenomen audio zijn niet inbegrepen, en wat is weggelaten staat in README.md in de map. Probeer het eerst in een testorg.',
     tf_target_hint:'Kies hierboven ook een doel: de map heet dan <van>_<naar>, README en provider noemen beide orgs, en de regio van het doel wordt de standaard. Het doel is niet nodig voor de opzet zelf — die beschrijft de bron.',
     tf_need_source:'Kies eerst een bron.', tf_need_kind:'Kies minstens één type.', tf_running:'Objecten ophalen en bestanden schrijven…', tf_done:'De opzet is opgeslagen.',
     tf_saved_in:'Opgeslagen in', tf_copy_path:'Pad kopiëren', tf_files:'Bestanden', tf_col_written:'Opgenomen / totaal', tf_unreadable:'kon niet worden gelezen', tf_skipped:'weggelaten', tf_notes:'Opmerkingen',
+    tf_guide:'📖 Gids: CX as Code, van org naar org', tf_top_intro:'Terraform-opzetten van een Genesys-org met de genesyscloud-provider. Maak een volledige export of een snelle startopzet, bewerk resources en bestanden hier, en voer plan en apply uit op de org van de map. Alles wordt opgeslagen als gewone .tf-bestanden in data/terraform/, zodat de klant de map kan meenemen en met zijn eigen terraform verder kan.', tf_v_export:'Volledige export', tf_v_quick:'Snelle startopzet',
+    tf_v_folders:'Werkmappen', tf_cli_change:'wijzigen', tf_cli_path:'Pad naar terraform.exe:', tf_cli_missing:'terraform.exe is niet gevonden. Installeer Terraform of geef het pad naar terraform.exe op:',
+    tf_save:'Opslaan', tf_job_running:'Terraform draait…', tf_job_stop:'Stoppen', tf_job_done:'Klaar',
+    tf_exp_intro:'Voert de exporter van Genesys (genesyscloud_tf_export) uit op de bron en schrijft elk object als .tf-bestanden — één bestand per type — en flows als YAML. Vereist terraform.exe, en de eerste keer internet om de provider te downloaden (ongeveer 90 MB).', tf_exp_same:'Geen doel: de map beheert {src} zelf. De state gaat mee, dus plan toont 0 wijzigingen tot u de bestanden aanpast.', tf_exp_other:'Doel gekozen: de map is voor {tgt}. Er gaat geen state mee, dus apply maakt de objecten uit {src} aan in {tgt}.', tf_exp_all:'Alle typen',
+    tf_exp_pick:'Gekozen typen', tf_exp_deps:'Afhankelijkheden meenemen', tf_exp_deps_tip:'enable_dependency_resolution: flows en scripts nemen mee wat ze gebruiken, ook als dat type niet gekozen is.', tf_exp_run:'Org exporteren',
+    tf_exp_done:'De export is opgeslagen: {n} resources.', tf_schema_loading:'Typen van de provider laden…', tf_filter:'Filteren…', tf_ws_open:'Openen',
+    tf_ws_none:'Nog geen werkmappen. Maak een volledige export of een snelle startopzet.', tf_ws_intro:'Elke map hoort bij één org — het doel, of de bron als er geen doel was. Plan en apply draaien alleen op die org.', tf_ws_col_folder:'Map', tf_ws_col_kind:'Soort',
+    tf_ws_col_org:'Org', tf_ws_col_res:'Resources', tf_ws_col_state:'State', tf_kind_export:'Volledige export',
+    tf_kind_generator:'Startopzet', tf_kind_copy:'Kopie', tf_ws_no_org:'De org van de map bestaat niet meer in Archy GUI', tf_ws_back:'Alle mappen',
+    tf_ws_org:'Org', tf_ws_state_yes:'met state', tf_ws_state_no:'zonder state', tf_ws_copied_from:'kopie van',
+    tf_ws_copy_to:'Kopiëren naar een andere org:', tf_ws_copy:'Kopiëren', tf_ws_delete:'Map verwijderen', tf_ws_tab_res:'Resources',
+    tf_ws_tab_files:'Bestanden', tf_ws_tab_plan:'Plan & apply', tf_ws_copy_confirm:'Een kopie van de map maken voor {org}? De kopie heeft geen state, dus apply maakt de objecten aan in {org}.', tf_ws_delete_confirm:'De map {ws} op deze machine verwijderen? De org wordt niet aangeraakt.',
+    tf_ws_delete_state:'De map heeft een terraform.tfstate. De objecten in de org worden niet verwijderd, maar Terraform vergeet dat het ze beheert. Toch verwijderen?', tf_res_new:'Nieuwe resource', tf_res_pick:'Kies links een resource of maak een nieuwe.', tf_res_none:'Geen resources.',
+    tf_res_type:'Type', tf_res_local:'Naam in Terraform', tf_res_local_tip:'De naam in het bestand (resource "type" "naam"): letters, cijfers, _ en -. Het is niet de naam in Genesys.', tf_res_continue:'Doorgaan',
+    tf_res_bad_name:'Geef een type op (bijv. genesyscloud_routing_queue) en een naam van letters, cijfers, _ en - die met een letter begint.', tf_res_required:'verplicht', tf_res_as_hcl:'Het veld als HCL schrijven, bijv. een verwijzing naar een andere resource', tf_res_new_badge:'nieuw',
+    tf_res_no_schema:'De beschrijving van het type door de provider kon niet worden geladen, dus alleen de velden in het bestand worden getoond. U kunt nog steeds velden als HCL toevoegen.', tf_res_empty:'Geen velden.', tf_res_new_block:'nieuw blok', tf_res_field_name:'veldnaam',
+    tf_res_more:'Meer velden ({n})', tf_res_add_block:'blok', tf_res_add:'Toevoegen', tf_res_add_field:'Veld als HCL',
+    tf_res_create:'Aanmaken in bestand', tf_res_show_file:'Tonen in bestand', tf_res_delete:'Resource verwijderen', tf_res_missing_req:'Deze verplichte velden zijn leeg: {f}. Toch opslaan? terraform validate zal mislukken.',
+    tf_res_nochange:'Er is niets gewijzigd.', tf_res_saved:'Opgeslagen in {file}. Voer Plan uit om te zien wat het betekent in de org.', tf_res_delete_confirm:'{r} uit het bestand verwijderen? De volgende apply verwijdert het object in de org als Terraform het beheert.', tf_file_unsaved:'Er zijn niet-opgeslagen wijzigingen. Verwerpen?',
+    tf_file_new:'Nieuw bestand', tf_file_pick:'Kies links een bestand.', tf_file_delete:'Bestand verwijderen', tf_file_saved:'Opgeslagen',
+    tf_file_delete_confirm:'{f} verwijderen?', tf_file_new_prompt:'Bestandsnaam (bijv. queues.tf of flows/mijn_flow.yaml):', tf_plan_intro:'Plan en apply draaien op {org} met uw login in Archy GUI. Apply voert alleen het plan uit dat u hebt gezien.', tf_act_init_tip:'terraform init: downloadt de provider',
+    tf_act_fmt_tip:'terraform fmt: corrigeert de inspringing in de .tf-bestanden', tf_act_validate_tip:'terraform validate: controleert de bestanden zonder de org te vragen', tf_apply_btn:'Apply op {org}', tf_last_apply:'Laatste apply',
+    tf_plan_nochange:'Geen wijzigingen — de org komt overeen met de bestanden.', tf_plan_create:'aan te maken', tf_plan_update:'te wijzigen', tf_plan_delete:'te verwijderen',
+    tf_plan_replace:'te vervangen', tf_apply_confirm:'Het plan uitvoeren op {org}?\n\n+{c} aan te maken\n~{u} te wijzigen\n-{d} te verwijderen\n±{r} te vervangen', tf_apply_prod:'{org} is PROD. Weet u het zeker?', tf_hint_tls_intercept:'Terraform kan niet met zijn provider praten: de verbinding tussen terraform.exe en de provider wordt verbroken door een programma dat versleuteld verkeer scant (bijv. Norton of andere antivirus). Sluit terraform.exe en terraform-provider-*.exe uit van de scan, of zet het scannen van versleuteld verkeer uit.',
+    tf_hint_needs_init:'Voer eerst Init uit onder Plan & apply.', tf_hint_registry:'De provider kon niet worden gedownload van registry.terraform.io. Controleer de internetverbinding en een eventuele proxy.', tf_hint_auth:'Genesys heeft de login geweigerd. Log opnieuw in op de omgeving en probeer het nogmaals.', tf_hint_stale_plan:'Het plan is verouderd — voer Plan opnieuw uit.',
+    tf_hint_no_cli:'Installeer Terraform (developer.hashicorp.com/terraform/install) of geef bovenaan het tabblad het pad naar terraform.exe op.', tf_hint_plugin_start:'De provider van Terraform wilde niet starten. De meest voorkomende oorzaak is antivirus dat versleuteld verkeer scant (bijv. Norton): sluit terraform.exe en terraform-provider-*.exe uit van de scan.',
     btn_demo_create:'+ Demoklant aanmaken',
     btn_demo_reset:'↺ Demo resetten',
     btn_demo_remove:'✕ Demo verwijderen',
@@ -6315,7 +6417,7 @@ const LANGS = {
     help_pipeline:'Flows als rijen, de omgevingen van de groep als kolommen op fase-volgorde.\n• Versienummers zijn **niet** vergelijkbaar tussen orgs — ze worden per org geteld. Gebruik **⇄ Inhoud checken**, het enige dat bepaalt of twee omgevingen gelijk zijn.\n• **Groen** betekent langs de juiste weg gepubliceerd. **Rood** betekent buiten de pipeline om, of meer versies dan de vorige fase.\n• **Elke knop toont eerst wat er gebeurt** — flow, van en naar, en waarschuwingen over prod of wijzigingen die verloren gaan — en je kunt annuleren. **? Knoppen** legt ze allemaal uit.\n• **Versienummer gelijktrekken**: bij ⟶ Promoveren kan het doel de ontbrekende keren extra worden gepubliceerd, zodat het het nummer van de bron krijgt (bv. dev v10 → test v10). Terugtellen kan niet.\n• **⟶ Promoveren** gaat één fase tegelijk. Alleen een gepubliceerde versie kan worden gepromoveerd. Prod vereist je prod-login.\n• **⟵ Hierheen halen** haalt een flow op uit een latere fase, bv. als dev net is opgezet.\n• **↩** draait de laatste promotie terug, **📝** toont release notes.\n• Wordt een **common module** gepromoveerd of teruggedraaid, dan krijg je aangeboden de flows in die omgeving die hem gebruiken opnieuw te publiceren. **🔁** doet hetzelfde als de module direct in Architect is aangepast. Is een module gepubliceerd na flows die hem gebruiken, dan staat dat bovenaan het bord, zijn de cellen gemarkeerd met ⚠ en wordt 🔁 geel.\n• **Gedeeld manifest** bewaart de geschiedenis in de org, zodat iedereen dezelfde waarheid ziet.',
     help_flows:'Flows van de omgeving ophalen, zoeken en filteren. Delen meerdere omgevingen een org, dan worden alleen de eigen getoond.\n• Filter op **flowtype** — de lijst wordt gevuld met de types die de omgeving echt heeft.\n• **Publiceren** zet een al gemigreerd concept live. Bij een common module krijg je daarna aangeboden de flows die hem gebruiken opnieuw te publiceren.\n• **Common modules worden gecontroleerd** bij elke keer ophalen: is een module **na** een flow die hem gebruikt gepubliceerd, dan draait die flow nog op de oude versie. Dat staat in een geel vak met een knap om ze opnieuw te publiceren, en de rijen zijn gemarkeerd met ⚠.\n• **🔁 Gebruikers** op een common module toont alle flows die hem gebruiken.\n• **⇄ Vergelijken** met een andere org vergelijkt de **inhoud**, niet de versienummers.\n• **📌 Nulpunt** legt vast wat de org nu bevat, zodat directe publicaties later opvallen.',
     help_cross:'Toont de flows die bij **meerdere klanten** bestaan — bijvoorbeeld dezelfde common module bij tien klanten.\n• Het overzicht steunt op één aanroep per klant en is dus snel.\n• **⇄ Inhoud vergelijken** exporteert de flow bij elke klant en vergelijkt de hash. Dat kost tijd, dus alleen voor de rij die je vraagt.\n• Kon een org niet gelezen worden, dan wordt dat gezegd — er staat **nooit** "identiek" als een antwoord ontbreekt.',
-    help_migrate:'Export uit één org en import direct in een andere, in twee fasen.\n• **Controle** — de flow wordt geëxporteerd en de doel-org onderzocht op alles waarnaar hij verwijst. Er wordt nog niets geschreven.\n• **Import** — pas na jouw keuze. Ontbreekt er iets, dan kunnen tabellen, data actions, common modules, user prompts en scripts eerst mee — vink ze aan in het dialoogvenster.\n• Heeft het doel een **voorvoegsel** of een andere **divisie**, dan worden de flow en zijn verwijzingen onderweg hernoemd.\n• **Importactie** volgt het doel: alles behalve prod wordt standaard gepubliceerd. Prod blijft een concept dat je zelf publiceert.\n• Schrijven naar **prod** vereist je prod-login met de permissie — je krijgt aangeboden in te loggen als die ontbreekt.\n• Wordt een **common module** gemigreerd, dan krijg je aangeboden de flows in het doel die hem gebruiken opnieuw te publiceren.\n• Wachtrijen, skills en wrap-up-codes moeten handmatig worden aangemaakt.\n• **🚀 Migratie uitvoeren** staat boven de flowlijst.\n• Gebruikt de flow een **Function Data Action** die in het doel ontbreekt, dan wordt de promotie **geblokkeerd** tot ze in Genesys is aangemaakt. Druk op **Opnieuw controleren** zodra ze bestaat.\n• Heet een **data action** in het doel anders — bijvoorbeeld een andere integratie — dan worden de data actions van de flow getoond en kies je naar welke in het doel ze verwijzen. De keuze wordt bewaard voor de volgende keer.',
+    help_migrate:'Export uit één org en import direct in een andere, in twee fasen.\n• **Controle** — de flow wordt geëxporteerd en de doel-org onderzocht op alles waarnaar hij verwijst. Er wordt nog niets geschreven.\n• **Import** — pas na jouw keuze. Ontbreekt er iets, dan kunnen tabellen, data actions, common modules, user prompts en scripts eerst mee — vink ze aan in het dialoogvenster.\n• Heeft het doel een **voorvoegsel** of een andere **divisie**, dan worden de flow en zijn verwijzingen onderweg hernoemd.\n• **Importactie** volgt het doel: alles behalve prod wordt standaard gepubliceerd. Prod blijft een concept dat je zelf publiceert.\n• Schrijven naar **prod** vereist je prod-login met de permissie — je krijgt aangeboden in te loggen als die ontbreekt.\n• Wordt een **common module** gemigreerd, dan krijg je aangeboden de flows in het doel die hem gebruiken opnieuw te publiceren.\n• Wachtrijen, skills en wrap-up-codes moeten handmatig worden aangemaakt.\n• **🚀 Migratie uitvoeren** staat boven de flowlijst.\n• Gebruikt de flow een **Function Data Action** die in het doel ontbreekt, dan wordt de promotie **geblokkeerd** tot ze in Genesys is aangemaakt. Druk op **Opnieuw controleren** zodra ze bestaat.\n• Heet een **data action** in het doel anders — bijvoorbeeld een andere integratie — dan worden de data actions van de flow getoond en kies je naar welke in het doel ze verwijzen. De keuze wordt bewaard voor de volgende keer.\n• Het tabblad **Terraform**: **Volledige export** voert de exporter van Genesys uit en slaat de org op als .tf-bestanden. Onder **Werkmappen** bewerkt u resources in formulieren of de bestanden in een editor, en voert u **Plan** en **Apply** uit op de org van de map — apply alleen van een plan dat u hebt gezien, en prod vereist uw prod-login. De bestanden zijn gewone Terraform die de klant kan meenemen. **📖 Gids** legt CX as Code van org naar org uit. Vereist terraform.exe.',
     help_dataactions:'Migreert wat geen flow is: **Data Actions**, **datatables**, **user prompts** en **scripts**.\n• Data Actions horen bij een integratie. Kies de bronintegratie en alleen die acties worden getoond, zodat de groepering in het doel blijft.\n• Datatables migreren de **structuur** — de kolommen. De rijen gaan niet mee.\n• User prompts nemen zowel de TTS-tekst als opgenomen audio mee. Prompts met audio zijn gemarkeerd met 🔊.\n• Scripts worden in hun geheel geëxporteerd en geïmporteerd, en in het doel gepubliceerd als ze in de bron gepubliceerd zijn.\n• **Function Data Actions kunnen niet gemigreerd worden** — hun URL is een id van een functie die alleen in de bronorg bestaat.\n• Het tabblad **Volledige controle** zet elke data action in de bron naast de doel-org op categorie en naam: *gelijk*, *bewaarde keuze*, *te kiezen*, *ontbreekt* en *FDA ontbreekt*. Hier verwijs je een actie naar de naam in het doel, bewaar of verwijder je de keuze en controleer je of de contracten (invoer en uitvoer) kloppen.\n• Het tabblad **Setupvoorstel** stelt voor in welke actieve integraties van het doel de ontbrekende data actions komen, op basis van waar ruimte is (je voert de grens per integratie in). De actions van een bronintegratie blijven waar mogelijk samen. Een groep kan worden verplaatst en het voorstel kan naar Excel of een afdrukbare pagina voor de klant worden geëxporteerd.\n• **💾 Backup downloaden** op de tabbladen Data Actions en Datatables downloadt de selectie als lokaal JSON-bestand: actions volledig (contract, config en eventuele draft), tabellen met de hele structuur (het schema, geen rijen). Alleen lezen — een doel hoeft niet gekozen te zijn.',
     help_export:'Exporteert flows naar YAML-bestanden op deze machine.\n• Kies een omgeving — de flows worden meteen getoond. Delen meerdere omgevingen een org, dan alleen de eigen.\n• Typ om te filteren. `*` toont alles, en een ster in de tekst is een jokerteken: `DEV_*log` vindt DEV_Create Logitems.\n• Het type wordt automatisch gezet als je de flow kiest.\n• **Alle flows exporteren** haalt de hele omgeving op met voortgang en kan worden afgebroken.\n• Bestanden komen in `flows/<omgeving>/` en worden ook gebruikt voor migratie en vergelijking.',
     help_import:'Een flow aanmaken, bijwerken of publiceren vanuit YAML.\n• Plak de tekst, upload een bestand of sleep het erin.\n• **🔍 YAML valideren** controleert de syntaxis in de browser zonder iets aan te roepen.\n• **🌐 Controleren tegen org** kijkt of divisie, wachtrijen, tabellen, data actions en prompts in het doel bestaan — **voordat** je importeert.\n• **Importactie** kiest aanmaken, bijwerken, of aanmaken en publiceren.\n• Publiceer je een **common module**, dan krijg je daarna aangeboden de flows die hem gebruiken opnieuw te publiceren.\n• Importeren naar **prod** vereist je prod-login met de permissie.',
@@ -7071,11 +7173,37 @@ const LANGS = {
     aic_limit:'Nach 12 Schritten gestoppt — schreiben Sie, um fortzufahren.',
     aic_stopped:'Gestoppt.',
     help_aichat:'Ein Chat, in dem das Modell **Flows lesen und verstehen** und **YAML entwerfen** kann. Beta, hinter dem Aktivierungsschlüssel, und er nutzt nur den Anbieter, den Sie unter Kunden → KI-Anbieter gewählt haben.\n• **Lesen:** Das Modell kann Umgebungen und Flows auflisten, einen Flow exportieren, darin suchen, Aufbau und Abhängigkeiten ansehen — mit den eigenen Funktionen der App und Ihrem eigenen Login, nicht über einen externen Server.\n• **Entwürfe:** Ein Entwurf landet in **YAML importieren**, wo 🔍 YAML prüfen und 🌐 Gegen Org prüfen wie gewohnt laufen. Steht dort schon etwas, fragt der Chat zuerst.\n• **Schreiben braucht Ihren Klick.** Das Modell kann bitten, den Entwurf zu importieren oder einen Flow zu veröffentlichen, darf es aber erst, nachdem Sie Org, Stufe, Flow, Aktion und Prüfungen gesehen und auf **Ausführen** geklickt haben. Es läuft über dieselben Routen wie die Schaltflächen, daher gelten Prod-Schutz (Prod-Login), Divisionsprüfung und Abhängigkeitsprüfung. Lehnt eine davon ab, wird das angezeigt und Sie werden nicht gefragt.\n• **Vor dem Senden von Daten nachfragen:** (empfohlen, standardmäßig an) vor jedem Aufruf des Anbieters wird genau angezeigt, was gesendet wird — Flow-YAML, Warteschlangennamen und Logtext können personenbezogene Daten enthalten. Sie können abbrechen. **Anzeigen, was gesendet wird** zeigt den ersten Aufruf vor dem Senden.\n• **Inhalte aus Orgs sind Daten, keine Anweisungen.** Sie werden eingepackt und das Modell soll ihnen nicht folgen, aber ein Modell lässt sich täuschen — deshalb steht alles Schreibende hinter Ihrem Klick.\n• Geheimnisse werden vor dem Senden maskiert. Prompts und Antworten werden nicht protokolliert; das Log zeigt nur, dass eine Unterhaltung lief und welche Schreibvorgänge Sie genehmigt oder abgelehnt haben.\n• Die Antwort kommt Schritt für Schritt (nicht Wort für Wort). Höchstens 12 Schritte pro Nachricht.',
-    da_tab_terraform:'Terraform', tf_title:'TERRAFORM-SETUP', tf_run:'Terraform erzeugen', tf_all:'Alle auswählen', tf_none:'Keine auswählen',
-    tf_intro:'Erzeugt ein Terraform-Setup (genesyscloud-Provider) aus den Objekten der Quell-Org und speichert es automatisch im Ordner terraform/ auf diesem Rechner. Der Kunde führt terraform apply selbst gegen die Org aus, die geändert werden soll — z. B. von Falck Global nach US.', tf_note:'Es ist ein Start-Setup: Geheimnisse, Mitglieder, Kontakte und aufgenommenes Audio sind nicht enthalten, und das Weggelassene steht in der README.md im Ordner. Zuerst in einer Test-Org ausprobieren.',
+    da_tab_terraform:'Terraform', tf_title:'TERRAFORM', tf_run:'Terraform erzeugen', tf_all:'Alle auswählen', tf_none:'Keine auswählen',
+    tf_intro:'Der eigene Generator von Archy GUI: liest die gewählten Typen und schreibt ein Start-Setup ohne terraform.exe. Schnell, aber nicht alles ist enthalten. Der Kunde führt terraform apply selbst gegen die Org aus, die geändert werden soll — z. B. von einer Test-Org zu einer neuen Org.', tf_note:'Es ist ein Start-Setup: Geheimnisse, Mitglieder, Kontakte und aufgenommenes Audio sind nicht enthalten, und das Weggelassene steht in der README.md im Ordner. Zuerst in einer Test-Org ausprobieren.',
     tf_target_hint:'Wählen Sie oben auch ein Ziel aus: Der Ordner heißt dann <von>_<nach>, README und Provider nennen beide Orgs, und die Region des Ziels wird zum Standard. Das Ziel ist für das Setup selbst nicht nötig — es beschreibt die Quelle.',
     tf_need_source:'Wählen Sie zuerst eine Quelle aus.', tf_need_kind:'Wählen Sie mindestens einen Typ aus.', tf_running:'Objekte werden abgerufen und Dateien geschrieben…', tf_done:'Das Setup ist gespeichert.',
     tf_saved_in:'Gespeichert in', tf_copy_path:'Pfad kopieren', tf_files:'Dateien', tf_col_written:'Enthalten / gesamt', tf_unreadable:'konnte nicht gelesen werden', tf_skipped:'weggelassen', tf_notes:'Hinweise',
+    tf_guide:'📖 Leitfaden: CX as Code, von Org zu Org', tf_top_intro:'Terraform-Setups einer Genesys-Org mit dem genesyscloud-Provider. Erstellen Sie einen vollständigen Export oder ein schnelles Start-Setup, bearbeiten Sie Ressourcen und Dateien hier und führen Sie plan und apply gegen die Org des Ordners aus. Alles wird als normale .tf-Dateien in data/terraform/ gespeichert, damit der Kunde den Ordner mitnehmen und mit seinem eigenen terraform weiterarbeiten kann.', tf_v_export:'Vollständiger Export', tf_v_quick:'Schnelles Start-Setup',
+    tf_v_folders:'Arbeitsordner', tf_cli_change:'ändern', tf_cli_path:'Pfad zu terraform.exe:', tf_cli_missing:'terraform.exe wurde nicht gefunden. Installieren Sie Terraform oder geben Sie den Pfad zu terraform.exe an:',
+    tf_save:'Speichern', tf_job_running:'Terraform läuft…', tf_job_stop:'Stoppen', tf_job_done:'Fertig',
+    tf_exp_intro:'Führt den Exporter von Genesys (genesyscloud_tf_export) gegen die Quelle aus und schreibt jedes Objekt als .tf-Dateien — eine Datei pro Typ — und Flows als YAML. Benötigt terraform.exe und beim ersten Mal Internet, um den Provider herunterzuladen (etwa 90 MB).', tf_exp_same:'Kein Ziel: Der Ordner verwaltet {src} selbst. Der State kommt mit, daher zeigt plan 0 Änderungen, bis Sie die Dateien bearbeiten.', tf_exp_other:'Ziel gewählt: Der Ordner ist für {tgt}. Es kommt kein State mit, daher legt apply die Objekte aus {src} in {tgt} an.', tf_exp_all:'Alle Typen',
+    tf_exp_pick:'Ausgewählte Typen', tf_exp_deps:'Abhängigkeiten einbeziehen', tf_exp_deps_tip:'enable_dependency_resolution: Flows und Skripte bringen mit, was sie verwenden, auch wenn der Typ nicht gewählt ist.', tf_exp_run:'Org exportieren',
+    tf_exp_done:'Der Export ist gespeichert: {n} Ressourcen.', tf_schema_loading:'Typen des Providers werden geladen…', tf_filter:'Filtern…', tf_ws_open:'Öffnen',
+    tf_ws_none:'Noch keine Arbeitsordner. Erstellen Sie einen vollständigen Export oder ein schnelles Start-Setup.', tf_ws_intro:'Jeder Ordner gehört zu einer Org — dem Ziel, oder der Quelle, wenn es kein Ziel gab. Plan und apply laufen nur gegen diese Org.', tf_ws_col_folder:'Ordner', tf_ws_col_kind:'Art',
+    tf_ws_col_org:'Org', tf_ws_col_res:'Ressourcen', tf_ws_col_state:'State', tf_kind_export:'Vollständiger Export',
+    tf_kind_generator:'Start-Setup', tf_kind_copy:'Kopie', tf_ws_no_org:'Die Org des Ordners gibt es in Archy GUI nicht mehr', tf_ws_back:'Alle Ordner',
+    tf_ws_org:'Org', tf_ws_state_yes:'mit State', tf_ws_state_no:'ohne State', tf_ws_copied_from:'Kopie von',
+    tf_ws_copy_to:'In eine andere Org kopieren:', tf_ws_copy:'Kopieren', tf_ws_delete:'Ordner löschen', tf_ws_tab_res:'Ressourcen',
+    tf_ws_tab_files:'Dateien', tf_ws_tab_plan:'Plan & apply', tf_ws_copy_confirm:'Eine Kopie des Ordners für {org} erstellen? Die Kopie hat keinen State, daher legt apply die Objekte in {org} an.', tf_ws_delete_confirm:'Den Ordner {ws} auf diesem Rechner löschen? Die Org wird nicht berührt.',
+    tf_ws_delete_state:'Der Ordner hat eine terraform.tfstate. Die Objekte in der Org werden nicht gelöscht, aber Terraform vergisst, dass es sie verwaltet. Trotzdem löschen?', tf_res_new:'Neue Ressource', tf_res_pick:'Wählen Sie links eine Ressource oder legen Sie eine neue an.', tf_res_none:'Keine Ressourcen.',
+    tf_res_type:'Typ', tf_res_local:'Name in Terraform', tf_res_local_tip:'Der Name in der Datei (resource "typ" "name"): Buchstaben, Ziffern, _ und -. Es ist nicht der Name in Genesys.', tf_res_continue:'Weiter',
+    tf_res_bad_name:'Geben Sie einen Typ (z. B. genesyscloud_routing_queue) und einen Namen aus Buchstaben, Ziffern, _ und - an, der mit einem Buchstaben beginnt.', tf_res_required:'Pflichtfeld', tf_res_as_hcl:'Das Feld als HCL schreiben, z. B. ein Verweis auf eine andere Ressource', tf_res_new_badge:'neu',
+    tf_res_no_schema:'Die Beschreibung des Typs durch den Provider konnte nicht geladen werden, daher werden nur die Felder in der Datei angezeigt. Felder können weiterhin als HCL hinzugefügt werden.', tf_res_empty:'Keine Felder.', tf_res_new_block:'neuer Block', tf_res_field_name:'Feldname',
+    tf_res_more:'Weitere Felder ({n})', tf_res_add_block:'Block', tf_res_add:'Hinzufügen', tf_res_add_field:'Feld als HCL',
+    tf_res_create:'In Datei anlegen', tf_res_show_file:'In Datei zeigen', tf_res_delete:'Ressource löschen', tf_res_missing_req:'Diese Pflichtfelder sind leer: {f}. Trotzdem speichern? terraform validate wird fehlschlagen.',
+    tf_res_nochange:'Nichts geändert.', tf_res_saved:'Gespeichert in {file}. Führen Sie Plan aus, um zu sehen, was es in der Org bedeutet.', tf_res_delete_confirm:'{r} aus der Datei entfernen? Das nächste apply löscht das Objekt in der Org, wenn Terraform es verwaltet.', tf_file_unsaved:'Es gibt ungespeicherte Änderungen. Verwerfen?',
+    tf_file_new:'Neue Datei', tf_file_pick:'Wählen Sie links eine Datei.', tf_file_delete:'Datei löschen', tf_file_saved:'Gespeichert',
+    tf_file_delete_confirm:'{f} löschen?', tf_file_new_prompt:'Dateiname (z. B. queues.tf oder flows/mein_flow.yaml):', tf_plan_intro:'Plan und apply laufen gegen {org} mit Ihrem Login in Archy GUI. Apply führt nur den Plan aus, den Sie gesehen haben.', tf_act_init_tip:'terraform init: lädt den Provider herunter',
+    tf_act_fmt_tip:'terraform fmt: korrigiert die Einrückung in den .tf-Dateien', tf_act_validate_tip:'terraform validate: prüft die Dateien, ohne die Org zu fragen', tf_apply_btn:'Apply auf {org}', tf_last_apply:'Letztes apply',
+    tf_plan_nochange:'Keine Änderungen — die Org entspricht den Dateien.', tf_plan_create:'anzulegen', tf_plan_update:'zu ändern', tf_plan_delete:'zu löschen',
+    tf_plan_replace:'zu ersetzen', tf_apply_confirm:'Den Plan gegen {org} ausführen?\n\n+{c} anzulegen\n~{u} zu ändern\n-{d} zu löschen\n±{r} zu ersetzen', tf_apply_prod:'{org} ist PROD. Sind Sie sicher?', tf_hint_tls_intercept:'Terraform kann nicht mit seinem Provider sprechen: Die Verbindung zwischen terraform.exe und dem Provider wird von einem Programm unterbrochen, das verschlüsselten Datenverkehr scannt (z. B. Norton oder ein anderes Antivirenprogramm). Nehmen Sie terraform.exe und terraform-provider-*.exe vom Scan aus oder schalten Sie das Scannen verschlüsselten Datenverkehrs ab.',
+    tf_hint_needs_init:'Führen Sie zuerst Init unter Plan & apply aus.', tf_hint_registry:'Der Provider konnte nicht von registry.terraform.io heruntergeladen werden. Prüfen Sie die Internetverbindung und einen etwaigen Proxy.', tf_hint_auth:'Genesys hat das Login abgelehnt. Melden Sie sich erneut bei der Umgebung an und versuchen Sie es noch einmal.', tf_hint_stale_plan:'Der Plan ist veraltet — führen Sie Plan erneut aus.',
+    tf_hint_no_cli:'Installieren Sie Terraform (developer.hashicorp.com/terraform/install) oder geben Sie oben im Tab den Pfad zu terraform.exe an.', tf_hint_plugin_start:'Der Provider von Terraform ließ sich nicht starten. Häufigste Ursache ist ein Antivirenprogramm, das verschlüsselten Datenverkehr scannt (z. B. Norton): Nehmen Sie terraform.exe und terraform-provider-*.exe vom Scan aus.',
     btn_demo_create:'+ Demo-Kunde anlegen',
     btn_demo_reset:'↺ Demo zurücksetzen',
     btn_demo_remove:'✕ Demo entfernen',
@@ -7482,7 +7610,7 @@ const LANGS = {
     help_pipeline:'Flows als Zeilen, die Umgebungen der Gruppe als Spalten in Stufenreihenfolge.\n• Versionsnummern **können nicht** orgübergreifend verglichen werden — sie werden pro Org gezählt. Verwenden Sie **⇄ Inhalt prüfen**, das Einzige, was entscheidet, ob zwei Umgebungen übereinstimmen.\n• **Grün** bedeutet auf dem richtigen Weg veröffentlicht. **Rot** bedeutet außerhalb der Pipeline veröffentlicht oder mehr Versionen als die Stufe davor.\n• **Jede Schaltfläche zeigt zuerst, was passieren wird** — Flow, von und nach sowie Warnungen zu Prod oder zu Änderungen, die verloren gingen — und Sie können abbrechen. **? Schaltflächen** erklärt sie alle.\n• **Versionsnummer angleichen**: Bei ⟶ Befördern kann das Ziel so oft zusätzlich veröffentlicht werden, dass es zur Nummer der Quelle passt (z. B. dev v10 → test v10). Herunterzählen ist nicht möglich.\n• **⟶ Befördern** bewegt jeweils eine Stufe. Nur eine veröffentlichte Version kann befördert werden — ein Entwurf ist ungetestet. Prod erfordert Ihre Prod-Anmeldung.\n• **⟵ Hierher holen** holt einen Flow aus einer späteren Stufe, z. B. wenn dev gerade erst eingerichtet wurde.\n• **↩** rollt die letzte Beförderung zurück, und **📝** zeigt Release Notes.\n• Wird ein **gemeinsames Modul** befördert oder zurückgerollt, wird Ihnen angeboten, die Flows dieser Umgebung, die es verwenden, erneut zu veröffentlichen. **🔁** tut dasselbe, wenn das Modul direkt in Architect geändert wurde. Wurde ein Modul nach den Flows veröffentlicht, die es verwenden, steht das oben auf der Tafel, die Zellen sind mit ⚠ markiert und 🔁 wird gelb.\n• Das **gemeinsame Manifest** führt den Verlauf in der Org, damit mehrere Personen an einem Kunden arbeiten und dieselbe Wahrheit sehen können.',
     help_flows:'Die Flows der Umgebung abrufen, durchsuchen und filtern. Teilen sich mehrere Umgebungen eine Org, werden nur die eigenen dieser Umgebung angezeigt.\n• Nach **Flow-Typ** filtern — die Liste wird aus den Typen gefüllt, die die Umgebung tatsächlich hat.\n• **Veröffentlichen** setzt einen bereits migrierten Entwurf live, ohne erneut etwas aus der Quelle abzurufen. Bei einem gemeinsamen Modul wird Ihnen dann angeboten, die Flows, die es verwenden, erneut zu veröffentlichen.\n• **Gemeinsame Module werden geprüft**, jedes Mal wenn die Liste abgerufen wird: Wurde ein Modul **nach** einem Flow veröffentlicht, der es verwendet, läuft der Flow noch mit der alten Version. Das wird in einem gelben Kasten mit einer Schaltfläche zum erneuten Veröffentlichen angezeigt, und die Zeilen sind mit ⚠ markiert.\n• **🔁 Verwender** bei einem gemeinsamen Modul listet jeden Flow auf, der es verwendet.\n• **⇄ Vergleichen** mit einer anderen Org vergleicht den **Inhalt**, nicht die Versionsnummern.\n• **📌 Baseline setzen** erfasst, was die Org jetzt enthält, damit das Tool später erkennen kann, wenn jemand direkt veröffentlicht — auch bei Flows, die es nie selbst migriert hat.',
     help_cross:'Zeigt die Flows, die bei **mehr als einem Kunden** existieren — etwa dasselbe gemeinsame Modul bei zehn Kunden.\n• Die Übersicht beruht auf einem Aufruf pro Kunde und ist daher schnell.\n• **⇄ Inhalt vergleichen** exportiert den Flow bei jedem Kunden und vergleicht den Hash. Das dauert, daher läuft es nur für die Zeile, die Sie anfordern.\n• Konnte eine Org nicht gelesen werden, wird das gesagt — es wird **nie** „identisch“ gemeldet, wenn eine Antwort fehlt.',
-    help_migrate:'Aus einer Org exportieren und direkt in eine andere importieren, in zwei Phasen.\n• **Prüfen** — der Flow wird exportiert, und die Ziel-Org wird auf alles untersucht, worauf er verweist. Es wird noch nichts geschrieben.\n• **Import** — erst nach Ihrer Auswahl. Fehlt etwas, können Tabellen, Data Actions, gemeinsame Module, Benutzer-Prompts und Skripte vor dem Flow migriert werden — haken Sie sie im Dialog an.\n• Hat das Ziel ein **Präfix** oder eine andere **Division**, werden der Flow und seine Verweise unterwegs umbenannt.\n• Die **Importaktion** folgt dem Ziel: Alles außer Prod wird standardmäßig veröffentlicht und ist sofort live. Prod bleibt als Entwurf, den Sie veröffentlichen.\n• Das Schreiben nach **Prod** erfordert Ihre Prod-Anmeldung mit der Berechtigung — fehlt sie, wird Ihnen die Anmeldung angeboten.\n• Wird ein **gemeinsames Modul** migriert, wird Ihnen angeboten, die Flows im Ziel, die es verwenden, erneut zu veröffentlichen.\n• Warteschlangen, Skills und Wrap-up-Codes müssen von Hand angelegt werden — sie können von hier nicht migriert werden.\n• **🚀 Migration starten** steht über der Flow-Liste und ist so erreichbar, ohne an Hunderten von Flows vorbeizuscrollen.\n• Verwendet der Flow eine **Function Data Action**, die im Ziel fehlt, ist die Beförderung **blockiert**, bis sie in Genesys angelegt wurde. Klicken Sie auf **Erneut prüfen**, sobald sie existiert.\n• Hat eine **Data Action** im Ziel einen anderen Namen — etwa in einer anderen Integration —, werden die Data Actions des Flows aufgelistet, und Sie wählen, auf welche im Ziel sie zeigen sollen. Die Auswahl wird für das nächste Mal gespeichert.',
+    help_migrate:'Aus einer Org exportieren und direkt in eine andere importieren, in zwei Phasen.\n• **Prüfen** — der Flow wird exportiert, und die Ziel-Org wird auf alles untersucht, worauf er verweist. Es wird noch nichts geschrieben.\n• **Import** — erst nach Ihrer Auswahl. Fehlt etwas, können Tabellen, Data Actions, gemeinsame Module, Benutzer-Prompts und Skripte vor dem Flow migriert werden — haken Sie sie im Dialog an.\n• Hat das Ziel ein **Präfix** oder eine andere **Division**, werden der Flow und seine Verweise unterwegs umbenannt.\n• Die **Importaktion** folgt dem Ziel: Alles außer Prod wird standardmäßig veröffentlicht und ist sofort live. Prod bleibt als Entwurf, den Sie veröffentlichen.\n• Das Schreiben nach **Prod** erfordert Ihre Prod-Anmeldung mit der Berechtigung — fehlt sie, wird Ihnen die Anmeldung angeboten.\n• Wird ein **gemeinsames Modul** migriert, wird Ihnen angeboten, die Flows im Ziel, die es verwenden, erneut zu veröffentlichen.\n• Warteschlangen, Skills und Wrap-up-Codes müssen von Hand angelegt werden — sie können von hier nicht migriert werden.\n• **🚀 Migration starten** steht über der Flow-Liste und ist so erreichbar, ohne an Hunderten von Flows vorbeizuscrollen.\n• Verwendet der Flow eine **Function Data Action**, die im Ziel fehlt, ist die Beförderung **blockiert**, bis sie in Genesys angelegt wurde. Klicken Sie auf **Erneut prüfen**, sobald sie existiert.\n• Hat eine **Data Action** im Ziel einen anderen Namen — etwa in einer anderen Integration —, werden die Data Actions des Flows aufgelistet, und Sie wählen, auf welche im Ziel sie zeigen sollen. Die Auswahl wird für das nächste Mal gespeichert.\n• Der Tab **Terraform**: **Vollständiger Export** führt den Exporter von Genesys aus und speichert die Org als .tf-Dateien. Unter **Arbeitsordner** bearbeiten Sie Ressourcen in Formularen oder die Dateien in einem Editor und führen **Plan** und **Apply** gegen die Org des Ordners aus — apply nur eines Plans, den Sie gesehen haben, und Prod erfordert Ihr Prod-Login. Die Dateien sind normales Terraform, das der Kunde mitnehmen kann. **📖 Leitfaden** erklärt CX as Code von Org zu Org. Benötigt terraform.exe.',
     help_dataactions:'Migriert, was kein Flow ist: **Data Actions**, **Datentabellen**, **Benutzer-Prompts** und **Skripte**.\n• Data Actions gehören zu einer Integration. Wählen Sie die Quellintegration, dann werden nur deren Aktionen angezeigt, sodass die Gruppierung im Ziel erhalten bleibt.\n• Datentabellen migrieren die **Struktur** — die Spalten. Die Zeilen kommen nicht mit.\n• Benutzer-Prompts bringen sowohl den TTS-Text als auch aufgenommenes Audio mit. Prompts mit Audio sind mit 🔊 markiert.\n• Skripte werden als Ganzes exportiert und importiert und im Ziel veröffentlicht, wenn sie in der Quelle veröffentlicht sind.\n• **Function Data Actions können nicht migriert werden** — ihre URL ist eine ID für eine Funktion, die nur in der Quell-Org existiert.\n• Der Reiter **Vollständige Prüfung** stellt jede Data Action der Quelle nach Kategorie und Name der Ziel-Org gegenüber: *Übereinstimmend*, *Gespeicherte Auswahl*, *Auszuwählen*, *Fehlt* und *FDA fehlt*. Hier können Sie eine Aktion auf die Aktion zeigen lassen, die im Ziel so heißt, die Auswahl speichern oder entfernen und prüfen, ob die Verträge (Eingabe und Ausgabe) übereinstimmen.\n• Der Reiter **Setup-Vorschlag** schlägt vor, in welchen aktiven Integrationen des Ziels die fehlenden Data Actions liegen sollen, je nachdem, wo Platz ist (Sie geben das Limit pro Integration ein). Die Aktionen einer Quellintegration bleiben möglichst zusammen. Eine Gruppe lässt sich verschieben, und der Vorschlag kann für den Kunden nach Excel oder als druckbare Seite exportiert werden.\n• **💾 Backup herunterladen** auf den Reitern Data Actions und Datentabellen lädt die ausgewählten als lokale JSON-Datei herunter: Aktionen vollständig (Vertrag, Konfiguration und ein evtl. Entwurf), Tabellen mit der gesamten Struktur (das Schema, keine Zeilen). Es wird nur gelesen — ein Ziel muss nicht gewählt werden.',
     help_export:'Exportiert Flows in YAML-Dateien auf diesem Rechner.\n• Wählen Sie eine Umgebung — ihre Flows werden sofort aufgelistet. Teilen sich mehrere Umgebungen eine Org, werden nur die eigenen dieser Umgebung angezeigt.\n• Zum Filtern tippen. `*` zeigt alle, und ein Stern im Text ist ein Platzhalter: `DEV_*log` findet DEV_Create Logitems.\n• Der Typ wird beim Auswählen des Flows automatisch gesetzt.\n• **Alle Flows exportieren** ruft die gesamte Umgebung mit Fortschrittsanzeige ab und lässt sich abbrechen.\n• Die Dateien landen unter `flows/<Umgebung>/` und werden auch von Migration und Vergleich verwendet.',
     help_import:'Einen Flow aus YAML anlegen, aktualisieren oder veröffentlichen.\n• Text einfügen, eine Datei hochladen oder hineinziehen.\n• **🔍 YAML validieren** prüft die Syntax im Browser, ohne etwas aufzurufen.\n• **🌐 Gegen Org prüfen** schlägt nach, ob Division, Warteschlangen, Tabellen, Data Actions und Prompts im Ziel existieren — **bevor** Sie importieren.\n• Die **Importaktion** legt fest, ob der Flow angelegt, aktualisiert oder angelegt und veröffentlicht wird.\n• Veröffentlichen Sie ein **gemeinsames Modul**, wird Ihnen anschließend angeboten, die Flows, die es verwenden, erneut zu veröffentlichen.\n• Der Import nach **Prod** erfordert Ihre Prod-Anmeldung mit der Berechtigung.',
@@ -8238,11 +8366,37 @@ const LANGS = {
     aic_limit:'Se detuvo tras 12 pasos — escriba para continuar.',
     aic_stopped:'Detenido.',
     help_aichat:'Un chat donde el modelo puede **leer y entender flujos** y **redactar YAML**. Beta, tras la clave de activación, y solo usa el proveedor elegido en Clientes → Proveedores de IA.\n• **Lectura:** el modelo puede listar entornos y flujos, exportar un flujo, buscar en él, ver su estructura y dependencias — con las funciones de la propia aplicación y su propio login, no mediante un servidor externo.\n• **Borradores:** un borrador llega a **Importar YAML**, donde 🔍 Validar YAML y 🌐 Comprobar en la org funcionan como siempre. Si ya hay algo, el chat pregunta antes.\n• **Escribir requiere su clic.** El modelo puede pedir importar el borrador o publicar un flujo, pero solo se permite cuando usted ha visto org, etapa, flujo, acción y comprobaciones y ha pulsado **Ejecutar**. Pasa por las mismas rutas que los botones, así que rigen la protección de prod (login de prod), la comprobación de división y la de dependencias. Si alguna lo rechaza, se muestra y no se le pregunta.\n• **Preguntarme antes de enviar datos:** (recomendado, activado por defecto) antes de cada llamada al proveedor se muestra exactamente lo que se envía — el YAML de flujos, nombres de colas y texto de registros pueden contener datos personales. Puede cancelar. **Mostrar lo que se envía** muestra la primera llamada antes de enviar.\n• **El contenido de las orgs son datos, no instrucciones.** Se encapsula y se indica al modelo que no lo siga, pero un modelo puede ser engañado — por eso todo lo que escribe está tras su clic.\n• Los secretos se enmascaran antes del envío. Los prompts y respuestas no se registran; el registro solo muestra que hubo una conversación y qué escrituras aprobó o rechazó.\n• La respuesta llega paso a paso (no palabra a palabra). Como máximo 12 pasos por mensaje.',
-    da_tab_terraform:'Terraform', tf_title:'CONFIGURACIÓN DE TERRAFORM', tf_run:'Generar Terraform', tf_all:'Seleccionar todo', tf_none:'Quitar selección',
-    tf_intro:'Crea una configuración de Terraform (proveedor genesyscloud) a partir de los objetos de la org de origen y la guarda automáticamente en la carpeta terraform/ de este equipo. El cliente ejecuta él mismo terraform apply en la org que debe cambiar — p. ej. de Falck Global a US.', tf_note:'Es una configuración inicial: no incluye secretos, miembros, contactos ni audio grabado, y lo omitido figura en README.md de la carpeta. Pruébela primero en una org de prueba.',
+    da_tab_terraform:'Terraform', tf_title:'TERRAFORM', tf_run:'Generar Terraform', tf_all:'Seleccionar todo', tf_none:'Quitar selección',
+    tf_intro:'El generador propio de Archy GUI: lee los tipos elegidos y escribe una configuración inicial sin terraform.exe. Rápido, pero no se incluye todo. El cliente ejecuta él mismo terraform apply en la org que debe cambiar — p. ej. de una org de prueba a una org nueva.', tf_note:'Es una configuración inicial: no incluye secretos, miembros, contactos ni audio grabado, y lo omitido figura en README.md de la carpeta. Pruébela primero en una org de prueba.',
     tf_target_hint:'Elija también un destino arriba: la carpeta se llamará <origen>_<destino>, el README y el provider mencionarán ambas orgs y la región del destino será la predeterminada. El destino no es necesario para la configuración en sí — describe el origen.',
     tf_need_source:'Elija primero un origen.', tf_need_kind:'Elija al menos un tipo.', tf_running:'Obteniendo objetos y escribiendo archivos…', tf_done:'La configuración está guardada.',
     tf_saved_in:'Guardado en', tf_copy_path:'Copiar ruta', tf_files:'Archivos', tf_col_written:'Incluidos / total', tf_unreadable:'no se pudo leer', tf_skipped:'omitido', tf_notes:'Notas',
+    tf_guide:'📖 Guía: CX as Code, de org a org', tf_top_intro:'Configuraciones de Terraform de una org de Genesys con el proveedor genesyscloud. Haga una exportación completa o una configuración inicial rápida, edite recursos y archivos aquí, y ejecute plan y apply contra la org de la carpeta. Todo se guarda como archivos .tf normales en data/terraform/, para que el cliente pueda llevarse la carpeta y seguir con su propio terraform.', tf_v_export:'Exportación completa', tf_v_quick:'Configuración inicial rápida',
+    tf_v_folders:'Carpetas de trabajo', tf_cli_change:'cambiar', tf_cli_path:'Ruta de terraform.exe:', tf_cli_missing:'No se encontró terraform.exe. Instale Terraform o indique la ruta de terraform.exe:',
+    tf_save:'Guardar', tf_job_running:'Terraform en ejecución…', tf_job_stop:'Detener', tf_job_done:'Listo',
+    tf_exp_intro:'Ejecuta el exportador de Genesys (genesyscloud_tf_export) contra el origen y escribe cada objeto como archivos .tf —un archivo por tipo— y los flows como YAML. Requiere terraform.exe, e internet la primera vez para descargar el proveedor (unos 90 MB).', tf_exp_same:'Sin destino: la carpeta gestiona {src} directamente. El state se incluye, así que plan muestra 0 cambios hasta que edite los archivos.', tf_exp_other:'Destino elegido: la carpeta es para {tgt}. No se incluye state, así que apply crea los objetos de {src} en {tgt}.', tf_exp_all:'Todos los tipos',
+    tf_exp_pick:'Tipos elegidos', tf_exp_deps:'Incluir dependencias', tf_exp_deps_tip:'enable_dependency_resolution: los flows y scripts incluyen lo que usan, aunque ese tipo no esté elegido.', tf_exp_run:'Exportar org',
+    tf_exp_done:'La exportación está guardada: {n} recursos.', tf_schema_loading:'Cargando los tipos del proveedor…', tf_filter:'Filtrar…', tf_ws_open:'Abrir',
+    tf_ws_none:'Aún no hay carpetas de trabajo. Haga una exportación completa o una configuración inicial rápida.', tf_ws_intro:'Cada carpeta pertenece a una org: el destino, o el origen si no había destino. Plan y apply solo se ejecutan contra esa org.', tf_ws_col_folder:'Carpeta', tf_ws_col_kind:'Clase',
+    tf_ws_col_org:'Org', tf_ws_col_res:'Recursos', tf_ws_col_state:'State', tf_kind_export:'Exportación completa',
+    tf_kind_generator:'Configuración inicial', tf_kind_copy:'Copia', tf_ws_no_org:'La org de la carpeta ya no existe en Archy GUI', tf_ws_back:'Todas las carpetas',
+    tf_ws_org:'Org', tf_ws_state_yes:'con state', tf_ws_state_no:'sin state', tf_ws_copied_from:'copia de',
+    tf_ws_copy_to:'Copiar a otra org:', tf_ws_copy:'Copiar', tf_ws_delete:'Eliminar carpeta', tf_ws_tab_res:'Recursos',
+    tf_ws_tab_files:'Archivos', tf_ws_tab_plan:'Plan & apply', tf_ws_copy_confirm:'¿Hacer una copia de la carpeta para {org}? La copia no tiene state, así que apply crea los objetos en {org}.', tf_ws_delete_confirm:'¿Eliminar la carpeta {ws} de este equipo? La org no se modifica.',
+    tf_ws_delete_state:'La carpeta tiene un terraform.tfstate. Los objetos de la org no se eliminan, pero Terraform olvida que los gestiona. ¿Eliminar de todos modos?', tf_res_new:'Nuevo recurso', tf_res_pick:'Elija un recurso a la izquierda o cree uno nuevo.', tf_res_none:'No hay recursos.',
+    tf_res_type:'Tipo', tf_res_local:'Nombre en Terraform', tf_res_local_tip:'El nombre en el archivo (resource "tipo" "nombre"): letras, dígitos, _ y -. No es el nombre en Genesys.', tf_res_continue:'Continuar',
+    tf_res_bad_name:'Indique un tipo (p. ej. genesyscloud_routing_queue) y un nombre de letras, dígitos, _ y - que empiece por una letra.', tf_res_required:'obligatorio', tf_res_as_hcl:'Escribir el campo como HCL, p. ej. una referencia a otro recurso', tf_res_new_badge:'nuevo',
+    tf_res_no_schema:'No se pudo cargar la descripción del tipo del proveedor, así que solo se muestran los campos del archivo. Aún puede añadir campos como HCL.', tf_res_empty:'Sin campos.', tf_res_new_block:'bloque nuevo', tf_res_field_name:'nombre del campo',
+    tf_res_more:'Más campos ({n})', tf_res_add_block:'bloque', tf_res_add:'Añadir', tf_res_add_field:'Campo como HCL',
+    tf_res_create:'Crear en el archivo', tf_res_show_file:'Ver en el archivo', tf_res_delete:'Eliminar recurso', tf_res_missing_req:'Estos campos obligatorios están vacíos: {f}. ¿Guardar de todos modos? terraform validate fallará.',
+    tf_res_nochange:'No ha cambiado nada.', tf_res_saved:'Guardado en {file}. Ejecute Plan para ver qué significa en la org.', tf_res_delete_confirm:'¿Quitar {r} del archivo? El próximo apply elimina el objeto en la org si Terraform lo gestiona.', tf_file_unsaved:'Hay cambios sin guardar. ¿Descartarlos?',
+    tf_file_new:'Nuevo archivo', tf_file_pick:'Elija un archivo a la izquierda.', tf_file_delete:'Eliminar archivo', tf_file_saved:'Guardado',
+    tf_file_delete_confirm:'¿Eliminar {f}?', tf_file_new_prompt:'Nombre del archivo (p. ej. queues.tf o flows/mi_flow.yaml):', tf_plan_intro:'Plan y apply se ejecutan contra {org} con su sesión de Archy GUI. Apply solo ejecuta el plan que ha visto.', tf_act_init_tip:'terraform init: descarga el proveedor',
+    tf_act_fmt_tip:'terraform fmt: corrige la sangría de los archivos .tf', tf_act_validate_tip:'terraform validate: comprueba los archivos sin consultar la org', tf_apply_btn:'Apply en {org}', tf_last_apply:'Último apply',
+    tf_plan_nochange:'Sin cambios: la org coincide con los archivos.', tf_plan_create:'por crear', tf_plan_update:'por cambiar', tf_plan_delete:'por eliminar',
+    tf_plan_replace:'por reemplazar', tf_apply_confirm:'¿Ejecutar el plan contra {org}?\n\n+{c} por crear\n~{u} por cambiar\n-{d} por eliminar\n±{r} por reemplazar', tf_apply_prod:'{org} es PROD. ¿Está seguro?', tf_hint_tls_intercept:'Terraform no puede comunicarse con su proveedor: un programa que analiza el tráfico cifrado (p. ej. Norton u otro antivirus) corta la conexión entre terraform.exe y el proveedor. Excluya terraform.exe y terraform-provider-*.exe del análisis, o desactive el análisis del tráfico cifrado.',
+    tf_hint_needs_init:'Ejecute primero Init en Plan & apply.', tf_hint_registry:'No se pudo descargar el proveedor de registry.terraform.io. Compruebe la conexión a internet y el proxy, si lo hay.', tf_hint_auth:'Genesys rechazó la sesión. Vuelva a iniciar sesión en el entorno e inténtelo de nuevo.', tf_hint_stale_plan:'El plan está desactualizado: ejecute Plan de nuevo.',
+    tf_hint_no_cli:'Instale Terraform (developer.hashicorp.com/terraform/install) o indique la ruta de terraform.exe en la parte superior de la pestaña.', tf_hint_plugin_start:'El proveedor de Terraform no se inició. La causa más habitual es un antivirus que analiza el tráfico cifrado (p. ej. Norton): excluya terraform.exe y terraform-provider-*.exe del análisis.',
     btn_demo_create:'+ Crear cliente demo',
     btn_demo_reset:'↺ Restablecer demo',
     btn_demo_remove:'✕ Eliminar demo',
@@ -8649,7 +8803,7 @@ const LANGS = {
     help_pipeline:'Flows en filas, los entornos del grupo en columnas por orden de etapa.\n• Los números de versión **no** son comparables entre orgs — se cuentan por org. Use **⇄ Comprobar contenido**, lo único que decide si dos entornos son iguales.\n• **Verde**: publicado por el camino correcto. **Rojo**: publicado fuera del pipeline, o más versiones que la etapa anterior.\n• **Cada botón muestra primero qué ocurrirá** — flow, origen y destino, y avisos sobre prod o cambios que se perderían — y puede cancelar. **? Botones** los explica todos.\n• **Igualar número de versión**: al ⟶ Promover, el destino puede publicarse las veces que faltan para alcanzar el número del origen (p. ej. dev v10 → test v10). No puede bajar.\n• **⟶ Promover** avanza una etapa cada vez. Solo se puede promover una versión publicada. Prod exige su inicio de sesión de prod.\n• **⟵ Traer aquí** trae un flow de una etapa posterior, p. ej. cuando dev se acaba de crear.\n• **↩** revierte la última promoción y **📝** muestra las notas de versión.\n• Al promover o revertir un **common module**, se le ofrece volver a publicar los flows del entorno que lo usan. **🔁** hace lo mismo si el módulo se cambió directamente en Architect. Si un módulo se publicó después de flows que lo usan, se indica arriba del tablero, las celdas se marcan con ⚠ y 🔁 se vuelve amarillo.\n• **El manifiesto compartido** guarda el historial en la org, para que todos vean la misma verdad.',
     help_flows:'Obtener, buscar y filtrar los flows del entorno. Si varios entornos comparten una org, solo se muestran los propios.\n• Filtre por **tipo de flow** — la lista se llena con los tipos que el entorno tiene realmente.\n• **Publicar** pone en producción un borrador ya migrado. Si es un common module, se le ofrece después volver a publicar los flows que lo usan.\n• **Los common modules se comprueban** cada vez que se carga la lista: si un módulo se publicó **después** de un flow que lo usa, el flow sigue con la versión antigua. Se indica en un recuadro amarillo con un botón para volver a publicarlos, y las filas se marcan con ⚠.\n• **🔁 Usuarios** en un common module lista todos los flows que lo usan.\n• **⇄ Comparar** con otra org compara el **contenido**, no los números de versión.\n• **📌 Punto cero** registra lo que contiene la org ahora, para detectar después publicaciones directas.',
     help_cross:'Muestra los flows presentes en **varios clientes**, por ejemplo el mismo common module en diez clientes.\n• La vista se basa en una llamada por cliente, así que es rápida.\n• **⇄ Comparar contenido** exporta el flow de cada cliente y compara el hash. Lleva tiempo, así que solo se hace en la fila que pida.\n• Si una org no se pudo leer, se dice: **nunca** informa «idéntico» cuando falta una respuesta.',
-    help_migrate:'Exportación desde una org e importación directa en otra, en dos fases.\n• **Comprobación** — se exporta el flow y se examina la org de destino por todo lo que referencia. Aún no se escribe nada.\n• **Importación** — solo tras su elección. Si falta algo, tablas, data actions, common modules, prompts de usuario y scripts pueden migrarse antes del flow — márquelos en el diálogo.\n• Si el destino tiene un **prefijo** u otra **división**, el flow y sus referencias se renombran por el camino.\n• **Acción de importación** según el destino: todo salvo prod se publica por defecto. Prod queda como borrador que publica usted.\n• Escribir en **prod** exige su inicio de sesión de prod con el permiso — se le ofrece iniciar sesión si falta.\n• Si se migra un **common module**, se le ofrece volver a publicar los flows del destino que lo usan.\n• Colas, skills y códigos de wrap-up deben crearse manualmente.\n• **🚀 Ejecutar migración** está encima de la lista de flows.\n• Si el flow usa una **Function Data Action** que falta en el destino, la promoción queda **bloqueada** hasta que se cree en Genesys. Pulse **Comprobar de nuevo** cuando exista.\n• Si una **data action** tiene otro nombre en el destino — por ejemplo otra integración — se listan las data actions del flow y usted elige a cuál del destino apuntan. La elección se guarda para la próxima vez.',
+    help_migrate:'Exportación desde una org e importación directa en otra, en dos fases.\n• **Comprobación** — se exporta el flow y se examina la org de destino por todo lo que referencia. Aún no se escribe nada.\n• **Importación** — solo tras su elección. Si falta algo, tablas, data actions, common modules, prompts de usuario y scripts pueden migrarse antes del flow — márquelos en el diálogo.\n• Si el destino tiene un **prefijo** u otra **división**, el flow y sus referencias se renombran por el camino.\n• **Acción de importación** según el destino: todo salvo prod se publica por defecto. Prod queda como borrador que publica usted.\n• Escribir en **prod** exige su inicio de sesión de prod con el permiso — se le ofrece iniciar sesión si falta.\n• Si se migra un **common module**, se le ofrece volver a publicar los flows del destino que lo usan.\n• Colas, skills y códigos de wrap-up deben crearse manualmente.\n• **🚀 Ejecutar migración** está encima de la lista de flows.\n• Si el flow usa una **Function Data Action** que falta en el destino, la promoción queda **bloqueada** hasta que se cree en Genesys. Pulse **Comprobar de nuevo** cuando exista.\n• Si una **data action** tiene otro nombre en el destino — por ejemplo otra integración — se listan las data actions del flow y usted elige a cuál del destino apuntan. La elección se guarda para la próxima vez.\n• La pestaña **Terraform**: **Exportación completa** ejecuta el exportador de Genesys y guarda la org como archivos .tf. En **Carpetas de trabajo** edita recursos en formularios o los archivos en un editor, y ejecuta **Plan** y **Apply** contra la org de la carpeta: apply solo de un plan que ha visto, y prod requiere su inicio de sesión de prod. Los archivos son Terraform normal que el cliente puede llevarse. **📖 Guía** explica CX as Code de org a org. Requiere terraform.exe.',
     help_dataactions:'Migra lo que no es un flow: **Data Actions**, **tablas de datos**, **prompts de usuario** y **scripts**.\n• Las Data Actions pertenecen a una integración. Elija la integración de origen y solo se mostrarán sus acciones, conservando la agrupación.\n• Las tablas de datos migran la **estructura**: las columnas. Las filas no se llevan.\n• Los prompts llevan tanto el texto TTS como el audio grabado. Los que tienen audio están marcados con 🔊.\n• Los scripts se exportan e importan completos, y se publican en el destino si están publicados en el origen.\n• **Las Function Data Actions no se pueden migrar**: su URL es un id de una función que solo existe en la org de origen.\n• La pestaña **Comprobación total** compara cada data action del origen con la org de destino por categoría y nombre: *coinciden*, *elección guardada*, *por elegir*, *faltan* y *FDA que faltan*. Aquí puede apuntar una acción al nombre que tiene en el destino, guardar o quitar la elección y comprobar que los contratos (entrada y salida) coinciden.\n• La pestaña **Propuesta de setup** propone en qué integraciones activas del destino deben ir las data actions que faltan, según dónde haya sitio (usted indica el límite por integración). Las acciones de una integración de origen se mantienen juntas cuando es posible. Un grupo se puede mover y la propuesta se exporta a Excel o a una página imprimible para el cliente.\n• **💾 Descargar copia** en las pestañas Data Actions y Tablas de datos descarga la selección como archivo JSON local: las acciones completas (contract, config y borrador si lo hay), las tablas con toda la estructura (el esquema, sin filas). Solo lee: no hace falta elegir destino.',
     help_export:'Exporta flows a archivos YAML en esta máquina.\n• Elija un entorno — sus flows se listan al instante. Si varios entornos comparten una org, solo se muestran los propios.\n• Escriba para filtrar. `*` muestra todos, y un asterisco dentro del texto es un comodín: `DEV_*log` encuentra DEV_Create Logitems.\n• El tipo se fija automáticamente al elegir el flow.\n• **Exportar todos los flows** obtiene todo el entorno con progreso y se puede cancelar.\n• Los archivos quedan en `flows/<entorno>/` y también se usan en migración y comparación.',
     help_import:'Crear, actualizar o publicar un flow a partir de YAML.\n• Pegue el texto, suba un archivo o arrástrelo.\n• **🔍 Validar YAML** comprueba la sintaxis en el navegador sin llamar a nada.\n• **🌐 Comprobar en la org** mira si división, colas, tablas, data actions y prompts existen en el destino — **antes** de importar.\n• **Acción de importación** elige crear, actualizar, o crear y publicar.\n• Si publica un **common module**, se le ofrece después volver a publicar los flows que lo usan.\n• Importar a **prod** exige su inicio de sesión de prod con el permiso.',
@@ -14103,7 +14257,7 @@ function daSetTab(tab) {
   });
   document.getElementById('da-tab-terraform').classList.toggle('active', tab === 'terraform');
   document.getElementById('da-terraform-card').style.display = tab === 'terraform' ? 'block' : 'none';
-  if (tab === 'terraform') tfLoadKinds();
+  if (tab === 'terraform') tfOpenTab();
   document.getElementById('da-tab-orgset').classList.toggle('active', tab === 'orgset');
   document.getElementById('da-orgset-card').style.display = tab === 'orgset' ? 'block' : 'none';
   document.getElementById('da-tab-rtc').classList.toggle('active', tab === 'rtc');
@@ -14115,10 +14269,246 @@ function daSetTab(tab) {
 }
 
 // ── Terraform ─────────────────────────────────────────────────────────────────
-// Genererer en Terraform-opsætning (genesyscloud-provideren) ud fra kilde-org'ens
-// objekter og gemmer den i mappen terraform/ på denne maskine. Kunden kører selv
-// terraform apply mod den org, der skal ændres.
+// Fanen har tre dele: fuld eksport med Genesys' egen eksportør, hurtig
+// startopsætning med Archy GUI's egen generator, og arbejdsmapperne. I en
+// arbejdsmappe rettes ressourcer (formularer) og filer (editor), og plan og
+// apply køres mod mappens egen org. Alt gemmes som almindelige .tf-filer.
 let tfKinds = null, tfSel = new Set(), tfBusy = false;
+let tfView = 'export';
+let tfCli = null;
+let tfSchemaList = null, tfSchemaErr = null;
+const tfSchemaTypes = {};
+let tfExpPick = new Set(), tfExpMode = 'all', tfExpFilter = '';
+let tfWs = null, tfWsTab = 'res';
+let tfRes = [], tfResFilter = '', tfResOpen = {}, tfResSel = null;
+let tfFileList = [], tfFileSel = null, tfFileDirty = false;
+let tfPlan = null;
+const tfPolls = {};
+
+async function tfApi(url, body) {
+  const opt = body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
+  const r = await fetch(url, opt);
+  let j = {};
+  try { j = await r.json(); } catch (_) {}
+  if (!r.ok || (j && j.error)) {
+    const e = new Error((j && (j.error || j.message)) || ('HTTP ' + r.status));
+    e.hint = j && j.hint; e.data = j; e.status = r.status;
+    throw e;
+  }
+  return j;
+}
+
+function tfErrHtml(e) {
+  const k = e && e.hint ? 'tf_hint_' + e.hint : '';
+  const hint = k ? t(k) : '';
+  return `<div style="color:var(--red);white-space:pre-wrap;font-size:12px">${escapeHtml(e.message || String(e))}</div>` +
+    (hint && hint !== k ? `<div style="color:var(--yellow);margin-top:4px;font-size:12px;white-space:pre-wrap">${escapeHtml(hint)}</div>` : '');
+}
+
+const tfEl = id => document.getElementById(id);
+const tfShort = type => String(type || '').replace(/^genesyscloud_/, '');
+const tfEnvName = id => ((customers || []).find(c => c.id === id) || {}).name || '';
+function tfStageTag(stage) {
+  if (!stage) return '';
+  const c = stageColor(stage);
+  return ` <span class="badge" style="background:var(--${c || 'border'});color:#000;opacity:.85">${escapeHtml(String(stage).toUpperCase())}</span>`;
+}
+function tfFmtTime(iso) {
+  if (!iso) return '';
+  try { return new Date(iso).toLocaleString(currentLang === 'en' ? 'en-GB' : currentLang, { dateStyle: 'short', timeStyle: 'short' }); } catch (_) { return iso; }
+}
+
+async function tfOpenTab() {
+  tfRender();
+  tfLoadCli();
+}
+
+function tfSetView(v) {
+  if (tfFileDirty && !confirm(t('tf_file_unsaved'))) return;
+  tfFileDirty = false;
+  tfView = v;
+  tfRender();
+}
+
+function tfRender() {
+  for (const v of ['export', 'quick', 'folders']) {
+    const b = tfEl('tf-v-' + v);
+    if (b) b.classList.toggle('active', tfView === v);
+  }
+  if (tfView === 'export') tfRenderExport();
+  else if (tfView === 'quick') tfRenderQuick();
+  else if (tfWs) tfRenderWs();
+  else tfRenderFolders();
+}
+
+// Kilde og mål vælges øverst på siden; eksportens forklaring følger med.
+function tfRefreshMode() {
+  if (tfView === 'export' && tfEl('tf-exp-mode')) tfEl('tf-exp-mode').innerHTML = tfModeLine();
+}
+
+// ── terraform.exe ─────────────────────────────────────────────────────────────
+async function tfLoadCli() {
+  const box = tfEl('tf-cli');
+  if (!box) return;
+  try { tfCli = await tfApi('/api/terraform/cli'); } catch (e) { tfCli = { found: false }; }
+  if (tfCli.found) {
+    box.innerHTML = `<span style="color:var(--green)">✓</span> terraform ${escapeHtml(tfCli.version || '?')} · <code style="font-family:var(--mono)">${escapeHtml(tfCli.path)}</code>
+      <a href="#" onclick="tfEditCli();return false" style="color:var(--accent);text-decoration:none;margin-left:6px">${escapeHtml(t('tf_cli_change'))}</a>`;
+  } else tfEditCli();
+}
+
+function tfEditCli() {
+  const box = tfEl('tf-cli');
+  box.innerHTML = `<span style="color:var(--yellow)">${escapeHtml(tfCli && tfCli.found ? t('tf_cli_path') : t('tf_cli_missing'))}</span>
+    <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"><input id="tf-cli-path" style="flex:1;min-width:260px" placeholder="C:\\Tools\\Terraform\\terraform.exe" value="${escapeHtml((tfCli && tfCli.path) || '')}" />
+    <button class="btn btn-secondary btn-sm" onclick="tfSaveCli()">${escapeHtml(t('tf_save'))}</button></div>`;
+}
+
+async function tfSaveCli() {
+  try { tfCli = await tfApi('/api/terraform/cli', { path: tfEl('tf-cli-path').value }); tfLoadCli(); }
+  catch (e) { tfEl('tf-cli').insertAdjacentHTML('beforeend', tfErrHtml(e)); }
+}
+
+// ── Kørsler ───────────────────────────────────────────────────────────────────
+// Følger et job: uddata løber ind i en log-boks, og onEnd får jobbet til sidst.
+function tfFollowJob(jobId, box, onEnd) {
+  box.innerHTML = `<div style="display:flex;align-items:center;gap:8px;font-size:12px;margin:6px 0"><span class="spin" id="tf-job-spin-${jobId}"></span>
+    <span id="tf-job-state-${jobId}">${escapeHtml(t('tf_job_running'))}</span>
+    <button class="btn btn-secondary btn-sm" id="tf-job-stop-${jobId}" onclick="tfCancelJob(${jsAttr(jobId)})">${escapeHtml(t('tf_job_stop'))}</button></div>
+    <div class="log-box" style="max-height:280px" id="tf-job-log-${jobId}"></div>`;
+  let from = 0;
+  const tick = async () => {
+    let j;
+    try { j = await tfApi(`/api/terraform/job/${encodeURIComponent(jobId)}?from=${from}`); }
+    catch (e) { tfPolls[jobId] = setTimeout(tick, 2000); return; }
+    from = j.total;
+    const log = tfEl('tf-job-log-' + jobId);
+    if (log && j.lines.length) {
+      const atEnd = log.scrollTop + log.clientHeight >= log.scrollHeight - 20;
+      log.textContent += (log.textContent ? '\n' : '') + j.lines.join('\n');
+      if (atEnd) log.scrollTop = log.scrollHeight;
+    }
+    if (j.status === 'running') { tfPolls[jobId] = setTimeout(tick, 1000); return; }
+    delete tfPolls[jobId];
+    const spin = tfEl('tf-job-spin-' + jobId); if (spin) spin.remove();
+    const stop = tfEl('tf-job-stop-' + jobId); if (stop) stop.remove();
+    const state = tfEl('tf-job-state-' + jobId);
+    if (state) state.innerHTML = j.status === 'done' ? `<span style="color:var(--green)">✓ ${escapeHtml(t('tf_job_done'))}</span>` : tfErrHtml({ message: j.error, hint: j.hint });
+    if (onEnd) onEnd(j);
+  };
+  tick();
+}
+
+async function tfCancelJob(id) {
+  try { await tfApi(`/api/terraform/job/${encodeURIComponent(id)}/cancel`, {}); } catch (e) { alert(e.message); }
+}
+
+// ── Fuld eksport ──────────────────────────────────────────────────────────────
+function tfModeLine() {
+  const src = tfEnvName(document.getElementById('da-source').value);
+  const tgt = tfEnvName(document.getElementById('da-target').value);
+  if (!src) return `<span style="color:var(--yellow)">${escapeHtml(t('tf_need_source'))}</span>`;
+  if (tgt && tgt !== src) return escapeHtml(t('tf_exp_other').replace('{src}', src).replace('{tgt}', tgt));
+  return escapeHtml(t('tf_exp_same').replace('{src}', src));
+}
+
+function tfRenderExport() {
+  tfEl('tf-view').innerHTML = `
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">${escapeHtml(t('tf_exp_intro'))}</div>
+    <div style="font-size:12px;margin-bottom:10px" id="tf-exp-mode">${tfModeLine()}</div>
+    <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;font-size:12px;margin-bottom:8px">
+      <label style="margin:0;display:flex;gap:6px;align-items:center;cursor:pointer"><input type="radio" name="tf-exp-mode" style="width:auto" ${tfExpMode === 'all' ? 'checked' : ''} onchange="tfExpSetMode('all')" /> ${escapeHtml(t('tf_exp_all'))}</label>
+      <label style="margin:0;display:flex;gap:6px;align-items:center;cursor:pointer"><input type="radio" name="tf-exp-mode" style="width:auto" ${tfExpMode === 'pick' ? 'checked' : ''} onchange="tfExpSetMode('pick')" /> ${escapeHtml(t('tf_exp_pick'))}</label>
+      <label style="margin:0;display:flex;gap:6px;align-items:center;cursor:pointer" title="${escapeHtml(t('tf_exp_deps_tip'))}"><input type="checkbox" id="tf-exp-deps" style="width:auto" /> ${escapeHtml(t('tf_exp_deps'))}</label>
+      <button class="btn btn-primary btn-sm" style="margin-left:auto" id="tf-exp-btn" onclick="tfExport()">${escapeHtml(t('tf_exp_run'))}</button>
+    </div>
+    <div id="tf-exp-types"></div>
+    <div id="tf-exp-status" style="font-size:12px;margin:8px 0"></div>
+    <div id="tf-exp-log"></div>`;
+  if (tfExpMode === 'pick') tfRenderExpTypes();
+}
+
+function tfExpSetMode(m) { tfExpMode = m; if (m === 'pick') tfRenderExpTypes(); else tfEl('tf-exp-types').innerHTML = ''; }
+
+async function tfLoadSchemaList() {
+  if (tfSchemaList) return tfSchemaList;
+  const r = await tfApi('/api/terraform/schema');
+  tfSchemaList = r.types;
+  return tfSchemaList;
+}
+
+async function tfRenderExpTypes() {
+  const box = tfEl('tf-exp-types');
+  if (!box) return;
+  if (!tfSchemaList) {
+    box.innerHTML = `<div style="font-size:12px;color:var(--muted)"><span class="spin"></span> ${escapeHtml(t('tf_schema_loading'))}</div>`;
+    try { await tfLoadSchemaList(); } catch (e) { box.innerHTML = tfErrHtml(e); return; }
+  }
+  const q = tfExpFilter.toLowerCase();
+  const shown = tfSchemaList.filter(x => !q || x.type.includes(q));
+  box.innerHTML = `<div style="display:flex;gap:10px;align-items:center;margin-bottom:6px;font-size:12px">
+      <input placeholder="${escapeHtml(t('tf_filter'))}" value="${escapeHtml(tfExpFilter)}" oninput="tfExpFilter=this.value;tfRenderExpTypesList()" style="max-width:260px" />
+      <a href="#" onclick="tfExpPickAll(true);return false" style="color:var(--accent);text-decoration:none">${escapeHtml(t('tf_all'))}</a>
+      <a href="#" onclick="tfExpPickAll(false);return false" style="color:var(--accent);text-decoration:none">${escapeHtml(t('tf_none'))}</a>
+      <span style="color:var(--muted)" id="tf-exp-count">${tfExpPick.size} / ${tfSchemaList.length}</span></div>
+    <div id="tf-exp-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:4px 14px;max-height:280px;overflow:auto;border:1px solid var(--border);border-radius:6px;padding:8px"></div>`;
+  tfRenderExpTypesList(shown);
+}
+
+function tfRenderExpTypesList(shown) {
+  const list = tfEl('tf-exp-list');
+  if (!list || !tfSchemaList) return;
+  const q = tfExpFilter.toLowerCase();
+  shown = shown || tfSchemaList.filter(x => !q || x.type.includes(q));
+  list.innerHTML = shown.map(x => `<label style="margin:0;display:flex;gap:6px;align-items:center;font-size:12px;cursor:pointer" title="${escapeHtml(x.description)}">
+    <input type="checkbox" style="width:auto" ${tfExpPick.has(x.type) ? 'checked' : ''} onchange="tfExpToggle(${jsAttr(x.type)}, this.checked)" /> ${escapeHtml(tfShort(x.type))}</label>`).join('');
+}
+
+function tfExpToggle(type, on) { if (on) tfExpPick.add(type); else tfExpPick.delete(type); const c = tfEl('tf-exp-count'); if (c) c.textContent = `${tfExpPick.size} / ${tfSchemaList.length}`; }
+function tfExpPickAll(on) {
+  const q = tfExpFilter.toLowerCase();
+  for (const x of tfSchemaList.filter(x => !q || x.type.includes(q))) { if (on) tfExpPick.add(x.type); else tfExpPick.delete(x.type); }
+  tfRenderExpTypes();
+}
+
+async function tfExport() {
+  const sid = document.getElementById('da-source').value;
+  const st = tfEl('tf-exp-status');
+  if (!sid) { st.innerHTML = `<span style="color:var(--yellow)">${escapeHtml(t('tf_need_source'))}</span>`; return; }
+  if (tfExpMode === 'pick' && !tfExpPick.size) { st.innerHTML = `<span style="color:var(--yellow)">${escapeHtml(t('tf_need_kind'))}</span>`; return; }
+  const btn = tfEl('tf-exp-btn');
+  btn.disabled = true;
+  st.innerHTML = '';
+  try {
+    const r = await tfApi('/api/terraform/export', { sourceId: sid, targetId: document.getElementById('da-target').value || '',
+      include: tfExpMode === 'pick' ? [...tfExpPick] : [], dependencies: tfEl('tf-exp-deps').checked, lang: currentLang });
+    tfFollowJob(r.jobId, tfEl('tf-exp-log'), j => {
+      btn.disabled = false;
+      if (j.status !== 'done') return;
+      st.innerHTML = `<span style="color:var(--green)">${escapeHtml(t('tf_exp_done').replace('{n}', j.result.resources))}</span>
+        <button class="btn btn-secondary btn-sm" style="margin-left:8px" onclick="tfOpenWs(${jsAttr(j.result.ws)})">${escapeHtml(t('tf_ws_open'))}</button>`;
+    });
+  } catch (e) { btn.disabled = false; st.innerHTML = tfErrHtml(e); }
+}
+
+// ── Hurtig startopsætning (Archy GUI's egen generator) ───────────────────────
+function tfRenderQuick() {
+  tfEl('tf-view').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap">
+      <div style="font-size:12px;color:var(--muted);flex:1;min-width:260px">${escapeHtml(t('tf_intro'))}</div>
+      <button class="btn btn-primary btn-sm" id="tf-run-btn" onclick="tfRun()">${escapeHtml(t('tf_run'))}</button>
+    </div>
+    <div style="font-size:12px;margin-bottom:8px">${escapeHtml(t('tf_target_hint'))}</div>
+    <div style="font-size:11px;color:var(--yellow);margin-bottom:12px">${escapeHtml(t('tf_note'))}</div>
+    <div style="display:flex;gap:12px;margin-bottom:8px;font-size:12px">
+      <a href="#" onclick="tfAll(true);return false" style="color:var(--accent);text-decoration:none">${escapeHtml(t('tf_all'))}</a>
+      <a href="#" onclick="tfAll(false);return false" style="color:var(--accent);text-decoration:none">${escapeHtml(t('tf_none'))}</a>
+    </div>
+    <div id="tf-kinds" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px 14px;margin-bottom:14px"></div>
+    <div id="tf-status" style="font-size:12px;margin-bottom:8px"></div>
+    <div id="tf-body"></div>`;
+  tfLoadKinds();
+}
 
 function tfLabel(k) {
   const key = k.id === 'integrations' ? 'da_tab_integ' : k.id === 'flows' ? 'nav_flows' : 'da_tab_' + k.id;
@@ -14161,7 +14551,8 @@ async function tfRun() {
       body: JSON.stringify({ sourceId: sid, targetId: document.getElementById('da-target').value || '', include: [...tfSel], lang: currentLang }) }).then(x => x.json());
   } catch (e) { r = { error: e.message }; }
   tfBusy = false;
-  document.getElementById('tf-run-btn').disabled = false;
+  if (document.getElementById('tf-run-btn')) document.getElementById('tf-run-btn').disabled = false;
+  if (!document.getElementById('tf-status')) return;
   if (r.error) { st.style.color = 'var(--red)'; st.textContent = r.error; return; }
   st.style.color = 'var(--green)';
   st.textContent = t('tf_done');
@@ -14179,11 +14570,575 @@ function tfRenderResult(r) {
   document.getElementById('tf-body').innerHTML = `
     <div style="font-size:12px;margin-bottom:10px">${escapeHtml(t('tf_saved_in'))}:
       <code style="font-family:var(--mono)">${escapeHtml(r.absolute)}</code>
-      <button class="btn btn-secondary btn-sm" style="margin-left:6px" onclick="navigator.clipboard && navigator.clipboard.writeText(${jsAttr(r.absolute)})">${escapeHtml(t('tf_copy_path'))}</button></div>
+      <button class="btn btn-secondary btn-sm" style="margin-left:6px" onclick="navigator.clipboard && navigator.clipboard.writeText(${jsAttr(r.absolute)})">${escapeHtml(t('tf_copy_path'))}</button>
+      ${r.ws ? `<button class="btn btn-secondary btn-sm" style="margin-left:6px" onclick="tfOpenWs(${jsAttr(r.ws)})">${escapeHtml(t('tf_ws_open'))}</button>` : ''}</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${escapeHtml(t('tf_files'))}: ${r.files.map(escapeHtml).join(', ')}${r.flowsCopied ? ' · flows/ (' + r.flowsCopied + ')' : ''}</div>
     <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px"><thead><tr style="text-align:left;color:var(--muted)"><th>${escapeHtml(t('os_col_section'))}</th><th>${escapeHtml(t('tf_col_written'))}</th></tr></thead><tbody>${rows}</tbody></table>
     ${r.notes.length ? `<details><summary style="cursor:pointer;font-size:12px">${escapeHtml(t('tf_notes'))} (${r.notes.length})</summary>
       <ul style="font-size:12px;color:var(--muted);margin:6px 0 0 18px">${r.notes.map(n => '<li>' + escapeHtml(n) + '</li>').join('')}</ul></details>` : ''}`;
+}
+
+// ── Arbejdsmapper ─────────────────────────────────────────────────────────────
+async function tfRenderFolders() {
+  const box = tfEl('tf-view');
+  box.innerHTML = `<div style="font-size:12px;color:var(--muted)"><span class="spin"></span></div>`;
+  let list;
+  try { list = await tfApi('/api/terraform/workspaces'); } catch (e) { box.innerHTML = tfErrHtml(e); return; }
+  if (tfView !== 'folders' || tfWs) return;
+  if (!list.length) { box.innerHTML = `<div style="font-size:12px;color:var(--muted)">${escapeHtml(t('tf_ws_none'))}</div>`; return; }
+  box.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">${escapeHtml(t('tf_ws_intro'))}</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="text-align:left;color:var(--muted)">
+      <th>${escapeHtml(t('tf_ws_col_folder'))}</th><th>${escapeHtml(t('tf_ws_col_kind'))}</th><th>${escapeHtml(t('tf_ws_col_org'))}</th>
+      <th>${escapeHtml(t('tf_ws_col_res'))}</th><th>${escapeHtml(t('tf_ws_col_state'))}</th><th></th></tr></thead><tbody>
+    ${list.map(w => `<tr style="border-top:1px solid var(--border)">
+      <td style="font-family:var(--mono);padding:6px 4px">${escapeHtml(w.ws)}<div style="color:var(--muted);font-family:inherit">${escapeHtml(tfFmtTime(w.created))}</div></td>
+      <td>${escapeHtml(t('tf_kind_' + w.kind))}</td>
+      <td>${w.bound ? escapeHtml(w.bound.name) + tfStageTag(w.bound.stage) : `<span style="color:var(--red)">${escapeHtml(t('tf_ws_no_org'))}</span>`}
+        ${w.sourceName && w.targetName ? `<div style="color:var(--muted)">${escapeHtml(w.sourceName)} → ${escapeHtml(w.targetName)}</div>` : ''}</td>
+      <td>${w.resources}</td><td>${w.hasState ? '✓' : '—'}</td>
+      <td style="text-align:right"><button class="btn btn-secondary btn-sm" onclick="tfOpenWs(${jsAttr(w.ws)})">${escapeHtml(t('tf_ws_open'))}</button></td></tr>`).join('')}
+    </tbody></table>`;
+}
+
+async function tfOpenWs(ws) {
+  if (tfFileDirty && !confirm(t('tf_file_unsaved'))) return;
+  tfFileDirty = false;
+  tfView = 'folders';
+  try { tfWs = await tfApi('/api/terraform/workspace?ws=' + encodeURIComponent(ws)); } catch (e) { alert(e.message); return; }
+  tfRes = []; tfResSel = null; tfFileSel = null; tfResFilter = '';
+  tfPlan = tfWs.lastPlan && tfWs.bound && tfWs.lastPlan.envId === tfWs.bound.id ? tfWs.lastPlan : null;
+  tfRender();
+}
+
+function tfCloseWs() {
+  if (tfFileDirty && !confirm(t('tf_file_unsaved'))) return;
+  tfFileDirty = false;
+  tfWs = null;
+  tfRender();
+}
+
+async function tfReloadWs() {
+  try { tfWs = await tfApi('/api/terraform/workspace?ws=' + encodeURIComponent(tfWs.ws)); } catch (_) {}
+  const h = tfEl('tf-ws-head'); if (h) h.innerHTML = tfWsHead();
+}
+
+function tfWsHead() {
+  const w = tfWs;
+  return `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px">
+      <a href="#" onclick="tfCloseWs();return false" style="color:var(--accent);text-decoration:none">← ${escapeHtml(t('tf_ws_back'))}</a>
+      <b style="font-family:var(--mono)">${escapeHtml(w.ws)}</b>
+      <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard && navigator.clipboard.writeText(${jsAttr(w.absolute)})">${escapeHtml(t('tf_copy_path'))}</button>
+    </div>
+    <div style="font-size:12px;margin-top:6px">${escapeHtml(t('tf_ws_org'))}: ${w.bound ? '<b>' + escapeHtml(w.bound.name) + '</b>' + tfStageTag(w.bound.stage) : `<span style="color:var(--red)">${escapeHtml(t('tf_ws_no_org'))}</span>`}
+      · ${escapeHtml(t('tf_kind_' + w.kind))} · ${w.resources} ${escapeHtml(t('tf_ws_col_res').toLowerCase())}
+      · ${escapeHtml(w.hasState ? t('tf_ws_state_yes') : t('tf_ws_state_no'))}
+      ${w.copiedFrom ? ` · ${escapeHtml(t('tf_ws_copied_from'))} <span style="font-family:var(--mono)">${escapeHtml(w.copiedFrom)}</span>` : ''}</div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:12px">
+      <span>${escapeHtml(t('tf_ws_copy_to'))}</span>
+      <select id="tf-ws-copy-target" style="width:auto;min-width:200px">${(customers || []).filter(c => !c.demo && c.authType !== 'demo').map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('')}</select>
+      <button class="btn btn-secondary btn-sm" onclick="tfCopyWs()">${escapeHtml(t('tf_ws_copy'))}</button>
+      <button class="btn btn-secondary btn-sm" style="margin-left:auto;color:var(--red)" onclick="tfDeleteWs()">${escapeHtml(t('tf_ws_delete'))}</button>
+    </div>`;
+}
+
+function tfRenderWs() {
+  tfEl('tf-view').innerHTML = `<div id="tf-ws-head">${tfWsHead()}</div>
+    <div class="da-tabs" style="margin:14px 0 12px">
+      ${['res', 'files', 'plan'].map(k => `<div class="da-tab da-tab-x${tfWsTab === k ? ' active' : ''}" style="margin-left:0" onclick="tfSetWsTab('${k}')">${escapeHtml(t('tf_ws_tab_' + k))}</div>`).join('')}
+    </div>
+    <div id="tf-ws-body"></div>`;
+  if (tfWsTab === 'res') tfRenderResTab();
+  else if (tfWsTab === 'files') tfRenderFilesTab();
+  else tfRenderPlanTab();
+}
+
+function tfSetWsTab(k) {
+  if (tfFileDirty && !confirm(t('tf_file_unsaved'))) return;
+  tfFileDirty = false;
+  tfWsTab = k;
+  tfRenderWs();
+}
+
+async function tfCopyWs() {
+  const id = tfEl('tf-ws-copy-target').value;
+  if (!id) return;
+  if (!confirm(t('tf_ws_copy_confirm').replace('{org}', tfEnvName(id)))) return;
+  try { const r = await tfApi('/api/terraform/workspace/copy', { ws: tfWs.ws, targetId: id }); tfOpenWs(r.ws); }
+  catch (e) { alert(e.message); }
+}
+
+async function tfDeleteWs() {
+  if (!confirm(t('tf_ws_delete_confirm').replace('{ws}', tfWs.ws))) return;
+  try { await tfApi('/api/terraform/workspace/delete', { ws: tfWs.ws }); }
+  catch (e) {
+    if (!(e.data && e.data.needsConfirm) || !confirm(t('tf_ws_delete_state'))) { if (!(e.data && e.data.needsConfirm)) alert(e.message); return; }
+    try { await tfApi('/api/terraform/workspace/delete', { ws: tfWs.ws, confirmState: true }); } catch (e2) { alert(e2.message); return; }
+  }
+  tfWs = null;
+  tfRender();
+}
+
+// ── Ressourcer (formularer) ──────────────────────────────────────────────────
+async function tfRenderResTab() {
+  const body = tfEl('tf-ws-body');
+  body.innerHTML = `<div style="display:grid;grid-template-columns:minmax(220px,320px) 1fr;gap:16px;align-items:start">
+      <div>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <input placeholder="${escapeHtml(t('tf_filter'))}" value="${escapeHtml(tfResFilter)}" oninput="tfResFilter=this.value;tfRenderResList()" />
+          <button class="btn btn-primary btn-sm" onclick="tfNewRes()" style="white-space:nowrap">+ ${escapeHtml(t('tf_res_new'))}</button>
+        </div>
+        <div id="tf-res-list" style="max-height:62vh;overflow:auto;border:1px solid var(--border);border-radius:6px;padding:4px 0;font-size:12px"><span class="spin" style="margin:8px"></span></div>
+      </div>
+      <div id="tf-res-editor" style="font-size:12px;color:var(--muted)">${escapeHtml(t('tf_res_pick'))}</div>
+    </div>`;
+  try { tfRes = await tfApi('/api/terraform/resources?ws=' + encodeURIComponent(tfWs.ws)); }
+  catch (e) { tfEl('tf-res-list').innerHTML = tfErrHtml(e); return; }
+  tfRenderResList();
+  if (tfResSel) tfRenderResEditor();
+}
+
+function tfRenderResList() {
+  const box = tfEl('tf-res-list');
+  if (!box) return;
+  const q = tfResFilter.toLowerCase();
+  const hit = tfRes.filter(r => !q || r.type.includes(q) || r.name.toLowerCase().includes(q) || String(r.label || '').toLowerCase().includes(q));
+  if (!hit.length) { box.innerHTML = `<div style="padding:8px;color:var(--muted)">${escapeHtml(t('tf_res_none'))}</div>`; return; }
+  const groups = {};
+  for (const r of hit) (groups[r.type] = groups[r.type] || []).push(r);
+  box.innerHTML = Object.keys(groups).sort().map(type => {
+    const open = q || tfResOpen[type];
+    const head = `<div style="padding:4px 8px;cursor:pointer;font-weight:600;display:flex;justify-content:space-between" onclick="tfResOpen[${jsAttr(type)}]=!tfResOpen[${jsAttr(type)}];tfRenderResList()">
+        <span>${open ? '▾' : '▸'} ${escapeHtml(tfShort(type))}</span><span style="color:var(--muted);font-weight:400">${groups[type].length}</span></div>`;
+    return head + (open ? groups[type].map(tfResItemHtml).join('') : '');
+  }).join('');
+}
+
+function tfResItemHtml(r) {
+  const sel = tfResSel && !tfResSel.isNew && tfResSel.type === r.type && tfResSel.name === r.name && tfResSel.file === r.file;
+  const local = r.label && r.label !== r.name ? ' <span style="color:var(--muted);font-family:var(--mono)">' + escapeHtml(r.name) + '</span>' : '';
+  return `<div style="padding:3px 8px 3px 24px;cursor:pointer;${sel ? 'background:var(--border);' : ''}" title="${escapeHtml(r.file)}"
+    onclick="tfOpenRes(${jsAttr(r.file)}, ${jsAttr(r.type)}, ${jsAttr(r.name)})">${escapeHtml(r.label || r.name)}${local}</div>`;
+}
+
+async function tfGetSchema(type) {
+  if (type in tfSchemaTypes) return tfSchemaTypes[type];
+  let s = null;
+  try { s = await tfApi('/api/terraform/schema?type=' + encodeURIComponent(type)); tfSchemaErr = null; }
+  catch (e) { tfSchemaErr = e; }
+  tfSchemaTypes[type] = s;
+  return s;
+}
+
+const tfScalar = ty => ty === 'string' || ty === 'number' || ty === 'bool' ? ty : null;
+
+// Formularens felter: dem i filen, og dem provideren kender men som ikke er sat.
+function tfBuildFields(entries, schema) {
+  const fields = [];
+  const attrs = (schema && schema.attrs) || {};
+  const seen = new Set();
+  for (const e of entries) {
+    if (e.kind !== 'attr') continue;
+    seen.add(e.key);
+    const sch = attrs[e.key] || null;
+    fields.push({ id: e.id, key: e.key, kind: 'attr', orig: e, sch, mode: e.literal ? e.literal.type : 'raw', extra: false });
+  }
+  for (const [k, sch] of Object.entries(attrs)) {
+    if (seen.has(k)) continue;
+    fields.push({ id: k, key: k, kind: 'attr', orig: null, sch, mode: tfScalar(sch.type) || 'raw', extra: !sch.required });
+  }
+  for (const e of entries) if (e.kind === 'block') fields.push({ id: e.id, key: e.key, kind: 'block', orig: e, mode: 'raw', extra: false });
+  return fields;
+}
+
+async function tfOpenRes(file, type, name) {
+  const ed = tfEl('tf-res-editor');
+  ed.innerHTML = '<span class="spin"></span>';
+  try {
+    const [r, schema] = await Promise.all([
+      tfApi(`/api/terraform/resource?ws=${encodeURIComponent(tfWs.ws)}&file=${encodeURIComponent(file)}&type=${encodeURIComponent(type)}&name=${encodeURIComponent(name)}`),
+      tfGetSchema(type)]);
+    tfResSel = { isNew: false, file, type, name, schema, fields: tfBuildFields(r.entries, schema), addBlocks: [], free: [] };
+  } catch (e) { ed.innerHTML = tfErrHtml(e); return; }
+  tfRenderResList();
+  tfRenderResEditor();
+}
+
+async function tfNewRes() {
+  const ed = tfEl('tf-res-editor');
+  ed.innerHTML = `<div style="color:var(--text)"><div style="font-weight:600;margin-bottom:8px">${escapeHtml(t('tf_res_new'))}</div>
+    <div style="display:grid;grid-template-columns:140px 1fr;gap:8px;align-items:center;max-width:620px">
+      <label style="margin:0">${escapeHtml(t('tf_res_type'))}</label><input id="tf-new-type" list="tf-new-types" placeholder="genesyscloud_routing_queue" />
+      <label style="margin:0">${escapeHtml(t('tf_res_local'))}</label><input id="tf-new-name" placeholder="support_dk" />
+    </div><datalist id="tf-new-types"></datalist>
+    <div style="font-size:11px;color:var(--muted);margin:6px 0 10px">${escapeHtml(t('tf_res_local_tip'))}</div>
+    <button class="btn btn-primary btn-sm" onclick="tfNewResGo()">${escapeHtml(t('tf_res_continue'))}</button>
+    <div id="tf-new-err" style="margin-top:8px"></div></div>`;
+  try {
+    await tfLoadSchemaList();
+    tfEl('tf-new-types').innerHTML = tfSchemaList.map(x => `<option value="${escapeHtml(x.type)}"></option>`).join('');
+  } catch (e) { tfEl('tf-new-err').innerHTML = tfErrHtml(e); }
+}
+
+async function tfNewResGo() {
+  const type = tfEl('tf-new-type').value.trim(), name = tfEl('tf-new-name').value.trim();
+  if (!/^[a-z][a-z0-9_]*$/.test(type) || !/^[A-Za-z_][A-Za-z0-9_-]*$/.test(name)) { tfEl('tf-new-err').innerHTML = tfErrHtml({ message: t('tf_res_bad_name') }); return; }
+  const schema = await tfGetSchema(type);
+  tfResSel = { isNew: true, file: null, type, name, schema, fields: tfBuildFields([], schema), addBlocks: [], free: [] };
+  // Påkrævede blokke får en skabelon med det samme
+  for (const [k, b] of Object.entries((schema && schema.blocks) || {})) if (b.min > 0) tfResSel.addBlocks.push(b.example);
+  tfRenderResEditor();
+}
+
+function tfFieldInput(f, i) {
+  const id = 'tff-' + i;
+  const req = f.sch && f.sch.required;
+  const ph = req ? t('tf_res_required') : '';
+  if (f.mode === 'string') return `<input id="${id}" value="${escapeHtml(f.orig && f.orig.literal ? f.orig.literal.value : '')}" placeholder="${escapeHtml(ph)}" />`;
+  if (f.mode === 'number') return `<input id="${id}" type="number" step="any" value="${escapeHtml(f.orig && f.orig.literal ? String(f.orig.literal.value) : '')}" placeholder="${escapeHtml(ph)}" />`;
+  if (f.mode === 'bool') {
+    const v = f.orig && f.orig.literal ? String(f.orig.literal.value) : '';
+    return `<select id="${id}" style="width:auto"><option value="" ${v === '' ? 'selected' : ''}>—</option><option value="true" ${v === 'true' ? 'selected' : ''}>true</option><option value="false" ${v === 'false' ? 'selected' : ''}>false</option></select>`;
+  }
+  const raw = f.orig ? f.orig.raw : (f.kind === 'attr' && f.sch && Array.isArray(f.sch.type) ? '' : '');
+  const rows = Math.min(14, Math.max(1, raw.split('\n').length));
+  return `<textarea id="${id}" rows="${rows}" spellcheck="false" style="font-family:var(--mono);font-size:12px;width:100%" placeholder="${escapeHtml(f.sch ? tfTypeText(f.sch.type) : '')}">${escapeHtml(raw)}</textarea>`;
+}
+
+function tfTypeText(ty) { return Array.isArray(ty) ? JSON.stringify(ty).replace(/"/g, '') : String(ty || ''); }
+
+function tfFieldRow(f, i) {
+  const desc = f.sch ? f.sch.description : '';
+  const canToggle = f.kind === 'attr' && f.mode !== 'raw';
+  return `<div style="display:grid;grid-template-columns:200px 1fr 28px;gap:8px;align-items:start;margin-bottom:6px">
+    <label style="margin:0;padding-top:6px;font-family:var(--mono);color:var(--text);word-break:break-all" title="${escapeHtml(desc)}">${escapeHtml(f.key)}${f.sch && f.sch.required ? ' <span style="color:var(--red)">*</span>' : ''}${f.sch && f.sch.sensitive ? ' 🔒' : ''}</label>
+    <div>${tfFieldInput(f, i)}${desc ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${escapeHtml(desc.length > 220 ? desc.slice(0, 220) + '…' : desc)}</div>` : ''}</div>
+    ${canToggle ? `<button class="btn btn-secondary btn-sm" style="padding:4px 6px" title="${escapeHtml(t('tf_res_as_hcl'))}" onclick="tfFieldRaw(${i})">{ }</button>` : '<span></span>'}
+  </div>`;
+}
+
+// Et felt kan altid skrives som HCL — fx en reference til en anden ressource.
+function tfFieldRaw(i) {
+  const f = tfResSel.fields[i];
+  const el = tfEl('tff-' + i);
+  const v = el ? el.value : '';
+  tfResSel.fields[i] = { ...f, mode: 'raw', orig: f.orig, draft: f.mode === 'string' ? (v === '' ? '' : JSON.stringify(v)) : v };
+  tfRenderResEditor();
+}
+
+function tfRenderResEditor() {
+  const ed = tfEl('tf-res-editor');
+  const s = tfResSel;
+  if (!ed || !s) return;
+  // Det brugeren har skrevet, overlever en gentegning (fx når et felt skifter til HCL)
+  const drafts = {};
+  s.fields.forEach((f, i) => { const el = tfEl('tff-' + i); if (el) drafts[i] = el.value; });
+  const main = [], more = [];
+  s.fields.forEach((f, i) => (f.extra ? more : main).push([f, i]));
+  const schemaBlocks = Object.entries((s.schema && s.schema.blocks) || {});
+  // Hver del bygges for sig: skabeloner inde i skabeloner gør koden svær at læse
+  const where = s.isNew
+    ? `<span class="badge" style="background:var(--green);color:#000">${escapeHtml(t('tf_res_new_badge'))}</span>`
+    : `<span style="color:var(--muted)">${escapeHtml(s.file)}</span>`;
+  const about = s.schema && s.schema.description ? `<div style="font-size:11px;color:var(--muted);margin-bottom:8px">${escapeHtml(s.schema.description)}</div>` : '';
+  const noSchema = s.schema ? '' : `<div style="font-size:11px;color:var(--yellow);margin-bottom:8px">${escapeHtml(t('tf_res_no_schema'))}</div>` + (tfSchemaErr ? tfErrHtml(tfSchemaErr) : '');
+  const empty = `<div style="color:var(--muted)">${escapeHtml(t('tf_res_empty'))}</div>`;
+  const mainHtml = main.map(([f, i]) => tfFieldRow(f, i)).join('') || empty;
+  const newBlocks = s.addBlocks.map(tfNewBlockHtml).join('');
+  const freeHtml = s.free.map(tfFreeFieldHtml).join('');
+  const moreHtml = more.length ? tfMoreHtml(more) : '';
+  const blockPick = schemaBlocks.length ? tfBlockPickHtml(schemaBlocks) : '';
+  const fileBtns = s.isNew ? '' : tfResFileBtns(s.file);
+  ed.innerHTML = `<div style="color:var(--text)">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px">
+      <b style="font-family:var(--mono)">${escapeHtml(s.type)}.${escapeHtml(s.name)}</b> ${where}
+    </div>
+    ${about}${noSchema}
+    <div style="margin-top:8px">${mainHtml}</div>
+    ${newBlocks}${freeHtml}${moreHtml}
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px">
+      ${blockPick}
+      <button class="btn btn-secondary btn-sm" onclick="tfAddFree()">+ ${escapeHtml(t('tf_res_add_field'))}</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-primary btn-sm" onclick="tfSaveRes()">${escapeHtml(s.isNew ? t('tf_res_create') : t('tf_save'))}</button>
+      ${fileBtns}
+      <span id="tf-res-status" style="font-size:12px"></span>
+    </div></div>`;
+  s.fields.forEach((f, i) => {
+    const el = tfEl('tff-' + i);
+    if (!el) return;
+    if (f.draft !== undefined) { el.value = f.draft; delete f.draft; }
+    else if (i in drafts) el.value = drafts[i];
+  });
+}
+
+function tfNewBlockHtml(b, j) {
+  const rows = Math.min(12, b.split('\n').length + 1);
+  return `<div style="margin:6px 0 6px 208px"><div style="font-size:11px;color:var(--green)">+ ${escapeHtml(t('tf_res_new_block'))}</div>
+    <textarea id="tfb-${j}" rows="${rows}" spellcheck="false" style="font-family:var(--mono);font-size:12px;width:100%">${escapeHtml(b)}</textarea></div>`;
+}
+
+function tfFreeFieldHtml(x, j) {
+  return `<div style="display:grid;grid-template-columns:200px 1fr;gap:8px;margin-bottom:6px">
+    <input id="tfk-${j}" placeholder="${escapeHtml(t('tf_res_field_name'))}" value="${escapeHtml(x.key)}" style="font-family:var(--mono)" />
+    <textarea id="tfv-${j}" rows="1" spellcheck="false" placeholder="&quot;…&quot;" style="font-family:var(--mono);font-size:12px">${escapeHtml(x.raw)}</textarea></div>`;
+}
+
+function tfMoreHtml(more) {
+  const rows = more.map(([f, i]) => tfFieldRow(f, i)).join('');
+  return `<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--muted)">${escapeHtml(t('tf_res_more').replace('{n}', more.length))}</summary>
+    <div style="margin-top:8px">${rows}</div></details>`;
+}
+
+function tfBlockPickHtml(schemaBlocks) {
+  const opts = schemaBlocks.map(([k]) => '<option value="' + escapeHtml(k) + '">' + escapeHtml(k) + '</option>').join('');
+  return `<select id="tf-add-block" style="width:auto"><option value="">+ ${escapeHtml(t('tf_res_add_block'))}</option>${opts}</select>
+    <button class="btn btn-secondary btn-sm" onclick="tfAddBlock()">${escapeHtml(t('tf_res_add'))}</button>`;
+}
+
+function tfResFileBtns(file) {
+  return `<button class="btn btn-secondary btn-sm" onclick="tfOpenFile(${jsAttr(file)})">${escapeHtml(t('tf_res_show_file'))}</button>
+    <button class="btn btn-secondary btn-sm" style="color:var(--red)" onclick="tfDeleteRes()">${escapeHtml(t('tf_res_delete'))}</button>`;
+}
+
+function tfKeepDrafts() {
+  const s = tfResSel;
+  s.addBlocks = s.addBlocks.map((b, j) => tfEl('tfb-' + j) ? tfEl('tfb-' + j).value : b);
+  s.free = s.free.map((x, j) => ({ key: tfEl('tfk-' + j) ? tfEl('tfk-' + j).value : x.key, raw: tfEl('tfv-' + j) ? tfEl('tfv-' + j).value : x.raw }));
+}
+
+function tfAddBlock() {
+  const k = tfEl('tf-add-block').value;
+  if (!k) return;
+  tfKeepDrafts();
+  tfResSel.addBlocks.push(tfResSel.schema.blocks[k].example);
+  tfRenderResEditor();
+}
+
+function tfAddFree() { tfKeepDrafts(); tfResSel.free.push({ key: '', raw: '' }); tfRenderResEditor(); }
+
+// Hvad der er ændret i formularen → { set, remove, add }
+function tfCollectRes() {
+  const s = tfResSel;
+  const set = {}, remove = [], add = [];
+  s.fields.forEach((f, i) => {
+    const el = tfEl('tff-' + i);
+    if (!el) return;
+    const v = el.value;
+    const empty = v.trim() === '';
+    const req = f.sch && f.sch.required;
+    if (f.mode === 'raw') {
+      if (empty) { if (f.orig) remove.push(f.id); return; }
+      if (!f.orig || v.trim() !== f.orig.raw.trim()) set[f.id] = { raw: v };
+      return;
+    }
+    const lit = f.orig && f.orig.literal;
+    if (empty && f.mode !== 'string') { if (f.orig) remove.push(f.id); return; }
+    if (f.mode === 'string') {
+      if (empty && !req) { if (f.orig) remove.push(f.id); return; }
+      if (empty && !f.orig && req) return;
+      if (lit && lit.type === 'string' && lit.value === v) return;
+      set[f.id] = { string: v };
+    } else if (f.mode === 'number') {
+      if (lit && String(lit.value) === String(Number(v))) return;
+      set[f.id] = { number: v };
+    } else if (f.mode === 'bool') {
+      if (lit && String(lit.value) === v) return;
+      set[f.id] = { bool: v === 'true' };
+    }
+  });
+  s.addBlocks.forEach((b, j) => { const v = (tfEl('tfb-' + j) || {}).value || ''; if (v.trim()) add.push(v); });
+  s.free.forEach((x, j) => {
+    const k = ((tfEl('tfk-' + j) || {}).value || '').trim(), v = ((tfEl('tfv-' + j) || {}).value || '').trim();
+    if (k && v) set[k] = { raw: v };
+  });
+  return { set, remove, add };
+}
+
+async function tfSaveRes() {
+  const s = tfResSel;
+  const st = tfEl('tf-res-status');
+  const { set, remove, add } = tfCollectRes();
+  if (s.isNew) {
+    const missing = s.fields.filter((f, i) => f.sch && f.sch.required && !(f.id in set)).map(f => f.key);
+    if (missing.length && !confirm(t('tf_res_missing_req').replace('{f}', missing.join(', ')))) return;
+  } else if (!Object.keys(set).length && !remove.length && !add.length) { st.innerHTML = `<span style="color:var(--muted)">${escapeHtml(t('tf_res_nochange'))}</span>`; return; }
+  try {
+    const r = await tfApi('/api/terraform/resource', { ws: tfWs.ws, op: s.isNew ? 'create' : 'update', file: s.file, type: s.type, name: s.name, set, remove, add });
+    tfRes = await tfApi('/api/terraform/resources?ws=' + encodeURIComponent(tfWs.ws));
+    tfResOpen[s.type] = true;
+    await tfOpenRes(r.file, s.type, s.name);
+    tfReloadWs();
+    tfEl('tf-res-status').innerHTML = `<span style="color:var(--green)">✓ ${escapeHtml(t('tf_res_saved').replace('{file}', r.file))}</span>`;
+  } catch (e) { st.innerHTML = tfErrHtml(e); }
+}
+
+async function tfDeleteRes() {
+  const s = tfResSel;
+  if (!confirm(t('tf_res_delete_confirm').replace('{r}', s.type + '.' + s.name))) return;
+  try {
+    await tfApi('/api/terraform/resource', { ws: tfWs.ws, op: 'delete', file: s.file, type: s.type, name: s.name });
+    tfResSel = null;
+    tfReloadWs();
+    tfRenderResTab();
+  } catch (e) { tfEl('tf-res-status').innerHTML = tfErrHtml(e); }
+}
+
+// ── Filer (editor) ────────────────────────────────────────────────────────────
+async function tfRenderFilesTab() {
+  const body = tfEl('tf-ws-body');
+  body.innerHTML = `<div style="display:grid;grid-template-columns:minmax(200px,280px) 1fr;gap:16px;align-items:start">
+      <div>
+        <button class="btn btn-secondary btn-sm" style="margin-bottom:8px" onclick="tfNewFile()">+ ${escapeHtml(t('tf_file_new'))}</button>
+        <div id="tf-file-list" style="max-height:62vh;overflow:auto;border:1px solid var(--border);border-radius:6px;padding:4px 0;font-size:12px;font-family:var(--mono)"><span class="spin" style="margin:8px"></span></div>
+      </div>
+      <div id="tf-file-editor" style="font-size:12px;color:var(--muted)">${escapeHtml(t('tf_file_pick'))}</div>
+    </div>`;
+  try { tfFileList = await tfApi('/api/terraform/files?ws=' + encodeURIComponent(tfWs.ws)); }
+  catch (e) { tfEl('tf-file-list').innerHTML = tfErrHtml(e); return; }
+  tfRenderFileList();
+  if (tfFileSel) tfOpenFile(tfFileSel, true);
+}
+
+function tfRenderFileList() {
+  const box = tfEl('tf-file-list');
+  if (!box) return;
+  box.innerHTML = tfFileList.map(f => `<div style="padding:3px 8px;cursor:pointer;display:flex;justify-content:space-between;gap:8px;${tfFileSel === f.path ? 'background:var(--border);' : ''}"
+      onclick="tfOpenFile(${jsAttr(f.path)})"><span style="word-break:break-all">${escapeHtml(f.path)}</span><span style="color:var(--muted)">${f.size < 1024 ? f.size + ' B' : Math.round(f.size / 1024) + ' KB'}</span></div>`).join('')
+    || `<div style="padding:8px;color:var(--muted)">—</div>`;
+}
+
+async function tfOpenFile(p, force) {
+  if (!force && tfFileDirty && !confirm(t('tf_file_unsaved'))) return;
+  if (tfWsTab !== 'files') { tfWsTab = 'files'; tfFileSel = p; tfFileDirty = false; tfRenderWs(); return; }
+  tfFileSel = p;
+  tfFileDirty = false;
+  tfRenderFileList();
+  const ed = tfEl('tf-file-editor');
+  ed.innerHTML = '<span class="spin"></span>';
+  let r;
+  try { r = await tfApi(`/api/terraform/file?ws=${encodeURIComponent(tfWs.ws)}&path=${encodeURIComponent(p)}`); }
+  catch (e) { ed.innerHTML = tfErrHtml(e); return; }
+  ed.innerHTML = `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap;color:var(--text)">
+      <b style="font-family:var(--mono)">${escapeHtml(r.path)}</b>
+      <button class="btn btn-primary btn-sm" onclick="tfSaveFile()">${escapeHtml(t('tf_save'))}</button>
+      <button class="btn btn-secondary btn-sm" style="color:var(--red)" onclick="tfDeleteFile()">${escapeHtml(t('tf_file_delete'))}</button>
+      <span id="tf-file-status" style="font-size:12px"></span></div>
+    <textarea id="tf-file-text" spellcheck="false" wrap="off" style="width:100%;height:62vh;font-family:var(--mono);font-size:12px;white-space:pre;tab-size:2"></textarea>`;
+  const ta = tfEl('tf-file-text');
+  ta.value = r.content;
+  ta.addEventListener('input', () => { tfFileDirty = true; tfEl('tf-file-status').innerHTML = `<span style="color:var(--yellow)">●</span>`; });
+  ta.addEventListener('keydown', ev => {
+    if (ev.key === 'Tab' && !ev.shiftKey) { ev.preventDefault(); document.execCommand('insertText', false, '  '); }
+    if ((ev.ctrlKey || ev.metaKey) && ev.key === 's') { ev.preventDefault(); tfSaveFile(); }
+  });
+}
+
+async function tfSaveFile() {
+  try {
+    await tfApi('/api/terraform/file', { ws: tfWs.ws, path: tfFileSel, content: tfEl('tf-file-text').value });
+    tfFileDirty = false;
+    tfEl('tf-file-status').innerHTML = `<span style="color:var(--green)">✓ ${escapeHtml(t('tf_file_saved'))}</span>`;
+    tfFileList = await tfApi('/api/terraform/files?ws=' + encodeURIComponent(tfWs.ws));
+    tfRenderFileList();
+    tfReloadWs();
+  } catch (e) { tfEl('tf-file-status').innerHTML = tfErrHtml(e); }
+}
+
+async function tfDeleteFile() {
+  if (!confirm(t('tf_file_delete_confirm').replace('{f}', tfFileSel))) return;
+  try {
+    await tfApi('/api/terraform/file/delete', { ws: tfWs.ws, path: tfFileSel });
+    tfFileSel = null; tfFileDirty = false;
+    tfRenderFilesTab();
+    tfReloadWs();
+  } catch (e) { tfEl('tf-file-status').innerHTML = tfErrHtml(e); }
+}
+
+async function tfNewFile() {
+  if (tfFileDirty && !confirm(t('tf_file_unsaved'))) return;
+  const p = prompt(t('tf_file_new_prompt'), 'main.tf');
+  if (!p) return;
+  try {
+    await tfApi('/api/terraform/file', { ws: tfWs.ws, path: p, content: '', create: true });
+    tfFileSel = p.replace(/\\/g, '/');
+    tfFileDirty = false;
+    tfRenderFilesTab();
+  } catch (e) { alert(e.message); }
+}
+
+// ── Plan og apply ─────────────────────────────────────────────────────────────
+function tfRenderPlanTab() {
+  const w = tfWs;
+  const body = tfEl('tf-ws-body');
+  if (!w.bound) { body.innerHTML = `<div style="color:var(--red);font-size:12px">${escapeHtml(t('tf_ws_no_org'))}</div>`; return; }
+  body.innerHTML = `<div style="font-size:12px;margin-bottom:8px">${escapeHtml(t('tf_plan_intro').replace('{org}', w.bound.name))}${tfStageTag(w.bound.stage)}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-secondary btn-sm" onclick="tfRunAction('init')" title="${escapeHtml(t('tf_act_init_tip'))}">Init</button>
+      <button class="btn btn-secondary btn-sm" onclick="tfRunAction('fmt')" title="${escapeHtml(t('tf_act_fmt_tip'))}">Fmt</button>
+      <button class="btn btn-secondary btn-sm" onclick="tfRunAction('validate')" title="${escapeHtml(t('tf_act_validate_tip'))}">Validate</button>
+      <button class="btn btn-primary btn-sm" onclick="tfRunAction('plan')">Plan</button>
+      <button class="btn btn-primary btn-sm" id="tf-apply-btn" style="margin-left:auto;background:var(--${w.bound.stage === 'prod' ? 'red' : 'accent'})" onclick="tfApply()" ${tfPlan && tfPlanCount(tfPlan.summary) ? '' : 'disabled'}>${escapeHtml(t('tf_apply_btn').replace('{org}', w.bound.name))}</button>
+    </div>
+    ${w.lastApply ? `<div style="font-size:11px;color:var(--muted);margin-top:6px">${escapeHtml(t('tf_last_apply'))}: ${escapeHtml(tfFmtTime(w.lastApply.at))} · +${w.lastApply.summary.create} ~${w.lastApply.summary.update} -${w.lastApply.summary.delete}</div>` : ''}
+    <div id="tf-plan-summary" style="margin-top:10px"></div>
+    <div id="tf-plan-log"></div>`;
+  if (tfPlan) tfRenderPlanSummary();
+}
+
+const tfPlanCount = s => s ? s.create + s.update + s.delete + s.replace : 0;
+
+function tfRenderPlanSummary() {
+  const box = tfEl('tf-plan-summary');
+  if (!box || !tfPlan) return;
+  const s = tfPlan.summary;
+  const sym = { create: ['+', 'green'], update: ['~', 'yellow'], delete: ['-', 'red'], replace: ['±', 'orange'] };
+  if (!tfPlanCount(s)) { box.innerHTML = `<div style="font-size:12px;color:var(--green)">✓ ${escapeHtml(t('tf_plan_nochange'))}</div>`; return; }
+  box.innerHTML = `<div style="display:flex;gap:14px;font-size:13px;margin-bottom:8px;flex-wrap:wrap">
+      ${['create', 'update', 'replace', 'delete'].map(k => `<span style="color:var(--${sym[k][1]})"><b>${sym[k][0]}${s[k]}</b> ${escapeHtml(t('tf_plan_' + k))}</span>`).join('')}
+      <span style="color:var(--muted);font-size:11px">${escapeHtml(tfFmtTime(tfPlan.created))}</span></div>
+    <div style="max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:6px">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)"><tbody>
+    ${s.items.map(x => `<tr style="border-top:1px solid var(--border)"><td style="width:24px;text-align:center;color:var(--${sym[x.action][1]});font-weight:700">${sym[x.action][0]}</td>
+      <td style="padding:3px 6px">${escapeHtml(x.address)}${x.changed && x.changed.length ? `<div style="color:var(--muted);font-family:inherit">${escapeHtml(x.changed.slice(0, 12).join(', '))}${x.changed.length > 12 ? ' …' : ''}</div>` : ''}</td></tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+async function tfRunAction(action) {
+  const log = tfEl('tf-plan-log');
+  if (action === 'plan') { tfPlan = null; tfEl('tf-plan-summary').innerHTML = ''; tfEl('tf-apply-btn').disabled = true; }
+  try {
+    const r = await tfApi('/api/terraform/run', { ws: tfWs.ws, action, envId: tfWs.bound.id });
+    tfFollowJob(r.jobId, log, j => {
+      tfReloadWs();
+      if (j.status !== 'done' || action !== 'plan') return;
+      tfPlan = { ...j.result, created: new Date().toISOString() };
+      const b = tfEl('tf-apply-btn');
+      if (b) b.disabled = !tfPlanCount(tfPlan.summary);
+      tfRenderPlanSummary();
+    });
+  } catch (e) { log.innerHTML = tfErrHtml(e); }
+}
+
+async function tfApply() {
+  const w = tfWs, s = tfPlan && tfPlan.summary;
+  if (!s) return;
+  const msg = t('tf_apply_confirm').replace('{org}', w.bound.name).replace('{c}', s.create).replace('{u}', s.update).replace('{d}', s.delete).replace('{r}', s.replace);
+  if (!confirm(msg)) return;
+  if (w.bound.stage === 'prod' && !confirm(t('tf_apply_prod').replace('{org}', w.bound.name))) return;
+  const log = tfEl('tf-plan-log');
+  tfEl('tf-apply-btn').disabled = true;
+  try {
+    const r = await tfApi('/api/terraform/apply', { ws: w.ws, targetId: w.bound.id, planHash: tfPlan.planHash });
+    tfFollowJob(r.jobId, log, j => {
+      tfPlan = null;
+      tfReloadWs().then(() => { if (tfWsTab === 'plan' && tfEl('tf-ws-body')) tfRenderPlanTab(); });
+    });
+  } catch (e) { log.innerHTML = tfErrHtml(e); tfEl('tf-apply-btn').disabled = false; }
+}
+
+function tfOpenGuide() {
+  window.open('/terraform-guide.html?lang=' + (currentLang === 'da' ? 'da' : 'en'), '_blank', 'noopener');
 }
 
 // Teksten til et område i forbindelsestesten: de ældre har deres egen, de nyere låner fanens navn.
@@ -14720,6 +15675,7 @@ function dpExportPrint() {
 }
 
 function daSourceChanged() {
+  tfRefreshMode();
   daLoadActions();
   dtLoadTables();
   wuLoadCodes();

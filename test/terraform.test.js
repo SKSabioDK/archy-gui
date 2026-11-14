@@ -197,7 +197,11 @@ test('mappen hedder <fra>_<til>, når der er valgt et mål', () => {
   const start = SERVER.indexOf("router.post('/api/terraform/generate'");
   assert.ok(start > 0);
   const body = SERVER.slice(start, SERVER.indexOf('\n});\n', start));
-  assert.match(body, /part\(source\.name\) \+ \(target \? '_' \+ part\(target\.name\) : ''\)/);
+  // Navnet laves ét sted (newWsDir), så generator og fuld eksport navngiver ens
+  assert.match(body, /newWsDir\(source, target\)/);
+  const fra = SERVER.indexOf('function newWsDir(');
+  const fn = SERVER.slice(fra, SERVER.indexOf('\n}\n', fra));
+  assert.match(fn, /part\(source\.name\) \+ \(target \? '_' \+ part\(target\.name\) : ''\)/);
   assert.match(body, /c\.id !== source\.id/, 'målet må ikke være kilden');
   assert.match(body, /TERRAFORM\.FLOW_DIR/);
 });

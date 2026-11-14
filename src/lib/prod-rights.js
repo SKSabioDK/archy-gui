@@ -54,7 +54,8 @@ const PROD_WRITE_ROUTES = {
   '/api/surveyforms/migrate':     'targetId',
   '/api/divisions/create':        'targetId',
   '/api/orgsettings/migrate':     'targetId',
-  '/api/prefix/apply':            'envId'
+  '/api/prefix/apply':            'envId',
+  '/api/terraform/apply':         'targetId'
 };
 
 function deployRequirements(env) {
