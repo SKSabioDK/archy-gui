@@ -425,6 +425,20 @@ function summarizePlan(json) {
   return { create: n('create'), update: n('update'), delete: n('delete'), replace: n('replace'), items };
 }
 
+// Eksportørens state har data-opslag med en anden skemaversion end
+// provideren (Falck US: integration_action v1 mod v0), så "terraform show"
+// fejler. Data-opslag læses forfra ved hver plan og kan fjernes fra state.
+// → { text, removed } (text er null når intet er fjernet)
+function stripStateData(text) {
+  const st = JSON.parse(text);
+  const before = (st.resources || []).length;
+  st.resources = (st.resources || []).filter(r => r.mode !== 'data');
+  const removed = before - st.resources.length;
+  if (!removed) return { text: null, removed: 0 };
+  st.serial = (st.serial || 0) + 1;
+  return { text: JSON.stringify(st, null, 2) + '\n', removed };
+}
+
 // ── Fejl ──────────────────────────────────────────────────────────────────────
 
 // Kendte fejl fra terraform.exe → en kode brugerfladen kan forklare.
@@ -439,6 +453,7 @@ function errorHint(text) {
   if (/API Error: 401|status(?:Code)?["':\s]+401\b|invalid_client|bad\.credentials|\bunauthorized\b/i.test(t) && /genesys|oauth|token|provider/i.test(t)) return 'auth';
   if (/Saved plan is stale/i.test(t)) return 'stale_plan';
   if (/ambiguous data action name|ambiguous .* name/i.test(t)) return 'ambiguous_data';
+  if (/schema version \d+ for data\..* in state does not match/i.test(t)) return 'state_data';
   return null;
 }
 
@@ -644,4 +659,4 @@ function exampleBlock(name, b) {
 module.exports = { scanBlocks, blockEntries, resources, editResource, addResource, removeResource, newResourceText,
   literalOf, decodeString, encodeValue, hclString, summarizePlan, errorHint, exportMainTf, trimSchema, exampleBlock,
   logFilter, addSkipped, exportFailures, isOwnRead, missingExportScopes, EXPORT_SCOPES, summarizeExportErrors,
-  unusedDataBlocks, removeDataBlock, SECRET_TYPES, TARGET_RE };
+  unusedDataBlocks, removeDataBlock, stripStateData, SECRET_TYPES, TARGET_RE };

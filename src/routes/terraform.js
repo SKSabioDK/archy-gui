@@ -412,6 +412,19 @@ function pruneUnusedData(dir) {
   return unused.length;
 }
 
+// Data-opslag fjernes fra state (se HCL.stripStateData); terraform.tfstate.backup
+// får den gamle. → antal fjernede
+function stripStateData(dir) {
+  const f = path.join(dir, 'terraform.tfstate');
+  let text;
+  try { text = fs.readFileSync(f, 'utf8'); } catch (_) { return 0; }
+  const r = HCL.stripStateData(text);
+  if (!r.removed) return 0;
+  fs.writeFileSync(f + '.backup', text, 'utf8');
+  fs.writeFileSync(f, r.text, 'utf8');
+  return r.removed;
+}
+
 // Eksportørens egen fejlliste (export_errors.json) samlet pr. manglende scope
 // eller rettighed, med de typer der ikke kom (helt) med.
 function exportErrors(dir) {
@@ -722,6 +735,8 @@ router.post('/api/terraform/run', async (req, res) => {
       if (action === 'fmt') { await tfStep(exe, ['fmt', '-no-color'], dir, env, log, job); return { action }; }
       if (action === 'validate') { await tfStep(exe, ['validate', '-no-color'], dir, env, log, job); return { action, valid: true }; }
       for (const f of [PLAN_FILE, PLAN_META]) { try { fs.unlinkSync(path.join(dir, f)); } catch (_) {} }
+      const stripped = stripStateData(dir);
+      if (stripped) log(`Removed ${stripped} data lookups from terraform.tfstate (they are read again on every plan; the old state is in terraform.tfstate.backup)`);
       await tfStep(exe, ['plan', '-input=false', '-no-color', `-out=${PLAN_FILE}`, ...targets.map(t => `-target=${t}`)], dir, env, log, job);
       const show = await CLI.captureTerraform(exe, ['show', '-json', PLAN_FILE], { cwd: dir, env });
       if (show.code !== 0) throw new Error('terraform show failed: ' + show.err.trim().split('\n').slice(-3).join(' '));
@@ -776,4 +791,4 @@ router.post('/api/terraform/apply', async (req, res) => {
   } catch (e) { sendError(res, e); }
 });
 
-module.exports = { router, _test: { wsFile, wsDir, exportReadme, pruneUnusedData } };
+module.exports = { router, _test: { wsFile, wsDir, exportReadme, pruneUnusedData, stripStateData } };

@@ -5,6 +5,18 @@
 
 ---
 
+### v1.82.6
+---
+**🇩🇰 Dansk**
+
+- **Planen kunne ikke vises efter en fuld eksport.** *"terraform show failed: … schema version 1 for data.genesyscloud_integration_action… in state does not match version 0 from the provider"*. Selve planen lykkedes (Falck US: `+ genesyscloud_group.TestTest`), men eksportøren skriver data-opslag i `terraform.tfstate` med en anden skemaversion end provideren, så Archy GUI ikke kunne læse planen, og Apply forblev spærret. Data-opslag læses forfra ved hver plan, så de fjernes nu fra state før plan. Den gamle state gemmes i `terraform.tfstate.backup`, og fejlen får sin egen forklaring.
+- 1 ny test.
+
+**🇬🇧 English**
+- **The plan could not be shown after a full export** ("schema version 1 for data.… in state does not match version 0 from the provider"). Data lookups are now removed from `terraform.tfstate` before plan — they are read again on every plan; the old state is kept in `terraform.tfstate.backup`.
+- 1 new test.
+
+---
 ### v1.82.5
 ---
 **🇩🇰 Dansk**

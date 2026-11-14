@@ -398,6 +398,20 @@ resource "genesyscloud_integration_action" "Egen" {
   assert.equal(HCL.errorHint('API Error: 401 - bad.credentials from the genesys provider'), 'auth');
 });
 
+test('data-opslag fjernes fra eksportørens state, så terraform show ikke fejler', () => {
+  const st = { version: 4, serial: 1, resources: [
+    { mode: 'data', type: 'genesyscloud_integration_action', name: 'A', instances: [{ schema_version: 1 }] },
+    { mode: 'managed', type: 'genesyscloud_group', name: 'G', instances: [{ schema_version: 0 }] }] };
+  const r = HCL.stripStateData(JSON.stringify(st));
+  assert.equal(r.removed, 1);
+  const ny = JSON.parse(r.text);
+  assert.deepEqual(ny.resources.map(x => x.name), ['G'], 'ressourcerne bliver');
+  assert.equal(ny.serial, 2, 'serial tælles op');
+  assert.deepEqual(HCL.stripStateData(r.text), { text: null, removed: 0 }, 'intet at fjerne → filen røres ikke');
+  const fejl = 'terraform show failed: Failed to marshal plan to json: error marshaling prior state: schema version 1 for data.genesyscloud_integration_action.X in state does not match version 0 from the provider';
+  assert.equal(HCL.errorHint(fejl), 'state_data');
+});
+
 test('plan kan begrænses til enkelte ressourcer, og en plan der ændrer hemmeligheder kræver et ja', () => {
   assert.ok(HCL.TARGET_RE.test('genesyscloud_group.testtest'));
   assert.ok(HCL.TARGET_RE.test('genesyscloud_group.Test-Test'));
