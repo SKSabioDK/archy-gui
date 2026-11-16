@@ -1,11 +1,19 @@
 # Dependabot holder npm-pakkerne og GitHub Actions opdateret med sikkerhedsrettelser.
+# Opdateringerne samles: højst én pull request for npm og én for GitHub Actions
+# om ugen, i stedet for én branch pr. pakke.
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
+    groups:
+      npm:
+        patterns: ["*"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]

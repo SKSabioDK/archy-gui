@@ -5,6 +5,18 @@
 
 ---
 
+### v1.83.2
+---
+**🇩🇰 Dansk**
+
+- **Dependabots fire opdateringer er samlet i én version.** axios 1.20.0 → 1.21.1 og express 5.2.1 → 5.3.0, og CI-workflowet bruger nu actions/checkout v7 og actions/setup-node v7. Alle tests består, og `npm audit` finder ingen sårbarheder. Dependabot lukker selv sine pull requests (#2, #3, #4 og #6) og sletter deres branches, når denne version er på main.
+- **Dependabot samler fremover sine opdateringer**: højst én pull request for npm og én for GitHub Actions om ugen i stedet for én branch pr. pakke (`groups` i `.github/dependabot.yml`).
+
+**🇬🇧 English**
+- **Dependabot's four updates in one version:** axios 1.21.1, express 5.3.0, actions/checkout v7 and actions/setup-node v7. All tests pass and `npm audit` finds nothing.
+- **Dependabot now groups its updates:** at most one pull request for npm and one for GitHub Actions a week.
+
+---
 ### v1.83.1
 ---
 **🇩🇰 Dansk**
