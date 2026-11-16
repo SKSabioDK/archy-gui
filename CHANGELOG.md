@@ -5,6 +5,18 @@
 
 ---
 
+### v1.84.0
+---
+**🇩🇰 Dansk**
+
+- **Terraform har sit eget menupunkt** lige under *Migrér ressourcer* i stedet for at være en fane blandt ressourcefanerne. Siden har sine egne org-felter øverst — den org der eksporteres fra, og evt. en mål-org — som følger Fra og Mål i topbaren. Hjælpen (?) på siden forklarer Terraform; teksten er flyttet fra hjælpen til Migrer Flow.
+- **Fra og Mål i topbaren er en pille på én linje**: `FRA Kunde ⇄ MÅL Vælg…`. Små grå labels og fede navne, lange navne afkortes med … (hele navnet står i værktøjstippet), og et tomt felt viser *Vælg…*. Et klik på Fra eller Mål åbner kundelisten, så man kan vælge direkte fra topbaren. ✕ vises kun, når musen er over pillen. På Terraform-siden viser pillen den åbne arbejdsmappe og dens org.
+
+**🇬🇧 English**
+- **Terraform has its own menu item** below *Migrate resources*, with its own org fields at the top that follow From and Target.
+- **From and Target in the top bar are a one-line pill**: small labels, bold names, *Choose…* when empty, and a click opens the customer list. On the Terraform page it shows the open working folder and its org.
+
+---
 ### v1.83.2
 ---
 **🇩🇰 Dansk**

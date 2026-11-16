@@ -293,11 +293,29 @@ test('Fra-org og Mål-org gælder på tværs af siderne og spørges ved et nyt l
   for (const id of ['m-source', 'm-target', 'fb-customer', 'fb-compare', 'ex-customer', 'im-customer', 'da-source', 'da-target'])
     assert.ok(html.includes(`'${id}'`) && html.indexOf(`'${id}', 'source'`) + html.indexOf(`'${id}', 'target'`) > -2, id);
   const map = html.slice(html.indexOf('const WORK_MAP = {'), html.indexOf('const WORK_FIELDS'));
-  assert.equal((map.match(/'source'\]/g) || []).length, 4, 'Migrer, Flow Browser, Export og Migrér ressourcer har en Fra-org');
-  assert.equal((map.match(/'target'\]/g) || []).length, 4, 'Migrer, Flow Browser, Import og Migrér ressourcer har en Mål-org');
-  assert.ok(html.includes('applyWorkToPage(page);\n}') || html.includes('applyWorkToPage(page);\r\n}'), 'nav udfylder siden');
+  assert.equal((map.match(/'source'\]/g) || []).length, 5, 'Migrer, Flow Browser, Export, Migrér ressourcer og Terraform har en Fra-org');
+  assert.equal((map.match(/'target'\]/g) || []).length, 5, 'Migrer, Flow Browser, Import, Migrér ressourcer og Terraform har en Mål-org');
+  assert.match(html, /applyWorkToPage\(page\);\r?\n  renderWorkChip\(\);\r?\n\}/, 'nav udfylder siden og opdaterer pillen');
   assert.ok(html.includes('afterLogin(id);\n        offerWorkRole(id);') || html.includes('afterLogin(id);\r\n        offerWorkRole(id);'), 'et login tilbyder rollen');
   assert.ok(html.includes("localStorage.setItem(WORK_KEY"), 'valget huskes');
+});
+
+test('pillen i topbaren står på én linje, og Fra og Mål kan vælges direkte fra den', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  assert.match(html, /#work-chip \{[^}]*white-space: nowrap/, 'ingen linjeskift i pillen');
+  assert.match(html, /#work-chip \.wc-name \{[^}]*text-overflow: ellipsis/, 'lange navne afkortes');
+  assert.ok(html.includes(`onclick="workPickMenu(\\'' + role`), 'Fra og Mål åbner en kundeliste');
+  assert.ok(html.includes('function workPickMenu(role, anchor)'), 'kundelisten findes');
+  assert.ok(html.includes("t('work_pick')"), 'et tomt felt viser Vælg…');
+});
+
+test('Terraform har sin egen side med egne org-felter og ingen fane i Migrér ressourcer', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  assert.ok(html.includes('data-page="terraform"'), 'menupunktet findes');
+  assert.ok(html.includes('id="page-terraform"') && html.includes('id="tf-main-card"'), 'siden findes');
+  assert.ok(!html.includes('da-tab-terraform') && !html.includes('da-terraform-card'), 'fanen er væk');
+  const a = html.indexOf('// ── Terraform ─'), b = html.indexOf('// ── Org-indstillinger ─');
+  assert.ok(!html.slice(a, b).includes('da-source') && !html.slice(a, b).includes('da-target'), 'Terraform bruger sine egne org-felter');
 });
 
 test('fanerne i Migrér ressourcer står så ingen afhænger af en fane der kommer efter den', () => {

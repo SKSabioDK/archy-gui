@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.83.2
+# Archy GUI — Flow Manager · v1.84.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.83.2**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.83.2**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.84.0**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.84.0**.
 
 ---
 
@@ -24,7 +24,7 @@ Et grafisk interface til [Archy](https://help.mypurecloud.com/articles/archy/) m
 - **Node.js 22.23.4, 24.22.1, 26.12.1 eller nyere** — versionerne med sikkerhedsrettelserne fra 21. oktober 2026 ([Node.js](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases)). Ældre linjer (18, 20, 25) får ingen rettelser, og programmet skriver en advarsel ved start, hvis versionen er for gammel
 - **Archy** installeret. Helst i PATH (`archy version` skal returnere en version); ellers leder programmet i `C:\Tools\Archy`, `C:\Archy`, `C:\Program Files\Archy` og din brugermappe, eller du skriver mappen med `archy.bat` i `archyDir` i `data/settings.json` (eller sætter miljøvariablen `ARCHY_DIR`). Genstart med `start.bat` bagefter
 - **Windows** (`start.bat`/`stop.bat`) og en browser
-- **Terraform** (valgfrit) — kun til fuld eksport, plan og apply i fanen Terraform. Hurtig startopsætning virker uden
+- **Terraform** (valgfrit) — kun til fuld eksport, plan og apply på siden Terraform. Hurtig startopsætning virker uden
 - En Genesys Cloud OAuth-klient af typen **Code Authorization** (PKCE) pr. org, med redirect URI `http://localhost:3737/auth/callback` — se [opsætning nedenfor](#opsætning-af-oauth-klienten-pkce). Ældre miljøer med Client Credentials virker stadig, men nye oprettes altid med PKCE
 
 #### Opsætning af OAuth-klienten (PKCE)
@@ -380,7 +380,7 @@ Siden migrerer det der ikke er flows mellem to orgs, fordelt på otte faner: **D
 
 **Afhængigheder ved flow-migrering.** Et flow tager det med, det bruger: tabeller, data actions, prompts, scripts, køer, grupper, åbningstider, vidensbaser, **kontaktlister** (et outbound-flow) og andre flows. Et survey-flow, som et outbound-flow peger på via *Set Post-Flow*, migreres først — sammen med sin **survey form**, som kopieres og udgives i målet. Archy finder kun udgivne survey forms, og et survey-flow kan være bundet til en ældre version af formen; Genesys skriver det i flowets indstillinger, og så skal flowet oprettes på ny på formens nyeste version, før det kan migreres.
 
-**Fanen Terraform** har tre dele: *Fuld eksport*, *Hurtig startopsætning* og *Arbejdsmapper*, og en **📖 Guide** (Terraform i Archy GUI: én org trin for trin med knapperne i Archy GUI — eksport, ret, plan og apply, fx en testgruppe der oprettes og slettes igen — og derefter org til org) åbner i et nyt vindue på dansk eller engelsk.
+**Terraform** har sit eget menupunkt. Øverst vælges den org, der eksporteres fra, og evt. en mål-org; de følger Fra og Mål i topbaren. Siden har tre dele: *Fuld eksport*, *Hurtig startopsætning* og *Arbejdsmapper*, og en **📖 Guide** (Terraform i Archy GUI: én org trin for trin med knapperne i Archy GUI — eksport, ret, plan og apply, fx en testgruppe der oprettes og slettes igen — og derefter org til org) åbner i et nyt vindue på dansk eller engelsk.
 
 **Fuld eksport** kører Genesys' egen eksportør, `genesyscloud_tf_export`, mod kilden og gemmer alle objekter som `.tf`-filer, én fil pr. type, i `data/terraform/<fra>[_<til>]/<dato>_full/`. Flows kommer med som YAML. Man kan tage alle typer eller vælge dem fra providerens liste, og *Tag afhængigheder med* slår `enable_dependency_resolution` til. Uden mål styrer mappen kilden selv: `terraform.tfstate` kommer med, så `plan` viser 0 ændringer, indtil filerne rettes. Med et mål kommer der ingen state med, så `apply` opretter objekterne i målet. Terraform får Archy GUI's eget login gennem `GENESYSCLOUD_ACCESS_TOKEN`, også et personligt PKCE-login, og der skrives aldrig en secret i mappen. Kræver `terraform.exe`, som findes i PATH, i `C:\Tools\Terraform` eller på en sti man skriver i fanen. Provideren hentes én gang til en fælles cache, `data/terraform/.plugin-cache`.
 
@@ -395,7 +395,7 @@ Under en eksport står der, hvad den er i gang med, og hvor længe den har kørt
 
 Fejler terraform, forklarer fanen de kendte årsager. Et antivirusprogram, der scanner krypteret trafik (fx Norton), kan bryde forbindelsen mellem `terraform.exe` og provideren (*x509: certificate signed by unknown authority*). Så skal `terraform.exe` og `terraform-provider-*.exe` undtages fra scanningen.
 
-**Hurtig startopsætning** (under fanen Terraform) genererer en Terraform-opsætning (genesyscloud-provideren) ud fra kilde-org'ens objekter og gemmer den automatisk i `data/terraform/<fra>_<til>/<dato>/` (vælg også et mål, så navngives mappen efter begge orgs, README og provider nævner begge, og målets region bliver standard; uden mål hedder mappen kun efter kilden). Filerne følger appens sprog (dansk, engelsk eller tysk — andre sprog får engelsk). Kunden kører selv `terraform apply` mod den org, der skal ændres — fx fra en test-org til en ny org — og `terraform plan` viser forskellen. Man vælger typer eller tager alle med. Med er: divisioner, skills, skill-grupper, grupper, teams, lokationer, utilization-labels, vidensbaser, svarbiblioteker, åbningstider og -grupper, nødgrupper, kontaktlister, DNC-lister, wrap-up-koder, roller, OAuth-klienter, integrationer, data actions, data tabeller, user prompts, køer og flows (nyeste lokale YAML kopieres til `architect_flows/`, som i providerens egen eksport). Referencer bliver til Terraform-referencer; Home og standardroller bliver til data-kilder, og en division der ikke er med, bliver en variabel i `terraform.tfvars` som i providerens egen eksport. Provideren følger dens vejledning: `required_version` og providerversion i `versions.tf`, og tomme felter bruger miljøvariablerne `GENESYSCLOUD_*`. Mappen får også `provider.tf`, `variables.tf`, `terraform.tfvars.example` og en `README.md` med det, der ikke er med: hemmeligheder, medlemmer, kontakter, indspillet lyd og betingede rettigheder (samt formularer, scripts og Function Data Actions). Det er en startopsætning — afprøv den i en test-org. Mappen (under `data/`) ligger i `.gitignore`, fordi den indeholder kundens opsætning.
+**Hurtig startopsætning** (på siden Terraform) genererer en Terraform-opsætning (genesyscloud-provideren) ud fra kilde-org'ens objekter og gemmer den automatisk i `data/terraform/<fra>_<til>/<dato>/` (vælg også et mål, så navngives mappen efter begge orgs, README og provider nævner begge, og målets region bliver standard; uden mål hedder mappen kun efter kilden). Filerne følger appens sprog (dansk, engelsk eller tysk — andre sprog får engelsk). Kunden kører selv `terraform apply` mod den org, der skal ændres — fx fra en test-org til en ny org — og `terraform plan` viser forskellen. Man vælger typer eller tager alle med. Med er: divisioner, skills, skill-grupper, grupper, teams, lokationer, utilization-labels, vidensbaser, svarbiblioteker, åbningstider og -grupper, nødgrupper, kontaktlister, DNC-lister, wrap-up-koder, roller, OAuth-klienter, integrationer, data actions, data tabeller, user prompts, køer og flows (nyeste lokale YAML kopieres til `architect_flows/`, som i providerens egen eksport). Referencer bliver til Terraform-referencer; Home og standardroller bliver til data-kilder, og en division der ikke er med, bliver en variabel i `terraform.tfvars` som i providerens egen eksport. Provideren følger dens vejledning: `required_version` og providerversion i `versions.tf`, og tomme felter bruger miljøvariablerne `GENESYSCLOUD_*`. Mappen får også `provider.tf`, `variables.tf`, `terraform.tfvars.example` og en `README.md` med det, der ikke er med: hemmeligheder, medlemmer, kontakter, indspillet lyd og betingede rettigheder (samt formularer, scripts og Function Data Actions). Det er en startopsætning — afprøv den i en test-org. Mappen (under `data/`) ligger i `.gitignore`, fordi den indeholder kundens opsætning.
 
 **AI-udbydere med EU-hosting (beta).** Under *Kunder → AI-udbydere* — kun synlig med aktiveringsnøglen og slået fra som standard — lægger du dine egne API-nøgler ind til AI-udbydere, der hoster i Europa: **Mistral** (kun EU-adressen `api.eu.mistral.ai`; Mistrals egen dokumentation siger, at den globale `api.mistral.ai` ikke binder sig til en placering), **Azure OpenAI** i en EU-region, **Claude via Amazon Bedrock** i en EU-region (`eu.*` inference profile; `us.`, `apac.` og `global.` afvises) og en **egen endpoint** (OpenAI-kompatibel) til andre EU-udbydere uden kode. Endpoint og autentificering er slået op i udbydernes dokumentation 28. oktober 2026.
 - **Region:** hver udbyder viser sin region og grundlaget. Mistral og Bedrock: udbyderens dokumentation. Azure og egen endpoint: *din egen erklæring* — Archy kan ikke se, hvor en Azure-ressource ligger, så tjek den i portalen (region og udrulningstype).
@@ -477,6 +477,8 @@ Alle handlinger logges i realtid. Filtrer på tidsrum, niveau, handling, kunde o
 
 Begge vælges i topbaren og gemmes i browserens `localStorage`, så valget huskes til næste gang.
 
+**Fra og Mål** står også i topbaren, som en pille på én linje: `FRA Kunde ⇄ MÅL Vælg…`. Et klik på Fra eller Mål åbner kundelisten, ⇄ bytter dem, og ✕ (når musen er over pillen) rydder valget. Valget følger med på Migrer Flow, Flow Browser, Export, Import, Migrér ressourcer og Terraform. Er en arbejdsmappe åben på Terraform-siden, viser pillen mappen og dens org i stedet.
+
 | Tema | Beskrivelse |
 |---|---|
 | 🌙 Archy Dark | Standard — mørk med orange accent |
@@ -553,7 +555,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-577 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+579 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både serverens kode i `src/` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -584,7 +586,7 @@ A graphical interface for [Archy](https://help.mypurecloud.com/articles/archy/) 
 - **Node.js 22.23.4, 24.22.1, 26.12.1 or newer** — the versions with the security fixes from 21 October 2026 ([Node.js](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases)). Older lines (18, 20, 25) get no fixes, and the app prints a warning at start if the version is too old
 - **Archy** installed. Preferably in PATH (`archy version` must return a version); otherwise the app looks in `C:\Tools\Archy`, `C:\Archy`, `C:\Program Files\Archy` and your user folder, or you put the folder holding `archy.bat` in `archyDir` in `data/settings.json` (or set the environment variable `ARCHY_DIR`). Restart with `start.bat` afterwards
 - **Windows** (`start.bat`/`stop.bat`) and a browser
-- **Terraform** (optional) — only for full export, plan and apply in the Terraform tab. The quick starting setup works without it
+- **Terraform** (optional) — only for full export, plan and apply on the Terraform page. The quick starting setup works without it
 - A Genesys Cloud OAuth client of type **Code Authorization** (PKCE) per org, with redirect URI `http://localhost:3737/auth/callback` — see [setup below](#setting-up-the-oauth-client-pkce). Older environments using Client Credentials still work, but new ones are always created with PKCE
 
 #### Setting up the OAuth client (PKCE)
@@ -924,7 +926,7 @@ This page migrates everything that is not a flow between two orgs, across eight 
 
 **Dependencies when migrating a flow.** A flow brings what it uses: tables, data actions, prompts, scripts, queues, groups, schedules, knowledge bases, **contact lists** (an outbound flow) and other flows. A survey flow that an outbound flow points to via *Set Post-Flow* is migrated first — together with its **survey form**, which is copied and published in the target. Archy only finds published survey forms, and a survey flow can be bound to an older version of the form; Genesys says so in the flow's settings, and the flow must then be recreated on the form's latest version before it can be migrated.
 
-**The Terraform tab** has three parts — *Full export*, *Quick starting setup* and *Working folders* — and a **📖 Guide** (Terraform in Archy GUI: one org step by step with the buttons in Archy GUI — export, edit, plan and apply, e.g. a test group created and deleted again — and then org to org) that opens in a new window in Danish or English.
+**Terraform** has its own menu item. At the top you choose the org to export from and, optionally, a target org; they follow From and Target in the top bar. The page has three parts — *Full export*, *Quick starting setup* and *Working folders* — and a **📖 Guide** (Terraform in Archy GUI: one org step by step with the buttons in Archy GUI — export, edit, plan and apply, e.g. a test group created and deleted again — and then org to org) that opens in a new window in Danish or English.
 
 **Full export** runs Genesys' own exporter, `genesyscloud_tf_export`, against the source and saves every object as `.tf` files, one file per type, in `data/terraform/<from>[_<to>]/<date>_full/`. Flows come along as YAML. Take all types or pick them from the provider's list; *Include dependencies* turns on `enable_dependency_resolution`. Without a target the folder manages the source itself: `terraform.tfstate` comes along, so `plan` shows 0 changes until the files are edited. With a target no state comes along, so `apply` creates the objects in the target. Terraform gets Archy GUI's own login through `GENESYSCLOUD_ACCESS_TOKEN` — a personal PKCE login too — and no secret is ever written to the folder. Needs `terraform.exe`, found in PATH, in `C:\Tools\Terraform` or at a path entered in the tab. The provider is downloaded once to a shared cache, `data/terraform/.plugin-cache`.
 
@@ -1021,6 +1023,8 @@ All actions logged in real time. Filter by time span, level, action type, custom
 
 Both are chosen in the top bar and stored in the browser's `localStorage`, so your choice is remembered.
 
+**From and Target** sit in the top bar too, as a one-line pill: `FROM Customer ⇄ TARGET Choose…`. Clicking From or Target opens the customer list, ⇄ swaps them, and ✕ (on hover) clears the choice. The choice carries over to Migrate Flow, Flow Browser, Export, Import, Migrate resources and Terraform. With a working folder open on the Terraform page, the pill shows the folder and its org instead.
+
 | Theme | Description |
 |---|---|
 | 🌙 Archy Dark | Default — dark with orange accent |
@@ -1097,7 +1101,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-577 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+579 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both the server code in `src/` and `index.html` and fail if the rules get copied out again.
 

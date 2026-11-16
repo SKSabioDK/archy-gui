@@ -163,7 +163,7 @@ test('serveren skriver kun lokalt, og mappen er holdt ude af git', () => {
 });
 
 test('fanen har tekst på alle seks sprog', () => {
-  for (const k of ['da_tab_terraform', 'tf_title', 'tf_run', 'tf_all', 'tf_none', 'tf_intro', 'tf_target_hint', 'tf_note', 'tf_need_source', 'tf_need_kind', 'tf_running', 'tf_done',
+  for (const k of ['nav_terraform', 'help_terraform', 'tf_label_source', 'tf_label_target', 'work_pick', 'work_from_short', 'work_to_short', 'tf_title', 'tf_run', 'tf_all', 'tf_none', 'tf_intro', 'tf_target_hint', 'tf_note', 'tf_need_source', 'tf_need_kind', 'tf_running', 'tf_done',
     'tf_saved_in', 'tf_copy_path', 'tf_files', 'tf_col_written', 'tf_unreadable', 'tf_skipped', 'tf_notes'])
     assert.equal(HTML.split(k + ':').length - 1, 6, k);
 });
