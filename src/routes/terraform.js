@@ -242,18 +242,19 @@ async function tfStep(exe, args, cwd, env, log, job, { exportRun = false, stoppa
 }
 
 // ── terraform.exe ────────────────────────────────────────────────────────────
-router.get('/api/terraform/cli', async (req, res) => {
+const cliStatus = async () => {
   const exe = CLI.findTerraform();
-  res.json({ found: !!exe, path: exe, version: exe ? await CLI.terraformVersion(exe) : null });
-});
+  return exe ? { found: true, path: exe, ...(await CLI.checkTerraform(exe)) } : { found: false, path: null, version: null };
+};
+
+router.get('/api/terraform/cli', async (req, res) => res.json(await cliStatus()));
 
 router.post('/api/terraform/cli', async (req, res) => {
   const p = String(req.body.path || '').trim().replace(/^"|"$/g, '');
   if (p && !(fs.existsSync(p) && fs.statSync(p).isFile() && /terraform(\.exe)?$/i.test(p)))
     return res.status(400).json({ error: `Not a terraform executable: ${p}` });
   saveSettings({ terraformPath: p || null });
-  const exe = CLI.findTerraform();
-  res.json({ found: !!exe, path: exe, version: exe ? await CLI.terraformVersion(exe) : null });
+  res.json(await cliStatus());
 });
 
 // ── Providerens schema (felterne i formularerne) ─────────────────────────────

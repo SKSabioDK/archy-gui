@@ -647,3 +647,49 @@ test('flow-tjekket kører efter eksporten og vises i mappen', () => {
   assert.ok(html.includes("tfApi('/api/terraform/workspace/flowcheck'"));
   for (const r of ['system', 'unpublished', 'locked', 'filter', 'unknown']) assert.ok(html.includes(`tf_fc_r_${r}:'`), r);
 });
+
+// ── terraform.exe der ikke kan startes (v1.87.1) ─────────────────────────────
+// På en anden pc stod der "terraform.exe was not found", og en sti skrevet i
+// hånden gav kun "spawn UNKNOWN". Nu siger Archy GUI hvad der er galt med filen.
+
+function fakePe(machine) {
+  const b = Buffer.alloc(512);
+  b.write('MZ', 0, 'latin1');
+  b.writeUInt32LE(0x80, 0x3c);
+  b.writeUInt32LE(0x4550, 0x80);          // "PE\0\0"
+  b.writeUInt16LE(machine, 0x84);
+  return b;
+}
+
+test('filen undersøges: zip, ikke et program, eller til en anden processor', () => {
+  const CLI = require('../src/lib/terraform-cli.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tfexe-'));
+  try {
+    const put = (n, data) => { const f = path.join(dir, n); fs.writeFileSync(f, data); return f; };
+    const zip = put('zip.exe', Buffer.from('PK\x03\x04rest', 'latin1'));
+    const txt = put('txt.exe', 'not a program');
+    const amd = put('amd.exe', fakePe(0x8664));
+    const arm = put('arm.exe', fakePe(0xaa64));
+    const x86 = put('x86.exe', fakePe(0x14c));
+    assert.equal(CLI.inspectExe(zip, 'win32', 'x64').problem, 'zip');
+    assert.equal(CLI.inspectExe(txt, 'win32', 'x64').problem, 'not_exe');
+    assert.deepEqual(CLI.inspectExe(amd, 'win32', 'x64'), { problem: null, machine: 'amd64', host: 'amd64' });
+    assert.deepEqual(CLI.inspectExe(arm, 'win32', 'x64'), { problem: 'arch', machine: 'arm64', host: 'amd64' }, 'ARM64 kører ikke på en almindelig pc');
+    assert.equal(CLI.inspectExe(amd, 'win32', 'arm64').problem, null, 'Windows på ARM kører amd64');
+    assert.equal(CLI.inspectExe(x86, 'win32', 'x64').problem, null, '386 kører på en 64-bit pc');
+    assert.equal(CLI.inspectExe(path.join(dir, 'findes-ikke.exe'), 'win32', 'x64').problem, 'unreadable');
+    assert.equal(CLI.inspectExe(txt, 'linux', 'x64').problem, null, 'kun Windows-filer undersøges');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('spawn UNKNOWN får et hint, og en udpakket undermappe findes', () => {
+  assert.equal(HCL.errorHint('Error: spawn UNKNOWN'), 'spawn');
+  assert.equal(HCL.errorHint('spawn EPERM'), 'spawn');
+  assert.equal(HCL.errorHint('terraform init failed (exit 1)'), 'needs_init', 'de andre hints er uændrede');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'lib', 'terraform-cli.js'), 'utf8');
+  assert.match(src, /e\.isDirectory\(\) && \/\^terraform\/i\.test\(e\.name\)/, 'C:\\Tools\\Terraform\\terraform_1.x_windows_amd64\\terraform.exe findes også');
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  assert.ok(html.includes('if (tfCli.found && tfCli.version) {'), 'fundet uden version er ikke et grønt flueben');
+  for (const k of ['zip', 'not_exe', 'arch', 'blocked', 'unreadable']) assert.ok(html.includes(`tf_cli_bad_${k}:'`), k);
+  assert.ok(html.includes("tf_hint_spawn:'"));
+});

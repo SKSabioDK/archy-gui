@@ -23,7 +23,17 @@ function candidates() {
   const s = loadSettings().terraformPath;
   if (s) out.push(s);
   for (const d of String(process.env.PATH || '').split(path.delimiter)) if (d) out.push(path.join(d.replace(/^"|"$/g, ''), EXE));
-  if (process.platform === 'win32') out.push('C:\\Tools\\Terraform\\terraform.exe', 'C:\\Program Files\\Terraform\\terraform.exe');
+  if (process.platform === 'win32') {
+    for (const d of ['C:\\Tools\\Terraform', 'C:\\Program Files\\Terraform']) {
+      out.push(path.join(d, EXE));
+      // Zip-filen pakkes tit ud i sin egen mappe: C:\Tools\Terraform\terraform_1.17.2_windows_amd64\terraform.exe
+      try {
+        for (const e of fs.readdirSync(d, { withFileTypes: true }))
+          if (e.isDirectory() && /^terraform/i.test(e.name)) out.push(path.join(d, e.name, EXE));
+      } catch (_) {}
+    }
+    out.push('C:\\ProgramData\\chocolatey\\bin\\terraform.exe');
+  }
   return out;
 }
 
@@ -32,6 +42,42 @@ function findTerraform() {
     try { if (fs.statSync(c).isFile()) return c; } catch (_) {}
   }
   return null;
+}
+
+// Er filen et program, der kan køre på denne pc? En zip-fil omdøbt til .exe, en
+// halvt hentet fil eller en ARM64-udgave på en almindelig pc gav før kun
+// "spawn UNKNOWN". PE-headerens maskintype siger, hvilken processor filen er til.
+const MACHINES = { 0x8664: 'amd64', 0x14c: '386', 0xaa64: 'arm64', 0x1c4: 'arm' };
+function inspectExe(file, platform = process.platform, arch = process.arch) {
+  let buf;
+  try {
+    const fd = fs.openSync(file, 'r');
+    try { buf = Buffer.alloc(4096); buf = buf.subarray(0, fs.readSync(fd, buf, 0, 4096, 0)); } finally { fs.closeSync(fd); }
+  } catch (e) { return { problem: 'unreadable', error: e.code || e.message }; }
+  if (platform !== 'win32') return { problem: null };
+  if (buf.length >= 2 && buf[0] === 0x50 && buf[1] === 0x4b) return { problem: 'zip' };
+  if (buf.length < 64 || buf[0] !== 0x4d || buf[1] !== 0x5a) return { problem: 'not_exe' };
+  const pe = buf.readUInt32LE(0x3c);
+  if (pe + 6 > buf.length || buf.readUInt32LE(pe) !== 0x4550) return { problem: 'not_exe' };
+  const machine = MACHINES[buf.readUInt16LE(pe + 4)] || 'unknown';
+  const host = arch === 'x64' ? 'amd64' : arch === 'ia32' ? '386' : arch;
+  // Windows på ARM kører også amd64 og 386; en x64-pc kører 386, men ikke ARM
+  const runs = machine === host || machine === '386' || (host === 'arm64' && machine === 'amd64');
+  return { problem: runs ? null : 'arch', machine, host };
+}
+
+// Kan terraform startes? version når det kan, ellers hvad der er galt
+function checkTerraform(exe) {
+  const info = inspectExe(exe);
+  if (info.problem) return Promise.resolve({ version: null, ...info });
+  return new Promise(resolve => {
+    execFile(exe, ['version', '-json'], { windowsHide: true, timeout: 20000 }, (err, stdout) => {
+      let v = null;
+      try { v = JSON.parse(stdout).terraform_version; } catch (_) {}
+      if (v) { _versionCache = { exe, v }; return resolve({ version: v, problem: null, machine: info.machine }); }
+      resolve({ version: null, problem: 'blocked', machine: info.machine, error: err ? String(err.code || err.message) : 'no output' });
+    });
+  });
 }
 
 let _versionCache = null;
@@ -181,5 +227,5 @@ function removeDir(dir) {
 
 const fileHash = f => crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex');
 
-module.exports = { TERRAFORM_DIR, PLUGIN_CACHE, PROVIDER_DIR, findTerraform, terraformVersion, terraformEnv,
+module.exports = { TERRAFORM_DIR, PLUGIN_CACHE, PROVIDER_DIR, findTerraform, terraformVersion, checkTerraform, inspectExe, terraformEnv,
   runTerraform, captureTerraform, startJob, jobs, jobView, fileHash, killTree, removeDir };

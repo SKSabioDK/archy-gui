@@ -502,6 +502,8 @@ function errorHint(text) {
   if (/Saved plan is stale/i.test(t)) return 'stale_plan';
   if (/ambiguous data action name|ambiguous .* name/i.test(t)) return 'ambiguous_data';
   if (/schema version \d+ for data\..* in state does not match/i.test(t)) return 'state_data';
+  // Windows kunne ikke starte terraform.exe: zip-filen, forkert processor eller blokeret af antivirus
+  if (/spawn (UNKNOWN|EPERM|EACCES|EFTYPE)\b/i.test(t)) return 'spawn';
   return null;
 }
 

@@ -5,6 +5,18 @@
 
 ---
 
+### v1.87.1
+---
+**🇩🇰 Dansk**
+
+- **terraform.exe der ikke kan startes, forklares nu.** På en anden pc stod der *terraform.exe was not found*, og en sti skrevet i hånden gav kun *spawn UNKNOWN*. Archy GUI undersøger nu filen og siger hvorfor: det er zip-filen (pak den ud), filen er ikke et program (fx halvt hentet), den er til en anden processor (fx ARM64 på en almindelig pc), eller Windows ville ikke starte den (typisk antivirus som Norton eller Smart App Control). En fundet fil, der ikke kan startes, vises ikke længere med grønt flueben.
+- **terraform.exe findes også i en udpakket undermappe**, fx `C:\Tools\Terraform\terraform_1.17.2_windows_amd64\terraform.exe`, og i Chocolateys mappe.
+- Fejler en kørsel med *spawn UNKNOWN*, *EPERM* eller *EACCES*, får den et hint om, hvad der skal tjekkes.
+
+**🇬🇧 English**
+- **A terraform.exe that cannot start is explained:** zip file, not a program, wrong processor, or blocked by Windows/antivirus — instead of *spawn UNKNOWN*. terraform.exe is also found in an unpacked subfolder of `C:\Tools\Terraform`.
+
+---
 ### v1.87.0
 ---
 **🇩🇰 Dansk**
