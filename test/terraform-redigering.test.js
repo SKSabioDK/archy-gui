@@ -224,13 +224,104 @@ test('terraform får Archy GUI\'s login gennem miljøet, og tokenet vaskes ud af
   }
 });
 
-test('README i en fuld eksport forklarer kunden at køre videre selv', () => {
+test('README i en fuld eksport siger om state kom med', () => {
   const { exportReadme } = require('../src/routes/terraform.js')._test;
-  const samme = exportReadme('da', 'Kunde DEV', null, true);
-  assert.match(samme, /terraform\.tfstate/);
-  assert.match(samme, /GENESYSCLOUD_OAUTHCLIENT_ID/);
+  assert.match(exportReadme('da', 'Kunde DEV', null, true), /terraform\.tfstate/);
   assert.match(exportReadme('en', 'A', 'B', false), /creates the objects in B/);
-  assert.match(exportReadme('fr', 'A', 'B', false), /Running it yourself/, 'ukendt sprog → engelsk');
+  assert.match(exportReadme('fr', 'A', 'B', false), /To another org/, 'ukendt sprog → engelsk');
+});
+
+// ── Kundepakken (v1.85.0) ────────────────────────────────────────────────────
+
+test('kundepakken har et sted til client id og secret og scripts til plan og apply', () => {
+  const KIT = require('../src/terraform-kit.js');
+  const f = KIT.kitFiles({ region: 'eu-west-1' });
+  for (const n of KIT.KIT_FILES) assert.ok(f[n], n);
+  assert.match(f['login.example.ps1'], /\$env:GENESYSCLOUD_OAUTHCLIENT_ID\s+= ''/);
+  assert.match(f['login.example.ps1'], /\$env:GENESYSCLOUD_OAUTHCLIENT_SECRET = ''/);
+  assert.match(f['login.example.ps1'], /GENESYSCLOUD_REGION\s+= 'eu-west-1'/, 'regionen følger org\'en');
+  assert.match(f['login.example.sh'], /export GENESYSCLOUD_OAUTHCLIENT_SECRET=''/);
+  assert.match(f['run.ps1'], /\. \.\\login\.ps1/, 'run.ps1 læser login.ps1');
+  assert.match(f['run.ps1'], /terraform plan -input=false '-out=customer\.tfplan'/, 'PowerShell 5.1 deler -out=a.b i to uden anførselstegn');
+  for (const [n, text] of Object.entries(f)) assert.ok(/^[\x00-\x7f]*$/.test(text), n + ' er ren ASCII (PowerShell 5.1 læser filer uden BOM som ANSI)');
+  assert.match(f['run.ps1'], /terraform apply -input=false customer\.tfplan/, 'apply kun af den gemte plan');
+  assert.match(f['run.ps1'], /Remove-Item Env:GENESYSCLOUD_ACCESS_TOKEN/, 'et gammelt token på pc\'en bruges ikke');
+  assert.match(f['run.cmd'], /-ExecutionPolicy Bypass -File "%~dp0run\.ps1" %\*/, 'run plan virker fra en kommandoprompt');
+  assert.match(f['run.sh'], /STEP="\$\{1:-plan\}"/);
+  assert.match(f['run.sh'], /eval "val=\\\$\{\$v:-\}"/);
+  assert.match(f['.gitignore'], /^login\.ps1$/m);
+  assert.match(f['.gitignore'], /^login\.sh$/m);
+  assert.ok(f['run.ps1'].includes('\r\n') && !f['run.sh'].includes('\r'), 'Windows-filer CRLF, sh-filer LF');
+});
+
+test('README får kundeafsnittet én gang, også når det skrives igen', () => {
+  const KIT = require('../src/terraform-kit.js');
+  const once = KIT.withKitReadme('# Terraform — A\n\nTekst.\n', 'da', { region: 'eu-central-1', hasState: true });
+  const twice = KIT.withKitReadme(once, 'da', { region: 'eu-west-1', hasState: true });
+  assert.equal(twice.split(KIT.KIT_MARK).length, 2, 'kun ét afsnit');
+  assert.ok(twice.startsWith('# Terraform — A\n\nTekst.\n'));
+  assert.match(twice, /eu-west-1/); assert.doesNotMatch(twice, /eu-central-1/);
+  assert.match(twice, /Kør den på din egen pc/);
+  assert.match(KIT.withKitReadme('', 'de', {}), /Run it on your own PC/, 'ukendt sprog → engelsk');
+  assert.match(KIT.kitReadme('en', { hasState: false }), /first apply creates the objects/);
+});
+
+function unzip(buf) {
+  const zlib = require('zlib');
+  const out = {};
+  let i = 0;
+  while (buf.readUInt32LE(i) === 0x04034b50) {
+    const method = buf.readUInt16LE(i + 8), crc = buf.readUInt32LE(i + 14), size = buf.readUInt32LE(i + 18), n = buf.readUInt16LE(i + 26), x = buf.readUInt16LE(i + 28);
+    const name = buf.slice(i + 30, i + 30 + n).toString('utf8');
+    const body = buf.slice(i + 30 + n + x, i + 30 + n + x + size);
+    const data = method === 8 ? zlib.inflateRawSync(body) : body;
+    out[name] = { data, crc };
+    i += 30 + n + x + size;
+  }
+  assert.equal(buf.readUInt32LE(buf.length - 22), 0x06054b50, 'slutposten findes');
+  assert.equal(buf.readUInt16LE(buf.length - 12), Object.keys(out).length, 'antal i slutposten');
+  return out;
+}
+
+test('zip-filen kan pakkes ud igen med samme indhold og kontrolsum', () => {
+  const KIT = require('../src/terraform-kit.js');
+  const big = Buffer.from('resource "genesyscloud_group" "x" {}\n'.repeat(200));
+  const files = unzip(KIT.zip([{ name: 'm/a.tf', data: big }, { name: 'm/æøå.txt', data: 'hej' }, { name: 'm/tom.txt', data: '' }]));
+  assert.deepEqual(Object.keys(files), ['m/a.tf', 'm/æøå.txt', 'm/tom.txt']);
+  assert.ok(files['m/a.tf'].data.equals(big));
+  assert.equal(files['m/æøå.txt'].data.toString(), 'hej');
+  assert.equal(files['m/a.tf'].crc, KIT.crc32(big));
+});
+
+test('zip til kunden har kundepakken og state, men ikke login, Archy GUI\'s filer eller .terraform', () => {
+  const { writeKit, zipEntries } = require('../src/routes/terraform.js')._test;
+  const KIT = require('../src/terraform-kit.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tfkit-'));
+  try {
+    const put = (rel, text = 'x') => { fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true }); fs.writeFileSync(path.join(dir, rel), text); };
+    for (const f of ['main.tf', 'provider.tf', 'terraform.tfvars', 'terraform.tfstate', '.terraform.lock.hcl', 'README.md', 'architect_flows/f.yaml',
+      'login.ps1', 'login.sh', 'workspace.json', '.archy-plan.json', 'archy.tfplan', 'customer.tfplan', 'terraform.tfstate.backup',
+      'terraform.tfstate.1794678090.backup', 'export_errors.json', '.terraform/providers/p.exe', '_export/x.tf']) put(f);
+    writeKit(dir, { region: 'mypurecloud.ie' }, 'da');
+    const names = zipEntries(dir, 'Kunde_2026').map(e => e.name);
+    for (const ok of ['main.tf', 'provider.tf', 'terraform.tfvars', 'terraform.tfstate', '.terraform.lock.hcl', 'README.md', 'architect_flows/f.yaml', ...KIT.KIT_FILES])
+      assert.ok(names.includes('Kunde_2026/' + ok), ok);
+    for (const no of ['login.ps1', 'login.sh', 'workspace.json', '.archy-plan.json', 'archy.tfplan', 'customer.tfplan', 'terraform.tfstate.backup',
+      'terraform.tfstate.1794678090.backup', 'export_errors.json', '.terraform/providers/p.exe', '_export/x.tf'])
+      assert.ok(!names.includes('Kunde_2026/' + no), no);
+    assert.equal(fs.readFileSync(path.join(dir, 'login.ps1'), 'utf8'), 'x', 'kundens login.ps1 overskrives aldrig');
+    assert.match(fs.readFileSync(path.join(dir, 'login.example.ps1'), 'utf8'), /'eu-west-1'/, 'regionen kommer fra org\'en');
+    assert.match(fs.readFileSync(path.join(dir, 'README.md'), 'utf8'), /Kør den på din egen pc/);
+    assert.ok(fs.existsSync(path.join(dir, 'versions.tf')), 'uden provider-krav skrives versions.tf');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('provider-kravet genkendes, så en eksports provider.tf ikke får en versions.tf ved siden af', () => {
+  const KIT = require('../src/terraform-kit.js');
+  assert.ok(KIT.declaresProvider('terraform {\n  required_providers {\n    genesyscloud = {\n      source  = "registry.terraform.io/mypurecloud/genesyscloud"\n      version = "1.88.0"\n    }\n  }\n}\n'));
+  assert.ok(KIT.declaresProvider(KIT.VERSIONS_TF));
+  assert.ok(!KIT.declaresProvider('resource "genesyscloud_group" "g" {}'));
+  assert.ok(!KIT.declaresProvider('required_providers { aws = { source = "hashicorp/aws" } }'));
 });
 
 // ── Stop og loggen (v1.82.1) ─────────────────────────────────────────────────
@@ -504,4 +595,55 @@ test('ændrede ressourcer findes ved at sammenligne en fil før og efter, og fmt
   const b = a.replace('"B"\n', '"B2"\n') + '\nresource "genesyscloud_group" "C" {\n  name = "C"\n}\n';
   assert.deepEqual(HCL.changedResources(a, b).sort(), ['genesyscloud_group.B', 'genesyscloud_group.C']);
   assert.deepEqual(HCL.changedResources(a, ''), ['genesyscloud_group.A', 'genesyscloud_group.B'], 'en slettet fil');
+});
+
+// ── Flow-tjek efter eksporten (v1.87.0) ──────────────────────────────────────
+// Eksportøren siger ikke, hvilke flows den springer over. En Falck US-eksport
+// havde 29 flows; tjekket viser hvilke af org'ens øvrige flows der mangler og hvorfor.
+
+test('flow-id\'erne i en eksport findes både i YAML-filernes navne og i genesyscloud_flow', () => {
+  const { exportedFlowIds } = require('../src/routes/terraform.js')._test;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tfflow-'));
+  try {
+    fs.mkdirSync(path.join(dir, 'architect_flows'));
+    fs.writeFileSync(path.join(dir, 'architect_flows', 'Main_25-INBOUNDCALL-115e1a38-fa53-4136-9e14-e1b53f06f198.yaml'), 'x');
+    fs.writeFileSync(path.join(dir, 'genesyscloud_flow.tf'),
+      'resource "genesyscloud_flow" "b" {\n  filepath = "architect_flows\\Bot-BOT-86C0901F-8936-4e15-8822-11ff0226aff3.yaml"\n}\n');
+    fs.writeFileSync(path.join(dir, 'genesyscloud_routing_queue.tf'), 'resource "genesyscloud_routing_queue" "q" {\n  id = "00000000-0000-0000-0000-000000000001"\n}\n');
+    const ids = exportedFlowIds(dir);
+    assert.ok(ids.has('115e1a38-fa53-4136-9e14-e1b53f06f198'));
+    assert.ok(ids.has('86c0901f-8936-4e15-8822-11ff0226aff3'), 'store bogstaver i id\'et gør ingen forskel');
+    assert.ok(!ids.has('00000000-0000-0000-0000-000000000001'), 'id\'er i andre typer tæller ikke');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('manglende flows får det vi kan se om dem, de ukendte først', () => {
+  const { compareFlows } = require('../src/routes/terraform.js')._test;
+  const flows = [
+    { id: 'a', name: 'Main', type: 'INBOUNDCALL', publishedVersion: { name: '3.0' } },
+    { id: 'b', name: 'Default In-Queue Flow', type: 'INQUEUECALL', system: true, publishedVersion: { name: '1.0' } },
+    { id: 'c', name: 'Kladde', type: 'INBOUNDCALL', publishedVersion: null },
+    { id: 'd', name: 'Låst', type: 'INBOUNDCALL', publishedVersion: { name: '2.0' }, lockedUser: 'Anna' },
+    { id: 'e', name: 'Gåde', type: 'WORKFLOW', publishedVersion: { name: '1.0' } },
+  ];
+  const r = compareFlows(flows, new Set(['a']));
+  assert.equal(r.total, 5); assert.equal(r.exported, 1);
+  assert.deepEqual(r.missing.map(m => [m.name, m.reason]),
+    [['Gåde', 'unknown'], ['Låst', 'locked'], ['Kladde', 'unpublished'], ['Default In-Queue Flow', 'system']]);
+  const uden = compareFlows(flows, new Set(), { include: ['genesyscloud_routing_queue'] });
+  assert.ok(uden.flowsOff && uden.missing.every(m => m.reason === 'filter'), 'flows var ikke valgt i eksporten');
+  const navnefilter = compareFlows(flows, new Set(['a']), { include: ['genesyscloud_flow::Main'] });
+  assert.equal(navnefilter.missing.find(m => m.name === 'Gåde').reason, 'filter');
+  assert.equal(compareFlows(flows, new Set(['a']), { exclude: ['genesyscloud_flow'] }).flowsOff, true);
+});
+
+test('flow-tjekket kører efter eksporten og vises i mappen', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'routes', 'terraform.js'), 'utf8');
+  const exp = src.slice(src.indexOf("writeMeta(dir, { kind: 'export'"), src.indexOf("job.phase = 'done';"));
+  assert.ok(exp.includes('await checkFlows(dir)'), 'eksporten kører tjekket');
+  assert.match(src, /flowCheck: meta\.flowCheck \|\| null/, 'mappen sender resultatet med');
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  assert.ok(html.includes('${tfExportErrorsHtml(w.exportErrors)}${tfFlowCheckHtml(w)}'));
+  assert.ok(html.includes("tfApi('/api/terraform/workspace/flowcheck'"));
+  for (const r of ['system', 'unpublished', 'locked', 'filter', 'unknown']) assert.ok(html.includes(`tf_fc_r_${r}:'`), r);
 });

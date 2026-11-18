@@ -5,6 +5,43 @@
 
 ---
 
+### v1.87.0
+---
+**🇩🇰 Dansk**
+
+- **Flow-tjek efter Terraform-eksporten.** En fuld eksport af Falck US gav 29 flows, og eksportøren siger ikke selv, hvilke den springer over. Efter hver fuld eksport henter Archy GUI nu flowlisten fra den org, der blev eksporteret fra, og sammenholder den med de flows, der kom med (id'et i YAML-filernes navne og i `genesyscloud_flow`). Under mappen står *N af M flows kom med*. Ved manglende flows vises en liste med navn, type og det, vi kan se om flowet: Genesys' eget standardflow, aldrig publiceret, låst (tjekket ud i Architect), udeladt af filteret på eksporten, eller ukendt. De ukendte står øverst og i rødt.
+- **🔎 Tjek flows mod org'en** kører tjekket igen. Det virker også på mapper fra før denne version. Tjekket læser kun i org'en og kræver login på den org, der blev eksporteret fra. Resultatet gemmes i mappen og skrives i systemloggen.
+
+**🇬🇧 English**
+- **Flow check after the Terraform export:** the org's flow list is compared with the exported flows, and missing ones are listed with what we can see (Genesys default flow, never published, locked, filtered out or unknown). **🔎 Check flows against the org** runs it again on any folder.
+
+---
+### v1.86.0
+---
+**🇩🇰 Dansk**
+
+- **Tavlen ser publiceringer uden om Archy GUI af sig selv.** Kundens egen pipeline skriver ikke i ArchyGUI-tabellen, så tavlen fulgte kun med, når tabellen ændrede sig. Nu henter den også flowlisten for gruppen hvert 5. minut, mens Pipeline er åben. Har en udgave ændret sig siden indlæsningen, tegnes tavlen igen med beskeden *en udgave i Genesys er ændret, fx af kundens egen pipeline*. Intervallet sættes med `pipelineGenesysSeconds` i `data/settings.json` (mindst 60, `0` slår det fra).
+- **✓ Godkend v*N*** står under *publiceret uden om pipelinen*. Den gør miljøets aktuelle udgave og dato til nyt udgangspunkt i ArchyGUI-tabellen, eller i den lokale historik hvor org'en ikke har en tabel, så markeringen slukker. Flowet i Genesys røres ikke. Hvor flowet kom fra og release-historikken bevares, så næste publicering udenom markeres igen. Godkendelsen gemmes i rækken (`accepted`: fra hvilken udgave og hvornår) og i systemloggen med hvem der godkendte, og knappen står bag prod-vagten.
+
+**🇬🇧 English**
+- **The board notices publishes outside Archy GUI:** while Pipeline is open it checks the versions in Genesys every 5 minutes (`pipelineGenesysSeconds`) and redraws when one changed.
+- **✓ Accept v*N*** under *published outside the pipeline* records the environment's current version as the new baseline in the ArchyGUI table. The flow is not touched, and the origin and release history are kept.
+
+---
+### v1.85.0
+---
+**🇩🇰 Dansk**
+
+- **En Terraform-mappe kan sendes til kunden og køres på deres egen pc.** *⬇ Zip til kunden* i en arbejdsmappe henter mappen som zip. Kunden pakker den ud, kopierer `login.example.ps1` til `login.ps1` og skriver client id, secret og region for sin OAuth-klient (Client Credentials) ind ét sted. Regionen er udfyldt efter mappens org. Derefter kører kunden `run plan`, læser planen og kører `run apply`. Apply udfører kun den plan, der lige er vist. På Mac/Linux bruges `login.sh` og `./run.sh`. Der skal ikke installeres andet end Terraform.
+- README'en i mappen får afsnittet *Kør den på din egen pc* (oprettelse af OAuth-klienten, login, plan og apply, og hvad state betyder), og `.gitignore` holder login-filerne og planer ude af git.
+- Zip'en indeholder `.tf`-filer, flows, `terraform.tfvars`, state og `.terraform.lock.hcl`. Den indeholder ikke login-filer, Archy GUI's egne filer (`workspace.json`, planer, `export_errors.json`), gamle state-backups eller `.terraform/`.
+- Mangler mappen provider-kravet, skrives en `versions.tf`, så `terraform init` finder `mypurecloud/genesyscloud` i stedet for den ikke-eksisterende `hashicorp/genesyscloud`.
+- Pakken skrives også ved fuld eksport, hurtig startopsætning og *Kopiér til en anden org*. `login.ps1` overskrives aldrig.
+
+**🇬🇧 English**
+- **A Terraform folder can be sent to the customer and run on their own PC.** *⬇ Zip for the customer* downloads it with `login.example.ps1`/`.sh` for the client id, secret and region, and `run plan` / `run apply` scripts. The README explains the steps. Logins, Archy GUI's own files and `.terraform/` are left out.
+
+---
 ### v1.84.0
 ---
 **🇩🇰 Dansk**

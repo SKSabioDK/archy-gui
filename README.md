@@ -1,4 +1,4 @@
-# Archy GUI — Flow Manager · v1.84.0
+# Archy GUI — Flow Manager · v1.87.0
 
 > 🇩🇰 [Dansk](#dansk) · 🇬🇧 [English](#english)
 
@@ -6,8 +6,8 @@
 
 ## Changelog
 
-Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.84.0**.
-All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.84.0**.
+Alle ændringer står i **[CHANGELOG.md](CHANGELOG.md)** — nuværende version er **v1.87.0**.
+All changes live in **[CHANGELOG.md](CHANGELOG.md)** — the current version is **v1.87.0**.
 
 ---
 
@@ -185,7 +185,7 @@ Hver celle viser flowets **navn i netop det miljø**, dets publicerede udgave og
 | Farve / mærke | Betydning |
 |---|---|
 | grøn | publiceret, og intet tyder på at det kom udenom |
-| ✗ **publiceret uden om pipelinen** | manifestet siger vi efterlod miljøet på v*N*, og det står højere. Gælder kun et miljø der *modtog* flowet — arbejde i dev er ikke at gå udenom |
+| ✗ **publiceret uden om pipelinen** | manifestet siger vi efterlod miljøet på v*N*, og det står højere. Gælder kun et miljø der *modtog* flowet — arbejde i dev er ikke at gå udenom. **✓ Godkend v*N*** gør miljøets udgave til nyt udgangspunkt, fx når kundens egen pipeline har publiceret |
 | ✗ **N udgaver foran trinnet før** | miljøet er publiceret flere gange end det trin der fodrer det. Et fingerpeg, ikke bevis |
 | ⚠ **N udgaver ikke forfremmet** | der er arbejdet videre uden at skubbe det videre |
 | ⚠ **findes kun i et senere trin** | bygget udenom kæden |
@@ -287,7 +287,11 @@ Tabellen har to kolonner:
 
 **Org'en vinder.** Ved login, 🔌 Test og når Pipeline åbnes, hentes org'ens opsætning ind, og det der er ændret, vises én gang øverst på siden. En rettelse her på pc'en skrives derfor straks til org'en. Har nogen ændret org'ens række, mens en rettelse herfra ventede, vælger man i guiden hvem der har ret. **Prod-vagten løsnes aldrig udefra:** org'en kan ikke sætte et prod-miljø til et andet trin eller ændre dets deploy-krav — det bliver en uenighed, og at tage org'ens kræver prod-login. Trin org'en har og pc'en mangler (fx staging), lægges til listen; der fjernes aldrig nogen. Et miljø uden præfiks tager aldrig flows med et præfiks org'en bruger — heller ikke på en pc hvor dev og test ikke er tilføjet.
 
-**Tavlen følger med.** Mens Pipeline er åben, spørger programmet hvert minut til et fingeraftryk af manifest-tabellerne i den viste gruppe, og ændrer det sig — fx fordi en kollega på en anden pc har forfremmet et flow — tegnes tavlen igen af sig selv. Det samme sker, når man vender tilbage til Pipeline efter en migration. Intervallet sættes med `pipelineRefreshSeconds` i `data/settings.json` (mindst 15; `0` slår det fra). **Fra tavlen til Migrer** (*Hent hertil*, *Forfrem*) vises kun det valgte flow; vil man migrere flere, slår man *Vis kun valgte* fra.
+**Tavlen følger med.** Mens Pipeline er åben, spørger programmet hvert minut til et fingeraftryk af manifest-tabellerne i den viste gruppe, og ændrer det sig — fx fordi en kollega på en anden pc har forfremmet et flow — tegnes tavlen igen af sig selv. Det samme sker, når man vender tilbage til Pipeline efter en migration. Intervallet sættes med `pipelineRefreshSeconds` i `data/settings.json` (mindst 15; `0` slår det fra).
+
+**Publiceringer uden om Archy GUI.** Kundens egen pipeline (CX as Code, Archy CLI eller en publicering i hånden) skriver ikke i ArchyGUI-tabellen. Derfor spørger tavlen også til udgaverne i Genesys: hvert 5. minut hentes flowlisten for gruppen, og har en publiceret eller gemt udgave ændret sig siden tavlen blev indlæst, tegnes den igen med beskeden *en udgave i Genesys er ændret*. Intervallet sættes med `pipelineGenesysSeconds` i `data/settings.json` (mindst 60; `0` slår det fra). Står en celle som *publiceret uden om pipelinen*, giver **✓ Godkend v*N*** miljøets aktuelle udgave og dato som nyt udgangspunkt i ArchyGUI-tabellen (eller den lokale historik, hvor org'en ikke har en tabel). Flowet i Genesys røres ikke, hvor flowet kom fra og release-historikken bevares, og godkendelsen står i rækken (`accepted`) og i systemloggen. Næste publicering uden om pipelinen markeres igen. Knappen står bag prod-vagten.
+
+**Fra tavlen til Migrer** (*Hent hertil*, *Forfrem*) vises kun det valgte flow; vil man migrere flere, slår man *Vis kun valgte* fra.
 
 **Genopbyg.** Mangler et miljøs tabel, står det som en gul advarsel lige over tavlen på Pipeline — med en **Genopbyg**-knap. Er tabellen slettet, opretter **Genopbyg** (under *Delt manifest* og i guiden) den igen, skriver opsætningen og en række pr. flow i miljøet. Rækker der står, røres ikke. Hvad org'en indeholder nu, kan altid læses i Genesys; historikken — hvem forfremmede hvad hvorfra — tages fra denne pc's lokale filer, hvor den findes. Rækker uden historik er et nulpunkt, og svaret siger hvor mange der fik historik med.
 
@@ -392,6 +396,10 @@ Siden migrerer det der ikke er flows mellem to orgs, fordelt på otte faner: **D
 - **Kopiér til en anden org** laver en kopi uden state til et nyt mål, og **Slet mappe** fjerner den lokalt (org'en røres ikke).
 
 Under en eksport står der, hvad den er i gang med, og hvor længe den har kørt, og at org'en kun læses — terraforms "apply" og "Creating" gælder kun eksportørens hjælpe-ressource i en lokal fil. Typer, login'et ikke må læse (403), samles i en liste med den rettighed eller det scope der mangler. Før eksporten slår Archy GUI miljøets OAuth-klient op og viser på én gang de scopes, den mangler (med en kopiér-knap); man kan rette klienten eller eksportere alligevel. Mangler et scope til typens egne objekter, udelader Archy GUI typen og starter forfra (*forsøg 2, 3 …*) — men aldrig for et opslag i et andet område, så brugere og grupper ikke forsvinder på scopet voicemail. Efter eksporten læses eksportørens `export_errors.json` og vises pr. manglende scope eller rettighed, med typer der helt mangler øverst i rødt, også under mappen i *Arbejdsmapper*; terraforms egen log ligger foldet sammen nedenunder. **Stop** dræber terraform og provideren og sletter den halve mappe. Går man til en anden fane, kører eksporten videre og følges igen, når man kommer tilbage.
+
+**Flow-tjek.** Eksportøren siger ikke, hvilke flows den springer over. Efter hver fuld eksport henter Archy GUI derfor flowlisten fra den org, der blev eksporteret fra, og sammenholder den med de flows, der kom med. Flow-id'et står i YAML-filens navn i `architect_flows/` og i `genesyscloud_flow`'s `filepath`. Under mappen står *N af M flows kom med*, og ved manglende flows kommer en liste med navn, type og det, vi kan se om flowet: Genesys' eget standardflow, aldrig publiceret, låst (tjekket ud i Architect), udeladt af filteret på eksporten, eller ukendt (se terraforms log). **🔎 Tjek flows mod org'en** kører tjekket igen, også på mapper fra før v1.87.0. Det læser kun i org'en.
+
+**⬇ Zip til kunden** i en arbejdsmappe henter mappen som zip, klar til kundens egen pc. Pakken har `login.example.ps1` og `login.example.sh`, hvor kunden skriver client id, secret og region for sin OAuth-klient (Client Credentials) ét sted. Regionen er udfyldt efter mappens org. Kunden kører `run plan` og derefter `run apply` (`run.cmd`/`run.ps1` på Windows, `run.sh` på Mac/Linux). Apply udfører kun den plan, der lige er vist, og der skal ikke installeres andet end Terraform. README'en får afsnittet *Kør den på din egen pc*, og `.gitignore` holder login-filerne ude af git. Mangler mappen provider-kravet, skrives en `versions.tf`, så `terraform init` henter `mypurecloud/genesyscloud`. Zip'en indeholder state og `.terraform.lock.hcl`, men ikke `login.ps1`/`login.sh`, Archy GUI's egne filer (`workspace.json`, planer, `export_errors.json`), gamle state-backups eller `.terraform/`. Pakken skrives også ved fuld eksport, hurtig startopsætning og kopi til en anden org.
 
 Fejler terraform, forklarer fanen de kendte årsager. Et antivirusprogram, der scanner krypteret trafik (fx Norton), kan bryde forbindelsen mellem `terraform.exe` og provideren (*x509: certificate signed by unknown authority*). Så skal `terraform.exe` og `terraform-provider-*.exe` undtages fra scanningen.
 
@@ -528,6 +536,7 @@ Archy-gui/
 │   ├── lib/               # Hjælpere uden ruter (Archy, YAML, manifest, prod-vagten, log …)
 │   ├── terraform.js       # Terraform-generator (ren kode)
 │   ├── terraform-hcl.js   # Læser og retter .tf-filer, opsummerer planer (ren kode)
+│   ├── terraform-kit.js   # Kundepakken: login-skabelon, kør-scripts og zip (ren kode)
 │   ├── ai-providers.js    # AI-udbydere: krypteret nøglelager og adaptere
 │   └── ai-agent.js        # AI-assistenten: værktøjsløkke, værktøjer og bekræftelser
 ├── public/
@@ -555,7 +564,7 @@ Du behøver **ikke** køre testene for at bruge programmet. De er til den der æ
 npm test
 ```
 
-579 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
+590 enhedstests af de rene funktioner — navngivning ved forfremmelse, miljøpræfikser, gruppespærringen, omskrivning og sammenligning af YAML, fejltekster fra Archy og Genesys, og maskeringen af client secrets. Ingen af dem rører en Genesys-org, en fil eller Archy, så de kan køres når som helst.
 
 Et par af dem holder øje med at **trin-rækkefølgen og versionsendelsen kun står ét sted** — de læser både serverens kode i `src/` og `index.html` og fælder, hvis reglerne bliver skrevet af igen.
 
@@ -731,7 +740,7 @@ Each cell shows the flow's **name in that environment**, its published version a
 | Colour / marker | Meaning |
 |---|---|
 | green | published, with nothing suggesting it arrived out of band |
-| ✗ **published outside the pipeline** | the manifest says we left the environment at v*N* and it stands higher. Applies only where the environment *received* the flow — working in dev is not going around anything |
+| ✗ **published outside the pipeline** | the manifest says we left the environment at v*N* and it stands higher. Applies only where the environment *received* the flow — working in dev is not going around anything. **✓ Accept v*N*** makes the environment's version the new baseline, e.g. when the customer's own pipeline published it |
 | ✗ **N versions ahead of the previous stage** | published more times than the stage feeding it. An indication, not proof |
 | ⚠ **N versions not promoted** | work continued without being pushed onward |
 | ⚠ **only exists in a later stage** | built outside the chain |
@@ -833,7 +842,11 @@ One row per flow. `Data` for `UAT_Ordreflow` looks like this:
 
 **The org wins.** At login, 🔌 Test and when Pipeline opens, the org's setup is read in, and what changed is shown once at the top of the page. A change made on this PC is therefore written to the org straight away. If someone changed the org's row while a change from here was waiting, you choose in the guide who is right. **The prod guard is never loosened from outside:** the org cannot move a prod environment to another stage or change its deploy requirements — that becomes a disagreement, and taking the org's version needs a prod login. Stages the org has and the PC lacks (e.g. staging) are added to the list; none are ever removed. An environment without a prefix never takes flows carrying a prefix the org uses — not even on a PC where dev and test have not been added.
 
-**The board keeps up.** While Pipeline is open, the app asks once a minute for a fingerprint of the manifest tables in the group shown, and if it changes — say a colleague on another PC promoted a flow — the board redraws by itself. The same happens when you return to Pipeline after a migration. The interval is set with `pipelineRefreshSeconds` in `data/settings.json` (at least 15; `0` turns it off). **From the board to Migrate** (*Bring here*, *Promote*) only the chosen flow is shown; to migrate more, turn *Show selected only* off.
+**The board keeps up.** While Pipeline is open, the app asks once a minute for a fingerprint of the manifest tables in the group shown, and if it changes — say a colleague on another PC promoted a flow — the board redraws by itself. The same happens when you return to Pipeline after a migration. The interval is set with `pipelineRefreshSeconds` in `data/settings.json` (at least 15; `0` turns it off).
+
+**Publishes outside Archy GUI.** The customer's own pipeline (CX as Code, Archy CLI or a publish by hand) does not write to the ArchyGUI table. So the board also asks for the versions in Genesys: every 5 minutes the flow list for the group is fetched, and if a published or saved version changed since the board was loaded, it redraws with the message *a version in Genesys changed*. The interval is set with `pipelineGenesysSeconds` in `data/settings.json` (at least 60; `0` turns it off). When a cell says *published outside the pipeline*, **✓ Accept v*N*** records the environment's current version and date as the new baseline in the ArchyGUI table (or the local history where the org has no table). The flow in Genesys is not touched, where the flow came from and the release history are kept, and the acceptance is stored in the row (`accepted`) and the system log. The next publish outside the pipeline is flagged again. The button sits behind the prod guard.
+
+**From the board to Migrate** (*Bring here*, *Promote*) only the chosen flow is shown; to migrate more, turn *Show selected only* off.
 
 **Rebuild.** If an environment's table is missing, a yellow warning right above the board on Pipeline says so — with a **Rebuild** button. If the table was deleted, **Rebuild** (under *Shared manifest* and in the guide) creates it again and writes the setup and one row per flow in the environment. Rows that exist are left alone. What the org holds now can always be read from Genesys; the history — who promoted what from where — is taken from this PC's local files where it exists. Rows without history are a baseline, and the result says how many got history.
 
@@ -938,6 +951,10 @@ This page migrates everything that is not a flow between two orgs, across eight 
 - **Copy to another org** makes a copy without state for a new target, and **Delete folder** removes it locally (the org is not touched).
 
 During an export the tab shows what it is doing, how long it has run, and that the org is only read — terraform's "apply" and "Creating" refer only to the exporter's helper resource in a local file. Types the login may not read (403) are gathered in a list with the missing permission or scope. Before the export Archy GUI looks up the environment's OAuth client and shows every missing scope at once (with a copy button); fix the client or export anyway. When a scope for the type's own objects is missing, the type is left out and the export starts again (*attempt 2, 3 …*) — never for a lookup in another area, so users and groups do not vanish on the voicemail scope. After the export the exporter's `export_errors.json` is shown per missing scope or permission, with types missing entirely on top in red, also on the folder in *Working folders*; terraform's own log is folded away below. **Stop** kills terraform and the provider and deletes the half-written folder. Switching tabs leaves the export running, and it is followed again when you come back.
+
+**Flow check.** The exporter does not say which flows it skips. After each full export Archy GUI therefore fetches the flow list from the org that was exported and compares it with the flows that came along. The flow id is in the YAML file name in `architect_flows/` and in `genesyscloud_flow`'s `filepath`. The folder shows *N of M flows were exported*, and for missing flows a list with name, type and what we can see about the flow: Genesys' own default flow, never published, locked (checked out in Architect), left out by the export filter, or unknown (see terraform's log). **🔎 Check flows against the org** runs it again, also on folders from before v1.87.0. It only reads from the org.
+
+**⬇ Zip for the customer** in a working folder downloads the folder as a zip, ready for the customer's own PC. It has `login.example.ps1` and `login.example.sh`, where the customer enters the client id, secret and region of their OAuth client (Client Credentials) in one place. The region is filled in from the folder's org. They run `run plan` and then `run apply` (`run.cmd`/`run.ps1` on Windows, `run.sh` on Mac/Linux). Apply carries out only the plan just shown, and nothing but Terraform needs to be installed. The README gets the section *Run it on your own PC*, and `.gitignore` keeps the login files out of git. If the folder has no provider requirement, a `versions.tf` is written so `terraform init` fetches `mypurecloud/genesyscloud`. The zip holds the state and `.terraform.lock.hcl`, but not `login.ps1`/`login.sh`, Archy GUI's own files (`workspace.json`, plans, `export_errors.json`), old state backups or `.terraform/`. The package is also written on full export, quick setup and copy to another org.
 
 When terraform fails, the tab explains the known causes. Antivirus that scans encrypted traffic (e.g. Norton) can break the connection between `terraform.exe` and the provider (*x509: certificate signed by unknown authority*); exclude `terraform.exe` and `terraform-provider-*.exe` from the scan.
 
@@ -1101,7 +1118,7 @@ You do **not** need to run the tests to use the app. They are for whoever change
 npm test
 ```
 
-579 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
+590 unit tests covering the pure functions — promotion naming, environment prefixes, the group guard, YAML rewriting and comparison, error messages from Archy and Genesys, and client-secret redaction. None of them touch a Genesys org, a file or Archy, so they can be run at any time.
 
 A couple of them watch that **the stage order and the version suffix exist in only one place** — they read both the server code in `src/` and `index.html` and fail if the rules get copied out again.
 

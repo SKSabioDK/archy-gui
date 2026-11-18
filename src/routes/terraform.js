@@ -25,6 +25,7 @@ const router = express.Router();
 
 const TERRAFORM = require('../terraform.js');
 const HCL = require('../terraform-hcl.js');
+const KIT = require('../terraform-kit.js');
 
 // ── Arbejdsmapper ────────────────────────────────────────────────────────────
 const META = 'workspace.json';
@@ -167,6 +168,7 @@ function wsSummary(dir) {
     lastApply: meta.lastApply || null,
     touched: touchedNow(dir, meta),
     exportErrors: exportErrors(dir),
+    flowCheck: meta.flowCheck || null,
   };
 }
 
@@ -378,6 +380,7 @@ router.post('/api/terraform/generate', async (req, res) => {
       fs.mkdirSync(path.join(dir, TERRAFORM.FLOW_DIR), { recursive: true });
       for (const f of flows) fs.copyFileSync(path.join(flowDir, f.file), path.join(dir, TERRAFORM.FLOW_DIR, safeFileName(f.file, 'flow.yaml')));
     }
+    writeKit(dir, target || source, lang);
     writeMeta(dir, { kind: 'generator', created: new Date().toISOString(), sourceId: source.id, sourceName: source.name,
       targetId: target ? target.id : null, targetName: target ? target.name : null, includeState: false, lang });
     const written = result.summary.reduce((n, s) => n + s.written, 0);
@@ -397,16 +400,6 @@ Filerne er almindelig Terraform og kan bruges uden Archy GUI.
 ${state
     ? `**Samme org:** \`terraform.tfstate\` kom med fra eksporten, så Terraform styrer allerede objekterne i ${src}. \`terraform plan\` bør vise 0 ændringer, indtil filerne rettes.`
     : `**Til en anden org:** der er ingen state, så \`terraform apply\` opretter objekterne i ${tgt || 'mål-org\'en'}. Prøv i en test-org først.`}
-
-## Sådan kører du den selv
-
-1. Installér Terraform (https://developer.hashicorp.com/terraform/install).
-2. Giv provideren et login til den org, der skal ændres — enten et token eller en OAuth-klient (client credentials):
-   - \`GENESYSCLOUD_ACCESS_TOKEN\` og \`GENESYSCLOUD_REGION\` (fx \`eu-central-1\`), eller
-   - \`GENESYSCLOUD_OAUTHCLIENT_ID\`, \`GENESYSCLOUD_OAUTHCLIENT_SECRET\` og \`GENESYSCLOUD_REGION\`.
-3. \`terraform init\`, derefter \`terraform plan -out=plan\` og læs planen, så \`terraform apply plan\`.
-
-Hemmeligheder (fx klient-secrets og adgangskoder til integrationer) eksporteres ikke; eksportøren skriver variabler til dem i \`terraform.tfvars\`.
 `,
   en: (src, tgt, state) => `# Terraform — ${src}${tgt ? ' → ' + tgt : ''}
 
@@ -416,16 +409,6 @@ The files are plain Terraform and work without Archy GUI.
 ${state
     ? `**Same org:** \`terraform.tfstate\` came with the export, so Terraform already manages the objects in ${src}. \`terraform plan\` should show 0 changes until the files are edited.`
     : `**To another org:** there is no state, so \`terraform apply\` creates the objects in ${tgt || 'the target org'}. Try it in a test org first.`}
-
-## Running it yourself
-
-1. Install Terraform (https://developer.hashicorp.com/terraform/install).
-2. Give the provider a login for the org that should change — a token or an OAuth client (client credentials):
-   - \`GENESYSCLOUD_ACCESS_TOKEN\` and \`GENESYSCLOUD_REGION\` (e.g. \`eu-central-1\`), or
-   - \`GENESYSCLOUD_OAUTHCLIENT_ID\`, \`GENESYSCLOUD_OAUTHCLIENT_SECRET\` and \`GENESYSCLOUD_REGION\`.
-3. \`terraform init\`, then \`terraform plan -out=plan\` and read the plan, then \`terraform apply plan\`.
-
-Secrets (e.g. client secrets and integration passwords) are not exported; the exporter writes variables for them in \`terraform.tfvars\`.
 `,
 };
 const exportReadme = (lang, src, tgt, state) => (README_TEXT[lang] || README_TEXT.en)(src, tgt, state);
@@ -543,6 +526,7 @@ router.post('/api/terraform/export', async (req, res) => {
       const pruned = pruneUnusedData(dir);
       if (pruned) log(`Removed ${pruned} unused data lookups (kept in ${PRUNED_FILE}) — they change nothing in the org, and ambiguous ones stopped plan`);
       if (!fs.existsSync(path.join(dir, 'README.md'))) fs.writeFileSync(path.join(dir, 'README.md'), exportReadme(lang, source.name, target && target.name, includeState));
+      writeKit(dir, target || source, lang);
       writeMeta(dir, { kind: 'export', created: new Date().toISOString(), sourceId: source.id, sourceName: source.name,
         targetId: target ? target.id : null, targetName: target ? target.name : null, includeState, lang, include, exclude,
         skipped: job.skipped, errors: exportErrors(dir) });
@@ -552,6 +536,10 @@ router.post('/api/terraform/export', async (req, res) => {
         try { await tfStep(exe, ['init', '-input=false', '-no-color'], dir, env, log, job, { exportRun: true }); }
         catch (e) { if (e.message === 'Stopped') throw e; log('terraform init in the folder failed — run Init under Plan & apply'); }
       }
+      try {
+        const fc = await checkFlows(dir);
+        if (fc.missing.length) log(`Flow check: ${fc.exported} of ${fc.total} flows exported — ${fc.missing.length} missing (see the folder)`);
+      } catch (e) { log(`Flow check failed: ${describeApiError(e)}`); }
       job.phase = 'done';
       const s = wsSummary(dir);
       addLog('SUCCESS', `Terraform full export of ${source.name}${target ? ' (for ' + target.name + ')' : ''}: ${s.resources} resources in ${path.relative(ROOT_DIR, dir)}` +
@@ -598,6 +586,136 @@ router.get('/api/terraform/workspace', (req, res) => {
   try { res.json(wsSummary(wsDir(req.query.ws))); } catch (e) { sendError(res, e); }
 });
 
+// ── Flow-tjek efter eksporten ────────────────────────────────────────────────
+// Eksportøren siger ikke, hvilke flows den springer over. Her sammenholdes
+// org'ens flowliste med de flows, der kom med (id'et står i YAML-filens navn
+// og i genesyscloud_flow's filepath), og hvert manglende flow får det, vi kan
+// se om det: Genesys' eget standardflow, aldrig publiceret, låst af en bruger,
+// eller udeladt af et filter på eksporten.
+const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/ig;
+
+function exportedFlowIds(dir) {
+  const ids = new Set();
+  try { for (const n of fs.readdirSync(path.join(dir, TERRAFORM.FLOW_DIR))) for (const m of n.match(UUID_RE) || []) ids.add(m.toLowerCase()); } catch (_) {}
+  for (const f of tfFiles(dir)) {
+    let text = '';
+    try { text = fs.readFileSync(path.join(dir, f.path), 'utf8'); } catch (_) { continue; }
+    if (!text.includes('genesyscloud_flow"')) continue;
+    for (const m of text.matchAll(/filepath\s*=\s*"([^"]*)"/g)) for (const id of m[1].match(UUID_RE) || []) ids.add(id.toLowerCase());
+  }
+  return ids;
+}
+
+// flows: org'ens flowliste (id, name, type, system, publishedVersion, lockedUser, lockedClient)
+// filter: { include, exclude } fra eksporten
+function compareFlows(flows, exported, filter = {}) {
+  const inc = (filter.include || []).map(String), exc = (filter.exclude || []).map(String);
+  const flowFilter = inc.filter(x => x.startsWith('genesyscloud_flow::'));
+  const typeOff = (inc.length && !inc.some(x => x === 'genesyscloud_flow' || x.startsWith('genesyscloud_flow::'))) || exc.includes('genesyscloud_flow');
+  const missing = [];
+  let found = 0;
+  for (const f of flows || []) {
+    if (exported.has(String(f.id || '').toLowerCase())) { found++; continue; }
+    const reason = typeOff ? 'filter'
+      : f.system ? 'system'
+      : !f.publishedVersion ? 'unpublished'
+      : (f.lockedUser || f.lockedClient) ? 'locked'
+      : flowFilter.length ? 'filter'
+      : 'unknown';
+    missing.push({ id: f.id, name: f.name, type: f.type, reason });
+  }
+  const order = ['unknown', 'locked', 'unpublished', 'filter', 'system'];
+  missing.sort((a, b) => order.indexOf(a.reason) - order.indexOf(b.reason) || String(a.name).localeCompare(String(b.name)));
+  return { total: (flows || []).length, exported: found, missing, flowsOff: typeOff };
+}
+
+async function orgFlowList(env) {
+  if (isDemo(env)) {
+    const { demoFlowsFor } = require('../lib/demo');
+    return demoFlowsFor(env).map(f => ({ id: f.id || f.name, name: f.name, type: f.type, publishedVersion: f.published ? { name: f.published } : null }));
+  }
+  const { token, apiBase } = await getToken(env);
+  const out = [];
+  for (let page = 1; ; page++) {
+    const r = await axios.get(`${apiBase}/api/v2/flows`, { headers: { Authorization: `Bearer ${token}` }, params: { pageSize: 100, pageNumber: page } });
+    const e = r.data.entities || [];
+    out.push(...e.map(f => ({ id: f.id, name: f.name, type: f.type, system: !!f.system, publishedVersion: f.publishedVersion || null,
+      lockedUser: f.lockedUser ? (f.lockedUser.name || f.lockedUser.id) : null, lockedClient: f.lockedClient ? (f.lockedClient.name || f.lockedClient.id) : null })));
+    if (e.length < 100 || page >= (r.data.pageCount || page)) break;
+  }
+  return out;
+}
+
+async function checkFlows(dir) {
+  const meta = readMeta(dir);
+  const env = loadCustomers().find(c => c.id === meta.sourceId);
+  if (!env) throw httpError(400, 'The org the folder was exported from is no longer in Archy GUI');
+  const result = { at: new Date().toISOString(), envId: env.id, envName: env.name,
+    ...compareFlows(await orgFlowList(env), exportedFlowIds(dir), { include: meta.include, exclude: meta.exclude }) };
+  writeMeta(dir, { ...readMeta(dir), flowCheck: result });
+  return result;
+}
+
+router.post('/api/terraform/workspace/flowcheck', async (req, res) => {
+  try {
+    const dir = wsDir(req.body.ws);
+    if (!fs.existsSync(dir)) return res.status(404).json({ error: 'Folder not found' });
+    const meta = readMeta(dir);
+    if (meta.kind === 'generator') return res.status(400).json({ error: 'The quick setup copies the local YAML files — there is no export to check' });
+    const r = await checkFlows(dir);
+    addLog(r.missing.length ? 'WARN' : 'INFO', `Flow check of ${wsId(dir)}: ${r.exported} of ${r.total} flows in ${r.envName} were exported` +
+      (r.missing.length ? `; missing: ${r.missing.slice(0, 10).map(m => `${m.name} (${m.reason})`).join(', ')}${r.missing.length > 10 ? ' …' : ''}` : ''), r.envName, 'TERRAFORM');
+    res.json({ ok: true, flowCheck: r });
+  } catch (e) { sendError(res, e); }
+});
+
+// ── Kundepakken ──────────────────────────────────────────────────────────────
+// Login-skabelon, kør-scripts, .gitignore og README-afsnittet, så kunden kan
+// køre mappen på sin egen pc med sin egen OAuth-klient. Skrives igen ved hver
+// eksport, kopi og zip, så regionen følger mappens org. login.ps1/login.sh røres aldrig.
+function writeKit(dir, env, lang) {
+  const region = env ? TERRAFORM.awsRegion(env.region) : null;
+  for (const [name, text] of Object.entries(KIT.kitFiles({ region }))) fs.writeFileSync(path.join(dir, name), text, 'utf8');
+  // Uden required_providers leder terraform init efter hashicorp/genesyscloud, som ikke findes
+  const tfs = fs.readdirSync(dir).filter(n => n.endsWith('.tf'));
+  if (!tfs.some(n => KIT.declaresProvider(fs.readFileSync(path.join(dir, n), 'utf8')))) fs.writeFileSync(path.join(dir, 'versions.tf'), KIT.VERSIONS_TF, 'utf8');
+  const f = path.join(dir, 'README.md');
+  const old = fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : '';
+  fs.writeFileSync(f, KIT.withKitReadme(old, lang, { region, hasState: fs.existsSync(path.join(dir, 'terraform.tfstate')) }), 'utf8');
+}
+
+function zipEntries(dir, top) {
+  const out = [];
+  const walk = (d, pre) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const rel = pre + e.name;
+      if (e.isSymbolicLink() || KIT.ZIP_SKIP.test(rel)) continue;
+      const full = path.join(d, e.name);
+      if (e.isDirectory()) { walk(full, rel + '/'); continue; }
+      if (!e.isFile()) continue;
+      out.push({ name: top + '/' + rel, data: fs.readFileSync(full), mtime: fs.statSync(full).mtime });
+    }
+  };
+  walk(dir, '');
+  return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Mappen som zip til kunden — med kundepakken, uden Archy GUI's egne filer og uden login
+router.get('/api/terraform/workspace/zip', (req, res) => {
+  try {
+    const dir = wsDir(req.query.ws);
+    if (!fs.existsSync(dir)) return res.status(404).json({ error: 'Folder not found' });
+    const meta = readMeta(dir);
+    writeKit(dir, boundEnv(meta), meta.lang || 'en');
+    const top = part(wsId(dir).replace('/', '_')) || 'terraform';
+    const buf = KIT.zip(zipEntries(dir, top));
+    addLog('INFO', `Terraform folder ${wsId(dir)} downloaded as zip for the customer (${Math.round(buf.length / 1024)} KB)`, meta.targetName || meta.sourceName || null, 'TERRAFORM');
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${top}.zip"`);
+    res.send(buf);
+  } catch (e) { sendError(res, e); }
+});
+
 // Kopi til en anden org: filerne uden state, plan og provider-mappe.
 router.post('/api/terraform/workspace/copy', (req, res) => {
   try {
@@ -614,6 +732,7 @@ router.post('/api/terraform/workspace/copy', (req, res) => {
       fs.copyFileSync(path.join(from, f.path), path.join(dir, f.path));
     }
     if (fs.existsSync(path.join(from, 'README.md'))) fs.copyFileSync(path.join(from, 'README.md'), path.join(dir, 'README.md'));
+    writeKit(dir, target, meta.lang);
     writeMeta(dir, { ...meta, kind: 'copy', created: new Date().toISOString(), targetId: target.id, targetName: target.name,
       includeState: false, copiedFrom: wsId(from), lastApply: null, touched: [] });
     addLog('INFO', `Terraform folder ${wsId(from)} copied for ${target.name}: ${wsId(dir)}`, target.name, 'TERRAFORM');
@@ -902,4 +1021,4 @@ router.post('/api/terraform/apply', async (req, res) => {
   } catch (e) { sendError(res, e); }
 });
 
-module.exports = { router, _test: { wsFile, wsDir, exportReadme, pruneUnusedData, stripStateData } };
+module.exports = { router, _test: { wsFile, wsDir, exportReadme, pruneUnusedData, stripStateData, writeKit, zipEntries, compareFlows, exportedFlowIds } };

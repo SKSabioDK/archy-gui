@@ -31,6 +31,7 @@ const PROD_WRITE_ROUTES = {
   '/api/flows/republish':         'envId',
   '/api/manifest/create':         'envId',
   '/api/manifest/rebuild':        'envId',
+  '/api/manifest/accept':         'envId',
   '/api/flows/baseline':          'targetId',
   '/api/migrate/prepare':         'targetId',
   '/api/migrate/commit':          'targetId',

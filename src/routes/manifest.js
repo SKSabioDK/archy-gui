@@ -9,10 +9,12 @@ const { stageOrder } = require('../lib/conventions');
 const { describeApiError } = require('../lib/helpers');
 const { tenantOf, groupOf, stageOf, orgKeyOf, isDemo, belongsToEnv, stripEnvPrefix } = require('../lib/environments');
 const { baseFlowName } = require('../lib/names');
-const { _mfTableCache } = require('../lib/token');
-const { loadManifest, findManifestEntry } = require('../lib/manifest-file');
+const { _mfTableCache, getToken } = require('../lib/token');
+const { loadManifest, findManifestEntry, recordManifest } = require('../lib/manifest-file');
 const { whoAmI, ORG_MANIFEST_BASE, manifestTableName, orgManifestKey, findOrgManifestTable,
-  createOrgManifestTable, demoManifest, onlyFlowRows, readOrgManifest, putOrgManifestRow } = require('../lib/manifest');
+  createOrgManifestTable, demoManifest, onlyFlowRows, readOrgManifest, putOrgManifestRow,
+  readOrgManifestRow, writeOrgManifestRow, getOrgId } = require('../lib/manifest');
+const axios = require('axios');
 const { demoFlowsFor } = require('../lib/demo');
 const { setupInBackground, ensurePipelineIdsSaved, writeSetupRow, pipelinePeers, readSetupRow,
   siblingsFromPeers } = require('../lib/setup');
@@ -170,4 +172,61 @@ router.post('/api/manifest/rebuild', async (req, res) => {
 
 router.get('/api/migrations', (req, res) => res.json(loadManifest()));
 
-module.exports = { router, manifestSignature, rebuiltManifestRow };
+// ── Godkend en publicering uden om pipelinen ─────────────────────────────────
+// Har kundens egen pipeline (eller nogen i hånden) publiceret i et miljø, vi
+// har forfremmet til, står cellen som "publiceret uden om pipelinen", indtil
+// vi selv forfremmer igen. Her godkender man den udgave, der ligger der nu:
+// rækken får miljøets aktuelle udgave og dato, så signalet slukker — og tænder
+// igen ved næste publicering udenom. Hvor flowet kom fra (promotedFrom) og
+// release-historikken bevares; godkendelsen noteres i accepted.
+function acceptedRow(existing, flow, now = Date.now()) {
+  const old = existing || {};
+  return { ...old, version: flow.version ?? null, publishedAt: flow.publishedAt ?? null,
+    accepted: { fromVersion: old.version ?? null, fromPublishedAt: old.publishedAt ?? null, at: now } };
+}
+
+// Miljøets publicerede udgave af ét flow, læst i org'en nu
+async function currentFlow(env, flowId, flowName, flowType) {
+  if (isDemo(env)) {
+    const f = demoFlowsFor(env).find(x => x.name === flowName && String(x.type).toUpperCase() === String(flowType).toUpperCase());
+    if (!f) return null;
+    return { name: f.name, version: f.published ?? null, publishedAt: f.publishedAt ?? null };
+  }
+  if (!/^[0-9a-f-]{36}$/i.test(String(flowId || ''))) return null;
+  const { token, apiBase } = await getToken(env);
+  const r = await axios.get(`${apiBase}/api/v2/flows/${encodeURIComponent(flowId)}`, { headers: { Authorization: `Bearer ${token}` } });
+  const pv = r.data.publishedVersion;
+  if (!pv) return null;
+  return { name: r.data.name, version: pv.name ?? null, publishedAt: pv.dateCheckedIn || pv.dateCreated || null };
+}
+
+router.post('/api/manifest/accept', async (req, res) => {
+  const { envId, flowId, flowName, baseName, flowType } = req.body || {};
+  const env = loadCustomers().find(c => c.id === envId);
+  if (!env) return res.status(404).json({ error: 'Ukendt miljø' });
+  if (!flowName || !baseName || !flowType) return res.status(400).json({ error: 'flowName, baseName og flowType kræves' });
+  try {
+    const flow = await currentFlow(env, flowId, flowName, flowType);
+    if (!flow || flow.version == null) return res.status(404).json({ error: `"${flowName}" er ikke publiceret i ${env.name}` });
+    const key = orgManifestKey(baseName, flowType);
+    const row = await readOrgManifestRow(env, key);
+    if (row) {
+      await writeOrgManifestRow(env, baseName, flowType, acceptedRow(row, flow));
+    } else {
+      // Ingen række i org'en: så er det den lokale historik, tavlen bruger
+      const orgId = isDemo(env) ? env.id : await getOrgId(env);
+      const m = findManifestEntry(loadManifest(), { targetOrgId: orgId, targetId: env.id, flowName: baseName, flowType });
+      if (!m) return res.status(404).json({ error: `Manifestet kender ikke "${baseName}" i ${env.name} — der er intet at godkende` });
+      recordManifest({ ...m, targetVersion: flow.version, targetPublishedAt: flow.publishedAt,
+        accepted: { fromVersion: m.targetVersion ?? null, fromPublishedAt: m.targetPublishedAt ?? null, at: Date.now() } });
+    }
+    const who = await whoAmI(env);
+    addLog('INFO', `Accepted "${flow.name}" v${flow.version} in ${env.name} as published outside the pipeline (was v${(row && row.version) || '?'}) — accepted by ${who.by}`, env.name, 'MANIFEST');
+    res.json({ ok: true, version: flow.version, publishedAt: flow.publishedAt, where: row ? 'org' : 'local' });
+  } catch (e) {
+    addLog('ERROR', `Could not accept "${flowName}" in ${env.name}: ${describeApiError(e)}`, env.name, 'MANIFEST');
+    res.status(500).json({ error: describeApiError(e) });
+  }
+});
+
+module.exports = { router, manifestSignature, rebuiltManifestRow, acceptedRow };

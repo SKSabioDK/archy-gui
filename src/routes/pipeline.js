@@ -1,6 +1,8 @@
 // Ruter: pipeline-tavlen og sammenligning af flows.
 
 const express = require('express');
+const crypto = require('crypto');
+const { loadSettings } = require('../config');
 const axios = require('axios');
 const { addLog } = require('../lib/log');
 const { loadCustomers } = require('../lib/customers');
@@ -19,15 +21,9 @@ const { releaseRef, releasesOfEnv, releasesFor, rollbackCandidate } = require('.
 
 const router = express.Router();
 
-router.get('/api/pipeline', async (req, res) => {
-  const { tenant, group } = req.query;
-  if (!tenant || !group) return res.status(400).json({ error: 'tenant og group kræves' });
-
-  const envs = loadCustomers()
-    .filter(c => tenantOf(c) === tenant && groupOf(c) === group)
-    .sort((a, b) => stageOrder(a.stage) - stageOrder(b.stage) || a.name.localeCompare(b.name));
-  if (!envs.length) return res.status(404).json({ error: 'Ingen miljøer i den gruppe' });
-
+// Flowene i hvert miljø i gruppen, grupperet pr. flow (grundnavn|type).
+// Bruges af tavlen og af fingeraftrykket, så de to altid ser det samme.
+async function collectFlows(envs) {
   const byFlow = new Map();
   const problems = [];
 
@@ -86,6 +82,51 @@ router.get('/api/pipeline', async (req, res) => {
       problems.push({ environment: c.name, error: describeApiError(e) });
     }
   }
+  return { byFlow, problems };
+}
+
+// Et fingeraftryk af de publicerede og gemte udgaver. Ændrer det sig, er der
+// publiceret eller gemt i et af miljøerne — også uden om Archy GUI.
+function versionSignature(byFlow, problems = []) {
+  const h = crypto.createHash('sha1');
+  for (const key of [...byFlow.keys()].sort()) {
+    const cells = byFlow.get(key);
+    for (const envId of Object.keys(cells).sort()) {
+      const c = cells[envId];
+      h.update(`${key}|${envId}|${c.flowId}|${c.published ?? ''}|${c.saved ?? ''}|${c.publishedAt || ''}\n`);
+    }
+  }
+  for (const p of problems) h.update(`!${p.environment}\n`);
+  return h.digest('hex').slice(0, 16);
+}
+
+const pipelineEnvs = (tenant, group) => loadCustomers()
+  .filter(c => tenantOf(c) === tenant && groupOf(c) === group)
+  .sort((a, b) => stageOrder(a.stage) - stageOrder(b.stage) || a.name.localeCompare(b.name));
+
+// Tavlen spørger med jævne mellemrum (pipelineGenesysSeconds i settings.json,
+// som standard hvert 5. minut, 0 = slået fra). Kun flowlisten hentes — ingen
+// manifest, ingen eksport.
+router.get('/api/pipeline/versions', async (req, res) => {
+  const { tenant, group } = req.query;
+  const envs = pipelineEnvs(tenant, group);
+  const n = Number(loadSettings().pipelineGenesysSeconds);
+  const sek = Number.isFinite(n) ? (n === 0 ? 0 : Math.max(60, n)) : 300;
+  if (!envs.length) return res.json({ ok: true, sig: null, intervalSeconds: sek });
+  try {
+    const { byFlow, problems } = await collectFlows(envs);
+    res.json({ ok: true, sig: versionSignature(byFlow, problems), intervalSeconds: sek });
+  } catch (e) { res.json({ ok: false, error: describeApiError(e), intervalSeconds: sek }); }
+});
+
+router.get('/api/pipeline', async (req, res) => {
+  const { tenant, group } = req.query;
+  if (!tenant || !group) return res.status(400).json({ error: 'tenant og group kræves' });
+
+  const envs = pipelineEnvs(tenant, group);
+  if (!envs.length) return res.status(404).json({ error: 'Ingen miljøer i den gruppe' });
+
+  const { byFlow, problems } = await collectFlows(envs);
 
   // Manifestet er vores eneste nulpunkt: da vi forfremmede, skrev vi ned hvornår
   // målet blev publiceret. Er målet publiceret SENERE end det, er der publiceret
@@ -201,7 +242,7 @@ router.get('/api/pipeline', async (req, res) => {
       orgLabel: (c.orgLabel || '').trim() || c.name,
       color: c.color || ''
     })),
-    rows, problems
+    rows, problems, versionSig: versionSignature(byFlow, problems)
   });
 });
 
@@ -350,4 +391,4 @@ router.post('/api/flows/compare', async (req, res) => {
   }
 });
 
-module.exports = { router };
+module.exports = { router, versionSignature, collectFlows };
